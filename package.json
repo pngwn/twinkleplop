@@ -1,0 +1,28 @@
+{
+	"name": "twinkleplop",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "vitest",
+		"bench": "vitest bench"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@biomejs/biome": "1.9.4",
+		"shiki": "^3.3.0"
+	},
+	"dependencies": {
+		"dts-buddy": "^0.6.2",
+		"prismjs": "^1.30.0",
+		"typescript": "^5.8.3",
+		"vitest": "^3.1.2"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild"
+		]
+	}
+}
