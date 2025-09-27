@@ -262,8 +262,12 @@ export default {
 				// Pseudo-selectors
 				PSEUDO_ELEMENT,
 
-				// CSS custom properties (variables)
-				CSS_VARIABLE,
+				// CSS custom properties (variables) - treat as properties that go directly to value
+				{
+					match: "--",
+					token: "css-variable",
+					state: "css_custom_property_declaration",
+				},
 
 				// Colon could be property delimiter or pseudo-selector
 				{
@@ -332,10 +336,11 @@ export default {
 					state: "css_custom_property",
 				},
 
-				// Numbers
+				// Minus - could be negative number or operator
 				{
 					match: "-",
-					state: "negative_number",
+					token: "operator",
+					state: "after_minus",
 				},
 				{
 					range: ["0", "9"],
@@ -566,6 +571,12 @@ export default {
 					match: ["-", "_"],
 					token: "selector",
 				},
+				// Handle pseudo-class
+				{
+					match: ":",
+					token: "pseudo-selector",
+					state: "pseudo",
+				},
 				{
 					match: "{",
 					token: "punctuation",
@@ -577,6 +588,7 @@ export default {
 				},
 			],
 		},
+
 
 		// ID selector
 		id_selector: {
@@ -750,16 +762,51 @@ export default {
 			],
 		},
 
-		negative_number: {
+		// After minus in value context
+		after_minus: {
 			rules: [
+				// Number follows minus
 				{
 					range: ["0", "9"],
 					token: "number",
 					state: "number",
 				},
+				// Decimal follows minus
 				{
 					match: ".",
 					token: "number",
+					state: "decimal",
+				},
+				// Another dash - CSS variable
+				{
+					match: "-",
+					token: "css-variable",
+					state: "css_custom_property",
+				},
+				// Letter - keyword starting with dash
+				{
+					range: LETTER_RANGE,
+					token: "keyword",
+					state: "value_keyword",
+				},
+				// Anything else - just the minus operator
+				{
+					any: true,
+					exit: true,
+				},
+			],
+		},
+
+		negative_number: {
+			rules: [
+				{
+					range: ["0", "9"],
+					token: "operator",  // Emit the minus as operator
+					state: "number",
+				},
+				{
+					match: ".",
+					token: "operator",  // Emit the minus as operator
 					state: "decimal",
 				},
 				// It's a keyword starting with dash
@@ -775,6 +822,7 @@ export default {
 				},
 				{
 					any: true,
+					token: "operator",  // Just emit the minus if nothing else matches
 					exit: true,
 				},
 			],
@@ -821,6 +869,29 @@ export default {
 				{
 					match: ["-", "_"],
 					token: "css-variable",
+				},
+				{
+					any: true,
+					exit: true,
+				},
+			],
+		},
+
+		// CSS custom property in declaration context (expecting colon after)
+		css_custom_property_declaration: {
+			rules: [
+				{
+					range: ALPHANUMERIC_RANGE,
+					token: "css-variable",
+				},
+				{
+					match: ["-", "_"],
+					token: "css-variable",
+				},
+				{
+					match: ":",
+					token: "punctuation",
+					state: "value",
 				},
 				{
 					any: true,
@@ -876,6 +947,12 @@ export default {
 					match: "#",
 					token: "number",
 					state: "hex_color",
+				},
+				// CSS variables must come before single dash
+				{
+					match: "--",
+					token: "css-variable",
+					state: "css_custom_property",
 				},
 				{
 					range: ["0", "9"],
@@ -985,5 +1062,7 @@ export default {
 				},
 			],
 		},
+
+
 	},
 };

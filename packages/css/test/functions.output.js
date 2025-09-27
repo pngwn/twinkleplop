@@ -1812,16 +1812,22 @@ export const test = [
     "match": "--main-color"
   },
   {
-    "type": "pseudo-selector",
+    "type": "punctuation",
     "start": 1377,
     "end": 1378,
     "match": ":"
   },
   {
-    "type": "property",
+    "type": "keyword",
     "start": 1379,
     "end": 1382,
     "match": "var"
+  },
+  {
+    "type": "punctuation",
+    "start": 1382,
+    "end": 1383,
+    "match": "("
   },
   {
     "type": "css-variable",
@@ -1830,16 +1836,22 @@ export const test = [
     "match": "--theme-color"
   },
   {
-    "type": "property",
+    "type": "operator",
+    "start": 1396,
+    "end": 1397,
+    "match": ","
+  },
+  {
+    "type": "keyword",
     "start": 1398,
     "end": 1402,
     "match": "blue"
   },
   {
     "type": "punctuation",
-    "start": 1403,
+    "start": 1402,
     "end": 1404,
-    "match": ";"
+    "match": ");"
   },
   {
     "type": "comment",

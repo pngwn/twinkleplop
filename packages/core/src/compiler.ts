@@ -342,12 +342,9 @@ export function compile(grammar: Grammar): CompiledGrammar {
 								}
 								stateBuckets[firstChar]!.push(info);
 
-								// For multi-char patterns, we don't validate conflicts
-								// because they're sorted by length and checked first
-								const index = stateId * 128 + firstChar;
-								if (charMaps[index] === 255) {
-									charMaps[index] = ruleIdx;
-								}
+								// For multi-char patterns, we don't set charMap
+								// They are only matched through the pattern bucket mechanism
+								// The charMap should only be set for single-character matches
 							}
 						}
 					}

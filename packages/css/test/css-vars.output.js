@@ -18,13 +18,13 @@ export const test = [
     "match": "--primary-color"
   },
   {
-    "type": "pseudo-selector",
+    "type": "punctuation",
     "start": 24,
     "end": 25,
     "match": ":"
   },
   {
-    "type": "id",
+    "type": "number",
     "start": 26,
     "end": 33,
     "match": "#007bff"
@@ -42,13 +42,13 @@ export const test = [
     "match": "--secondary-color"
   },
   {
-    "type": "pseudo-selector",
+    "type": "punctuation",
     "start": 53,
     "end": 54,
     "match": ":"
   },
   {
-    "type": "id",
+    "type": "number",
     "start": 55,
     "end": 62,
     "match": "#6c757d"
@@ -66,13 +66,19 @@ export const test = [
     "match": "--spacing-unit"
   },
   {
-    "type": "pseudo-selector",
+    "type": "punctuation",
     "start": 79,
     "end": 80,
     "match": ":"
   },
   {
-    "type": "property",
+    "type": "number",
+    "start": 81,
+    "end": 82,
+    "match": "8"
+  },
+  {
+    "type": "unit",
     "start": 82,
     "end": 84,
     "match": "px"
@@ -90,13 +96,19 @@ export const test = [
     "match": "--border-radius"
   },
   {
-    "type": "pseudo-selector",
+    "type": "punctuation",
     "start": 102,
     "end": 103,
     "match": ":"
   },
   {
-    "type": "property",
+    "type": "number",
+    "start": 104,
+    "end": 105,
+    "match": "4"
+  },
+  {
+    "type": "unit",
     "start": 105,
     "end": 107,
     "match": "px"

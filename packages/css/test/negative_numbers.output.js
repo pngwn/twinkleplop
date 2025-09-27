@@ -24,16 +24,40 @@ export const test = [
     "match": ":"
   },
   {
-    "type": "css-variable",
+    "type": "operator",
     "start": 15,
-    "end": 20,
-    "match": "-10px"
+    "end": 16,
+    "match": "-"
   },
   {
-    "type": "css-variable",
+    "type": "number",
+    "start": 16,
+    "end": 18,
+    "match": "10"
+  },
+  {
+    "type": "unit",
+    "start": 18,
+    "end": 20,
+    "match": "px"
+  },
+  {
+    "type": "operator",
     "start": 21,
+    "end": 22,
+    "match": "-"
+  },
+  {
+    "type": "number",
+    "start": 22,
     "end": 23,
-    "match": "-5"
+    "match": "5"
+  },
+  {
+    "type": "unit",
+    "start": 23,
+    "end": 24,
+    "match": "%"
   },
   {
     "type": "punctuation",
@@ -54,10 +78,22 @@ export const test = [
     "match": ":"
   },
   {
-    "type": "css-variable",
+    "type": "operator",
     "start": 32,
+    "end": 33,
+    "match": "-"
+  },
+  {
+    "type": "number",
+    "start": 33,
+    "end": 35,
+    "match": "20"
+  },
+  {
+    "type": "unit",
+    "start": 35,
     "end": 38,
-    "match": "-20rem"
+    "match": "rem"
   },
   {
     "type": "punctuation",

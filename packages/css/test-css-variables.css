@@ -1,0 +1,37 @@
+/* Test CSS variables and pseudo-selectors */
+
+:root {
+  --primary-color: #3498db;
+  --secondary-color: rgb(52, 73, 94);
+  --spacing: 1rem;
+}
+
+.button {
+  background-color: var(--primary-color);
+  padding: var(--spacing);
+}
+
+.button:hover {
+  background-color: var(--secondary-color);
+}
+
+/* CSS custom properties in nested selectors */
+.card {
+  --card-padding: 2rem;
+  padding: var(--card-padding);
+  
+  &:hover {
+    --card-padding: 2.5rem;
+  }
+}
+
+/* Property with colon should be property, not pseudo-selector */
+.test {
+  display: flex;
+  color: red;
+}
+
+/* Pseudo-element */
+.test::before {
+  content: "";
+}
