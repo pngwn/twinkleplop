@@ -28,7 +28,6 @@
 	"dependencies": {
 		"@twinkleplop/core": "workspace:*",
 		"@twinkleplop/css": "workspace:*",
-		"@twinkleplop/css2": "workspace:*",
 		"@twinkleplop/whitespace": "workspace:*"
 	}
 }

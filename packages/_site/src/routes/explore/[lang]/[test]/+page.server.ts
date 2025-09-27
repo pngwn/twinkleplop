@@ -14,26 +14,27 @@ const lang_map = new Map([
 		'whitespace',
 		{
 			grammar: () => import('@twinkleplop/whitespace'),
-			test: () => import('@twinkleplop/whitespace/test'),
-			transform(src: string, _tokens: TokenizeResult) {
-				const { tokenTypes, tokens } = _tokens;
-				let result = src;
+			test: () => import('@twinkleplop/whitespace/test')
+			// 	transform(src: string, _tokens: TokenizeResult) {
+			// 		console.log('transform', src, _tokens);
+			// 		const { tokenTypes, tokens } = _tokens;
+			// 		let result = src;
 
-				for (let i = tokens.length - 3; i >= 0; i -= 3) {
-					const type = tokenTypes[tokens[i]];
-					const start = tokens[i + 1];
-					const end = tokens[i + 2];
+			// 		for (let i = tokens.length - 3; i >= 0; i -= 3) {
+			// 			const type = tokenTypes[tokens[i]];
+			// 			const start = tokens[i + 1];
+			// 			const end = tokens[i + 2];
 
-					if (type === 'tab') {
-						const replacement = '→'.repeat(end - start);
-						result = result.substring(0, start) + replacement + result.substring(end);
-					} else if (type === 'space') {
-						const replacement = '•'.repeat(end - start);
-						result = result.substring(0, start) + replacement + result.substring(end);
-					}
-				}
-				return result;
-			}
+			// 			if (type === 'tab') {
+			// 				const replacement = '→'.repeat(end - start);
+			// 				result = result.substring(0, start) + replacement + result.substring(end);
+			// 			} else if (type === 'space') {
+			// 				const replacement = '•'.repeat(end - start);
+			// 				result = result.substring(0, start) + replacement + result.substring(end);
+			// 			}
+			// 		}
+			// 		return result;
+			// 	}
 		}
 	]
 ]);
@@ -63,19 +64,15 @@ export const load = async ({ params }) => {
 		throw new Error(`Language ${lang} not found`);
 	}
 	const mod = await lang_map.get(lang)?.grammar();
-	const test_module = await lang_map.get(lang)?.test();
-	console.log(test, lang, test_module);
+	// const test_module = await lang_map.get(lang)?.test();
 	const test_files = getTestFiles(lang);
-	const transform = lang_map.get(lang)?.transform;
-	console.log(transform);
-	console.log(tokenize('div { transform: translate(10px, 20px); }', mod?.grammar));
+
+	console.log(test_files);
+	// const transform = lang_map.get(lang)?.transform;
+	// console.log(transform);
+	// console.log(tokenize('div { transform: translate(10px, 20px); }', mod?.grammar));
 	return {
-		css_files: lang_map.get(lang)?.transform
-			? test_files.map(([file, content]) => [
-					file,
-					lang_map.get(lang)?.transform(content, tokenize(content, mod?.grammar))
-				])
-			: test_files,
+		css_files: test_files,
 		lang,
 		grammar: mod?.grammar,
 		raw_grammar: mod?.raw_grammar as Grammar,

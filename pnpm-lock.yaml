@@ -36,9 +36,6 @@ importers:
       '@twinkleplop/css':
         specifier: workspace:*
         version: link:../css
-      '@twinkleplop/css2':
-        specifier: workspace:*
-        version: link:../css2
       '@twinkleplop/whitespace':
         specifier: workspace:*
         version: link:../whitespace
@@ -124,12 +121,6 @@ importers:
         version: 7.1.4(@types/node@20.19.17)(terser@5.44.0)
 
   packages/css:
-    dependencies:
-      '@twinkleplop/core':
-        specifier: workspace:*
-        version: link:../core
-
-  packages/css2:
     dependencies:
       '@twinkleplop/core':
         specifier: workspace:*
