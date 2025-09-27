@@ -2,15 +2,15 @@
 
 /**
  * Grammar Debug Template
- * 
+ *
  * A reusable template for debugging tokenization issues, including infinite loops.
  * Features:
  * - Iteration limit protection for infinite loops
- * - Full introspection with readable output  
+ * - Full introspection with readable output
  * - State and rule mapping
  * - Character-by-character analysis
  * - Automatic log file creation
- * 
+ *
  * Usage:
  * 1. Copy this template to your package directory
  * 2. Modify the grammar import and test code in the CONFIGURATION section
@@ -99,9 +99,9 @@ log("", 1);
 // Build debug tokenizer
 log("Building debug tokenizer...", 1);
 try {
-	execSync("npm run build:tokenizer:debug", { 
+	execSync("npm run build:tokenizer:debug", {
 		cwd: __dirname,
-		stdio: config.verbosity >= 2 ? "inherit" : "ignore" 
+		stdio: config.verbosity >= 2 ? "inherit" : "ignore",
 	});
 } catch (error) {
 	log("Failed to build debug tokenizer: " + error.message, 0);
@@ -109,7 +109,9 @@ try {
 }
 
 // Import debug tokenizer
-const { tokenize, TokenizerIntrospector } = await import("@twinkleplop/core/debug");
+const { tokenize, TokenizerIntrospector } = await import(
+	"@twinkleplop/core/debug"
+);
 
 // Compile grammar
 log("Compiling grammar...", 1);
@@ -144,30 +146,41 @@ const introspector = new TokenizerIntrospector({
 		if (lineCount++ > config.maxLogLines) {
 			return;
 		}
-		
+
 		// Count iterations
 		if (type === "[BEFORE_CHAR]") {
 			iterationCount++;
 			if (iterationCount > config.maxIterations) {
 				hasError = true;
-				log(`❌ INFINITE LOOP DETECTED: Exceeded ${config.maxIterations} iterations`, 0);
+				log(
+					`❌ INFINITE LOOP DETECTED: Exceeded ${config.maxIterations} iterations`,
+					0
+				);
 				log(`Last position: ${data.pos}`, 0);
-				log(`Last state: ${mapper.getStateName(data.currentStateIndex || 0)}`, 0);
-				throw new Error(`Infinite loop detected after ${config.maxIterations} iterations`);
+				log(
+					`Last state: ${mapper.getStateName(data.currentStateIndex || 0)}`,
+					0
+				);
+				throw new Error(
+					`Infinite loop detected after ${config.maxIterations} iterations`
+				);
 			}
 		}
-		
+
 		// Filter events if specified
 		if (config.logEvents && !config.logEvents.includes(type)) {
 			return;
 		}
-		
+
 		// Track position to detect stuck states
 		if (data.pos !== undefined && type === "[BEFORE_CHAR]") {
 			if (data.pos === lastPos) {
 				stuckCount++;
 				if (stuckCount > 10) {
-					log(`⚠️  WARNING: Position stuck at ${data.pos} for ${stuckCount} iterations!`, 1);
+					log(
+						`⚠️  WARNING: Position stuck at ${data.pos} for ${stuckCount} iterations!`,
+						1
+					);
 					if (stuckCount > 100) {
 						hasError = true;
 						log(`❌ INFINITE LOOP: Stuck at position ${data.pos}`, 0);
@@ -179,16 +192,17 @@ const introspector = new TokenizerIntrospector({
 			}
 			lastPos = data.pos;
 		}
-		
+
 		// Format the log message based on event type
 		let message = "";
-		
+
 		switch (type) {
 			case "[BEFORE_CHAR]":
 				if (config.showCharacterProcessing) {
-					const char = data.char < 128 
-						? String.fromCharCode(data.char) 
-						: `\\u${data.char.toString(16).padStart(4, "0")}`;
+					const char =
+						data.char < 128
+							? String.fromCharCode(data.char)
+							: `\\u${data.char.toString(16).padStart(4, "0")}`;
 					const state = mapper.getStateName(data.currentStateIndex);
 					message = `[${String(data.pos).padStart(4)}] '${char}' in '${state}'`;
 					if (config.showStateStack && data.stackDepth > 0) {
@@ -196,27 +210,31 @@ const introspector = new TokenizerIntrospector({
 					}
 				}
 				break;
-				
+
 			case "[MATCHED_RULE]":
 				const matchState = data.currentState;
-				const rule = data.ruleName || mapper.getRuleName(data.currentStateIndex || 0, data.ruleIndex);
+				const rule =
+					data.ruleName ||
+					mapper.getRuleName(data.currentStateIndex || 0, data.ruleIndex);
 				message = `      ✓ Matched: ${rule} in '${matchState}'`;
 				break;
-				
+
 			case "[EMITTED_TOKEN]":
 				const tokenName = data.tokenName || mapper.getTokenName(data.tokenType);
-				const text = introspectorInput ? introspectorInput.slice(data.start, data.end) : "";
+				const text = introspectorInput
+					? introspectorInput.slice(data.start, data.end)
+					: "";
 				const preview = text.length > 20 ? text.slice(0, 20) + "..." : text;
 				message = `      → Token: ${tokenName} = "${preview.replace(/\n/g, "\\n")}" [${data.start}-${data.end}]`;
 				break;
-				
+
 			case "[EXTENDED_TOKEN]":
 				if (config.showTokenCoalescing) {
 					const extTokenName = data.tokenType || "unknown";
 					message = `      ↗ Extended: ${extTokenName} to [${data.oldEnd}-${data.newEnd}]`;
 				}
 				break;
-				
+
 			case "[PUSHED_STATE]":
 				const fromState = data.fromState;
 				const toState = data.toState;
@@ -226,7 +244,7 @@ const introspector = new TokenizerIntrospector({
 					message += ` [${stateStack.join(" > ")}]`;
 				}
 				break;
-				
+
 			case "[POPPED_STATE]":
 				if (stateStack.length > 0) stateStack.pop();
 				const popToState = data.toState;
@@ -235,36 +253,36 @@ const introspector = new TokenizerIntrospector({
 					message += ` [${stateStack.join(" > ")}]`;
 				}
 				break;
-				
+
 			case "[TRANSITIONED_STATE]":
 				const transFromState = data.fromState;
 				const transToState = data.toState;
 				message = `      → Trans: ${transFromState} → ${transToState}`;
 				break;
-				
+
 			case "[ENTER_PROBE]":
 				message = `      🔍 PROBE ON at pos ${data.pos}`;
 				break;
-				
+
 			case "[EXIT_PROBE]":
 				message = `      🔍 PROBE OFF, reset to pos ${data.resetPos}`;
 				break;
-				
+
 			case "[FALLBACK_MATCH]":
 				const fbState = data.currentState || "unknown";
 				message = `      ⚡ Fallback in '${fbState}'`;
 				break;
-				
+
 			case "[NON_ASCII_MATCH]":
 				const naChar = `\\u${data.char.toString(16).padStart(4, "0")}`;
 				message = `      ⚡ Non-ASCII: ${naChar}`;
 				break;
 		}
-		
+
 		if (message) {
 			log(message, 2);
 		}
-	}
+	},
 });
 
 // Run tokenization
@@ -295,7 +313,7 @@ if (error) {
 	if (config.verbosity >= 2 && error.stack) {
 		log(error.stack, 2);
 	}
-	
+
 	// Show last known position and state
 	if (introspector.history && introspector.history.length > 0) {
 		const lastEvents = introspector.history.slice(-10);
@@ -308,7 +326,7 @@ if (error) {
 } else if (result) {
 	const tokenCount = result.tokens.length / 3;
 	log(`✅ SUCCESS: ${tokenCount} tokens generated`, 1);
-	
+
 	// Display tokens
 	if (config.verbosity >= 1) {
 		log("", 1);
@@ -318,8 +336,14 @@ if (error) {
 			const start = result.tokens[i + 1];
 			const end = result.tokens[i + 2];
 			const typeName = result.tokenTypes[type] || `unknown_${type}`;
-			const value = testCode.slice(start, end).replace(/\n/g, "\\n").slice(0, 30);
-			log(`  [${String(start).padStart(3)}-${String(end).padStart(3)}] ${typeName.padEnd(20)} "${value}"`, 1);
+			const value = testCode
+				.slice(start, end)
+				.replace(/\n/g, "\\n")
+				.slice(0, 30);
+			log(
+				`  [${String(start).padStart(3)}-${String(end).padStart(3)}] ${typeName.padEnd(20)} "${value}"`,
+				1
+			);
 		}
 		if (result.tokens.length > 300) {
 			log(`  ... and ${tokenCount - 100} more tokens`, 1);
@@ -350,9 +374,9 @@ if (compiledGrammar.modeMaps && compiledGrammar.modeMaps.size > 0) {
 	log("Probe mode detected in states:", 1);
 	for (const [stateId, modeMap] of compiledGrammar.modeMaps) {
 		const stateName = mapper.getStateName(stateId);
-		const probeRules = Array.from(modeMap.entries())
-			.filter(([_, mode]) => mode === 1)
-			.length;
+		const probeRules = Array.from(modeMap.entries()).filter(
+			([_, mode]) => mode === 1
+		).length;
 		if (probeRules > 0) {
 			log(`  ${stateName}: ${probeRules} probe rules`, 1);
 		}

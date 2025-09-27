@@ -17,7 +17,7 @@ const output_modules = import.meta.glob("../test/*.js", {
 
 const output_files = Object.entries(output_modules)
 	.filter((module) => !module[0].includes("index.js"))
-	.map((module) => [path.basename(module[0]), module[1].default]);
+	.map((module) => [path.basename(module[0]), module[1].test]);
 // Sort both arrays to ensure they match
 input_files.sort((a, b) => a[0].localeCompare(b[0]));
 output_files
@@ -31,7 +31,8 @@ function getTokens(input) {
 		const type = result.tokenTypes[result.tokens[i * 3]];
 		const start = result.tokens[i * 3 + 1];
 		const end = result.tokens[i * 3 + 2];
-		tokens.push({ type, start, end });
+		const match = input.substring(start, end);
+		tokens.push({ type, start, end, match });
 	}
 	return tokens;
 }

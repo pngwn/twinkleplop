@@ -11,6 +11,7 @@
 		"@twinkleplop/core": "workspace:*"
 	},
 	"scripts": {
-		"test": "vitest"
+		"test": "vitest",
+		"gen_test": "node gen_test.js"
 	}
 }
