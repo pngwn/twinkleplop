@@ -1,0 +1,58 @@
+{
+	"name": "@twinkleplop/core",
+	"version": "0.1.0",
+	"type": "module",
+	"types": "./dist/types.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/twinkleplop.production.js",
+			"default": "./dist/twinkleplop.production.js"
+		},
+		"./debug": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/twinkleplop.debug.js",
+			"default": "./dist/twinkleplop.debug.js"
+		},
+		"./compile": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/twinkleplop.compiler.js"
+		},
+		"./introspector": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/twinkleplop.introspector.js"
+		},
+		"./grammar-mapper": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/twinkleplop.grammar-mapper.js"
+		},
+		"./types": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/twinkleplop.types.js"
+		}
+	},
+	"files": [
+		"dist",
+		"src"
+	],
+	"scripts": {
+		"build": "vite build --mode=debug && vite build",
+		"ts": "tsc",
+		"types": "node dts.js",
+		"build:watch": "tsc --watch",
+		"clean": "rm -rf dist",
+		"prebuild": "npm run clean",
+		"build:tokenizer": "node build-tokenizer.js",
+		"build:tokenizer:debug": "node build-tokenizer.js --debug",
+		"build:tokenizer:prod": "node build-tokenizer.js",
+		"test": "vitest",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@rollup/plugin-terser": "^0.4.4",
+		"@types/node": "^20.19.17",
+		"terser": "^5.44.0",
+		"typescript": "^5.8.3",
+		"vite": "^7.0.4"
+	}
+}

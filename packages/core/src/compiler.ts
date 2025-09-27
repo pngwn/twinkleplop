@@ -1,0 +1,435 @@
+import type { Grammar, CompiledGrammar, PatternInfo } from "./types";
+import {
+	ASCII,
+	DIGIT,
+	LETTER,
+	LOWER,
+	UPPER,
+	ALNUM,
+	SPACE,
+	WORD,
+	HEX,
+	PRINT,
+	PUNCT,
+	CONTROL,
+} from "./constants";
+
+// Helper function to set character mapping
+function setCharMapping(
+	charMaps: Uint8Array,
+	stateId: number,
+	charCode: number,
+	ruleIdx: number
+): void {
+	const index = stateId * 128 + charCode;
+	// Always use the first rule that matches a character
+	// This gives us predictable precedence
+	if (charMaps[index] === 255) {
+		charMaps[index] = ruleIdx;
+	}
+}
+
+// Preprocess grammar to expand match_within rules into states
+function preprocessGrammar(grammar: Grammar): Grammar {
+	const processedGrammar: Grammar = {
+		name: grammar.name,
+		states: { ...grammar.states }
+	};
+	
+	// Track generated states
+	const generatedStates: Record<string, GrammarState> = {};
+	let stateCounter = 0;
+	
+	// Process each state
+	for (const [stateName, state] of Object.entries(processedGrammar.states)) {
+		const processedRules: GrammarRule[] = [];
+		
+		for (const rule of state.rules) {
+			if (rule.match_within) {
+				// Generate a unique state name for the content matcher
+				const contentStateName = `__match_within_${stateName}_${stateCounter++}`;
+				
+				// Replace match_within rule with a rule that enters the generated state
+				processedRules.push({
+					match: rule.match_within.start,
+					token: rule.token,
+					state: contentStateName
+				});
+				
+				// Create the content state
+				const contentRules: GrammarRule[] = [];
+				
+				// Add escape handling if specified
+				if (rule.match_within.escape) {
+					contentRules.push({
+						match: rule.match_within.escape,
+						token: rule.token,
+						state: `${contentStateName}_escape`
+					});
+					
+					// Create escape state that consumes one character and returns
+					generatedStates[`${contentStateName}_escape`] = {
+						rules: [
+							{
+								range: [0, 127],
+								token: rule.token,
+								exit: true
+							}
+						]
+					};
+				}
+				
+				// Add end delimiter rule
+				contentRules.push({
+					match: rule.match_within.end,
+					token: rule.token,
+					exit: true
+				});
+				
+				// Add default rule to consume any other character
+				contentRules.push({
+					range: [0, 127],
+					token: rule.token
+				});
+				
+				generatedStates[contentStateName] = {
+					rules: contentRules
+				};
+			} else {
+				// Keep non-match_within rules as-is
+				processedRules.push(rule);
+			}
+		}
+		
+		processedGrammar.states[stateName] = {
+			...state,
+			rules: processedRules
+		};
+	}
+	
+	// Add generated states to the grammar
+	Object.assign(processedGrammar.states, generatedStates);
+	
+	return processedGrammar;
+}
+
+export function compile(grammar: Grammar): CompiledGrammar {
+	// Preprocess grammar to expand match_within rules
+	const processedGrammar = preprocessGrammar(grammar);
+	const stateNames = Object.keys(processedGrammar.states);
+	const stateMap = new Map<string, number>();
+	stateNames.forEach((name, idx) => stateMap.set(name, idx));
+
+	// Map token names to sequential IDs
+	const tokenTypeSet = new Set<string>();
+	for (const stateName of stateNames) {
+		const state = processedGrammar.states[stateName];
+		state.rules.forEach((rule) => {
+			if (rule.token) {
+				tokenTypeSet.add(rule.token);
+			}
+		});
+	}
+	const tokenTypes = Array.from(tokenTypeSet);
+	const tokenTypeMap = new Map<string, number>();
+	tokenTypes.forEach((type, idx) => tokenTypeMap.set(type, idx));
+
+	// Pre-allocate transitions and character maps
+	const maxRules = 256;
+	const transitions = new Uint8Array(stateNames.length * maxRules * 3);
+	transitions.fill(255);
+
+	// Initialize charMaps with 255 (no rule)
+	const charMaps = new Uint8Array(stateNames.length * 128);
+	charMaps.fill(255);
+
+	const fallbackTransitions = new Uint8Array(stateNames.length * 3);
+	fallbackTransitions.fill(255);
+
+    const keywords = new Map();
+    const patterns = new Map(); // state → char → Array<{codes, length, ruleIdx}>
+    const nonAsciiChars = new Map<number, Record<number, number>>(); // state → object map: charCode -> ruleIdx
+
+	// Track which states are probe states based on state.mode property
+	const probeStates = new Set<number>();
+	// Track fallback states for probe states
+	const probeFallbacks = new Map<number, number>();
+
+	stateNames.forEach((stateName) => {
+		const state = processedGrammar.states[stateName];
+		const stateId = stateMap.get(stateName);
+		if (stateId === undefined) {
+			throw new Error(`State ${stateName} not found in stateMap`);
+		}
+
+		// Check if this state has mode: "probe"
+		if (state.mode === "probe") {
+			probeStates.add(stateId);
+			// If probe state has a fallback, store it
+			if (state.fallback) {
+				const fallbackStateId = stateMap.get(state.fallback);
+				if (fallbackStateId !== undefined) {
+					probeFallbacks.set(stateId, fallbackStateId);
+				}
+			}
+		}
+
+		// Build per-state buckets for multi-char patterns
+		const stateBuckets: (PatternInfo[] | null)[] = Array(128);
+		for (let i = 0; i < 128; i++) stateBuckets[i] = null;
+
+		state.rules.forEach((rule, ruleIdx) => {
+			let nextState = 255;
+			let stackOp = 0;
+			if (rule.state) {
+				nextState = stateMap.get(rule.state) || 255;
+				stackOp = 1;
+			} else if (rule.exit) {
+				stackOp = 2;
+			}
+
+			let tokenType = 255;
+			if (rule.token) {
+				const mappedType = tokenTypeMap.get(rule.token);
+				if (mappedType !== undefined) {
+					tokenType = mappedType;
+				}
+			}
+
+			const tBase = ((stateId << 8) + ruleIdx) * 3; // Optimize multiplication
+			transitions[tBase] = nextState;
+			transitions[tBase + 1] = tokenType;
+			transitions[tBase + 2] = stackOp;
+
+			// Handle patterns with smart validation
+			if (rule.match) {
+				const matches = Array.isArray(rule.match) ? rule.match : [rule.match];
+				for (const match of matches) {
+					// Handle symbol constants
+					if (match === ASCII) {
+						// All ASCII characters (0-127)
+						for (let i = 0; i < 128; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+					} else if (match === DIGIT) {
+						// Digits 0-9
+						for (let i = 48; i <= 57; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+					} else if (match === LETTER) {
+						// Letters a-z, A-Z
+						for (let i = 65; i <= 90; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+						for (let i = 97; i <= 122; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+					} else if (match === LOWER) {
+						// Lowercase letters a-z
+						for (let i = 97; i <= 122; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+					} else if (match === UPPER) {
+						// Uppercase letters A-Z
+						for (let i = 65; i <= 90; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+					} else if (match === ALNUM) {
+						// Alphanumeric: a-z, A-Z, 0-9
+						for (let i = 48; i <= 57; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+						for (let i = 65; i <= 90; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+						for (let i = 97; i <= 122; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+					} else if (match === SPACE) {
+						// Whitespace: space, tab, newline, carriage return
+						const spaces = [32, 9, 10, 13];
+						for (const i of spaces) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+					} else if (match === WORD) {
+						// Word characters: a-z, A-Z, 0-9, _
+						for (let i = 48; i <= 57; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+						for (let i = 65; i <= 90; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+						for (let i = 97; i <= 122; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+						// underscore
+						setCharMapping(charMaps, stateId, 95, ruleIdx);
+					} else if (match === HEX) {
+						// Hex digits: 0-9, a-f, A-F
+						for (let i = 48; i <= 57; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+						for (let i = 65; i <= 70; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+						for (let i = 97; i <= 102; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+					} else if (match === PRINT) {
+						// Printable ASCII: 32-126
+						for (let i = 32; i <= 126; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+					} else if (match === PUNCT) {
+						// ASCII punctuation
+						const punctRanges = [
+							[33, 47], // ! " # $ % & ' ( ) * + , - . /
+							[58, 64], // : ; < = > ? @
+							[91, 96], // [ \ ] ^ _ `
+							[123, 126], // { | } ~
+						];
+						for (const [start, end] of punctRanges) {
+							for (let i = start; i <= end; i++) {
+								setCharMapping(charMaps, stateId, i, ruleIdx);
+							}
+						}
+					} else if (match === CONTROL) {
+						// Control characters: 0-31, 127
+						for (let i = 0; i <= 31; i++) {
+							setCharMapping(charMaps, stateId, i, ruleIdx);
+						}
+						setCharMapping(charMaps, stateId, 127, ruleIdx);
+					} else if (typeof match === "string") {
+						if (match.length === 1) {
+							// Single character
+							const code = match.charCodeAt(0);
+							if (code < 128) {
+								setCharMapping(charMaps, stateId, code, ruleIdx);
+							} else {
+                            // Non-ASCII character
+                            if (!nonAsciiChars.has(stateId)) {
+                                nonAsciiChars.set(stateId, Object.create(null));
+                            }
+                            const stateNonAscii = nonAsciiChars.get(stateId)!;
+                            if (stateNonAscii[code] !== undefined) {
+                                throw new Error(
+                                    `Grammar validation error in state "${stateName}": ` +
+                                        `Multiple rules match non-ASCII character '${match}' (code: ${code}). ` +
+                                        `Rule ${stateNonAscii[code]} and rule ${ruleIdx} both match this character.`
+                                );
+                            }
+                            stateNonAscii[code] = ruleIdx;
+							}
+						} else if (match.length > 1) {
+							// Multi-character pattern
+							const firstChar = match.charCodeAt(0);
+							if (firstChar < 128) {
+                        // Store pattern
+                        const codes = new Uint16Array(match.length);
+                        for (let i = 0; i < match.length; i++) {
+                            codes[i] = match.charCodeAt(i);
+                        }
+
+                        const info: PatternInfo = {
+                            codes,
+                            length: match.length,
+                            ruleIdx,
+                        };
+
+								// Add to the appropriate bucket
+								if (!stateBuckets[firstChar]) {
+									stateBuckets[firstChar] = [];
+								}
+								stateBuckets[firstChar]!.push(info);
+
+								// For multi-char patterns, we don't validate conflicts
+								// because they're sorted by length and checked first
+								const index = stateId * 128 + firstChar;
+								if (charMaps[index] === 255) {
+									charMaps[index] = ruleIdx;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Handle ranges
+			if (rule.range) {
+				const ranges = Array.isArray(rule.range[0]) ? rule.range : [rule.range];
+
+				for (const range of ranges as Array<
+					[string | number, string | number]
+				>) {
+					const start =
+						typeof range[0] === "string" ? range[0].charCodeAt(0) : range[0];
+					const end =
+						typeof range[1] === "string" ? range[1].charCodeAt(0) : range[1];
+
+					for (let code = start; code <= end; code++) {
+						if (code < 128) {
+							setCharMapping(charMaps, stateId, code, ruleIdx);
+                    } else {
+                        if (!nonAsciiChars.has(stateId)) {
+                            nonAsciiChars.set(stateId, Object.create(null));
+                        }
+                        const stateNonAscii = nonAsciiChars.get(stateId)!;
+                        if (stateNonAscii[code] !== undefined) {
+                            throw new Error(
+                                `Grammar validation error in state "${stateName}": ` +
+                                    `Multiple rules match character with code ${code} in range. ` +
+                                    `Rule ${stateNonAscii[code]} and rule ${ruleIdx} both match this character.`
+                            );
+                        }
+                        stateNonAscii[code] = ruleIdx;
+                    }
+					}
+				}
+			}
+
+			// Handle 'any' for matching any character (fallback)
+			if (rule.any) {
+				// Mark all unmapped characters
+				for (let c = 0; c < 128; c++) {
+					if (charMaps[stateId * 128 + c] === 255) {
+						charMaps[stateId * 128 + c] = ruleIdx;
+					}
+				}
+				const idx = stateId * 3;
+				fallbackTransitions[idx] = nextState;
+				fallbackTransitions[idx + 1] = tokenType;
+				fallbackTransitions[idx + 2] = stackOp;
+			}
+		});
+
+		// Sort each bucket by descending length to enable first-fit longest match
+		let hasAny = false;
+		for (let i = 0; i < 128; i++) {
+			if (stateBuckets[i] && stateBuckets[i]!.length > 0) {
+				stateBuckets[i]!.sort((a, b) => b.length - a.length);
+				hasAny = true;
+			}
+		}
+		if (hasAny) patterns.set(stateId, stateBuckets);
+	});
+
+// Build a compact probe mask for hot path lookup
+const probeMask = new Uint8Array(stateNames.length);
+probeStates.forEach((id) => {
+    probeMask[id] = 1;
+});
+
+return {
+		states: stateMap,
+		transitions,
+		charMaps,
+		keywords,
+		tokenTypes,
+		patterns: patterns,
+		fallbackTransitions,
+		nonAsciiChars: nonAsciiChars,
+		probeStates: probeStates,
+		probeMask,
+		probeFallbacks: probeFallbacks,
+	};
+}
