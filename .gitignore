@@ -2,6 +2,6 @@ node_modules
 dist
 .DS_Store
 *.log
-.CLAUDE.md
+CLAUDE.md
 .claude
-.AGENTS.md
+AGENTS.md
