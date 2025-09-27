@@ -48,7 +48,11 @@
       "Bash(do if ! grep -q \"state: \"\"$state\"\"\" src/grammar.js)",
       "Bash(fi)",
       "Bash(do echo:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(if [ $? -ne 0 ])",
+      "Bash(then)"
     ],
     "deny": [],
     "ask": []

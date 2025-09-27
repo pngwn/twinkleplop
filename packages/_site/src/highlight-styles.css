@@ -1,51 +1,5 @@
 /* Twinkleplop Syntax Highlighting Styles */
 
-.highlight {
-	background: var(--bg-code, #0d0d0d);
-	color: #d4d4d4;
-	padding: 0.5rem 1rem;
-	/* border-radius: var(--radius-sm); */
-	overflow-x: auto;
-	font-family: var(--font-mono);
-	font-size: 0.875rem;
-	line-height: 1.6;
-	border: 1px solid var(--border);
-	box-shadow: var(--shadow-md);
-	position: relative;
-}
-/* 
-.highlight::before {
-	content: '';
-	position: absolute;
-	top: 0.75rem;
-	left: 1.5rem;
-	display: flex;
-	gap: 0.5rem;
-}
-
-.highlight::before {
-	content: '';
-	width: 12px;
-	height: 12px;
-	border-radius: 50%;
-	background: #ff5f57;
-	box-shadow:
-		20px 0 0 #ffbd2e,
-		40px 0 0 #28c940;
-} */
-
-pre {
-	tab-size: 2;
-	margin: 0;
-	padding-top: 1rem;
-}
-
-code[class*='language-'],
-pre[class*='language-'] {
-	color: #e4e4e7;
-	font-family: var(--font-mono);
-}
-
 pre[class*='language-']::-moz-selection,
 pre[class*='language-'] ::-moz-selection,
 code[class*='language-']::-moz-selection,
@@ -169,6 +123,14 @@ pre[class*='language-'] {
 	font-style: italic;
 }
 
+::highlight(tab) {
+	color: pink;
+}
+
+::highlight(space) {
+	color: #22d3ee;
+}
+
 :root {
 	--am-prism-line-numbers-color: #4b5563;
 	--am-prism-border-color: #2a2a2a;
@@ -230,47 +192,5 @@ pre[class*='language-'] {
 ::highlight(bold),
 ::highlight(italic),
 ::highlight(pseudo-selector) {
-	transition: color 0.15s ease;
-}
-
-/* Line numbers styling */
-.line-numbers .line-numbers-rows {
-	position: absolute;
-	pointer-events: none;
-	top: 2rem;
-	left: -3.8em;
-	width: 3em;
-	letter-spacing: -1px;
-	border-right: 1px solid var(--border);
-	user-select: none;
-}
-
-.line-numbers .line-numbers-rows > span {
-	display: block;
-	counter-increment: linenumber;
-}
-
-.line-numbers .line-numbers-rows > span:before {
-	content: counter(linenumber);
-	color: var(--am-prism-line-numbers-color);
-	display: block;
-	padding-right: 0.8em;
-	text-align: right;
-}
-
-/* Code block file names */
-.code-block-filename {
-	background: var(--bg-tertiary);
-	color: var(--text-secondary);
-	padding: 0.5rem 1rem;
-	border-radius: var(--radius) var(--radius) 0 0;
-	font-size: 0.75rem;
-	border: 1px solid var(--border);
-	border-bottom: none;
-	display: inline-block;
-	margin-bottom: -1px;
-}
-
-.code-block-filename + .highlight {
-	border-top-left-radius: 0;
+	transition: color 0.5s ease;
 }

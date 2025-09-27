@@ -1,0 +1,16 @@
+{
+	"name": "@twinkleplop/css2",
+	"version": "0.1.0",
+	"type": "module",
+	"main": "src/index.js",
+	"exports": {
+		".": "./src/index.js",
+		"./test": "./test/index.js"
+	},
+	"dependencies": {
+		"@twinkleplop/core": "workspace:*"
+	},
+	"scripts": {
+		"test": "vitest"
+	}
+}

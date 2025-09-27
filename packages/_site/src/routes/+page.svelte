@@ -1,196 +1,418 @@
 <script>
-	let { css_files } = $props();
+	import CssHighlight from './css_highlight.svelte';
+	import { fly } from 'svelte/transition';
+	import { Spring } from 'svelte/motion';
+	import { css } from './css_code';
+	import AnimatedLogo from '../lib/components/AnimatedLogo.svelte';
+
+	let springConfig = {
+		damping: 0.4,
+		mass: 1,
+		stiffness: 0.2
+	};
+
+	let spring = new Spring(-250, springConfig);
+
+	$effect(() => {
+		setTimeout(() => {
+			spring.set(0);
+		}, 500);
+	});
+
+	let min_header = $state(false);
+
+	function handle_scroll() {
+		if (window.scrollY > 100) {
+			min_header = true;
+		} else {
+			min_header = false;
+		}
+	}
 </script>
 
-<div class="home-page">
-<div class="hero">
-	<h1 class="hero-title">
-		<span class="gradient-text">Twinkleplop</span>
-		<span class="subtitle">Syntax Highlighter</span>
-	</h1>
-	<p class="hero-description">
-		High-performance, regex-free syntax highlighting powered by character scanning.
-		<br />
-		<span class="perf-badge">8-15x faster</span> than traditional regex-based approaches.
-	</p>
-</div>
+<svelte:window onscroll={handle_scroll} />
 
-<section class="tests-section">
-	<div class="section-header">
-		<h2>Test Files</h2>
-		<span class="file-count">{css_files?.length || 0} files</span>
+<div class="home-page">
+	<div class="hero">
+		<!-- <h1 class="hero-title" class:min_header>
+			<span class="pixel-brand" data-text="TWINKLEPLOP"
+				>t<span class="brand-ext">winkleplop</span></span
+			>
+		</h1> -->
+		<AnimatedLogo />
+		<div class="pixel-tagline">
+			<div>
+				<span class="pixel-tagline-plop" style="transform: translateY({spring.current}px)"
+					>plop</span
+				>
+				<span class="pixel-tagline-regular">some</span>
+			</div>
+			<div>
+				<span class="pixel-tagline-twinkle">twinkle</span>
+			</div>
+
+			<div>
+				<span class="pixel-tagline-regular">in your</span>
+
+				<span class="pixel-tagline-code">code</span>
+			</div>
+		</div>
+		<div class="hero-footer">
+			<a href="/docs" class="docs-link">learn more</a>
+			<p>or</p>
+			<a href="#css-highlight-1" class="hero-footer-link"
+				>↓ <span class="twinkle">twinkle</span> some code ↓</a
+			>
+		</div>
 	</div>
-	
-	<div class="file-grid">
-		{#each css_files as [file, content]}
-			<a href={`/css/${file}`} class="file-card">
-				<div class="file-icon">📄</div>
-				<div class="file-info">
-					<span class="file-name">{file}</span>
-					<span class="file-size">{Math.round(content.length / 1024)}KB</span>
-				</div>
-				<div class="file-arrow">→</div>
-			</a>
-		{/each}
-	</div>
-</section>
 </div>
+<CssHighlight language="css" code={css} id="css-highlight-1" />
+<CssHighlight language="css" code={css} id="css-highlight-2" />
 
 <style>
 	.home-page {
-		height: 100%;
+		height: 100vh;
 		display: flex;
 		flex-direction: column;
-		overflow: auto;
+		--bright-gradient: linear-gradient(
+			90deg,
+			rgba(255, 0, 0, 1) 0%,
+			rgba(255, 154, 0, 1) 10%,
+			rgba(208, 222, 33, 1) 20%,
+			rgba(79, 220, 74, 1) 30%,
+			rgba(63, 218, 216, 1) 40%,
+			rgba(47, 201, 226, 1) 50%,
+			rgba(28, 127, 238, 1) 60%,
+			rgba(95, 21, 242, 1) 70%,
+			rgba(186, 12, 248, 1) 80%,
+			rgba(251, 7, 217, 1) 90%,
+			rgba(255, 0, 0, 1) 100%
+		);
+		/* overflow: auto; */
 	}
 	.hero {
-		padding: 3rem 0;
+		/* padding: 4rem 0; */
 		text-align: center;
-		border-bottom: 1px solid var(--border);
+		/* border-bottom: 2px solid var(--border); */
 		flex-shrink: 0;
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		align-items: center;
+		height: 100%;
+	}
+
+	.brand-ext {
+		display: inline-block;
+		/* position: relative; */
+		/* transform: scaleX(1); */
+		transition: all 1.3s ease;
+	}
+
+	.min_header .brand-ext {
+		width: 0;
+		transition: all 1.3s ease;
 	}
 
 	.hero-title {
-		font-size: 3rem;
-		font-weight: 700;
-		margin-bottom: 0.5rem;
-		letter-spacing: -0.03em;
-		line-height: 1.1;
+		margin-bottom: 1rem;
+		line-height: 1;
+		text-align: center;
+		margin-top: 1rem;
+		position: sticky;
+		top: 0;
 	}
 
-	.gradient-text {
-		background: linear-gradient(135deg, var(--accent) 0%, #00ff94 100%);
+	.pixel-brand {
+		display: inline-block;
+		margin-top: 2rem;
+		font-family: var(--font-grid);
+		font-size: 6rem;
+		font-weight: 700;
+		background: var(--rainbow-gradient);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
+		letter-spacing: 2px;
+		position: relative;
+		font-variation-settings:
+			'BACK' 00,
+			'ELSH' 3,
+			'RECT' 0,
+			'wght' 700;
 	}
 
-	.subtitle {
-		display: block;
-		font-size: 1.5rem;
-		font-weight: 400;
-		color: var(--text-secondary);
-		margin-top: 0.5rem;
+	@media (max-width: 768px) {
+		.pixel-brand {
+			font-size: 3rem;
+		}
 	}
 
-	.hero-description {
-		font-size: 1rem;
-		color: var(--text-secondary);
-		margin-top: 1.5rem;
-		line-height: 1.8;
+	.pixel-brand::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+
+		background: radial-gradient(
+			ellipse at center,
+			rgba(255, 255, 255, 0) 70%,
+			/* transparent center */ #111 100% /* fade to white edges */
+		);
 	}
 
-	.perf-badge {
-		display: inline-block;
-		background: var(--accent-dim);
-		color: var(--accent);
-		padding: 0.25rem 0.75rem;
-		border-radius: 6px;
-		font-weight: 600;
-		font-size: 0.875rem;
-		margin-top: 0.5rem;
+	.pixel-brand::after {
+		content: '*';
+		position: absolute;
+		width: 100px;
+		height: 100px;
+		/* top: -20px; */
+		/* left: -40px; */
+		/* right: 0; */
+		font-family: var(--font-grid);
+		/* font-size: 6rem; */
+		text-align: left;
+		background: var(--rainbow-gradient);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+		/* letter-spacing: 2px; */
+		background-size: 200% 200%;
+		font-variation-settings:
+			'BACK' 0,
+			'ELSH' 3,
+			'RECT' 0,
+			'wght' 700;
+		/* background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0) 70%, #111 100%); */
+		/* background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0) 70%, #111 100%); */
+		animation: pixel-sparkle 4s infinite;
 	}
 
-	.tests-section {
-		flex: 1;
-		padding: 2rem 0;
-		min-height: 0;
+	.pixel-tagline {
 		display: flex;
 		flex-direction: column;
-	}
-
-	.section-header {
-		display: flex;
+		justify-content: flex-start;
 		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 2rem;
-	}
-
-	.section-header h2 {
+		gap: 1.25rem;
+		/* margin-top: 18rem; */
+		font-family: var(--font-grid);
 		font-size: 1.5rem;
+		line-height: 1;
+
+		text-align: center;
+	}
+
+	@media (max-width: 480px) {
+		.pixel-tagline {
+			gap: 0.75rem;
+		}
+	}
+
+	.pixel-tagline-plop {
+		color: rgb(183, 88, 88);
+		font-size: 4rem;
+		text-transform: uppercase;
+
+		font-variation-settings:
+			'BACK' 0,
+			'ELSH' 2,
+			'RECT' 0,
+			'wght' 1000;
+
+		font-family: 'Pixel Code';
+		font-weight: 700;
+		letter-spacing: 0.1rem;
+		/* word-spacing: -0.5rem; */
+		animation: drop-in 0.3s ease-in-out 0.5s forwards;
+		display: inline-block;
+		opacity: 0;
+		/* transform: translateY(-250px); */
+	}
+
+	.pixel-tagline-regular {
+		color: #eee;
+		font-size: 1.5rem;
+		font-variant: small-caps;
+		font-variation-settings:
+			'BACK' 0,
+			'ELSH' 3,
+			'RECT' 0,
+			'wght' 10000;
+		margin-top: 0.1rem;
+		font-family: 'Pixel Code';
 		font-weight: 600;
-		color: var(--text-primary);
-		margin: 0;
+		letter-spacing: 0.1rem;
+		word-spacing: -0.5rem;
 	}
 
-	.file-count {
-		color: var(--text-tertiary);
-		font-size: 0.875rem;
-		background: var(--bg-tertiary);
-		padding: 0.25rem 0.75rem;
-		border-radius: 6px;
-	}
-
-	.file-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 1rem;
-	}
-
-	.file-card {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		padding: 1.25rem;
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-		transition: all 0.2s ease;
+	.pixel-tagline-twinkle {
+		background: var(--rainbow-gradient);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+		animation: pixel-sparkle 4s infinite;
+		font-weight: 700;
+		font-size: 8rem;
 		position: relative;
-		overflow: hidden;
+		background-size: 200% 200%;
+		font-variation-settings:
+			'BACK' 0,
+			'ELSH' 1,
+			'RECT' 100,
+			'wght' 500;
+		/* margin-left: -0.5rem; */
 	}
 
-	.file-card::before {
+	.pixel-tagline-twinkle::after {
 		content: '';
 		position: absolute;
 		top: 0;
 		left: 0;
-		width: 3px;
+		right: 0;
+		bottom: 0;
+		width: 100%;
 		height: 100%;
-		background: var(--accent);
-		transform: translateX(-100%);
-		transition: transform 0.2s ease;
+		background: #111;
+		transform-origin: right;
+		transform: scaleX(1);
+		animation: scale-in 0.3s ease-in-out 0.7s forwards;
 	}
 
-	.file-card:hover {
-		background: var(--bg-tertiary);
-		border-color: var(--border-light);
-		transform: translateX(2px);
+	.pixel-tagline-code {
+		color: var(--pixel-green);
+		font-family: var(--font-grid);
+		font-weight: 700;
+		text-transform: uppercase;
+		text-shadow: var(--shadow-sm);
+		font-size: 4rem;
+		text-align: right;
+		/* margin-left: 30.75rem; */
+		display: inline-block;
+		position: relative;
+		font-variation-settings:
+			'BACK' 0,
+			'ELSH' 2,
+			'RECT' 0,
+			'wght' 1000;
+		font-family: 'Pixel Code';
+		font-weight: 400;
+		/* letter-spacing: 0.1rem; */
+		/* word-spacing: -0.5rem; */
+		/* transform: translateY(-10px); */
 	}
 
-	.file-card:hover::before {
-		transform: translateX(0);
+	.pixel-tagline-code::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		width: 100%;
+		height: 100%;
+		background: #111;
+		transform-origin: right;
+		transform: scaleX(1);
+		animation: scale-in 0.5s steps(4) 1s forwards;
 	}
 
-	.file-card:hover .file-arrow {
-		transform: translateX(4px);
-	}
-
-	.file-icon {
-		font-size: 1.5rem;
-		filter: grayscale(1) opacity(0.6);
-	}
-
-	.file-info {
-		flex: 1;
+	.pixel-tagline div:nth-child(3) {
 		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
+		justify-content: flex-start;
+		gap: 1rem;
 	}
 
-	.file-name {
-		color: var(--text-primary);
-		font-weight: 500;
-		font-size: 0.9375rem;
+	@media (max-width: 480px) {
+		.pixel-tagline-code {
+			font-size: 3rem;
+		}
+		.pixel-tagline-twinkle {
+			font-size: 6rem;
+		}
+		.pixel-tagline-plop {
+			font-size: 3rem;
+		}
+		.pixel-tagline-regular {
+			font-size: 1.25rem;
+		}
+	}
+	.hero-footer {
+		font-size: 3.5rem;
+		font-family: var(--font-grid);
+		text-transform: lowercase;
+		font-variation-settings:
+			'BACK' 00,
+			'ELSH' 3,
+			'RECT' 0,
+			'wght' 800;
+		margin-bottom: 2rem;
 	}
 
-	.file-size {
-		color: var(--text-tertiary);
-		font-size: 0.75rem;
+	.hero-footer p {
+		font-size: 1.5rem;
+		font-family: var(--font-mono);
+		text-transform: uppercase;
 	}
 
-	.file-arrow {
-		color: var(--text-tertiary);
-		transition: transform 0.2s ease;
+	.hero-footer .docs-link {
+		font-size: 2.5rem;
+		font-family: var(--font-grid);
+		/* font-weight: 900; */
+		text-transform: uppercase;
+		font-variation-settings:
+			'BACK' 00,
+			'ELSH' 3,
+			'RECT' 0,
+			'wght' 1000;
+	}
+
+	.hero-footer .twinkle {
+		font-size: 3.5rem;
+
+		font-family: var(--font-grid);
+		font-weight: 700;
+		background: var(--rainbow-gradient);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+		font-variation-settings:
+			'BACK' 00,
+			'ELSH' 3,
+			'RECT' 0,
+			'wght' 800;
+	}
+
+	@keyframes pixel-sparkle {
+		0% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
+		100% {
+			background-position: 0% 50%;
+		}
+	}
+
+	@keyframes drop-in {
+		0% {
+			/* transform: translateY(-250px); */
+			opacity: 0;
+		}
+
+		100% {
+			/* transform: translateY(0); */
+			opacity: 1;
+		}
+	}
+
+	@keyframes scale-in {
+		0% {
+			transform: scaleX(1);
+		}
+		100% {
+			transform: scaleX(0);
+		}
 	}
 </style>

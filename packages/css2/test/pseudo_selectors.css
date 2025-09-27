@@ -1,0 +1,7 @@
+a:hover {
+	color: blue;
+}
+
+button:active {
+	background: red;
+}

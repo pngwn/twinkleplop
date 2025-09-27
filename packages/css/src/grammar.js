@@ -24,32 +24,121 @@ const CSS_UNITS = [
 	"kHz",
 ];
 
+// Common match_within patterns
+const COMMENT = {
+	match_within: {
+		start: "/*",
+		end: "*/",
+	},
+	token: "comment",
+};
+
+const STRING_DOUBLE = {
+	match_within: {
+		start: '"',
+		end: '"',
+		escape: "\\",
+	},
+	token: "string",
+};
+
+const STRING_SINGLE = {
+	match_within: {
+		start: "'",
+		end: "'",
+		escape: "\\",
+	},
+	token: "string",
+};
+
+// Common selector patterns
+const ID_SELECTOR = {
+	match: "#",
+	token: "id",
+	state: "id_selector",
+};
+
+const CLASS_SELECTOR = {
+	match: ".",
+	token: "class-name",
+	state: "class_selector",
+};
+
+const PSEUDO_ELEMENT = {
+	match: "::",
+	token: "pseudo-selector",
+	state: "pseudo_class",
+};
+
+const PSEUDO_CLASS = {
+	match: ":",
+	token: "pseudo-selector",
+	state: "pseudo",
+};
+
+const PARENT_SELECTOR = {
+	match: "&",
+	token: "selector",
+	state: "nested_selector",
+};
+
+// Common value patterns
+const HEX_COLOR = {
+	match: "#",
+	token: "number",
+	state: "hex_color",
+};
+
+const CSS_VARIABLE = {
+	match: "--",
+	token: "css-variable",
+	state: "css_custom_property",
+};
+
+// Common operators
+const ATTRIBUTE_OPERATORS = {
+	match: ["~=", "|=", "^=", "$=", "*=", "="],
+	token: "operator",
+};
+
+const COMBINATORS = {
+	match: [">", "+", "~"],
+	token: "operator",
+};
+
 /**
+ * @type {[string, string][]}
+ */
+const LETTER_RANGE = [
+	["a", "z"],
+	["A", "Z"],
+];
+
+/**
+ * @type {[string, string][]}
+ */
+const ALPHANUMERIC_RANGE = [
+	["a", "z"],
+	["A", "Z"],
+	["0", "9"],
+];
+
+/**
+ * Simplified CSS Grammar - No nested block tracking
  * @type {import("@twinkleplop/core").Grammar}
  */
 export default {
 	name: "css",
 	states: {
+		// Top level - looking for selectors and at-rules
 		main: {
 			rules: [
 				// Comments
-				{
-					match: "/*",
-					token: "comment",
-					state: "comment",
-				},
+				COMMENT,
 
 				// Strings
-				{
-					match: '"',
-					token: "string",
-					state: "string_double",
-				},
-				{
-					match: "'",
-					token: "string",
-					state: "string_single",
-				},
+				STRING_DOUBLE,
+				STRING_SINGLE,
 
 				// At-rules
 				{
@@ -58,16 +147,22 @@ export default {
 					state: "at_rule",
 				},
 
-				// Block entry
+				// Start of declaration block
 				{
 					match: "{",
 					token: "punctuation",
-					state: "block",
+					state: "declaration",
+				},
+
+				// Closing brace at top level (ignore)
+				{
+					match: "}",
+					token: "punctuation",
 				},
 
 				// Other punctuation
 				{
-					match: [";", "}", ")", "]", ","],
+					match: [";", ")", "]", ","],
 					token: "punctuation",
 				},
 				{
@@ -82,40 +177,18 @@ export default {
 				},
 
 				// Selectors - IDs and classes
-				{
-					match: "#",
-					token: "id",
-					state: "id_selector",
-				},
-				{
-					match: ".",
-					token: "class-name",
-					state: "class_selector",
-				},
+				ID_SELECTOR,
+				CLASS_SELECTOR,
 
 				// Pseudo-selectors and pseudo-elements
-				{
-					match: "::",
-					token: "pseudo-selector",
-					state: "pseudo_class",
-				},
-				{
-					match: ":",
-					token: "pseudo-selector",
-					state: "pseudo",
-				},
+				PSEUDO_ELEMENT,
+				PSEUDO_CLASS,
 
 				// Attribute selector operators
-				{
-					match: ["~=", "|=", "^=", "$=", "*=", "="],
-					token: "operator",
-				},
+				ATTRIBUTE_OPERATORS,
 
 				// Combinators
-				{
-					match: [">", "+", "~"],
-					token: "operator",
-				},
+				COMBINATORS,
 
 				// Universal selector
 				{
@@ -136,202 +209,133 @@ export default {
 
 				// Element selectors
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-					],
+					range: LETTER_RANGE,
 					token: "selector",
 					state: "identifier",
 				},
 			],
 		},
 
-		comment: {
+		// Inside a declaration block - properties and nested selectors
+		declaration: {
 			rules: [
-				{
-					match: "*/",
-					token: "comment",
-					exit: true,
-				},
-				{
-					range: [0, 127],
-					token: "comment",
-				},
-			],
-		},
+				// Comments
+				COMMENT,
 
-		block: {
-			rules: [
-				// Comments in blocks
-				{
-					match: "/*",
-					token: "comment",
-					state: "comment",
-				},
-
-				// Exit block
+				// End of block - go back to previous context
 				{
 					match: "}",
 					token: "punctuation",
 					exit: true,
 				},
 
-				{
-					match: ")",
-					token: "punctuation",
-					exit: true,
-				},
-
-				// Nested blocks (for nested CSS)
+				// Another block opening (nested selectors)
+				// Push another declaration state for the nested block
 				{
 					match: "{",
 					token: "punctuation",
-					state: "block",
+					state: "declaration",
 				},
 
-				// After colon we're in property value mode
-				{
-					match: ":",
-					token: "punctuation",
-					state: "value",
-				},
-
-				// Semicolon ends declaration
+				// Semicolon ends a property declaration
 				{
 					match: ";",
 					token: "punctuation",
 				},
 
-				// At-rules in blocks
+				// At-rules in declarations
 				{
 					match: "@",
 					token: "keyword",
 					state: "at_rule",
 				},
 
-				// Parent selector
+				// Parent selector for nested CSS
+				PARENT_SELECTOR,
+
+				// Class selectors (could be nested selector)
+				CLASS_SELECTOR,
+
+				// ID selectors (could be nested selector)
+				ID_SELECTOR,
+
+				// Pseudo-selectors
+				PSEUDO_ELEMENT,
+
+				// CSS custom properties (variables)
+				CSS_VARIABLE,
+
+				// Colon could be property delimiter or pseudo-selector
 				{
-					match: "&",
-					token: "selector",
+					match: ":",
+					token: "punctuation",
+					state: "value",
 				},
 
-				// Class selectors (definitely selectors, not properties)
-				{
-					match: ".",
-					token: "class-name",
-					state: "class_selector",
-				},
-
-				// ID selectors (definitely selectors, not properties)
-				{
-					match: "#",
-					token: "id",
-					state: "id_selector",
-				},
-
-				// Pseudo-selectors - but be careful with single ":"
-				// Single ":" could be pseudo-selector OR property delimiter
-				// Only treat "::" as definitely pseudo-selector
-				{
-					match: "::",
-					token: "pseudo-selector",
-					state: "pseudo_class",
-				},
-
-				// For single ":", we need to be more careful
-				// It could be :hover (selector) or the delimiter after a property
-				// This is handled by property state exiting on ":"
-
-				// CSS custom properties (variables) starting with --
-				{
-					match: "--",
-					token: "css-variable",
-					state: "css_custom_property",
-				},
-
-				// Element selectors and properties both start with letters
-				// We need to probe ahead to determine if it's a property or selector
-				// Probe mode will scan until we find:
-				// - { means it's a selector (nested block)
-				// - : means it's a property
-				// - ; or } means it's a property
+				// Identifiers - could be properties or nested selectors
+				// Use probe to disambiguate
 				{
 					match: "-",
 					state: "probe_identifier",
 				},
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-					],
+					range: LETTER_RANGE,
 					state: "probe_identifier",
 				},
 			],
 		},
 
-		// Value context (after colon in declaration)
+		// After a colon - we're in property value mode
 		value: {
 			rules: [
 				// Comments
-				{
-					match: "/*",
-					token: "comment",
-					state: "comment",
-				},
+				COMMENT,
 
 				// Strings
-				{
-					match: '"',
-					token: "string",
-					state: "string_double",
-				},
-				{
-					match: "'",
-					token: "string",
-					state: "string_single",
-				},
+				STRING_DOUBLE,
+				STRING_SINGLE,
 
-				// End of declaration
+				// End of declaration - semicolon or closing brace
 				{
 					match: ";",
 					token: "punctuation",
 					exit: true,
 				},
-				// Property ends with } (last property in block, no semicolon)
-				// We need to consume it and signal block should exit
-				// For now, just consume it and exit
 				{
 					match: "}",
 					token: "punctuation",
+					// Just exit from value state, let declaration handle the brace
 					exit: true,
 				},
 
 				// Important flag
 				{
 					match: "!",
-					token: "punctuation",
+					token: "keyword",
 					state: "important",
 				},
 
-				// Functions
+				// Hex colors
+				HEX_COLOR,
+
+				// Functions (rgb, calc, var, etc)
 				{
 					match: "(",
 					token: "punctuation",
 					state: "function_args",
 				},
 
-				// Hex colors
+				// CSS variables
 				{
-					match: "#",
-					token: "number",
-					state: "hex_color",
+					match: "--",
+					token: "css-variable",
+					state: "css_custom_property",
 				},
 
-				// Numbers with units
+				// Numbers
 				{
 					match: "-",
-					token: "number",
-					state: "negative_number_in_value",
+					state: "negative_number",
 				},
 				{
 					range: ["0", "9"],
@@ -340,28 +344,209 @@ export default {
 				},
 				{
 					match: ".",
-					state: "decimal_part",
+					token: "number",
+					state: "decimal",
 				},
 
-				// Keywords and identifiers
+				// Keywords (color names, inherit, auto, etc)
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-					],
+					range: LETTER_RANGE,
 					token: "keyword",
 					state: "value_keyword",
 				},
 
 				// Operators
 				{
-					match: [",", "/"],
+					match: [",", "/", "+", "*"],
+					token: "operator",
+				},
+			],
+		},
+
+		// Probe state to disambiguate property vs selector
+		probe_identifier: {
+			mode: "probe",
+			fallback: "property",
+			rules: [
+				// If we see an opening brace, it's definitely a selector
+				{
+					match: "{",
+					state: "selector",
+				},
+				// If we see closing brace or semicolon, it's a property
+				{
+					match: [";", "}"],
+					state: "property",
+				},
+			],
+		},
+
+		// Nested selector continuation
+		nested_selector: {
+			rules: [
+				// Continue with selector syntax
+				PSEUDO_CLASS,
+				PSEUDO_ELEMENT,
+				CLASS_SELECTOR,
+				ID_SELECTOR,
+				{
+					match: "[",
 					token: "punctuation",
+					state: "brackets",
+				},
+				// Opening brace - start declarations
+				{
+					match: "{",
+					token: "punctuation",
+					state: "declaration",
+				},
+				// Combinators
+				COMBINATORS,
+				// Exit on anything else
+				{
+					any: true,
+					exit: true,
+				},
+			],
+		},
+
+		// At-rule handling
+		at_rule: {
+			rules: [
+				{
+					range: LETTER_RANGE,
+					token: "keyword",
+				},
+				{
+					match: "-",
+					token: "keyword",
+				},
+				{
+					match: "(",
+					token: "punctuation",
+					state: "media_params",
+				},
+				{
+					match: "{",
+					token: "punctuation",
+					exit: true,
+				},
+				{
+					match: ";",
+					token: "punctuation",
+					exit: true,
+				},
+			],
+		},
+
+		// Media query parameters
+		media_params: {
+			rules: [
+				// Comments
+				COMMENT,
+
+				// Strings
+				STRING_DOUBLE,
+				STRING_SINGLE,
+
+				{
+					match: ")",
+					token: "punctuation",
+					exit: true,
+				},
+				{
+					match: "(",
+					token: "punctuation",
+					state: "media_params",
 				},
 
-				// Whitespace
+				// Punctuation and operators - BEFORE keywords
 				{
-					match: [" ", "\t", "\n", "\r"],
+					match: ":",
+					token: "punctuation",
+				},
+				{
+					match: ",",
+					token: "punctuation",
+				},
+				{
+					match: ";",
+					token: "punctuation",
+				},
+				{
+					match: "=",
+					token: "operator",
+				},
+				{
+					match: [">", "<"],
+					token: "operator",
+				},
+
+				// Numbers - MUST be before keywords
+				{
+					range: ["0", "9"],
+					token: "number",
+					state: "number",
+				},
+				{
+					match: ".",
+					token: "number",
+					state: "decimal",
+				},
+
+				// Keywords and properties
+				{
+					range: LETTER_RANGE,
+					token: "keyword",
+					state: "media_keyword",
+				},
+				{
+					match: "-",
+					token: "keyword",
+					state: "media_keyword",
+				},
+			],
+		},
+
+		// Media keywords - consume only the keyword, not punctuation
+		media_keyword: {
+			rules: [
+				// Exit immediately on punctuation or whitespace
+				{
+					match: [":", ",", ";", ")", " ", "\t", "\n", "\r"],
+					exit: true,
+				},
+				{
+					range: ALPHANUMERIC_RANGE,
+					token: "keyword",
+				},
+				{
+					match: ["-", "_"],
+					token: "keyword",
+				},
+				// Exit on anything else
+				{
+					any: true,
+					exit: true,
+				},
+			],
+		},
+
+		// Property state (after probe determines it's a property)
+		property: {
+			rules: [
+				{
+					range: ALPHANUMERIC_RANGE,
+					token: "property",
+				},
+				{
+					match: ["-", "_"],
+					token: "property",
+				},
+				{
+					match: ":",
+					token: "punctuation",
+					state: "value",
 				},
 				{
 					any: true,
@@ -370,139 +555,34 @@ export default {
 			],
 		},
 
-		// String states with escape sequences
-		string_double: {
+		// Selector state (after probe determines it's a selector)
+		selector: {
 			rules: [
 				{
-					match: "\\",
-					token: "string",
-					state: "escape_sequence",
+					range: ALPHANUMERIC_RANGE,
+					token: "selector",
 				},
 				{
-					match: '"',
-					token: "string",
-					exit: true,
-				},
-				{
-					range: [0, 127],
-					token: "string",
-				},
-			],
-		},
-
-		string_single: {
-			rules: [
-				{
-					match: "\\",
-					token: "string",
-					state: "escape_sequence",
-				},
-				{
-					match: "'",
-					token: "string",
-					exit: true,
-				},
-				{
-					range: [0, 127],
-					token: "string",
-				},
-			],
-		},
-
-		escape_sequence: {
-			rules: [
-				{
-					range: [0, 127],
-					token: "string",
-					exit: true,
-				},
-			],
-		},
-
-		// At-rules
-		at_rule: {
-			rules: [
-				// Punctuation first - these are single char and take priority
-				{
-					match: "(",
-					state: "media_params",
-					token: "punctuation",
-				},
-				// Strings (for @charset, @import, etc)
-				{
-					match: '"',
-					token: "string",
-					state: "string_double",
-				},
-				{
-					match: "'",
-					token: "string",
-					state: "string_single",
-				},
-				// url() function (for @import)
-				{
-					match: "url(",
-					token: "function",
-					state: "url_content",
-				},
-				// Other at-rule keywords - generic letters
-				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-					],
-					token: "keyword",
+					match: ["-", "_"],
+					token: "selector",
 				},
 				{
 					match: "{",
 					token: "punctuation",
-					exit: true,
+					state: "declaration",
 				},
-
-				// Other punctuation that would end the at-rule name
 				{
-					match: [";", "}", ":", ","],
+					any: true,
 					exit: true,
 				},
 			],
 		},
 
-		url_content: {
-			rules: [
-				// Quoted URLs
-				{
-					match: '"',
-					token: "string",
-					state: "string_double",
-				},
-				{
-					match: "'",
-					token: "string",
-					state: "string_single",
-				},
-				// End of url()
-				{
-					match: ")",
-					token: "punctuation",
-					exit: true,
-				},
-
-				{
-					range: [0, 127],
-					token: "string",
-				},
-			],
-		},
-
-		// Selectors
+		// ID selector
 		id_selector: {
 			rules: [
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
+					range: ALPHANUMERIC_RANGE,
 					token: "id",
 				},
 				{
@@ -510,20 +590,17 @@ export default {
 					token: "id",
 				},
 				{
-					range: [0, 127],
+					any: true,
 					exit: true,
 				},
 			],
 		},
 
+		// Class selector
 		class_selector: {
 			rules: [
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
+					range: ALPHANUMERIC_RANGE,
 					token: "class-name",
 				},
 				{
@@ -531,27 +608,27 @@ export default {
 					token: "class-name",
 				},
 				{
-					range: [0, 127],
+					any: true,
 					exit: true,
 				},
 			],
 		},
 
+		// Pseudo-class/element
 		pseudo: {
 			rules: [
-				// Double colon for pseudo-elements
 				{
-					match: ":",
+					range: LETTER_RANGE,
 					token: "pseudo-selector",
 				},
-				// Pseudo-class characters
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
+					match: "-",
 					token: "pseudo-selector",
+				},
+				{
+					match: "(",
+					token: "punctuation",
+					state: "parentheses",
 				},
 				{
 					any: true,
@@ -563,21 +640,12 @@ export default {
 		pseudo_class: {
 			rules: [
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
-					token: "selector",
+					range: LETTER_RANGE,
+					token: "pseudo-selector",
 				},
 				{
 					match: "-",
-					token: "selector",
-				},
-				{
-					match: "(",
-					token: "punctuation",
-					state: "pseudo_function_args",
+					token: "pseudo-selector",
 				},
 				{
 					any: true,
@@ -586,7 +654,8 @@ export default {
 			],
 		},
 
-		pseudo_function_args: {
+		// Parentheses content
+		parentheses: {
 			rules: [
 				{
 					match: ")",
@@ -594,41 +663,35 @@ export default {
 					exit: true,
 				},
 				{
-					range: [
-						["0", "9"],
-						["a", "z"],
-						["A", "Z"],
-					],
-					token: "selector",
+					match: "(",
+					token: "punctuation",
+					state: "parentheses",
 				},
 				{
-					match: ["+", "-", "n", " "],
-					token: "selector",
-				},
-				{
-					any: true,
-					token: "selector",
+					range: [0, 127],
+					token: "keyword",
 				},
 			],
 		},
 
-		css_custom_property: {
+		// Brackets (attribute selectors)
+		brackets: {
 			rules: [
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
-					token: "css-variable",
-				},
-				{
-					match: "-",
-					token: "css-variable",
-				},
-				{
-					any: true,
+					match: "]",
+					token: "punctuation",
 					exit: true,
+				},
+				STRING_DOUBLE,
+				STRING_SINGLE,
+				ATTRIBUTE_OPERATORS,
+				{
+					range: ALPHANUMERIC_RANGE,
+					token: "attribute",
+				},
+				{
+					match: ["-", "_"],
+					token: "attribute",
 				},
 			],
 		},
@@ -643,11 +706,16 @@ export default {
 				{
 					match: ".",
 					token: "number",
-					state: "decimal_part",
+					state: "decimal",
 				},
-				// CSS units
+				// Check for units
 				{
-					match: CSS_UNITS,
+					range: LETTER_RANGE,
+					token: "unit",
+					state: "unit",
+				},
+				{
+					match: "%",
 					token: "unit",
 					exit: true,
 				},
@@ -658,15 +726,20 @@ export default {
 			],
 		},
 
-		decimal_part: {
+		decimal: {
 			rules: [
 				{
 					range: ["0", "9"],
 					token: "number",
 				},
-				// CSS units
+				// Check for units
 				{
-					match: CSS_UNITS,
+					range: LETTER_RANGE,
+					token: "unit",
+					state: "unit",
+				},
+				{
+					match: "%",
 					token: "unit",
 					exit: true,
 				},
@@ -677,31 +750,7 @@ export default {
 			],
 		},
 
-		negative_number_or_identifier: {
-			rules: [
-				{
-					range: ["0", "9"],
-					state: "number",
-				},
-				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-					],
-					state: "identifier",
-				},
-				{
-					match: "-",
-					token: "selector",
-				},
-				{
-					any: true,
-					exit: true,
-				},
-			],
-		},
-
-		negative_number_in_value: {
+		negative_number: {
 			rules: [
 				{
 					range: ["0", "9"],
@@ -711,14 +760,31 @@ export default {
 				{
 					match: ".",
 					token: "number",
-					state: "decimal_part",
+					state: "decimal",
+				},
+				// It's a keyword starting with dash
+				{
+					range: LETTER_RANGE,
+					token: "keyword",
+					state: "value_keyword",
 				},
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-					],
-					state: "value_keyword",
+					match: "-",
+					token: "css-variable",
+					state: "css_custom_property",
+				},
+				{
+					any: true,
+					exit: true,
+				},
+			],
+		},
+
+		unit: {
+			rules: [
+				{
+					range: LETTER_RANGE,
+					token: "unit",
 				},
 				{
 					any: true,
@@ -739,32 +805,22 @@ export default {
 					token: "number",
 				},
 				{
-					range: [0, 127],
+					any: true,
 					exit: true,
 				},
 			],
 		},
 
-		// Identifiers
-		identifier: {
+		// CSS custom properties
+		css_custom_property: {
 			rules: [
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
-					token: "selector",
+					range: ALPHANUMERIC_RANGE,
+					token: "css-variable",
 				},
 				{
 					match: ["-", "_"],
-					token: "selector",
-				},
-				// Handle pseudo-selectors
-				{
-					match: ":",
-					token: "pseudo-selector",
-					state: "pseudo",
+					token: "css-variable",
 				},
 				{
 					any: true,
@@ -777,18 +833,13 @@ export default {
 		value_keyword: {
 			rules: [
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
+					range: ALPHANUMERIC_RANGE,
 					token: "keyword",
 				},
 				{
 					match: ["-", "_"],
 					token: "keyword",
 				},
-				// If followed by '(', it's a function call
 				{
 					match: "(",
 					token: "punctuation",
@@ -804,74 +855,43 @@ export default {
 		// Function arguments
 		function_args: {
 			rules: [
-				// Comments
 				{
 					match: "/*",
 					token: "comment",
 					state: "comment",
 				},
-
-				// Strings
-				{
-					match: '"',
-					token: "string",
-					state: "string_double",
-				},
-				{
-					match: "'",
-					token: "string",
-					state: "string_single",
-				},
-
-				// End of function
+				STRING_DOUBLE,
+				STRING_SINGLE,
 				{
 					match: ")",
 					token: "punctuation",
 					exit: true,
 				},
-
-				// Nested functions
 				{
 					match: "(",
 					token: "punctuation",
 					state: "function_args",
 				},
-
-				// Hex colors
 				{
 					match: "#",
 					token: "number",
 					state: "hex_color",
 				},
-
-				// Numbers (but check if it's actually a negative number)
-				// Removed - we'll handle minus as operator below
 				{
 					range: ["0", "9"],
 					token: "number",
 					state: "number",
 				},
-
-				// For URL content, dots are part of filenames
-				// Don't treat them as decimal points
-				// Instead, treat the whole thing as a keyword
 				{
 					match: ".",
 					token: "keyword",
 					state: "url_filename",
 				},
-
-				// Keywords
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-					],
+					range: LETTER_RANGE,
 					token: "keyword",
 					state: "keyword_in_function",
 				},
-
-				// Operators (including minus)
 				{
 					match: [",", "/", "+", "*", "-"],
 					token: "operator",
@@ -881,20 +901,14 @@ export default {
 
 		url_filename: {
 			rules: [
-				// Continue consuming filename characters
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
+					range: ALPHANUMERIC_RANGE,
 					token: "keyword",
 				},
 				{
 					match: [".", "-", "_", "/", ":"],
 					token: "keyword",
 				},
-				// End on anything else
 				{
 					any: true,
 					exit: true,
@@ -905,11 +919,7 @@ export default {
 		keyword_in_function: {
 			rules: [
 				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
+					range: ALPHANUMERIC_RANGE,
 					token: "keyword",
 				},
 				{
@@ -934,227 +944,41 @@ export default {
 			],
 		},
 
-		// Media query parameters
-		media_params: {
+		// General identifier state
+		identifier: {
 			rules: [
-				// Exit on closing paren
 				{
-					match: ")",
-					token: "punctuation",
+					range: ALPHANUMERIC_RANGE,
+					token: "selector",
+				},
+				{
+					match: ["-", "_"],
+					token: "selector",
+				},
+				{
+					any: true,
 					exit: true,
 				},
-				// Nested parens
-				{
-					match: "(",
-					token: "punctuation",
-					state: "media_params",
-				},
-				// Colon for property:value in media queries
-				{
-					match: ":",
-					token: "punctuation",
-				},
-				// Numbers
+			],
+		},
+
+		// Negative number or identifier starting with dash
+		negative_number_or_identifier: {
+			rules: [
 				{
 					range: ["0", "9"],
 					token: "number",
 					state: "number",
 				},
-				// Keywords (min-width, max-width, etc)
+				{
+					range: LETTER_RANGE,
+					token: "selector",
+					state: "identifier",
+				},
 				{
 					match: "-",
-					token: "keyword",
-				},
-				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-					],
-					token: "keyword",
-				},
-
-				// Operators
-				{
-					match: [",", "and", "or", "not"],
-					token: "operator",
-				},
-			],
-		},
-
-		// Parentheses context (for other uses)
-		parentheses: {
-			rules: [
-				{
-					match: ")",
-					token: "punctuation",
-					exit: true,
-				},
-				{
-					match: "(",
-					token: "punctuation",
-					state: "parentheses",
-				},
-				{
-					any: true,
 					token: "selector",
 				},
-			],
-		},
-
-		// Brackets context (for attribute selectors)
-		brackets: {
-			rules: [
-				{
-					match: "]",
-					token: "punctuation",
-					exit: true,
-				},
-				{
-					match: '"',
-					token: "string",
-					state: "string_double",
-				},
-				{
-					match: "'",
-					token: "string",
-					state: "string_single",
-				},
-				{
-					match: ["=", "~=", "|=", "^=", "$=", "*="],
-					token: "operator",
-				},
-				{
-					any: true,
-					token: "selector",
-				},
-			],
-		},
-
-		// Probe state to determine if identifier is selector or property
-		probe_identifier: {
-			fallback: "block_property",
-			mode: "probe",
-			rules: [
-				// Found opening brace - it's a selector
-				{
-					match: "{",
-					state: "block_selector",
-				},
-				// Found colon - it's a property
-				{
-					match: ":",
-					state: "block_property",
-				},
-				// Found semicolon - it's a property (though this would be an error case)
-				{
-					match: ";",
-					state: "block_property",
-				},
-				// Found closing brace - it's a property (error case, property without value)
-				{
-					match: "}",
-					state: "block_property",
-				},
-			],
-		},
-
-		// State to handle identifiers that turn out to be selectors in block context
-		// This state is entered after probe determines we have a selector
-		// It must process the same characters that triggered the probe
-		block_selector: {
-			rules: [
-				// Comments
-				{
-					match: "/*",
-					token: "comment",
-					state: "comment",
-				},
-
-				// Exit block
-				{
-					match: "}",
-					token: "punctuation",
-					exit: true,
-				},
-
-				// Nested block
-				{
-					match: "{",
-					token: "punctuation",
-					state: "block",
-				},
-
-				// Selectors - process them like in main
-				{
-					match: "#",
-					token: "id",
-					state: "id_selector",
-				},
-				{
-					match: ".",
-					token: "class-name",
-					state: "class_selector",
-				},
-				{
-					match: ":",
-					token: "pseudo-selector",
-					state: "pseudo",
-				},
-				{
-					match: "&",
-					token: "selector",
-				},
-
-				// Combinators
-				{
-					match: [">", "+", "~"],
-					token: "operator",
-				},
-
-				// Element selectors - tokenize directly after probe determined it's a selector
-				// We're here because probe found a selector pattern, so tokenize the identifier
-				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
-					token: "selector",
-				},
-				{
-					match: ["-", "_"],
-					token: "selector",
-				},
-			],
-		},
-
-		// State to handle properties in block context
-		// This state is entered after probe determines we have a property
-		// The property name has already been tokenized by the probe
-		block_property: {
-			rules: [
-				// After property name, expect colon
-				{
-					match: ":",
-					token: "punctuation",
-					state: "value",
-				},
-
-				// Continue scanning property name if needed (including hyphens)
-				{
-					range: [
-						["a", "z"],
-						["A", "Z"],
-						["0", "9"],
-					],
-					token: "property",
-				},
-				{
-					match: ["-", "_"],
-					token: "property",
-				},
-
-				// Exit on anything else
 				{
 					any: true,
 					exit: true,

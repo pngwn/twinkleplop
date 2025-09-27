@@ -23,6 +23,7 @@
 	--font-mono:
 		'Berkeley Mono', 'JetBrains Mono', 'SF Mono', Monaco, Consolas, 'Liberation Mono',
 		'Courier New', monospace;
+	--font-pixel: 'Pixel Code', monospace;
 
 	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
 	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
@@ -45,11 +46,11 @@ html {
 body {
 	background: var(--bg-primary);
 	color: var(--text-primary);
-	font-family: var(--font-mono);
+	/* font-family: var(--font-mono); */
 	font-size: 0.875rem;
 	line-height: 1.6;
-	height: 100vh;
-	overflow: hidden;
+	min-height: 100vh;
+	/* overflow: hidden; */
 }
 
 a {
@@ -70,7 +71,7 @@ button {
 
 pre,
 code {
-	font-family: var(--font-mono);
+	/* font-family: var(--font-mono); */
 	font-size: 0.875rem;
 	line-height: 1.6;
 	tab-size: 2;
@@ -162,4 +163,152 @@ hr {
 .flex {
 	display: flex;
 	gap: 1rem;
+}
+
+// thin
+// extralight
+// light
+// regular
+// medium
+// demibold
+// bold
+// extrabold
+// black
+// extrablack
+
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Thin.woff2') format('woff2');
+	font-weight: 100;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-ExtraLight.woff2') format('woff2');
+	font-weight: 200;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Light.woff2') format('woff2');
+	font-weight: 300;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Medium.woff2') format('woff2');
+	font-weight: 500;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-DemiBold.woff2') format('woff2');
+	font-weight: 600;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Bold.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-ExtraBold.woff2') format('woff2');
+	font-weight: 800;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Black.woff2') format('woff2');
+	font-weight: 900;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-ExtraBlack.woff2') format('woff2');
+	font-weight: 1000;
+	font-style: normal;
+}
+
+// italics
+
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Thin-Italic.woff2') format('woff2');
+	font-weight: 100;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-ExtraLight-Italic.woff2') format('woff2');
+	font-weight: 200;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Light-Italic.woff2') format('woff2');
+	font-weight: 300;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Italic.woff2') format('woff2');
+	font-weight: 400;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Medium-Italic.woff2') format('woff2');
+	font-weight: 500;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-DemiBold-Italic.woff2') format('woff2');
+	font-weight: 600;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Bold-Italic.woff2') format('woff2');
+	font-weight: 700;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-ExtraBold-Italic.woff2') format('woff2');
+	font-weight: 800;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'Pixel Code';
+	src: url('/PixelCode-Black-Italic.woff2') format('woff2');
+	font-weight: 900;
+	font-style: italic;
 }
