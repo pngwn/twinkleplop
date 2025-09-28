@@ -149,6 +149,7 @@ export function compile(grammar: Grammar): CompiledGrammar {
     const keywords = new Map();
     const patterns = new Map(); // state → char → Array<{codes, length, ruleIdx}>
     const nonAsciiChars = new Map<number, Record<number, number>>(); // state → object map: charCode -> ruleIdx
+    const boundaryRules = new Set<number>(); // Track rules that require boundary checking
 
 	// Track which states are probe states based on state.mode property
 	const probeStates = new Set<number>();
@@ -181,10 +182,18 @@ export function compile(grammar: Grammar): CompiledGrammar {
 		state.rules.forEach((rule, ruleIdx) => {
 			let nextState = 255;
 			let stackOp = 0;
-			if (rule.state) {
+			
+			// Handle state transitions and exits
+			if (rule.state && rule.exit) {
+				// Sideways transition: exit current state and enter new state
+				nextState = stateMap.get(rule.state) || 255;
+				stackOp = 2; // Use exit operation, but with a target state
+			} else if (rule.state) {
+				// Regular push transition
 				nextState = stateMap.get(rule.state) || 255;
 				stackOp = 1;
 			} else if (rule.exit) {
+				// Regular pop/exit
 				stackOp = 2;
 			}
 
@@ -305,6 +314,10 @@ export function compile(grammar: Grammar): CompiledGrammar {
 							const code = match.charCodeAt(0);
 							if (code < 128) {
 								setCharMapping(charMaps, stateId, code, ruleIdx);
+								// Track if this rule requires boundary checking
+								if (rule.boundary) {
+									boundaryRules.add(stateId * 256 + ruleIdx);
+								}
 							} else {
                             // Non-ASCII character
                             if (!nonAsciiChars.has(stateId)) {
@@ -319,6 +332,10 @@ export function compile(grammar: Grammar): CompiledGrammar {
                                 );
                             }
                             stateNonAscii[code] = ruleIdx;
+                            // Track if this rule requires boundary checking
+                            if (rule.boundary) {
+                                boundaryRules.add(stateId * 256 + ruleIdx);
+                            }
 							}
 						} else if (match.length > 1) {
 							// Multi-character pattern
@@ -334,6 +351,7 @@ export function compile(grammar: Grammar): CompiledGrammar {
                             codes,
                             length: match.length,
                             ruleIdx,
+                            boundary: rule.boundary,
                         };
 
 								// Add to the appropriate bucket
@@ -428,5 +446,6 @@ return {
 		probeStates: probeStates,
 		probeMask,
 		probeFallbacks: probeFallbacks,
+		boundaryRules: boundaryRules.size > 0 ? boundaryRules : undefined,
 	};
 }

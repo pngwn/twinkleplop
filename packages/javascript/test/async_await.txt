@@ -1,0 +1,59 @@
+// Async function declaration
+async function fetchUser(id) {
+  const response = await fetch(`/api/users/${id}`);
+  return await response.json();
+}
+
+// Async function expression
+const getData = async function() {
+  return await database.query();
+};
+
+// Async arrow function
+const processData = async (data) => {
+  const result = await transform(data);
+  return result;
+};
+
+// Try-catch with async/await
+async function safeFetch() {
+  try {
+    const data = await fetchData();
+    return data;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Multiple awaits
+async function sequential() {
+  const first = await getFirst();
+  const second = await getSecond(first);
+  const third = await getThird(second);
+  return third;
+}
+
+// Parallel awaits
+async function parallel() {
+  const [a, b, c] = await Promise.all([
+    fetchA(),
+    fetchB(),
+    fetchC()
+  ]);
+  return { a, b, c };
+}
+
+// Async in class methods
+class Service {
+  async initialize() {
+    this.data = await loadData();
+  }
+  
+  async process() {
+    return await this.transform();
+  }
+}
+
+// Top-level await (modules)
+const config = await loadConfig();
+export default await initializeApp();

@@ -13,3 +13,6 @@ f42(one, _, t_o) {
 fn($1, $2, $3, _$1) {
 
 }
+
+
+obj.method(fn(x + y), arr[0], z ? a() : b())

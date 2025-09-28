@@ -1,0 +1,55 @@
+// Nullish coalescing (??)
+const value = input ?? defaultValue;
+const port = process.env.PORT ?? 3000;
+config.timeout = options.timeout ?? 5000;
+
+// Optional chaining (?.)
+const city = user?.address?.city;
+const result = obj?.method?.();
+const item = arr?.[index];
+const value = func?.();
+
+// Logical assignment operators
+x ||= 1;  // x = x || 1
+y &&= 2;  // y = y && 2
+z ??= 3;  // z = z ?? 3
+
+// Exponentiation (**)
+const squared = 2 ** 2;
+const cubed = 3 ** 3;
+base **= exponent;
+
+// Spread operator (...)
+const newArray = [...oldArray];
+const combined = [...arr1, ...arr2];
+const copy = { ...original };
+const merged = { ...defaults, ...options };
+Math.max(...numbers);
+fn(...args);
+
+// Rest parameters
+function sum(...numbers) {}
+const [first, ...rest] = array;
+const { a, ...others } = object;
+
+// Bitwise operators
+const shifted = value >>> 2;
+flags &= ~MASK;
+bits |= FLAG;
+result ^= key;
+value <<= 1;
+value >>= 1;
+value >>>= 1;
+
+// Compound assignments
+total += amount;
+count -= 1;
+result *= factor;
+average /= count;
+remainder %= divisor;
+
+// Increment/decrement
+++counter;
+--index;
+value++;
+score--;

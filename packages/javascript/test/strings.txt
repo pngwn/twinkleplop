@@ -1,0 +1,11 @@
+""
+''
+"f\"oo"
+'b\'ar'
+"foo\
+bar"
+'foo\
+bar'
+"foo /* comment */ bar"
+'foo // bar'
+'foo // bar' //comment

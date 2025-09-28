@@ -30,12 +30,18 @@ importers:
 
   packages/_site:
     dependencies:
+      '@twinkleplop/clike':
+        specifier: workspace:*
+        version: link:../clike
       '@twinkleplop/core':
         specifier: workspace:*
         version: link:../core
       '@twinkleplop/css':
         specifier: workspace:*
         version: link:../css
+      '@twinkleplop/javascript':
+        specifier: workspace:*
+        version: link:../javascript
       '@twinkleplop/whitespace':
         specifier: workspace:*
         version: link:../whitespace
@@ -102,6 +108,15 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@20.19.17)(@vitest/ui@2.1.9)(terser@5.44.0)
 
+  packages/clike:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../core
+      '@twinkleplop/grammar-utils':
+        specifier: workspace:*
+        version: link:../grammar-utils
+
   packages/core:
     devDependencies:
       '@rollup/plugin-terser':
@@ -125,6 +140,17 @@ importers:
       '@twinkleplop/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/grammar-utils: {}
+
+  packages/javascript:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../core
+      '@twinkleplop/grammar-utils':
+        specifier: workspace:*
+        version: link:../grammar-utils
 
   packages/whitespace:
     dependencies:

@@ -4,7 +4,7 @@ import { tokenize } from "./tokenizer";
 import type { Grammar, TokenizeResult } from "./types";
 
 function get_tokens(result: TokenizeResult): { type: string; text: string }[] {
-	const tokens = [];
+	const tokens: { type: string; text: string }[] = [];
 	for (let i = 0; i < result.tokens.length; i += 3) {
 		const type = result.tokens[i];
 		const start = result.tokens[i + 1];

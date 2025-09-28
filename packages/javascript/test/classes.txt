@@ -1,0 +1,87 @@
+// Basic class
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+  
+  speak() {
+    console.log(`${this.name} makes a sound`);
+  }
+}
+
+// Class inheritance
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name);
+    this.breed = breed;
+  }
+  
+  speak() {
+    super.speak();
+    console.log('Woof!');
+  }
+}
+
+// Static members
+class MathUtils {
+  static PI = 3.14159;
+  
+  static calculateArea(radius) {
+    return this.PI * radius ** 2;
+  }
+}
+
+// Private fields
+class Person {
+  #privateField;
+  #privateMethod() {}
+  
+  constructor(name) {
+    this.#privateField = name;
+  }
+  
+  get name() {
+    return this.#privateField;
+  }
+}
+
+// Class expressions
+const MyClass = class {
+  constructor() {}
+};
+
+const NamedClass = class CustomName {
+  static getName() {
+    return CustomName.name;
+  }
+};
+
+// Getters and setters
+class Temperature {
+  #celsius;
+  
+  get celsius() {
+    return this.#celsius;
+  }
+  
+  set celsius(value) {
+    this.#celsius = value;
+  }
+  
+  get fahrenheit() {
+    return this.#celsius * 9/5 + 32;
+  }
+  
+  set fahrenheit(value) {
+    this.#celsius = (value - 32) * 5/9;
+  }
+}
+
+// Static initialization blocks
+class Config {
+  static data;
+  
+  static {
+    this.data = loadConfig();
+  }
+}

@@ -1,0 +1,63 @@
+// Integer literals
+42
+0
+1000000
+
+// Decimal literals
+3.14159
+0.5
+.5
+10.
+1.23e4
+2e10
+3.14e-10
+
+// Binary literals (ES6)
+0b1010  // 10
+0B1111  // 15
+0b11111111  // 255
+
+// Octal literals (ES6)
+0o755  // 493
+0O644  // 420
+0o10   // 8
+
+// Hexadecimal literals
+0xFF    // 255
+0x10    // 16
+0xDEADBEEF
+0X1234ABCD
+
+// BigInt literals (ES2020)
+123n
+0n
+1000000000000000000000n
+0x1fffffffffffff
+0b11111111111111111n
+0o777777777777n
+
+// Numeric separators (ES2021)
+1_000_000
+3.141_592_653
+0xFF_FF_FF
+0b1111_0000_1111_0000
+123_456_789n
+
+// Scientific notation
+1e3     // 1000
+1e-3    // 0.001
+1.5e10
+2.5e-5
+6.022e23  // Avogadro's number
+
+// Special numeric values
+Infinity
+-Infinity
+NaN
+
+// Number with unary operators
++42
+-3.14
+~15
++0xff
+-0b1010

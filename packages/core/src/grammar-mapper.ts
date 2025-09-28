@@ -499,6 +499,72 @@ export class GrammarMapper {
 	}
 
 	// Get the full route with all transitions (including sideways)
+	// Get enhanced route with state session data
+	getEnhancedRoute(introspector: TokenizerIntrospector, pos: number): RouteStep[] {
+		const enhancedRoute = introspector.getEnhancedRoute(pos);
+		
+		// Map the route with grammar names
+		const mappedRoute: RouteStep[] = enhancedRoute.map((step) => {
+			const mapped = { ...step };
+			
+			// Map state names if they're indices
+			if (mapped.stateName && mapped.stateName.startsWith("state_")) {
+				const idx = parseInt(mapped.stateName.replace("state_", ""));
+				if (!isNaN(idx)) {
+					mapped.stateName = this.getStateName(idx);
+				}
+			}
+			if (mapped.fromName && mapped.fromName.startsWith("state_")) {
+				const idx = parseInt(mapped.fromName.replace("state_", ""));
+				if (!isNaN(idx)) {
+					mapped.fromName = this.getStateName(idx);
+				}
+			}
+			if (mapped.toName && mapped.toName.startsWith("state_")) {
+				const idx = parseInt(mapped.toName.replace("state_", ""));
+				if (!isNaN(idx)) {
+					mapped.toName = this.getStateName(idx);
+				}
+			}
+			
+			return mapped;
+		});
+		
+		return mappedRoute;
+	}
+	
+	// Get complete route including all probe states and resolutions
+	getCompleteRoute(introspector: TokenizerIntrospector, pos: number): RouteStep[] {
+		const route = introspector.getCompleteRouteToPosition(pos);
+
+		// The route already has state names from introspector, but enhance with additional info
+		return route.map((step) => {
+			const mapped = { ...step };
+
+			// Ensure state names are set
+			if (mapped.stateName && mapped.stateName.startsWith("state_")) {
+				const idx = parseInt(mapped.stateName.replace("state_", ""));
+				if (!isNaN(idx)) {
+					mapped.stateName = this.getStateName(idx);
+				}
+			}
+			if (mapped.fromName && mapped.fromName.startsWith("state_")) {
+				const idx = parseInt(mapped.fromName.replace("state_", ""));
+				if (!isNaN(idx)) {
+					mapped.fromName = this.getStateName(idx);
+				}
+			}
+			if (mapped.toName && mapped.toName.startsWith("state_")) {
+				const idx = parseInt(mapped.toName.replace("state_", ""));
+				if (!isNaN(idx)) {
+					mapped.toName = this.getStateName(idx);
+				}
+			}
+
+			return mapped;
+		});
+	}
+
 	getFullRoute(introspector: TokenizerIntrospector, pos: number): RouteStep[] {
 		const route = introspector.getFullRouteToPosition(pos);
 

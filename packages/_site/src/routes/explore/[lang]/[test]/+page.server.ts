@@ -15,26 +15,20 @@ const lang_map = new Map([
 		{
 			grammar: () => import('@twinkleplop/whitespace'),
 			test: () => import('@twinkleplop/whitespace/test')
-			// 	transform(src: string, _tokens: TokenizeResult) {
-			// 		console.log('transform', src, _tokens);
-			// 		const { tokenTypes, tokens } = _tokens;
-			// 		let result = src;
-
-			// 		for (let i = tokens.length - 3; i >= 0; i -= 3) {
-			// 			const type = tokenTypes[tokens[i]];
-			// 			const start = tokens[i + 1];
-			// 			const end = tokens[i + 2];
-
-			// 			if (type === 'tab') {
-			// 				const replacement = '→'.repeat(end - start);
-			// 				result = result.substring(0, start) + replacement + result.substring(end);
-			// 			} else if (type === 'space') {
-			// 				const replacement = '•'.repeat(end - start);
-			// 				result = result.substring(0, start) + replacement + result.substring(end);
-			// 			}
-			// 		}
-			// 		return result;
-			// 	}
+		}
+	],
+	[
+		'clike',
+		{
+			grammar: () => import('@twinkleplop/clike'),
+			test: () => import('@twinkleplop/clike/test')
+		}
+	],
+	[
+		'javascript',
+		{
+			grammar: () => import('@twinkleplop/javascript'),
+			test: () => import('@twinkleplop/javascript/test')
 		}
 	]
 ]);
@@ -45,7 +39,7 @@ function getTestFiles(lang: string) {
 	);
 
 	const css_files = test
-		.filter((file) => file.endsWith('.css'))
+		.filter((file) => !file.endsWith('.js'))
 		.map((file) => [
 			file.replace('.css', ''),
 			fs.readFileSync(
@@ -76,6 +70,7 @@ export const load = async ({ params }) => {
 		lang,
 		grammar: mod?.grammar,
 		raw_grammar: mod?.raw_grammar as Grammar,
-		test
+		test,
+		allLanguages: Array.from(lang_map.keys())
 	};
 };

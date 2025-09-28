@@ -1,0 +1,77 @@
+// If-else statements
+if (condition) {
+  doSomething();
+} else if (otherCondition) {
+  doSomethingElse();
+} else {
+  doDefault();
+}
+
+// Ternary operator
+const result = condition ? valueIfTrue : valueIfFalse;
+const nested = a ? b ? c : d : e;
+
+// Switch statement
+switch (value) {
+  case 1:
+    handleOne();
+    break;
+  case 2:
+  case 3:
+    handleTwoOrThree();
+    break;
+  default:
+    handleDefault();
+}
+
+// For loops
+for (let i = 0; i < 10; i++) {
+  console.log(i);
+}
+
+for (const item of array) {
+  process(item);
+}
+
+for (const key in object) {
+  if (object.hasOwnProperty(key)) {
+    handle(object[key]);
+  }
+}
+
+// While loops
+while (condition) {
+  doWork();
+}
+
+do {
+  attemptOperation();
+} while (shouldRetry);
+
+// Try-catch-finally
+try {
+  riskyOperation();
+} catch (error) {
+  handleError(error);
+} finally {
+  cleanup();
+}
+
+// Throw statements
+throw new Error('Something went wrong');
+throw { code: 'INVALID', message: 'Invalid input' };
+
+// Break and continue
+for (let i = 0; i < 10; i++) {
+  if (i === 5) continue;
+  if (i === 8) break;
+  process(i);
+}
+
+// Labeled statements
+outer: for (let i = 0; i < 3; i++) {
+  inner: for (let j = 0; j < 3; j++) {
+    if (i === j) continue outer;
+    if (j === 2) break inner;
+  }
+}

@@ -418,6 +418,8 @@ export default {
 		// At-rule handling
 		at_rule: {
 			rules: [
+				STRING_DOUBLE,
+				STRING_SINGLE,
 				{
 					range: LETTER_RANGE,
 					token: "keyword",
@@ -588,7 +590,6 @@ export default {
 				},
 			],
 		},
-
 
 		// ID selector
 		id_selector: {
@@ -801,12 +802,12 @@ export default {
 			rules: [
 				{
 					range: ["0", "9"],
-					token: "operator",  // Emit the minus as operator
+					token: "operator", // Emit the minus as operator
 					state: "number",
 				},
 				{
 					match: ".",
-					token: "operator",  // Emit the minus as operator
+					token: "operator", // Emit the minus as operator
 					state: "decimal",
 				},
 				// It's a keyword starting with dash
@@ -822,7 +823,7 @@ export default {
 				},
 				{
 					any: true,
-					token: "operator",  // Just emit the minus if nothing else matches
+					token: "operator", // Just emit the minus if nothing else matches
 					exit: true,
 				},
 			],
@@ -1062,7 +1063,5 @@ export default {
 				},
 			],
 		},
-
-
 	},
 };

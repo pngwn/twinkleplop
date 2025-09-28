@@ -7,3 +7,5 @@ f42()
 fn(1, 2, 3, "hello", true)
 
 fn(1, 2, 3, "hello", true);
+
+fn(1, 2, 3, "hello", fn(1, 2, 3, "hello", fn(1, 2, 3, "hello", fn(1, 2, 3, "hello", true))));

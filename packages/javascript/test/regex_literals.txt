@@ -1,0 +1,66 @@
+// Simple regex literals
+/pattern/
+/hello world/
+/\d+/
+/[a-z]/
+
+// Regex with flags
+/pattern/gi
+/test/img
+/unicode/u
+/dotall/s
+/sticky/y
+
+// Character classes
+/[abc]/
+/[^xyz]/
+/[0-9]/
+/[a-zA-Z]/
+/[\w\s]/
+
+// Quantifiers
+/a*/
+/b+/
+/c?/
+/d{3}/
+/e{2,5}/
+/f{4,}/
+
+// Anchors
+/^start/
+/end$/
+/\bword\b/
+/\Bnot\B/
+
+// Groups and alternation
+/(group)/
+/(?:non-capturing)/
+/(?<named>group)/
+/(a|b|c)/
+/(?=lookahead)/
+/(?!negative)/
+
+// Escape sequences
+/\./
+/\\/
+/\n/
+/\t/
+/\x41/
+/\u0041/
+
+// Complex patterns
+/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i
+/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}/
+/(?:\d{3}|\(\d{3}\))([-\/\.])\d{3}\1\d{4}/
+
+// Regex in context
+const pattern = /test/g;
+if (/^\d+$/.test(input)) {}
+string.replace(/old/g, 'new');
+text.match(/\w+/g);
+data.split(/\s*,\s*/);
+
+// Not regex (division operator context)
+const result = 10 / 2;
+const calc = a / b / c;
+x = y /= 2;

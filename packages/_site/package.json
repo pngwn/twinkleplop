@@ -28,6 +28,8 @@
 	"dependencies": {
 		"@twinkleplop/core": "workspace:*",
 		"@twinkleplop/css": "workspace:*",
-		"@twinkleplop/whitespace": "workspace:*"
+		"@twinkleplop/whitespace": "workspace:*",
+		"@twinkleplop/clike": "workspace:*",
+		"@twinkleplop/javascript": "workspace:*"
 	}
 }

@@ -143,10 +143,16 @@
 						<span class="step-icon">🏁</span>
 						<span class="step-label">Start in</span>
 						<span class="step-state">{step.stateName}</span>
+						{#if step.charactersProcessed}
+							<span class="char-count" title="Characters processed in this state">({step.charactersProcessed} chars)</span>
+						{/if}
 					{:else if step.type === 'PUSH'}
-						<span class="step-icon">→</span>
-						<span class="step-label">Enter</span>
+						<span class="step-icon">{step.isProbe ? '🔍' : '→'}</span>
+						<span class="step-label">{step.isProbe ? 'Probe' : 'Enter'}</span>
 						<span class="step-state">{step.toName}</span>
+						{#if step.charactersProcessed}
+							<span class="char-count" title="Characters processed in this state">({step.charactersProcessed} chars)</span>
+						{/if}
 						{#if step.tokenEmitted}
 							<span class="token-indicator" title="Token emitted">📝</span>
 						{/if}
@@ -173,6 +179,25 @@
 				{#if isExpanded && ruleDefinition}
 					<div class="rule-details {step.type.toLowerCase()}">
 						<div class="rule-content">
+							{#if step.entryPosition !== undefined}
+								<div class="rule-property">
+									<span class="property-label">Entry Position:</span>
+									<span class="property-value">@{step.entryPosition}</span>
+								</div>
+							{/if}
+							{#if step.rulesApplied && step.rulesApplied.length > 0}
+								<div class="rule-property">
+									<span class="property-label">Rules Applied:</span>
+									<div class="rules-list">
+										{#each step.rulesApplied as { rule, count }}
+											<div class="applied-rule">
+												<span class="rule-text">{rule}</span>
+												<span class="rule-count">×{count}</span>
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/if}
 							<div class="rule-property">
 								<span class="property-label">Pattern:</span>
 								<span class="property-value">
@@ -375,5 +400,41 @@
 		font-family: var(--font-mono);
 		word-break: break-all;
 		flex: 1;
+	}
+	
+	.char-count {
+		color: var(--text-tertiary);
+		font-size: 0.75rem;
+		margin-left: 0.5rem;
+	}
+	
+	.rules-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		flex: 1;
+	}
+	
+	.applied-rule {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.125rem 0.25rem;
+		background: rgba(255, 255, 255, 0.02);
+		border-radius: 2px;
+	}
+	
+	.rule-text {
+		color: var(--accent);
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		flex: 1;
+	}
+	
+	.rule-count {
+		color: var(--text-tertiary);
+		font-size: 0.65rem;
+		margin-left: 0.5rem;
+		font-weight: 600;
 	}
 </style>

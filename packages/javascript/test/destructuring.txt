@@ -1,0 +1,38 @@
+// Array destructuring
+const [a, b] = [1, 2];
+const [first, , third] = array;
+const [head, ...tail] = list;
+
+// Object destructuring
+const { name, age } = person;
+const { x: newX, y: newY } = point;
+const { prop = 'default' } = obj;
+
+// Nested destructuring
+const { user: { name, email } } = data;
+const [{ id }, { title }] = items;
+
+// Mixed destructuring
+const { data: [first, second] } = response;
+
+// Function parameters
+function process({ id, name }) {}
+const handler = ({ type, payload }) => {};
+
+// Rest in objects
+const { a, b, ...rest } = object;
+const { ...copy } = original;
+
+// Destructuring with renaming and defaults
+const { 
+  name: userName = 'Anonymous',
+  role: userRole = 'guest'
+} = user;
+
+// Complex patterns
+const [
+  {
+    meta: { version }
+  },
+  ...entries
+] = data;

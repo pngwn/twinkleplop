@@ -1,0 +1,25 @@
+// Simple arrow function
+const add = (a, b) => a + b;
+
+// No parameters
+const greet = () => "Hello";
+
+// Single parameter (no parens)
+const double = x => x * 2;
+
+// Block body
+const calculate = (x, y) => {
+  const sum = x + y;
+  return sum * 2;
+};
+
+// Returning object literal
+const makeUser = name => ({ name, id: 1 });
+
+// Async arrow function
+const fetchData = async () => await fetch(url);
+
+// Arrow function in array methods
+[1, 2, 3].map(n => n * 2);
+items.filter(item => item.active);
+data.reduce((acc, val) => acc + val, 0);

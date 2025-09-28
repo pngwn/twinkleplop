@@ -1,0 +1,51 @@
+// Named exports
+export const API_URL = 'https://api.example.com';
+export let counter = 0;
+export var config = {};
+
+export function processData(data) {
+  return transform(data);
+}
+
+export class DataProcessor {
+  process() {}
+}
+
+// Default export
+export default function main() {}
+export default class Application {}
+export default { key: 'value' };
+
+// Named imports
+import { Component, createElement } from 'react';
+import { readFile, writeFile } from 'fs';
+
+// Default import
+import React from 'react';
+import _ from 'lodash';
+
+// Aliased imports
+import { longNamedExport as short } from './module';
+import { default as MyClass } from './class';
+
+// Namespace import
+import * as utils from './utils';
+import * as constants from './constants';
+
+// Mixed imports
+import defaultExport, { namedExport } from './module';
+import MyComponent, { helper, CONSTANT } from './component';
+
+// Re-exports
+export { field1, field2 } from './module';
+export { default } from './other';
+export * from './utilities';
+export * as namespace from './lib';
+
+// Dynamic imports
+import('./module').then(module => {});
+const module = await import('./lazy-module');
+
+// Import assertions (JSON modules)
+import data from './data.json' assert { type: 'json' };
+import config from './config.json' with { type: 'json' };

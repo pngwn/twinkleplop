@@ -1,0 +1,8 @@
+class Foo
+interface bar
+extends Foo
+implements bar
+trait Foo
+instanceof \bar
+new \Foo
+catch (bar)

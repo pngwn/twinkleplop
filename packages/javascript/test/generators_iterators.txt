@@ -1,0 +1,64 @@
+// Generator functions
+function* simpleGenerator() {
+  yield 1;
+  yield 2;
+  yield 3;
+}
+
+// Generator with parameters
+function* fibonacci(n) {
+  let a = 0, b = 1;
+  for (let i = 0; i < n; i++) {
+    yield a;
+    [a, b] = [b, a + b];
+  }
+}
+
+// Yield delegation
+function* delegator() {
+  yield* [1, 2, 3];
+  yield* otherGenerator();
+}
+
+// Async generators
+async function* asyncGenerator() {
+  yield await fetchData(1);
+  yield await fetchData(2);
+  yield await fetchData(3);
+}
+
+// Iterator protocol
+const iterator = {
+  [Symbol.iterator]() {
+    let i = 0;
+    return {
+      next() {
+        return i < 10
+          ? { value: i++, done: false }
+          : { done: true };
+      }
+    };
+  }
+};
+
+// Generator expressions
+const gen = (function* () {
+  yield* range(1, 10);
+})();
+
+// Yield in expressions
+function* expressionYield() {
+  const x = yield 1;
+  const y = 2 + (yield 3);
+  return x + y;
+}
+
+// For-of with generators
+for (const value of simpleGenerator()) {
+  console.log(value);
+}
+
+// Async iteration
+for await (const chunk of asyncGenerator()) {
+  process(chunk);
+}

@@ -1,0 +1,34 @@
+// Basic template literal
+`Hello World`
+
+// String interpolation
+`Hello ${name}!`
+`The answer is ${40 + 2}`
+
+// Multi-line template
+`This is
+a multi-line
+template literal`
+
+// Nested templates
+`Outer ${`Inner ${depth}`} text`
+
+// Complex expressions
+`User: ${user.firstName} ${user.lastName}`
+`Total: $${price * quantity}`
+`Status: ${isActive ? 'Active' : 'Inactive'}`
+
+// With function calls
+`Result: ${calculate(x, y)}`
+`Length: ${str.length}`
+`Upper: ${text.toUpperCase()}`
+
+// Escaping
+`Line 1\nLine 2`
+`Tab\there`
+`Quote: \`nested\``
+
+// Tagged templates
+html`<div>${content}</div>`
+css`.class { color: ${color}; }`
+gql`query { user(id: ${id}) { name } }`

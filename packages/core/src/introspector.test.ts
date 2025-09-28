@@ -1,22 +1,21 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { execSync } from "child_process";
-import { compile } from "./compiler.js";
+import { compile } from "./compiler";
+import { tokenize } from "./tokenizer";
+import { TokenizerIntrospector } from "./introspector";
+import { Grammar } from "./types";
 
 describe("TokenizerIntrospector", () => {
 	it("should track tokens and state transitions", async () => {
-		// Import the debug version
-		const { tokenize, TokenizerIntrospector } = await import(
-			"./tokenizer.debug.js"
-		);
-
 		const input = "hello world";
-		const grammar = {
+		const grammar: Grammar = {
 			name: "simple",
 			states: {
-				main: [
-					{ match: /\w+/, token: "word" },
-					{ match: /\s+/, token: "space" },
-				],
+				main: {
+					rules: [
+						{ range: ["a", "z"], token: "word" },
+						{ match: " ", token: "space" },
+					],
+				},
 			},
 		};
 
@@ -24,31 +23,29 @@ describe("TokenizerIntrospector", () => {
 		const introspector = new TokenizerIntrospector();
 
 		const result = tokenize(input, compiled, introspector);
-
+		console.log(introspector.tokens);
 		// Should have 3 tokens: "hello", " ", "world"
 		expect(result.tokens.length).toBe(9); // 3 tokens * 3 values each
 
 		// Check introspector collected tokens
 		expect(introspector.tokens).toHaveLength(3);
-		expect(introspector.tokens[0].text).toBe("hello");
-		expect(introspector.tokens[1].text).toBe(" ");
-		expect(introspector.tokens[2].text).toBe("world");
+		expect(introspector.tokens[0].value).toBe("hello");
+		expect(introspector.tokens[1].value).toBe(" ");
+		expect(introspector.tokens[2].value).toBe("world");
 	});
 
 	it("should track rule matches", async () => {
-		const { tokenize, TokenizerIntrospector } = await import(
-			"./tokenizer.debug.js"
-		);
-
 		const input = "123 abc";
-		const grammar = {
+		const grammar: Grammar = {
 			name: "test",
 			states: {
-				main: [
-					{ match: /\d+/, token: "number" },
-					{ match: /[a-z]+/, token: "letters" },
-					{ match: /\s+/, token: "space" },
-				],
+				main: {
+					rules: [
+						{ range: ["0", "9"], token: "number" },
+						{ range: ["a", "z"], token: "letters" },
+						{ match: [" ", "\t"], token: "space" },
+					],
+				},
 			},
 		};
 
@@ -67,19 +64,19 @@ describe("TokenizerIntrospector", () => {
 	});
 
 	it("should track state transitions", async () => {
-		const { tokenize, TokenizerIntrospector } = await import(
-			"./tokenizer.debug.js"
-		);
-
 		const input = "{content}";
-		const grammar = {
+		const grammar: Grammar = {
 			name: "nested",
 			states: {
-				main: [{ match: "{", token: "brace.open", state: "inside" }],
-				inside: [
-					{ match: /\w+/, token: "word" },
-					{ match: "}", token: "brace.close", exit: true },
-				],
+				main: {
+					rules: [{ match: "{", token: "brace.open", state: "inside" }],
+				},
+				inside: {
+					rules: [
+						{ range: ["a", "z"], token: "word" },
+						{ match: "}", token: "brace.close", exit: true },
+					],
+				},
 			},
 		};
 
@@ -102,15 +99,13 @@ describe("TokenizerIntrospector", () => {
 	});
 
 	it("should provide token history", async () => {
-		const { tokenize, TokenizerIntrospector } = await import(
-			"./tokenizer.debug.js"
-		);
-
 		const input = "test";
-		const grammar = {
+		const grammar: Grammar = {
 			name: "simple",
 			states: {
-				main: [{ match: /\w+/, token: "word" }],
+				main: {
+					rules: [{ range: ["a", "z"], token: "word" }],
+				},
 			},
 		};
 
@@ -122,23 +117,21 @@ describe("TokenizerIntrospector", () => {
 		// Get history for first token
 		const tokenHistory = introspector.getTokenHistory(0);
 		expect(tokenHistory).not.toBeNull();
-		expect(tokenHistory.token.text).toBe("test");
-		expect(tokenHistory.history.length).toBeGreaterThan(0);
+		expect(tokenHistory?.token.value).toBe("test");
+		expect(tokenHistory?.history.length).toBeGreaterThan(0);
 	});
 
 	it("should find token at position", async () => {
-		const { tokenize, TokenizerIntrospector } = await import(
-			"./tokenizer.debug.js"
-		);
-
 		const input = "hello world";
-		const grammar = {
+		const grammar: Grammar = {
 			name: "simple",
 			states: {
-				main: [
-					{ match: /\w+/, token: "word" },
-					{ match: /\s+/, token: "space" },
-				],
+				main: {
+					rules: [
+						{ range: ["a", "z"], token: "word" },
+						{ match: [" ", "\t"], token: "space" },
+					],
+				},
 			},
 		};
 
@@ -150,28 +143,26 @@ describe("TokenizerIntrospector", () => {
 		// Position 0-4 should be "hello"
 		const token = introspector.getTokenAtPosition(2);
 		expect(token).not.toBeNull();
-		expect(token.text).toBe("hello");
+		expect(token?.value).toBe("hello");
 
 		// Position 6-10 should be "world"
 		const token2 = introspector.getTokenAtPosition(7);
 		expect(token2).not.toBeNull();
-		expect(token2.text).toBe("world");
+		expect(token2?.value).toBe("world");
 	});
 
 	it("should generate report", async () => {
-		const { tokenize, TokenizerIntrospector } = await import(
-			"./tokenizer.debug.js"
-		);
-
 		const input = "abc 123";
-		const grammar = {
+		const grammar: Grammar = {
 			name: "test",
 			states: {
-				main: [
-					{ match: /[a-z]+/, token: "letters" },
-					{ match: /\d+/, token: "number" },
-					{ match: /\s+/, token: "space" },
-				],
+				main: {
+					rules: [
+						{ range: ["a", "z"], token: "letters" },
+						{ range: ["0", "9"], token: "number" },
+						{ match: [" ", "\t"], token: "space" },
+					],
+				},
 			},
 		};
 
@@ -187,36 +178,33 @@ describe("TokenizerIntrospector", () => {
 		expect(report).toHaveProperty("topRules");
 	});
 
-	it("should compare debug and production versions", async () => {
-		// Import both
-		const debugModule = await import("./tokenizer.debug.js");
-		const prodModule = await import("./tokenizer.production.js");
+	// it("should compare debug and production versions", async () => {
 
-		const input = "test input";
-		const grammar = {
-			name: "simple",
-			states: {
-				main: [
-					{ match: /\w+/, token: "word" },
-					{ match: /\s+/, token: "space" },
-				],
-			},
-		};
+	// 	const input = "test input";
+	// 	const grammar = {
+	// 		name: "simple",
+	// 		states: {
+	// 			main: [
+	// 				{ match: /\w+/, token: "word" },
+	// 				{ match: /\s+/, token: "space" },
+	// 			],
+	// 		},
+	// 	};
 
-		const compiled = compile(grammar);
+	// 	const compiled = compile(grammar);
 
-		// Debug version with introspector
-		const introspector = new debugModule.TokenizerIntrospector();
-		const debugResult = debugModule.tokenize(input, compiled, introspector);
+	// 	// Debug version with introspector
+	// 	const introspector = new debugModule.TokenizerIntrospector();
+	// 	const debugResult = debugModule.tokenize(input, compiled, introspector);
 
-		// Production version (no introspector)
-		const prodResult = prodModule.tokenize(input, compiled);
+	// 	// Production version (no introspector)
+	// 	const prodResult = prodModule.tokenize(input, compiled);
 
-		// Both should produce identical tokens
-		expect(debugResult.tokens).toEqual(prodResult.tokens);
-		expect(debugResult.tokenTypes).toEqual(prodResult.tokenTypes);
+	// 	// Both should produce identical tokens
+	// 	expect(debugResult.tokens).toEqual(prodResult.tokens);
+	// 	expect(debugResult.tokenTypes).toEqual(prodResult.tokenTypes);
 
-		// But only debug version should have collected introspection data
-		expect(introspector.tokens.length).toBeGreaterThan(0);
-	});
+	// 	// But only debug version should have collected introspection data
+	// 	expect(introspector.tokens.length).toBeGreaterThan(0);
+	// });
 });

@@ -17,6 +17,7 @@ export interface GrammarRule {
 		escape?: string;
 	};
 	any?: boolean;
+	boundary?: boolean;
 	token?: string;
 	state?: string;
 	exit?: boolean;
@@ -39,6 +40,7 @@ export interface PatternInfo {
 	codes: Uint16Array;
 	length: number;
 	ruleIdx: number;
+	boundary?: boolean;
 }
 
 export interface CompiledGrammar {
@@ -55,6 +57,8 @@ export interface CompiledGrammar {
 	probeStates: Set<number>;
 	probeMask?: Uint8Array;
 	probeFallbacks?: Map<number, number>;
+	// Track which rules require boundary checking (state * 256 + ruleIdx)
+	boundaryRules?: Set<number>;
 }
 
 // Tokenizer types
@@ -142,6 +146,7 @@ export interface TokenInfo {
 	tokenName: string;
 	start: number;
 	end: number;
+	value?: string;
 	tokenIndex: number;
 	isFallback?: boolean;
 	isNonAscii?: boolean;
@@ -159,6 +164,24 @@ export interface RouteStep {
 	depth: number;
 	rule?: string | number | null;
 	tokenEmitted?: boolean;
+	// New fields for enhanced tracking
+	entryPosition?: number; // Where we entered this state
+	charactersProcessed?: number; // How many chars processed in this state
+	rulesApplied?: Array<{ rule: string; count: number }>; // Rules that kept us in state
+	isProbe?: boolean; // Whether this is a probe/ephemeral state
+}
+
+export interface StateSession {
+	stateName: string;
+	stateIndex: number;
+	entryPosition: number;
+	exitPosition?: number;
+	charactersProcessed: number;
+	rulesApplied: Map<string, number>; // Rule description -> count
+	isProbe: boolean;
+	depth: number;
+	entryRule?: string; // Rule that triggered entry
+	exitRule?: string; // Rule that triggered exit
 }
 
 export interface CompleteState {
@@ -177,6 +200,7 @@ export interface CompleteState {
 	allEventsAtPosition?: IntrospectorEvent[]; // All events at this position
 	recentHistory: IntrospectorEvent[];
 	totalEventsProcessed: number;
+	currentStateSession?: StateSession; // Current active state session
 }
 
 export interface TokenHistory {

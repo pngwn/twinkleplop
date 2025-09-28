@@ -3,7 +3,7 @@
 	import { TokenizerIntrospector } from '@twinkleplop/core/introspector';
 	import { GrammarMapper } from '@twinkleplop/core/grammar-mapper';
 	import type { RouteStep } from '@twinkleplop/core';
-	
+
 	import TestHeader from '$lib/components/TestHeader.svelte';
 	import CodePanel from '$lib/components/CodePanel.svelte';
 	import TokensPanel from '$lib/components/TokensPanel.svelte';
@@ -48,11 +48,16 @@
 		return mapper?.getFullRoute(introspector as any, position);
 	}
 
+	function getEnhancedRoute(position: number) {
+		// Use getCompleteRoute to show all states including probes
+		return mapper?.getCompleteRoute(introspector as any, position);
+	}
+
 	let analysis = $derived(getAnalysisAtPosition(position));
 
 	// Get only the current active route (from last time we returned to main)
 	let activeRoute = $derived.by(() => {
-		const route = getFullRoute(position);
+		const route = getEnhancedRoute(position);
 		if (!route) return [];
 
 		// Find the last occurrence where we're back at main (depth 0)
@@ -139,7 +144,12 @@
 </script>
 
 <div class="page-wrapper">
-	<TestHeader lang={data.lang} test={data.test} cssFiles={data.css_files} />
+	<TestHeader 
+		lang={data.lang} 
+		test={data.test} 
+		cssFiles={data.css_files}
+		allLanguages={data.allLanguages} 
+	/>
 
 	<div class="main-content">
 		<CodePanel bind:this={codePanelRef} {source} {tokens} onTokenClick={handleTokenClick} />
@@ -165,12 +175,12 @@
 			</div>
 
 			{#if rightPanelView === 'tokens' && source && tokens}
-				<TokensPanel 
+				<TokensPanel
 					bind:this={tokensPanelRef}
-					{source} 
-					{tokens} 
-					{selectedToken} 
-					onTokenSelect={handleTokenSelect} 
+					{source}
+					{tokens}
+					{selectedToken}
+					onTokenSelect={handleTokenSelect}
 				/>
 			{:else}
 				<RoutePanel {activeRoute} {position} rawGrammar={data.raw_grammar} />
@@ -192,9 +202,9 @@
 	.main-content {
 		flex: 1;
 		display: grid;
-		grid-template-columns: 1fr 350px;
+		grid-template-columns: 1fr 450px;
 		gap: 2rem;
-		padding: 1.5rem 0;
+		padding: 1rem 0;
 		overflow: hidden;
 		min-height: 0;
 	}

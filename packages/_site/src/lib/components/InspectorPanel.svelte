@@ -28,6 +28,7 @@
 		<div class="slider-section">
 			<!-- svelte-ignore a11y_label_has_associated_control -->
 			<label class="slider-label">Position</label>
+			<button onclick={() => onPositionChange(position - 1)}>-</button>
 			<input
 				type="range"
 				min="0"
@@ -36,6 +37,7 @@
 				oninput={handleScrub}
 				class="position-slider"
 			/>
+			<button onclick={() => onPositionChange(position + 1)}>+</button>
 			<span class="position-value">{position}/{source?.length ?? 1 - 1}</span>
 		</div>
 
