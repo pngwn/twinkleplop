@@ -2,8 +2,8 @@ import type { CompiledGrammar, PatternInfo, TokenizeResult } from "./types";
 import type { TokenizerIntrospector } from "./introspector";
 
 interface ProbeEntry {
-	pos: number;        // Original position for reset
-	entryPos: number;   // Position where probe was entered (after consuming match)
+	pos: number; // Original position for reset
+	entryPos: number; // Position where probe was entered (after consuming match)
 	state: number;
 	stackPtr: number;
 	ruleIdx: number;
@@ -15,10 +15,10 @@ declare const INTROSPECTION: boolean;
 function isIdentifierChar(charCode: number): boolean {
 	return (
 		(charCode >= 97 && charCode <= 122) || // a-z
-		(charCode >= 65 && charCode <= 90) ||  // A-Z
-		(charCode >= 48 && charCode <= 57) ||  // 0-9
-		charCode === 95 ||                     // _
-		charCode === 36                        // $
+		(charCode >= 65 && charCode <= 90) || // A-Z
+		(charCode >= 48 && charCode <= 57) || // 0-9
+		charCode === 95 || // _
+		charCode === 36 // $
 	);
 }
 
@@ -93,8 +93,10 @@ export function tokenize(
 		const char = input.charCodeAt(pos);
 		const startPos = pos;
 
-	// Compute probe-state membership for this iteration
-	let isInProbeState = probeMask ? !!probeMask[currentState] : !!(probeStates && probeStates.has(currentState));
+		// Compute probe-state membership for this iteration
+		let isInProbeState = probeMask
+			? !!probeMask[currentState]
+			: !!(probeStates && probeStates.has(currentState));
 
 		// INTROSPECTION_START
 		if (INTROSPECTION && introspector) {
@@ -107,6 +109,11 @@ export function tokenize(
 				stateStack: stateStack.slice(0, stackPtr),
 				probeMode: isInProbeState,
 			});
+			console.log("ptr", stackPtr);
+			if (stackPtr > 100) {
+				pos = len;
+				continue;
+			}
 		}
 		// INTROSPECTION_END
 
@@ -142,7 +149,7 @@ export function tokenize(
 									continue; // Skip this pattern and try next one
 								}
 							}
-							
+
 							// Check if this rule has failed before (only if we have failed probes)
 							if (hasFailedProbes) {
 								const testKey = (pos << 16) | (currentState << 8) | pat.ruleIdx;
@@ -174,7 +181,11 @@ export function tokenize(
 
 			if (charClass !== 255) {
 				// Check boundary for single-character matches if required
-				if (matchedRuleIdx === 255 && boundaryRules && boundaryRules.has(currentState * 256 + charClass)) {
+				if (
+					matchedRuleIdx === 255 &&
+					boundaryRules &&
+					boundaryRules.has(currentState * 256 + charClass)
+				) {
 					// This is a single-char match that requires boundary checking
 					if (pos + 1 < len) {
 						const nextChar = input.charCodeAt(pos + 1);
@@ -185,7 +196,7 @@ export function tokenize(
 					}
 				}
 			}
-			
+
 			if (charClass !== 255) {
 				const tBase = transBase3 + charClass * 3;
 				const transition = transitions[tBase];
@@ -202,7 +213,9 @@ export function tokenize(
 					targetState = transition;
 				}
 
-				const isTargetProbeState = probeMask ? !!probeMask[targetState] : !!(probeStates && probeStates.has(targetState));
+				const isTargetProbeState = probeMask
+					? !!probeMask[targetState]
+					: !!(probeStates && probeStates.has(targetState));
 
 				// INTROSPECTION_START
 				if (INTROSPECTION && introspector) {
@@ -225,8 +238,8 @@ export function tokenize(
 					// This is where the probe state will be entered
 					const probeEntryPos = pos + (matchedLength || 1);
 					probeEntry = {
-						pos: pos,  // Keep original pos for reset
-						entryPos: probeEntryPos,  // Position where probe is entered
+						pos: pos, // Keep original pos for reset
+						entryPos: probeEntryPos, // Position where probe is entered
 						state: currentState,
 						stackPtr: stackPtr,
 						ruleIdx: charClass,
@@ -318,16 +331,17 @@ export function tokenize(
 					stateBuckets = patterns && patterns.get(currentState);
 					charMapBase = currentState << 7; // *128
 					transBase3 = (currentState << 8) * 3; // *256*3
-					nonAsciiState = nonAsciiChars && (nonAsciiChars as any).get(currentState);
+					nonAsciiState =
+						nonAsciiChars && (nonAsciiChars as any).get(currentState);
 				} else if (stackOp === 2) {
 					// Exit operation - either pop to parent or sideways transition
 					const prevState = currentState;
-					
+
 					if (transition !== 255) {
 						// Sideways transition: exit current state and enter new sibling state
 						// The stack depth remains the same
 						currentState = transition;
-						
+
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
 							// Report as a transition, not a pop, since stack depth doesn't change
@@ -341,7 +355,7 @@ export function tokenize(
 					} else if (stackPtr > 0) {
 						// Regular exit: pop from stack to parent state
 						currentState = stateStack[--stackPtr];
-						
+
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
 							introspector.poppedState({
@@ -356,12 +370,13 @@ export function tokenize(
 						// Can't pop from empty stack - stay in current state
 						// This shouldn't normally happen in well-formed grammars
 					}
-					
+
 					// refresh caches
 					stateBuckets = patterns ? patterns.get(currentState) : undefined;
 					charMapBase = currentState << 7;
 					transBase3 = (currentState << 8) * 3;
-					nonAsciiState = nonAsciiChars && (nonAsciiChars as any).get(currentState);
+					nonAsciiState =
+						nonAsciiChars && (nonAsciiChars as any).get(currentState);
 				} else if (transition !== 255) {
 					const prevState = currentState;
 					currentState = transition;
@@ -378,7 +393,8 @@ export function tokenize(
 					stateBuckets = patterns && patterns.get(currentState);
 					charMapBase = currentState << 7;
 					transBase3 = (currentState << 8) * 3;
-					nonAsciiState = nonAsciiChars && (nonAsciiChars as any).get(currentState);
+					nonAsciiState =
+						nonAsciiChars && (nonAsciiChars as any).get(currentState);
 				}
 
 				// Check if exiting probe state
@@ -419,7 +435,8 @@ export function tokenize(
 					stateBuckets = patterns && patterns.get(currentState);
 					charMapBase = currentState << 7;
 					transBase3 = (currentState << 8) * 3;
-					nonAsciiState = nonAsciiChars && (nonAsciiChars as any).get(currentState);
+					nonAsciiState =
+						nonAsciiChars && (nonAsciiChars as any).get(currentState);
 				}
 
 				// Check if we've reached the end while in probe mode
@@ -439,7 +456,7 @@ export function tokenize(
 						// Push the state where probe was initiated so we can return to it
 						stateStack[probeEntry.stackPtr] = probeEntry.state;
 						stackPtr = probeEntry.stackPtr + 1;
-						
+
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
 							// Record the transition to fallback state
@@ -452,7 +469,7 @@ export function tokenize(
 							});
 						}
 						// INTROSPECTION_END
-						
+
 						currentState = fallbackState;
 						probeEntry = null;
 
@@ -510,7 +527,7 @@ export function tokenize(
 							pos = probeEntry.pos;
 							stateStack[probeEntry.stackPtr] = probeEntry.state;
 							stackPtr = probeEntry.stackPtr + 1;
-							
+
 							// INTROSPECTION_START
 							if (INTROSPECTION && introspector) {
 								// Record the transition to fallback state
@@ -523,7 +540,7 @@ export function tokenize(
 								});
 							}
 							// INTROSPECTION_END
-							
+
 							currentState = fallbackState;
 							probeEntry = null;
 
@@ -626,8 +643,8 @@ export function tokenize(
 					// Calculate where we'll be after consuming the match
 					const probeEntryPos = pos + (matchedLength || 1);
 					probeEntry = {
-						pos: pos,  // Keep original pos for reset
-						entryPos: probeEntryPos,  // Position where probe is entered
+						pos: pos, // Keep original pos for reset
+						entryPos: probeEntryPos, // Position where probe is entered
 						state: currentState,
 						stackPtr: stackPtr,
 						ruleIdx: matchedRuleIdx,
@@ -711,12 +728,12 @@ export function tokenize(
 				} else if (stackOp === 2) {
 					// Exit operation - either pop to parent or sideways transition
 					const prevState = currentState;
-					
+
 					if (transition !== 255) {
 						// Sideways transition: exit current state and enter new sibling state
 						// The stack depth remains the same
 						currentState = transition;
-						
+
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
 							// Report as a transition, not a pop, since stack depth doesn't change
@@ -730,7 +747,7 @@ export function tokenize(
 					} else if (stackPtr > 0) {
 						// Regular exit: pop from stack to parent state
 						currentState = stateStack[--stackPtr];
-						
+
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
 							introspector.poppedState({
@@ -745,7 +762,7 @@ export function tokenize(
 						// Can't pop from empty stack - stay in current state
 						// This shouldn't normally happen in well-formed grammars
 					}
-					
+
 					// refresh caches
 					stateBuckets = patterns ? patterns.get(currentState) : undefined;
 					charMapBase = currentState * 128;
@@ -881,12 +898,12 @@ export function tokenize(
 				} else if (stackOp === 2) {
 					// Exit operation - either pop to parent or sideways transition
 					const prevState = currentState;
-					
+
 					if (transition !== 255) {
 						// Sideways transition: exit current state and enter new sibling state
 						// The stack depth remains the same
 						currentState = transition;
-						
+
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
 							// Report as a transition, not a pop, since stack depth doesn't change
@@ -900,7 +917,7 @@ export function tokenize(
 					} else if (stackPtr > 0) {
 						// Regular exit: pop from stack to parent state
 						currentState = stateStack[--stackPtr];
-						
+
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
 							introspector.poppedState({
@@ -915,7 +932,7 @@ export function tokenize(
 						// Can't pop from empty stack - stay in current state
 						// This shouldn't normally happen in well-formed grammars
 					}
-					
+
 					// refresh caches
 					stateBuckets = patterns ? patterns.get(currentState) : undefined;
 					charMapBase = currentState * 128;
@@ -950,7 +967,7 @@ export function tokenize(
 							pos = probeEntry.pos;
 							stateStack[probeEntry.stackPtr] = probeEntry.state;
 							stackPtr = probeEntry.stackPtr + 1;
-							
+
 							// INTROSPECTION_START
 							if (INTROSPECTION && introspector) {
 								// Record the transition to fallback state
@@ -963,7 +980,7 @@ export function tokenize(
 								});
 							}
 							// INTROSPECTION_END
-							
+
 							currentState = fallbackState;
 							probeEntry = null;
 

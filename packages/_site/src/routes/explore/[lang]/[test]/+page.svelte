@@ -23,6 +23,7 @@
 	const introspector = $derived(
 		mapper &&
 			new TokenizerIntrospector({
+				log: console.log,
 				enhancedLogging: true, // This will log with readable names automatically
 				grammarMapper: mapper as any // Pass the mapper so introspector can use readable names
 			})
@@ -144,11 +145,11 @@
 </script>
 
 <div class="page-wrapper">
-	<TestHeader 
-		lang={data.lang} 
-		test={data.test} 
+	<TestHeader
+		lang={data.lang}
+		test={data.test}
 		cssFiles={data.css_files}
-		allLanguages={data.allLanguages} 
+		allLanguages={data.allLanguages}
 	/>
 
 	<div class="main-content">
