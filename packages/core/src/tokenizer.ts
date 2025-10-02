@@ -7,6 +7,9 @@ interface ProbeEntry {
 	state: number;
 	stackPtr: number;
 	ruleIdx: number;
+	probeState?: number;
+	resolvedState?: number;
+	resolvedPos?: number;
 }
 
 declare const INTROSPECTION: boolean;
@@ -217,6 +220,11 @@ export function tokenize(
 					? !!probeMask[targetState]
 					: !!(probeStates && probeStates.has(targetState));
 
+				if (isInProbeState && probeEntry && !isTargetProbeState) {
+					probeEntry.resolvedState = targetState;
+					probeEntry.resolvedPos = pos;
+				}
+
 				// INTROSPECTION_START
 				if (INTROSPECTION && introspector) {
 					introspector.matchedRule({
@@ -243,6 +251,7 @@ export function tokenize(
 						state: currentState,
 						stackPtr: stackPtr,
 						ruleIdx: charClass,
+						probeState: targetState, // Save the probe state we're entering
 					};
 					// INTROSPECTION_START
 					if (INTROSPECTION && introspector) {
@@ -301,11 +310,17 @@ export function tokenize(
 					pos = newEnd;
 				} else {
 					// No token to emit
-					// For sideways transitions (exit with state), we advance
-					// For regular exits, we don't advance (re-process in parent)
-					if (stackOp !== 2 || (stackOp === 2 && transition !== 255)) {
+					// For sideways transitions (exit with state), only advance if we matched a pattern
+					// For regular exits (pop to parent), don't advance (re-process in parent)
+					// For any: true rules with sideways transition, matchedLength is 0, so don't advance
+					if (stackOp !== 2) {
+						// Not an exit - advance by matched length
 						pos += matchedLength || 1;
+					} else if (stackOp === 2 && transition !== 255 && matchedLength > 0) {
+						// Sideways transition with an explicit pattern match - advance by pattern length
+						pos += matchedLength;
 					}
+					// Otherwise: exit without transition (pop), or sideways with no pattern match - don't advance
 				}
 
 				// Handle state transitions
@@ -314,17 +329,25 @@ export function tokenize(
 					const prevState = currentState;
 					currentState = transition;
 
+					if (isInProbeState && probeEntry) {
+						probeEntry.resolvedState = currentState;
+						probeEntry.resolvedPos = pos;
+					}
+
 					// INTROSPECTION_START
 					if (INTROSPECTION && introspector) {
-						// Record the state push
-						// The entry position for the new state should be after the character that triggered the push
-						// pos has already been advanced by matchedLength or to newEnd if a token was emitted
-						introspector.pushedState({
-							fromState: prevState,
-							toState: currentState,
-							stackPtr,
-							pos: pos, // This is already the position after the matched character
-						});
+						// Record the state push only if not in probe mode
+						// If in probe mode, it will be recorded when probe exits
+						if (!isInProbeState) {
+							// The entry position for the new state should be after the character that triggered the push
+							// pos has already been advanced by matchedLength or to newEnd if a token was emitted
+							introspector.pushedState({
+								fromState: prevState,
+								toState: currentState,
+								stackPtr,
+								pos: pos, // This is already the position after the matched character
+							});
+						}
 					}
 					// INTROSPECTION_END
 					// refresh caches
@@ -341,6 +364,10 @@ export function tokenize(
 						// Sideways transition: exit current state and enter new sibling state
 						// The stack depth remains the same
 						currentState = transition;
+						const transitionPos =
+							isInProbeState && probeEntry?.resolvedPos !== undefined
+								? probeEntry.resolvedPos
+								: pos;
 
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
@@ -348,7 +375,7 @@ export function tokenize(
 							introspector.transitionedState({
 								fromState: prevState,
 								toState: currentState,
-								pos,
+								pos: transitionPos,
 							});
 						}
 						// INTROSPECTION_END
@@ -380,12 +407,16 @@ export function tokenize(
 				} else if (transition !== 255) {
 					const prevState = currentState;
 					currentState = transition;
+					const transitionPos =
+						isInProbeState && probeEntry?.resolvedPos !== undefined
+							? probeEntry.resolvedPos
+							: pos;
 					// INTROSPECTION_START
 					if (INTROSPECTION && introspector) {
 						introspector.transitionedState({
 							fromState: prevState,
 							toState: currentState,
-							pos,
+							pos: transitionPos,
 						});
 					}
 					// INTROSPECTION_END
@@ -418,16 +449,15 @@ export function tokenize(
 							currentState,
 							pos: probeEntry.pos,
 						});
-						// Record the transition from the original state to the final target state
-						// This should happen at the position where we entered the probe
-						// Use probeEntry.entryPos which is where the probe was entered
-						// We always use pushedState here because the probe was entered via a push
-						introspector.pushedState({
-							fromState: probeEntry.state,
-							toState: currentState,
-							stackPtr,
-							pos: probeEntry.entryPos,
-						});
+						// Record the push that happened inside probe mode, now with correct depth
+						if (stackOp === 1 && probeEntry.resolvedState) {
+							introspector.pushedState({
+								fromState: probeEntry.probeState ?? probeEntry.state,
+								toState: probeEntry.resolvedState,
+								stackPtr,
+								pos: probeEntry.resolvedPos ?? probeEntry.pos,
+							});
+						}
 					}
 					// INTROSPECTION_END
 					probeEntry = null; // Clear probe entry
@@ -648,6 +678,7 @@ export function tokenize(
 						state: currentState,
 						stackPtr: stackPtr,
 						ruleIdx: matchedRuleIdx,
+						probeState: targetState,
 					};
 					// INTROSPECTION_START
 					if (INTROSPECTION && introspector) {
@@ -702,7 +733,14 @@ export function tokenize(
 					lastTokenEnd = newEnd;
 					pos = newEnd;
 				} else {
-					pos++;
+					// No token emitted - apply same logic as ASCII path
+					// For sideways transitions with no pattern match (any: true), don't advance
+					if (stackOp !== 2) {
+						pos++;
+					} else if (stackOp === 2 && transition !== 255) {
+						// Sideways transition - don't advance to let new state process the character
+					}
+					// Otherwise: regular exit (pop) - don't advance
 				}
 
 				// Handle state transitions (same as ASCII path)
@@ -711,14 +749,21 @@ export function tokenize(
 					const prevState = currentState;
 					currentState = transition;
 
+					if (isInProbeState && probeEntry) {
+						probeEntry.resolvedState = currentState;
+						probeEntry.resolvedPos = pos;
+					}
+
 					// INTROSPECTION_START
 					if (INTROSPECTION && introspector) {
-						introspector.pushedState({
-							fromState: prevState,
-							toState: currentState,
-							stackPtr,
-							pos,
-						});
+						if (!isInProbeState) {
+							introspector.pushedState({
+								fromState: prevState,
+								toState: currentState,
+								stackPtr,
+								pos,
+							});
+						}
 					}
 					// INTROSPECTION_END
 					// refresh caches
@@ -733,6 +778,10 @@ export function tokenize(
 						// Sideways transition: exit current state and enter new sibling state
 						// The stack depth remains the same
 						currentState = transition;
+						const transitionPos =
+							isInProbeState && probeEntry?.resolvedPos !== undefined
+								? probeEntry.resolvedPos
+								: pos;
 
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
@@ -740,7 +789,7 @@ export function tokenize(
 							introspector.transitionedState({
 								fromState: prevState,
 								toState: currentState,
-								pos,
+								pos: transitionPos,
 							});
 						}
 						// INTROSPECTION_END
@@ -770,12 +819,16 @@ export function tokenize(
 				} else if (transition !== 255) {
 					const prevState = currentState;
 					currentState = transition;
+					const transitionPos =
+						isInProbeState && probeEntry?.resolvedPos !== undefined
+							? probeEntry.resolvedPos
+							: pos;
 					// INTROSPECTION_START
 					if (INTROSPECTION && introspector) {
 						introspector.transitionedState({
 							fromState: prevState,
 							toState: currentState,
-							pos,
+							pos: transitionPos,
 						});
 					}
 					// INTROSPECTION_END
@@ -800,15 +853,14 @@ export function tokenize(
 							currentState,
 							pos: probeEntry.pos,
 						});
-						// Record the transition from the original state to the final target state
-						// This should happen at the position where we entered the probe
-						// We always use pushedState here because the probe was entered via a push
-						introspector.pushedState({
-							fromState: probeEntry.state,
-							toState: currentState,
-							stackPtr,
-							pos: probeEntry.entryPos,
-						});
+						if (stackOp === 1 && probeEntry.resolvedState) {
+							introspector.pushedState({
+								fromState: probeEntry.probeState ?? probeEntry.state,
+								toState: probeEntry.resolvedState,
+								stackPtr,
+								pos: probeEntry.resolvedPos ?? probeEntry.pos,
+							});
+						}
 					}
 					// INTROSPECTION_END
 					probeEntry = null;

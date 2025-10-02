@@ -26,7 +26,7 @@ export class TokenizerIntrospector {
 	compiledGrammar: CompiledGrammar | null = null;
 
 	initialState: number = 0;
-	
+
 	// State session tracking
 	stateSessions: StateSession[] = [];
 	currentStateSession: StateSession | null = null;
@@ -109,7 +109,7 @@ export class TokenizerIntrospector {
 		if (this.currentStateSession && !isNaN(char)) {
 			this.currentStateSession.charactersProcessed++;
 		}
-		
+
 		// Build the full state path (stack + current)
 		const fullStateStack = [];
 		for (let i = 0; i < stackPtr; i++) {
@@ -159,7 +159,7 @@ export class TokenizerIntrospector {
 		probeMode?: boolean;
 	}): void {
 		const ruleName = this._getRuleName(currentState, charClass);
-		
+
 		// Track rule usage in state session
 		// For probe states, only track the rule that causes the transition
 		if (this.currentStateSession) {
@@ -177,7 +177,7 @@ export class TokenizerIntrospector {
 				}
 			}
 		}
-		
+
 		const event: IntrospectorEvent = {
 			type: "MATCHED_RULE",
 			ruleIndex: charClass,
@@ -289,15 +289,15 @@ export class TokenizerIntrospector {
 		this._addToHistory(transition);
 		this._log("PUSHED_STATE", transition);
 		this.stateTransitions.push(transition);
-		
+
 		// Start new state session
 		if (this.currentStateSession) {
 			this.stateSessionStack.push(this.currentStateSession);
 		}
-		
+
 		// Check if the destination state is a probe state
 		const isProbeState = this._isProbeState(toState);
-		
+
 		this.currentStateSession = {
 			stateName: this._getStateName(toState),
 			stateIndex: toState,
@@ -326,7 +326,7 @@ export class TokenizerIntrospector {
 			this.currentStateSession.exitPosition = pos;
 			this.currentStateSession = this.stateSessionStack.pop() || null;
 		}
-		
+
 		const transition: IntrospectorEvent = {
 			type: "POPPED_STATE",
 			fromState: this._getStateName(fromState),
@@ -372,7 +372,7 @@ export class TokenizerIntrospector {
 			};
 			this.stateSessions.push(this.currentStateSession);
 		}
-		
+
 		const transition: IntrospectorEvent = {
 			type: "TRANSITIONED_STATE",
 			fromState: this._getStateName(fromState),
@@ -404,7 +404,7 @@ export class TokenizerIntrospector {
 		if (this.currentStateSession) {
 			this.currentStateSession.isProbe = true;
 		}
-		
+
 		const event: IntrospectorEvent = {
 			type: "ENTER_PROBE",
 			ruleIndex: charClass,
@@ -629,7 +629,7 @@ export class TokenizerIntrospector {
 
 		for (const event of this.history) {
 			const eventPos = event.pos !== undefined && event.pos !== null ? event.pos : 0;
-			
+
 			// Skip events that are beyond our target position
 			if (eventPos > pos) continue;
 
@@ -643,19 +643,19 @@ export class TokenizerIntrospector {
 
 			if (event.type === "PUSHED_STATE") {
 				// Get the actual from state from the event, or use lastState as fallback
-				const fromState = event.fromStateIndex !== undefined 
-					? event.fromStateIndex 
-					: event.fromState !== undefined 
-						? event.fromState 
+				const fromState = event.fromStateIndex !== undefined
+					? event.fromStateIndex
+					: event.fromState !== undefined
+						? event.fromState
 						: lastState;
-				
+
 				// Push current state to stack and move to new state
 				stateStack[stackPtr] = fromState;
 				stackPtr++;
-				const toState = event.toStateIndex !== undefined 
-					? event.toStateIndex 
-					: event.toState !== undefined 
-						? event.toState 
+				const toState = event.toStateIndex !== undefined
+					? event.toStateIndex
+					: event.toState !== undefined
+						? event.toState
 						: currentState;
 				currentState = toState;
 
@@ -671,7 +671,7 @@ export class TokenizerIntrospector {
 					rule: lastMatchedRule,
 					tokenEmitted: lastTokenEmitted,
 				};
-				
+
 				// Replace any existing step at this position
 				latestStepsAtPosition.set(eventPos, step);
 				lastState = currentState;
@@ -743,15 +743,15 @@ export class TokenizerIntrospector {
 				if (step) route.push(step);
 			}
 		}
-		
+
 		return route;
 	}
-	
+
 	// Get the complete route including probe states and resolutions
 	getCompleteRouteToPosition(pos: number): RouteStep[] {
 		const route: RouteStep[] = [];
 		const stepsAtPosition = new Map<number, RouteStep[]>();
-		
+
 		let currentState = this.initialState;
 		let stateStack: number[] = [];
 		let stackPtr = 0;
@@ -773,7 +773,7 @@ export class TokenizerIntrospector {
 		// This ensures we capture probe resolutions that are recorded later
 		for (const event of this.history) {
 			const eventPos = event.pos !== undefined && event.pos !== null ? event.pos : 0;
-			
+
 			// Skip events beyond our target position
 			if (eventPos > pos) continue;
 
@@ -786,21 +786,21 @@ export class TokenizerIntrospector {
 			}
 
 			if (event.type === "PUSHED_STATE") {
-				const fromState = event.fromStateIndex !== undefined 
-					? event.fromStateIndex 
-					: event.fromState !== undefined 
-						? event.fromState 
+				const fromState = event.fromStateIndex !== undefined
+					? event.fromStateIndex
+					: event.fromState !== undefined
+						? event.fromState
 						: lastState;
-				
-				const toState = event.toStateIndex !== undefined 
-					? event.toStateIndex 
-					: event.toState !== undefined 
-						? event.toState 
+
+				const toState = event.toStateIndex !== undefined
+					? event.toStateIndex
+					: event.toState !== undefined
+						? event.toState
 						: currentState;
-				
+
 				// Use the actual depth from the event if available
 				const actualDepth = event.stackDepth !== undefined ? event.stackDepth : stackPtr + 1;
-				
+
 				// Update our tracking
 				currentState = toState;
 				stackPtr = actualDepth;
@@ -824,7 +824,7 @@ export class TokenizerIntrospector {
 					stepsAtPosition.set(eventPos, []);
 				}
 				stepsAtPosition.get(eventPos)!.push(step);
-				
+
 				lastState = currentState;
 				lastMatchedRule = null;
 				lastTokenEmitted = false;
@@ -836,13 +836,13 @@ export class TokenizerIntrospector {
 					: typeof event.toState === "number"
 						? event.toState
 						: currentState;
-				
+
 				// Use the actual depth from the event if available
 				const actualDepth = event.stackDepth !== undefined ? event.stackDepth : Math.max(0, stackPtr - 1);
-				
+
 				currentState = toState;
 				stackPtr = actualDepth;
-				
+
 				const step = {
 					type: "POP" as const,
 					from: poppedFrom,
@@ -854,12 +854,12 @@ export class TokenizerIntrospector {
 					rule: lastMatchedRule,
 					tokenEmitted: lastTokenEmitted,
 				};
-				
+
 				if (!stepsAtPosition.has(eventPos)) {
 					stepsAtPosition.set(eventPos, []);
 				}
 				stepsAtPosition.get(eventPos)!.push(step);
-				
+
 				lastState = currentState;
 				lastMatchedRule = null;
 				lastTokenEmitted = false;
@@ -886,12 +886,12 @@ export class TokenizerIntrospector {
 							? event.tokenEmitted
 							: lastTokenEmitted,
 				};
-				
+
 				if (!stepsAtPosition.has(eventPos)) {
 					stepsAtPosition.set(eventPos, []);
 				}
 				stepsAtPosition.get(eventPos)!.push(step);
-				
+
 				currentState = toState;
 				lastState = toState;
 				lastMatchedRule = null;
@@ -901,29 +901,21 @@ export class TokenizerIntrospector {
 
 		// Build final route from all steps at each position
 		const sortedPositions = Array.from(stepsAtPosition.keys()).sort((a, b) => a - b);
-		
+
 		// Track the last step to detect probe resolution patterns
 		let lastStep: RouteStep | null = null;
-		
+
 		for (const position of sortedPositions) {
 			if (position <= pos) {
 				const steps = stepsAtPosition.get(position);
 				if (steps) {
 					for (const step of steps) {
-						// Skip internal probe transitions (from probe state to non-probe state)
-						// These are implementation details of probe resolution
-						if (step.from !== undefined && 
-							this._isProbeState(step.from) && 
-							!this._isProbeState(step.to)) {
-							continue;
-						}
-						
 						route.push(step);
 					}
 				}
 			}
 		}
-		
+
 		return route;
 	}
 
@@ -938,7 +930,7 @@ export class TokenizerIntrospector {
 		}
 		return false;
 	}
-	
+
 	// Get the full route taken to reach a position, including all sideways transitions
 	getFullRouteToPosition(pos: number): RouteStep[] {
 		const route: RouteStep[] = [];
@@ -1059,7 +1051,7 @@ export class TokenizerIntrospector {
 		// Use latest route to handle probe re-processing
 		const basicRoute = this.getLatestRouteToPosition(pos);
 		const enhancedRoute: RouteStep[] = [];
-		
+
 		// Map state sessions by their entry position
 		// Use the latest session at each position
 		const sessionsByEntry = new Map<number, StateSession>();
@@ -1070,11 +1062,11 @@ export class TokenizerIntrospector {
 				sessionsByEntry.set(session.entryPosition, session);
 			}
 		}
-		
+
 		// Enhance each route step with session data
 		for (const step of basicRoute) {
 			const enhancedStep = { ...step };
-			
+
 			// Find the state session for this step
 			const session = sessionsByEntry.get(step.position);
 			if (session) {
@@ -1085,10 +1077,10 @@ export class TokenizerIntrospector {
 				);
 				enhancedStep.isProbe = session.isProbe;
 			}
-			
+
 			enhancedRoute.push(enhancedStep);
 		}
-		
+
 		return enhancedRoute;
 	}
 
@@ -1295,7 +1287,7 @@ export class TokenizerIntrospector {
 		if (mapper) {
 			return mapper.getStateName(stateIndex);
 		}
-		
+
 		// If we have a grammar passed directly (for tests)
 		if (this.grammar) {
 			const stateNames = Object.keys(this.grammar.states || {});

@@ -165,23 +165,28 @@ describe("Probe State Deduplication", () => {
 			TokenizerIntrospector,
 			{}
 		);
-		
+
 		const input = "foo()";
 		tokenize(input, compiled, introspector);
-		
+
 		// Get route at position 4 (where '(' triggers probe resolution)
 		const route = introspector.getCompleteRouteToPosition(4);
-		
+
+		console.log("\n=== Route to position 4 ===");
+		route.forEach((step, i) => {
+			console.log(`${i}: pos=${step.position} ${step.type} ${step.fromName || step.stateName} → ${step.toName}`);
+		});
+
 		// Find steps at position 4
 		const stepsAtPos4 = route.filter(step => step.position === 4);
-		
+
 		// Should have the probe resolution: identifier_probe → function_name
 		const probeResolution = stepsAtPos4.find(
 			step => step.fromName === "identifier_probe" && step.toName === "function_name"
 		);
 		expect(probeResolution).toBeDefined();
 		expect(probeResolution.type).toBe("PUSH");
-		
+
 		// And then transition to function_body
 		const transitionToBody = stepsAtPos4.find(
 			step => step.toName === "function_body"

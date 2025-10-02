@@ -149,11 +149,10 @@ describe("Latest Route Tracking", () => {
 			const introspector = new TokenizerIntrospector({ grammarMapper: mapper });
 			
 			tokenize("test123", compiled, introspector);
-			
 			// Position 4 is after "test", should be in test_number not test_probe
 			const route = introspector.getLatestRouteToPosition(4);
 			const relevantStep = route.find(step => step.position === 4);
-			
+
 			expect(relevantStep).toBeDefined();
 			expect(relevantStep!.toName).toBe("test_number");
 			

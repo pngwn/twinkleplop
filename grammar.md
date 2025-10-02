@@ -14,6 +14,7 @@ The first state defined in the states object is implicitly the initial state for
 ```JSON
 {
   "name": "javascript",
+  "groups": { ... },
   "states": {
     "main": {
       "rules": [ /* rules for the main state */ ],
@@ -25,11 +26,11 @@ The first state defined in the states object is implicitly the initial state for
 }
 ```
 
-### 3.2. Rule Object Structure
+### Rule Object Structure
 
 Each state is defined by an array of rule objects. The engine evaluates these rules in the order they appear in the array. A rule object can contain the following properties:
 
-#### 3.2.1. Matchers
+#### Matchers
 
 A rule must contain exactly one matcher property:
 
@@ -42,7 +43,7 @@ A rule must contain exactly one matcher property:
 - `match_within`: matches between two delimeters with an optonal escape character.
   - `{ match_within: { begin: "'", end: "'", escape: "\\"}, token: "string" }`
 
-#### 3.2.2. Actions
+#### Actions
 
 A rule specifies actions to be taken upon a successful match:
 
@@ -51,7 +52,7 @@ A rule specifies actions to be taken upon a successful match:
 - `"exit"`: A pop operation. `exit` can only be `true`.
   - `{ "match": "}", "token": "punctuation", "exit": true }`
 
-#### 3.2.3 Triggering modes to handle ambiguity
+#### Triggering modes to handle ambiguity
 
 A rule can optionally have a `mode` property that determines the behaviour of the tokenizer. This can be `tokenize` and `probe`
 
@@ -125,15 +126,15 @@ a:hover one two three {
 }
 ```
 
-### 3.3. Handling Ambiguity
+### Handling Ambiguity
 
 - _Maximal Munch Principle:_ For ambiguities where one token is a prefix of another (e.g., `>` vs. `>>`, `#if` vs. `#ifdef`), the engine must adhere to the "longest match" rule. Character lookahead (10,568 ops/sec) outperforms complex trie matching (1,794 ops/sec) by 5.9x. Order rules from longest to shortest and use simple character lookahead.
 - _Contextual Ambiguity:_ For ambiguities where a token's role depends on what follows it (e.g., CSS nested selectors), using the `mode` option to probe the state is utilised.
 
-### 4.2. Whitespace Handling
+### Whitespace Handling
 
 Whitespace between tokens is handled implicitly by the runtime engine and should be ignored.
 
-## 5. Token Naming Convention
+## Token Naming Convention
 
 The system adopts a simple, flat token naming convention, avoiding the complexity of dot-separated hierarchical scopes found in TextMate.9 Standard token names like `keyword`, `string`, `comment`, `number`, `operator`, `punctuation`, `property`, and `selector` are encouraged. This aligns with modern systems like VS Code's semantic highlighting and simplifies the creation of themes.

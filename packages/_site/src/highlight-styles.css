@@ -32,12 +32,12 @@ pre[class*='language-'] {
 }
 
 ::highlight(comment) {
-	color: #6b7280;
+	color: #5c6773;
 	font-style: italic;
 }
 
 ::highlight(string) {
-	color: #84cc16;
+	color: #b8cc52;
 }
 
 ::highlight(symbol) {
@@ -45,7 +45,7 @@ pre[class*='language-'] {
 }
 
 ::highlight(regex) {
-	color: #22d3ee;
+	color: #95e6cb;
 }
 
 ::highlight(char) {
@@ -58,7 +58,7 @@ pre[class*='language-'] {
 }
 
 ::highlight(number) {
-	color: #c084fc;
+	color: #d2a6ff;
 }
 
 ::highlight(builtin) {
@@ -66,13 +66,16 @@ pre[class*='language-'] {
 }
 
 ::highlight(variable),
-::highlight(id) {
-	color: #e4e4e7;
+::highlight(id),
+::highlight(identifier) {
+	color: #bfbdb6;
 }
 
-::highlight(keyword),
+::highlight(keyword) {
+	color: #ff7733;
+}
 ::highlight(operator) {
-	color: #fb923c;
+	color: #f29668;
 }
 
 ::highlight(punctuation) {
@@ -80,7 +83,7 @@ pre[class*='language-'] {
 }
 
 ::highlight(function) {
-	color: #fbbf24;
+	color: #ffb454;
 }
 
 ::highlight(attr-name) {

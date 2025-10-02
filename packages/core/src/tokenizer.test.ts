@@ -125,6 +125,7 @@ describe("tokenize - basic functionality", () => {
 		const tokens = getTokens(result);
 		expect(tokens).toEqual([{ type: "special", start: 0, end: 1 }]);
 	});
+
 });
 
 describe("tokenize - character ranges", () => {
@@ -198,6 +199,7 @@ describe("tokenize - character ranges", () => {
 			{ type: "word", start: 6, end: 11 },
 		]);
 	});
+
 });
 
 describe("tokenize - multiple character matches", () => {
@@ -461,6 +463,60 @@ describe("probe mode - basic functionality", () => {
 			{ type: "identifier_context", value: "test" },
 			{ type: "space", value: " " },
 			{ type: "identifier", value: "abc" },
+		]);
+	});
+
+	test("sideways exits inside probe skip stack restoration", () => {
+		const baseGrammar: Grammar = {
+			name: "probe-exit",
+			states: {
+				main: {
+					rules: [
+						{ match: "a", state: "probe_identifier" },
+						{ match: "c", token: "main_c" },
+					],
+				},
+				probe_identifier: {
+					mode: "probe",
+					fallback: "property",
+					rules: [
+						{ match: "!", state: "selector" },
+						{ match: ";", state: "property" },
+					],
+				},
+				selector: {
+					rules: [
+						{ match: "a", token: "selector_a" },
+						{ match: "b", token: "selector_b" },
+						{ match: "!", token: "selector_bang", exit: true },
+					],
+				},
+				property: {
+					rules: [
+						{ match: "a", token: "property_a" },
+						{ match: ";", token: "property_end", exit: true },
+					],
+				},
+			},
+		};
+
+		const compiledPush = compile(baseGrammar);
+		const tokensWithPush = getTokens(tokenize("ab!c", compiledPush));
+		expect(tokensWithPush).toEqual([
+			{ type: "selector_a", start: 0, end: 1 },
+			{ type: "selector_b", start: 1, end: 2 },
+			{ type: "selector_bang", start: 2, end: 3 },
+			{ type: "main_c", start: 3, end: 4 },
+		]);
+
+		const sidewaysGrammar = JSON.parse(JSON.stringify(baseGrammar)) as Grammar;
+		(sidewaysGrammar.states.probe_identifier.rules[0] as { exit?: boolean }).exit = true;
+		const compiledSideways = compile(sidewaysGrammar);
+		const tokensWithSidewaysExit = getTokens(tokenize("ab!c", compiledSideways));
+		expect(tokensWithSidewaysExit).toEqual([
+			{ type: "selector_a", start: 0, end: 1 },
+			{ type: "selector_b", start: 1, end: 2 },
+			{ type: "selector_bang", start: 2, end: 3 },
 		]);
 	});
 });
