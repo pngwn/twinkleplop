@@ -1,4 +1,10 @@
-import type { Grammar, CompiledGrammar, PatternInfo } from "./types";
+import type {
+	Grammar,
+	CompiledGrammar,
+	PatternInfo,
+	GrammarState,
+	GrammarRule,
+} from "./types";
 import {
 	ASCII,
 	DIGIT,
@@ -13,6 +19,126 @@ import {
 	PUNCT,
 	CONTROL,
 } from "./constants";
+
+function cloneRules(rules: GrammarRule[] = []): GrammarRule[] {
+	return rules.map((rule) => ({ ...rule }));
+}
+
+function toArray(value?: string | string[]): string[] {
+	if (!value) {
+		return [];
+	}
+	return Array.isArray(value) ? value : [value];
+}
+
+// Expand group references and extend chains into concrete state definitions
+export function normalizeGrammar(grammar: Grammar): Grammar {
+	const hasGroups = Boolean(grammar.groups && Object.keys(grammar.groups).length);
+	const hasExtends = Object.values(grammar.states).some((state) => state.extend);
+	if (!hasGroups && !hasExtends) {
+		return grammar;
+	}
+
+	const groupCache = new Map<string, GrammarState>();
+	const resolving = new Set<string>();
+
+	const resolveGroup = (groupName: string): GrammarState => {
+		const cached = groupCache.get(groupName);
+		if (cached) {
+			return { ...cached, rules: cloneRules(cached.rules) };
+		}
+
+		const groups = grammar.groups || {};
+		const group = groups[groupName];
+		if (!group) {
+			throw new Error(`Unknown grammar group "${groupName}"`);
+		}
+
+		if (resolving.has(groupName)) {
+			throw new Error(`Circular grammar group dependency detected for "${groupName}"`);
+		}
+		resolving.add(groupName);
+
+		let inheritedMode: GrammarState["mode"] | undefined;
+		let inheritedFallback: string | undefined;
+		const inheritedRules: GrammarRule[] = [];
+
+		try {
+			for (const parentName of toArray(group.extend)) {
+				const parent = resolveGroup(parentName);
+				inheritedRules.push(...parent.rules);
+				if (inheritedMode === undefined && parent.mode !== undefined) {
+					inheritedMode = parent.mode;
+				}
+				if (inheritedFallback === undefined && parent.fallback !== undefined) {
+					inheritedFallback = parent.fallback;
+				}
+			}
+		} finally {
+			resolving.delete(groupName);
+		}
+
+		const groupRules = cloneRules(group.rules);
+		const resolved: GrammarState = {
+			rules: [...inheritedRules, ...groupRules],
+			mode: group.mode ?? inheritedMode,
+			fallback: group.fallback ?? inheritedFallback,
+		};
+
+		groupCache.set(groupName, {
+			rules: cloneRules(resolved.rules),
+			mode: resolved.mode,
+			fallback: resolved.fallback,
+		});
+
+		return {
+			rules: cloneRules(resolved.rules),
+			mode: resolved.mode,
+			fallback: resolved.fallback,
+		};
+	};
+
+	const normalizedStates: Record<string, GrammarState> = {};
+
+	for (const [stateName, originalState] of Object.entries(grammar.states)) {
+		const extendsList = toArray(originalState.extend);
+		const inheritedRules: GrammarRule[] = [];
+		let inheritedMode: GrammarState["mode"] | undefined;
+		let inheritedFallback: string | undefined;
+
+		for (const groupName of extendsList) {
+			const groupState = resolveGroup(groupName);
+			inheritedRules.push(...groupState.rules);
+			if (inheritedMode === undefined && groupState.mode !== undefined) {
+				inheritedMode = groupState.mode;
+			}
+			if (inheritedFallback === undefined && groupState.fallback !== undefined) {
+				inheritedFallback = groupState.fallback;
+			}
+		}
+
+		const { extend, rules, ...rest } = originalState;
+		const normalized: GrammarState = {
+			...rest,
+			rules: [...inheritedRules, ...cloneRules(rules)],
+		};
+
+		if (normalized.mode === undefined && inheritedMode !== undefined) {
+			normalized.mode = inheritedMode;
+		}
+		if (normalized.fallback === undefined && inheritedFallback !== undefined) {
+			normalized.fallback = inheritedFallback;
+		}
+
+		normalizedStates[stateName] = normalized;
+	}
+
+	return {
+		name: grammar.name,
+		states: normalizedStates,
+		groups: grammar.groups,
+	};
+}
 
 // Helper function to set character mapping
 function setCharMapping(
@@ -33,7 +159,8 @@ function setCharMapping(
 function preprocessGrammar(grammar: Grammar): Grammar {
 	const processedGrammar: Grammar = {
 		name: grammar.name,
-		states: { ...grammar.states }
+		states: { ...grammar.states },
+		groups: grammar.groups,
 	};
 	
 	// Track generated states
@@ -114,8 +241,9 @@ function preprocessGrammar(grammar: Grammar): Grammar {
 }
 
 export function compile(grammar: Grammar): CompiledGrammar {
+	const normalizedGrammar = normalizeGrammar(grammar);
 	// Preprocess grammar to expand match_within rules
-	const processedGrammar = preprocessGrammar(grammar);
+	const processedGrammar = preprocessGrammar(normalizedGrammar);
 	const stateNames = Object.keys(processedGrammar.states);
 	const stateMap = new Map<string, number>();
 	stateNames.forEach((name, idx) => stateMap.set(name, idx));

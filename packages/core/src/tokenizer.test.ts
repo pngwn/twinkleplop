@@ -241,6 +241,89 @@ describe("tokenize - multiple character matches", () => {
 	});
 });
 
+describe("tokenize - reusable groups", () => {
+	test("shares group rules across multiple states", () => {
+		const grammar: Grammar = {
+			name: "grouped",
+			groups: {
+				common: {
+					rules: [
+						{ match: [" ", "\t"], token: "whitespace" },
+						{ range: ["0", "9"], token: "number" },
+					],
+				},
+			},
+			states: {
+				root: {
+					extend: "common",
+					rules: [
+						{ match: "+", token: "operator" },
+						{ match: "-", token: "operator" },
+					],
+				},
+			},
+		};
+
+		const compiled = compile(grammar);
+		const input = "12 + 34-\t5";
+		const tokens = getTokensWithValues(tokenize(input, compiled), input);
+		expect(tokens).toEqual([
+			{ type: "number", value: "12" },
+			{ type: "whitespace", value: " " },
+			{ type: "operator", value: "+" },
+			{ type: "whitespace", value: " " },
+			{ type: "number", value: "34" },
+			{ type: "operator", value: "-" },
+			{ type: "whitespace", value: "\t" },
+			{ type: "number", value: "5" },
+		]);
+	});
+
+	test("inherits nested group configuration with transitions", () => {
+		const grammar: Grammar = {
+			name: "grouped",
+			groups: {
+				whitespace: {
+					rules: [{ match: " ", token: "space" }],
+				},
+				numeric: {
+					extend: "whitespace",
+					rules: [{ range: ["0", "9"], token: "number" }],
+				},
+			},
+			states: {
+				root: {
+					extend: "numeric",
+					rules: [
+						{ match: "(", token: "paren.open", state: "inner" },
+						{ match: ")", token: "paren.close" },
+					],
+				},
+				inner: {
+					extend: "numeric",
+					rules: [
+						{ match: ")", token: "paren.close", exit: true },
+						{ match: "+", token: "operator" },
+					],
+				},
+			},
+		};
+
+		const compiled = compile(grammar);
+		const input = "(1 + 2)";
+		const tokens = getTokensWithValues(tokenize(input, compiled), input);
+		expect(tokens).toEqual([
+			{ type: "paren.open", value: "(" },
+			{ type: "number", value: "1" },
+			{ type: "space", value: " " },
+			{ type: "operator", value: "+" },
+			{ type: "space", value: " " },
+			{ type: "number", value: "2" },
+			{ type: "paren.close", value: ")" },
+		]);
+	});
+});
+
 describe("tokenize - state transitions", () => {
 	test("transitions to new state", () => {
 		const grammar: Grammar = {

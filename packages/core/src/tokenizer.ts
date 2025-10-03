@@ -112,7 +112,6 @@ export function tokenize(
 				stateStack: stateStack.slice(0, stackPtr),
 				probeMode: isInProbeState,
 			});
-			console.log("ptr", stackPtr);
 			if (stackPtr > 100) {
 				pos = len;
 				continue;

@@ -23,7 +23,6 @@ describe("TokenizerIntrospector", () => {
 		const introspector = new TokenizerIntrospector();
 
 		const result = tokenize(input, compiled, introspector);
-		console.log(introspector.tokens);
 		// Should have 3 tokens: "hello", " ", "world"
 		expect(result.tokens.length).toBe(9); // 3 tokens * 3 values each
 

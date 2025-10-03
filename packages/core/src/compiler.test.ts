@@ -3,6 +3,91 @@ import { compile } from "./compiler";
 import { Grammar } from "./types";
 
 describe("compile", () => {
+	it("should expand reusable group rules into consuming states", () => {
+		const grammar: Grammar = {
+			name: "test",
+			groups: {
+				shared: {
+					rules: [
+						{
+							match: "a",
+							token: "letter-a",
+						},
+					],
+				},
+			},
+			states: {
+				root: {
+					extend: "shared",
+					rules: [
+						{
+							match: "b",
+							token: "letter-b",
+						},
+					],
+				},
+			},
+		};
+
+		const compiled = compile(grammar);
+		const rootState = compiled.states.get("root");
+		expect(rootState).toBe(0);
+
+		const charCodeA = "a".charCodeAt(0);
+		const charCodeB = "b".charCodeAt(0);
+
+		expect(compiled.charMaps[rootState! * 128 + charCodeA]).not.toBe(255);
+		expect(compiled.charMaps[rootState! * 128 + charCodeB]).not.toBe(255);
+		expect(new Set(compiled.tokenTypes)).toEqual(new Set(["letter-a", "letter-b"]));
+	});
+
+	it("should inherit mode and fallback metadata from groups", () => {
+		const grammar: Grammar = {
+			name: "test",
+			groups: {
+				probing: {
+					mode: "probe",
+					fallback: "value",
+					rules: [
+						{
+							match: "?",
+							state: "value",
+						},
+					],
+				},
+			},
+			states: {
+				root: {
+					extend: "probing",
+					rules: [
+						{
+							match: "=",
+							token: "equals",
+							exit: true,
+						},
+					],
+				},
+				value: {
+					rules: [
+						{
+							range: ["0", "9"],
+							token: "digit",
+						},
+					],
+				},
+			},
+		};
+
+		const compiled = compile(grammar);
+		const rootState = compiled.states.get("root");
+		const valueState = compiled.states.get("value");
+
+		expect(rootState).toBeDefined();
+		expect(valueState).toBeDefined();
+		expect(compiled.probeStates.has(rootState!)).toBe(true);
+		expect(compiled.probeFallbacks?.get(rootState!)).toBe(valueState);
+	});
+
 	it("should compile a simple grammar", () => {
 		const grammar: Grammar = {
 			name: "test",

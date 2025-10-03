@@ -41,7 +41,6 @@ describe("Whitespace Grammar", () => {
 		const testName = input_files[i][0].replace(".css", "");
 		it(`should tokenize ${testName}`, () => {
 			const tokens = getTokens(input_files[i][1]);
-			console.log(tokens);
 			expect(tokens).toEqual(output_files[i][1]);
 		});
 	}

@@ -27,10 +27,12 @@ export interface GrammarState {
 	rules: GrammarRule[];
 	mode?: "probe" | "tokenise";
 	fallback?: string;
+	extend?: string | string[];
 }
 
 export interface Grammar {
 	name?: string;
+	groups?: Record<string, GrammarState>;
 	states: Record<string, GrammarState>;
 }
 

@@ -106,22 +106,24 @@ describe("Probe State Deduplication", () => {
 			TokenizerIntrospector,
 			{}
 		);
-		
+
 		const input = "foo()";
 		tokenize(input, compiled, introspector);
-		
+
 		// Verify introspector recorded events
 		expect(introspector.history.length).toBeGreaterThan(0);
 		expect(introspector.stateTransitions.length).toBeGreaterThan(0);
 		expect(introspector.tokens.length).toBe(2); // 'foo' and '()'
-		
+
 		// Verify we have PUSHED_STATE events
-		const pushedStates = introspector.history.filter(e => e.type === "PUSHED_STATE");
+		const pushedStates = introspector.history.filter(
+			(e) => e.type === "PUSHED_STATE"
+		);
 		expect(pushedStates.length).toBeGreaterThan(0);
-		
+
 		// Verify probe events were recorded
-		const probeEvents = introspector.history.filter(e => 
-			e.type === "ENTER_PROBE" || e.type === "EXIT_PROBE"
+		const probeEvents = introspector.history.filter(
+			(e) => e.type === "ENTER_PROBE" || e.type === "EXIT_PROBE"
 		);
 		expect(probeEvents.length).toBeGreaterThan(0);
 	});
@@ -133,31 +135,31 @@ describe("Probe State Deduplication", () => {
 			TokenizerIntrospector,
 			{}
 		);
-		
+
 		const input = "foo()";
 		tokenize(input, compiled, introspector);
-		
+
 		// Get the complete route at position 1 (where probe enters)
 		const route = introspector.getCompleteRouteToPosition(1);
-		
+
 		// Find all PUSH steps at position 1
 		const pushesAtPos1 = route.filter(
-			step => step.position === 1 && step.type === "PUSH"
+			(step) => step.position === 1 && step.type === "PUSH"
 		);
-		
+
 		// We should have exactly one PUSH at position 1: main → identifier_probe
 		expect(pushesAtPos1.length).toBe(1);
 		expect(pushesAtPos1[0].fromName).toBe("main");
 		expect(pushesAtPos1[0].toName).toBe("identifier_probe");
 		expect(pushesAtPos1[0].isProbe).toBe(true);
-		
+
 		// There should NOT be a duplicate "main → function_name" at position 1
 		const duplicatePush = pushesAtPos1.find(
-			step => step.fromName === "main" && step.toName === "function_name"
+			(step) => step.fromName === "main" && step.toName === "function_name"
 		);
 		expect(duplicatePush).toBeUndefined();
 	});
-	
+
 	it("should correctly show probe resolution at position 4", () => {
 		const compiled = compile(grammar);
 		const mapper = createGrammarMapper(grammar, compiled);
@@ -172,29 +174,25 @@ describe("Probe State Deduplication", () => {
 		// Get route at position 4 (where '(' triggers probe resolution)
 		const route = introspector.getCompleteRouteToPosition(4);
 
-		console.log("\n=== Route to position 4 ===");
-		route.forEach((step, i) => {
-			console.log(`${i}: pos=${step.position} ${step.type} ${step.fromName || step.stateName} → ${step.toName}`);
-		});
-
 		// Find steps at position 4
-		const stepsAtPos4 = route.filter(step => step.position === 4);
+		const stepsAtPos4 = route.filter((step) => step.position === 4);
 
 		// Should have the probe resolution: identifier_probe → function_name
 		const probeResolution = stepsAtPos4.find(
-			step => step.fromName === "identifier_probe" && step.toName === "function_name"
+			(step) =>
+				step.fromName === "identifier_probe" && step.toName === "function_name"
 		);
 		expect(probeResolution).toBeDefined();
-		expect(probeResolution.type).toBe("PUSH");
+		expect(probeResolution?.type).toBe("PUSH");
 
 		// And then transition to function_body
 		const transitionToBody = stepsAtPos4.find(
-			step => step.toName === "function_body"
+			(step) => step.toName === "function_body"
 		);
 		expect(transitionToBody).toBeDefined();
-		expect(transitionToBody.type).toBe("TRANSITION");
+		expect(transitionToBody?.type).toBe("TRANSITION");
 	});
-	
+
 	it("should not have duplicate consecutive states in the route", () => {
 		const compiled = compile(grammar);
 		const mapper = createGrammarMapper(grammar, compiled);
@@ -202,26 +200,30 @@ describe("Probe State Deduplication", () => {
 			TokenizerIntrospector,
 			{}
 		);
-		
+
 		const input = "foo()";
 		tokenize(input, compiled, introspector);
-		
+
 		// Check all positions
 		for (let pos = 0; pos <= input.length; pos++) {
 			const route = introspector.getCompleteRouteToPosition(pos);
-			
+
 			// Check for duplicate consecutive entries
 			for (let i = 1; i < route.length; i++) {
 				const prev = route[i - 1];
 				const curr = route[i];
-				
+
 				// Should not have two consecutive PUSHes to the same state from the same source at the same position
-				if (prev.position === curr.position &&
-					prev.type === "PUSH" && curr.type === "PUSH" &&
-					prev.from === curr.from && prev.to === curr.to) {
+				if (
+					prev.position === curr.position &&
+					prev.type === "PUSH" &&
+					curr.type === "PUSH" &&
+					prev.from === curr.from &&
+					prev.to === curr.to
+				) {
 					throw new Error(
 						`Duplicate PUSH found at position ${curr.position}: ` +
-						`${curr.fromName} → ${curr.toName}`
+							`${curr.fromName} → ${curr.toName}`
 					);
 				}
 			}
@@ -235,15 +237,15 @@ describe("Probe State Deduplication", () => {
 			TokenizerIntrospector,
 			{}
 		);
-		
+
 		const input = "foo()";
 		tokenize(input, compiled, introspector);
-		
+
 		// Check depth tracking at each position
 		for (let pos = 0; pos <= input.length; pos++) {
 			const route = introspector.getCompleteRouteToPosition(pos);
-			const depths = route.map(s => s.depth);
-			
+			const depths = route.map((s) => s.depth);
+
 			// Verify depths don't jump by more than 1
 			for (let i = 1; i < depths.length; i++) {
 				const depthDiff = depths[i] - depths[i - 1];
@@ -252,7 +254,7 @@ describe("Probe State Deduplication", () => {
 			}
 		}
 	});
-	
+
 	it("should show the actual state transitions after probe resolution", () => {
 		const compiled = compile(grammar);
 		const mapper = createGrammarMapper(grammar, compiled);
@@ -260,37 +262,21 @@ describe("Probe State Deduplication", () => {
 			TokenizerIntrospector,
 			{}
 		);
-		
+
 		const input = "foo()";
 		tokenize(input, compiled, introspector);
-		
-		// Debug: Let's see what's actually happening
-		console.log("\n=== Raw PUSHED_STATE events ===");
-		const pushEvents = introspector.history.filter(e => e.type === "PUSHED_STATE");
-		pushEvents.forEach(event => {
-			console.log(`pos=${event.pos} PUSH ${event.fromState} → ${event.toState} (depth: ${event.stackDepth})`);
-		});
-		
-		console.log("\n=== Full route to end of input ===");
+
 		const fullRoute = introspector.getCompleteRouteToPosition(input.length);
-		fullRoute.forEach((step, i) => {
-			console.log(`${i}: pos=${step.position} ${step.type} ${step.fromName || ''} → ${step.toName || step.stateName || ''} (depth: ${step.depth}, isProbe: ${step.isProbe})`);
-		});
-		
-		// We should see function_name state somewhere in the route
-		const functionNameSteps = fullRoute.filter(step => 
-			step.toName === "function_name" || step.fromName === "function_name"
+
+		const functionNameSteps = fullRoute.filter(
+			(step) =>
+				step.toName === "function_name" || step.fromName === "function_name"
 		);
-		
-		console.log(`\n=== function_name appearances ===`);
-		functionNameSteps.forEach(step => {
-			console.log(`pos=${step.position} ${step.type}: ${step.fromName} → ${step.toName}`);
-		});
-		
+
 		// We MUST have function_name in our route (it's where the function token is emitted)
 		expect(functionNameSteps.length).toBeGreaterThan(0);
 	});
-	
+
 	it("should maintain correct state path sequence", () => {
 		const compiled = compile(grammar);
 		const mapper = createGrammarMapper(grammar, compiled);
@@ -298,15 +284,15 @@ describe("Probe State Deduplication", () => {
 			TokenizerIntrospector,
 			{}
 		);
-		
+
 		const input = "foo()";
 		tokenize(input, compiled, introspector);
-		
+
 		// Get the full route
 		const route = introspector.getCompleteRouteToPosition(input.length);
-		
+
 		// Extract state sequence
-		const stateSequence = [];
+		const stateSequence: (string | undefined)[] = [];
 		for (const step of route) {
 			if (step.type === "START") {
 				stateSequence.push(step.stateName);
@@ -316,14 +302,14 @@ describe("Probe State Deduplication", () => {
 				stateSequence.push(step.toName);
 			}
 		}
-		
+
 		// Expected sequence for "foo()":
 		// main → identifier_probe → function_name → function_body
 		expect(stateSequence).toEqual([
 			"main",
 			"identifier_probe",
 			"function_name",
-			"function_body"
+			"function_body",
 		]);
 	});
 });

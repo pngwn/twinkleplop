@@ -131,6 +131,41 @@ a:hover one two three {
 - _Maximal Munch Principle:_ For ambiguities where one token is a prefix of another (e.g., `>` vs. `>>`, `#if` vs. `#ifdef`), the engine must adhere to the "longest match" rule. Character lookahead (10,568 ops/sec) outperforms complex trie matching (1,794 ops/sec) by 5.9x. Order rules from longest to shortest and use simple character lookahead.
 - _Contextual Ambiguity:_ For ambiguities where a token's role depends on what follows it (e.g., CSS nested selectors), using the `mode` option to probe the state is utilised.
 
+### Reusing rules
+
+When design complex grammars you may find yourself reaching for the same rules again and again, while rules can simply ve pulled into a const and spread in various places, `twinkleplop` also has direct support for reusable blocks.
+
+You can define a reusable state in the top level `groups` field.
+
+```json
+{
+	"name": "javascript",
+	"groups": {
+		"resuable_state": {
+			"mode": "",
+			"rules": []
+		}
+	}
+}
+```
+
+These groups than then be used and extended in state definitions:
+
+```json
+{
+  "name": "javascript",
+  "groups": {
+    "reusable": { ... }
+   },
+  "states": {
+    "main": {
+      "extend": "resuable",
+      "rules": [ /* rules for the main state */ ],
+    },
+  }
+}
+```
+
 ### Whitespace Handling
 
 Whitespace between tokens is handled implicitly by the runtime engine and should be ignored.
