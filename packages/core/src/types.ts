@@ -24,8 +24,14 @@ export interface GrammarRule {
 	exit?: boolean;
 }
 
-export interface GrammarState {
+export interface Ruleset {
+	include?: string | string[];
 	rules: GrammarRule[];
+}
+
+export interface GrammarState {
+	include?: string | string[];
+	rules?: GrammarRule[];
 	mode?: "probe" | "tokenise";
 	fallback?: string;
 	extend?: string | string[];
@@ -34,6 +40,7 @@ export interface GrammarState {
 export interface Grammar {
 	name?: string;
 	groups?: Record<string, GrammarState>;
+	rulesets?: Record<string, Ruleset>;
 	states: Record<string, GrammarState>;
 }
 

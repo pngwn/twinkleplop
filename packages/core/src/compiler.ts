@@ -4,6 +4,7 @@ import type {
 	PatternInfo,
 	GrammarState,
 	GrammarRule,
+	Ruleset,
 } from "./types";
 import {
 	ASCII,
@@ -29,6 +30,161 @@ function toArray(value?: string | string[]): string[] {
 		return [];
 	}
 	return Array.isArray(value) ? value : [value];
+}
+
+// Flatten a ruleset's include chain into a single ordered rule list (DFS, cycle-safe).
+function flattenRulesets(
+	rulesets: Record<string, Ruleset>,
+	stateNames: Set<string>,
+): Map<string, GrammarRule[]> {
+	const result = new Map<string, GrammarRule[]>();
+	const resolving: string[] = []; // ordered path for cycle reporting
+
+	const resolveRuleset = (name: string): GrammarRule[] => {
+		const cached = result.get(name);
+		if (cached) return cached;
+
+		if (resolving.includes(name)) {
+			const cycleStart = resolving.indexOf(name);
+			const cyclePath = [...resolving.slice(cycleStart), name].join(" → ");
+			throw new Error(`rule sets form a cycle: ${cyclePath}`);
+		}
+
+		const ruleset = rulesets[name];
+		if (!ruleset) {
+			throw new Error(`unknown rule set "${name}"`);
+		}
+
+		resolving.push(name);
+		const flat: GrammarRule[] = [];
+
+		for (const includeName of toArray(ruleset.include)) {
+			if (stateNames.has(includeName)) {
+				throw new Error(
+					`"${includeName}" refers to a tokeniser state; include accepts rule-set names only`,
+				);
+			}
+			if (!rulesets[includeName]) {
+				throw new Error(
+					`unknown rule set "${includeName}" in rule set "${name}"`,
+				);
+			}
+			flat.push(...resolveRuleset(includeName));
+		}
+
+		flat.push(...ruleset.rules);
+		resolving.pop();
+		result.set(name, flat);
+		return flat;
+	};
+
+	for (const name of Object.keys(rulesets)) {
+		resolveRuleset(name);
+	}
+
+	return result;
+}
+
+// Resolve `include` fields on states and rule sets into flat rule lists.
+// Must be called before normalizeGrammar.
+export function resolveIncludes(grammar: Grammar): Grammar {
+	const hasRulesets =
+		grammar.rulesets && Object.keys(grammar.rulesets).length > 0;
+	const hasStateIncludes = Object.values(grammar.states).some(
+		(s) => s.include,
+	);
+	if (!hasRulesets && !hasStateIncludes) return grammar;
+
+	const stateNames = new Set(Object.keys(grammar.states));
+	const flatRulesets = flattenRulesets(grammar.rulesets ?? {}, stateNames);
+
+	// Track which ruleset names are actually referenced (for unused-ruleset warning)
+	const referencedRulesets = new Set<string>();
+
+	// Record references within ruleset includes
+	for (const rs of Object.values(grammar.rulesets ?? {})) {
+		for (const name of toArray(rs.include)) {
+			referencedRulesets.add(name);
+		}
+	}
+
+	const resolvedStates: Record<string, GrammarState> = {};
+
+	for (const [stateName, state] of Object.entries(grammar.states)) {
+		const includes = toArray(state.include);
+		if (includes.length === 0) {
+			resolvedStates[stateName] = state;
+			continue;
+		}
+
+		const seen = new Set<string>();
+		const effectiveRules: GrammarRule[] = [];
+
+		for (const includeName of includes) {
+			if (stateNames.has(includeName)) {
+				throw new Error(
+					`"${includeName}" refers to a tokeniser state; include accepts rule-set names only`,
+				);
+			}
+			if (!flatRulesets.has(includeName)) {
+				throw new Error(
+					`unknown rule set "${includeName}" in include of state "${stateName}"`,
+				);
+			}
+			if (seen.has(includeName)) {
+				throw new Error(
+					`duplicate include "${includeName}" in state "${stateName}"`,
+				);
+			}
+			seen.add(includeName);
+			referencedRulesets.add(includeName);
+			effectiveRules.push(...(flatRulesets.get(includeName) as GrammarRule[]));
+		}
+
+		const ownRules = state.rules ?? [];
+
+		// Dead rule detection: warn when a local rule's match pattern is already
+		// claimed by an earlier included rule (simplified string-equality check).
+		for (const ownRule of ownRules) {
+			if (ownRule.match === undefined) continue;
+			const ownMatch = JSON.stringify(ownRule.match);
+			for (const includeName of includes) {
+				const includedRules = flatRulesets.get(includeName) as GrammarRule[];
+				for (const incRule of includedRules) {
+					if (
+						incRule.match !== undefined &&
+						JSON.stringify(incRule.match) === ownMatch
+					) {
+						console.warn(
+							`Grammar warning: rule in state "${stateName}" is shadowed by an earlier rule from included set "${includeName}"`,
+						);
+						break;
+					}
+				}
+			}
+		}
+
+		effectiveRules.push(...ownRules);
+
+		if (effectiveRules.length === 0) {
+			throw new Error(
+				`state "${stateName}" has no rules and no non-empty includes`,
+			);
+		}
+
+		const { include, ...rest } = state;
+		resolvedStates[stateName] = { ...rest, rules: effectiveRules };
+	}
+
+	// Warn about rulesets defined but never referenced
+	for (const name of Object.keys(grammar.rulesets ?? {})) {
+		if (!referencedRulesets.has(name)) {
+			console.warn(`Grammar warning: rule set "${name}" is defined but never used`);
+		}
+	}
+
+	const { rulesets, ...grammarRest } = grammar;
+	return { ...grammarRest, states: resolvedStates };
 }
 
 // Expand group references and extend chains into concrete state definitions
@@ -117,7 +273,7 @@ export function normalizeGrammar(grammar: Grammar): Grammar {
 			}
 		}
 
-		const { extend, rules, ...rest } = originalState;
+		const { extend, include, rules = [], ...rest } = originalState;
 		const normalized: GrammarState = {
 			...rest,
 			rules: [...inheritedRules, ...cloneRules(rules)],
@@ -171,7 +327,7 @@ function preprocessGrammar(grammar: Grammar): Grammar {
 	for (const [stateName, state] of Object.entries(processedGrammar.states)) {
 		const processedRules: GrammarRule[] = [];
 		
-		for (const rule of state.rules) {
+		for (const rule of state.rules ?? []) {
 			if (rule.match_within) {
 				if ((rule.match_within as any).begin !== undefined) {
 					throw new Error(
@@ -253,7 +409,8 @@ function preprocessGrammar(grammar: Grammar): Grammar {
 }
 
 export function compile(grammar: Grammar): CompiledGrammar {
-	const normalizedGrammar = normalizeGrammar(grammar);
+	const resolvedGrammar = resolveIncludes(grammar);
+	const normalizedGrammar = normalizeGrammar(resolvedGrammar);
 	// Preprocess grammar to expand match_within rules
 	const processedGrammar = preprocessGrammar(normalizedGrammar);
 	const stateNames = Object.keys(processedGrammar.states);
@@ -264,7 +421,7 @@ export function compile(grammar: Grammar): CompiledGrammar {
 	const tokenTypeSet = new Set<string>();
 	for (const stateName of stateNames) {
 		const state = processedGrammar.states[stateName];
-		state.rules.forEach((rule) => {
+		(state.rules ?? []).forEach((rule) => {
 			if (rule.token) {
 				tokenTypeSet.add(rule.token);
 			}
@@ -283,7 +440,7 @@ export function compile(grammar: Grammar): CompiledGrammar {
 	// Warn about exit:true in the root state — there is no parent to return to
 	const rootStateName = stateNames[0];
 	const rootState = processedGrammar.states[rootStateName];
-	rootState.rules.forEach((rule, ruleIdx) => {
+	(rootState.rules ?? []).forEach((rule, ruleIdx) => {
 		if (rule.exit && !rule.state) {
 			console.warn(
 				`Grammar warning: rule ${ruleIdx} in root state "${rootStateName}" ` +
