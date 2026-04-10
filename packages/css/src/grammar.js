@@ -927,11 +927,7 @@ export default {
 		// Function arguments
 		function_args: {
 			rules: [
-				{
-					match: "/*",
-					token: "comment",
-					state: "comment",
-				},
+				COMMENT,
 				STRING_DOUBLE,
 				STRING_SINGLE,
 				{

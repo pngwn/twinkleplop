@@ -4,11 +4,12 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"test": "vitest",
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"bench": "vitest bench"
 	},
 	"keywords": [
-		
+
 	],
 	"author": "",
 	"license": "ISC",
