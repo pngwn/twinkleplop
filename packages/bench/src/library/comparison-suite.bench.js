@@ -8,12 +8,12 @@ import loadLanguages from "prismjs/components/index.js";
 import hljs from "highlight.js";
 import { createStarryNight, common } from "@wooorm/starry-night";
 import { smallCSS, mediumCSS, largeCSS } from "./css-samples.js";
-import { 
-	tinyJS, 
-	smallJS, 
-	mediumJS, 
-	largeJS, 
-	complexJS 
+import {
+	tinyJS,
+	smallJS,
+	mediumJS,
+	largeJS,
+	complexJS
 } from "./javascript-samples.js";
 
 // ============================================================================
@@ -44,7 +44,7 @@ beforeAll(async () => {
 // Test samples of various sizes
 const tinyCSS = `.btn { color: blue; }`;
 
-describe("Tiny CSS (~1 line)", (t) => {
+describe.skip("Tiny CSS (~1 line)", (t) => {
 	bench(
 		"Twinkleplop - tokenize only",
 		(t) => {
@@ -101,7 +101,7 @@ describe("Tiny CSS (~1 line)", (t) => {
 	);
 });
 
-describe("Small CSS (~10 lines)", () => {
+describe.skip("Small CSS (~10 lines)", () => {
 	bench(
 		"Twinkleplop - tokenize only",
 		() => {
@@ -158,7 +158,7 @@ describe("Small CSS (~10 lines)", () => {
 	);
 });
 
-describe("Medium CSS (~50 lines)", () => {
+describe.skip("Medium CSS (~50 lines)", () => {
 	bench(
 		"Twinkleplop - tokenize only",
 		() => {
@@ -215,7 +215,7 @@ describe("Medium CSS (~50 lines)", () => {
 	);
 });
 
-describe("Large CSS (~150 lines)", () => {
+describe.skip("Large CSS (~150 lines)", () => {
 	bench(
 		"Twinkleplop - tokenize only",
 		() => {
@@ -273,7 +273,7 @@ describe("Large CSS (~150 lines)", () => {
 });
 
 // Performance characteristics analysis
-describe("Tokenization Only (no HTML)", () => {
+describe.skip("Tokenization Only (no HTML)", () => {
 	bench(
 		"Twinkleplop - tokenize only",
 		() => {
@@ -292,7 +292,7 @@ describe("Tokenization Only (no HTML)", () => {
 	);
 });
 
-describe("HTML Generation Performance", () => {
+describe.skip("HTML Generation Performance", () => {
 	const tokens = tokenize(mediumCSS, css);
 
 	bench(
@@ -614,7 +614,7 @@ describe("JavaScript Regex vs Division Performance", () => {
 		];
 		const result = text.match(/\\b\\w+\\b/g);
 	`;
-	
+
 	// Test code with many division operations
 	const divisionHeavyCode = `
 		const avg = sum / count;
@@ -623,7 +623,7 @@ describe("JavaScript Regex vs Division Performance", () => {
 		const normalized = (value - min) / (max - min);
 		const rate = distance / time;
 	`;
-	
+
 	// Mixed regex and division
 	const mixedCode = `
 		if (/^\\d+$/.test(input)) {
@@ -664,19 +664,19 @@ describe("JavaScript Modern Features Performance", () => {
 	const modernFeatures = `
 		// Optional chaining and nullish coalescing
 		const value = obj?.prop?.nested ?? defaultValue;
-		
+
 		// Private fields and methods
 		class Example {
 			#privateField = 42;
 			#privateMethod() { return this.#privateField; }
 		}
-		
+
 		// BigInt operations
 		const big = 123n ** 456n;
-		
+
 		// Dynamic imports
 		const module = await import('./module.js');
-		
+
 		// Template literals with expressions
 		const msg = \`Result: \${calculate(x, y)}\`;
 	`;
