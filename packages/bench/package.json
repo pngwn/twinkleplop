@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"bench:internal": "vitest bench",
-		"bench": "vitest bench library",
+		"bench": "vitest bench src/library/comparison-suite.bench.js",
 		"bench:ui": "vitest bench --ui"
 	},
 	"devDependencies": {

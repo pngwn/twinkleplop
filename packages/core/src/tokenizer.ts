@@ -146,7 +146,13 @@ export function tokenize(
 							// Check boundary if required
 							if (pat.boundary && pos + pLen < len) {
 								const nextChar = input.charCodeAt(pos + pLen);
-								if (isIdentifierChar(nextChar)) {
+								if (
+									(nextChar >= 97 && nextChar <= 122) || // a-z
+									(nextChar >= 65 && nextChar <= 90) || // A-Z
+									(nextChar >= 48 && nextChar <= 57) || // 0-9
+									nextChar === 95 || // _
+									nextChar === 36 // $
+								) {
 									// Boundary check failed - pattern requires word boundary but next char is identifier char
 									continue; // Skip this pattern and try next one
 								}
@@ -191,7 +197,13 @@ export function tokenize(
 					// This is a single-char match that requires boundary checking
 					if (pos + 1 < len) {
 						const nextChar = input.charCodeAt(pos + 1);
-						if (isIdentifierChar(nextChar)) {
+						if (
+							(nextChar >= 97 && nextChar <= 122) || // a-z
+							(nextChar >= 65 && nextChar <= 90) || // A-Z
+							(nextChar >= 48 && nextChar <= 57) || // 0-9
+							nextChar === 95 || // _
+							nextChar === 36 // $
+						) {
 							// Boundary check failed - skip this match
 							charClass = 255;
 						}
@@ -670,7 +682,7 @@ export function tokenize(
 				// Handle probe state entry
 				if (!isInProbeState && isTargetProbeState) {
 					// Calculate where we'll be after consuming the match
-					const probeEntryPos = pos + (matchedLength || 1);
+					const probeEntryPos = pos + 1;
 					probeEntry = {
 						pos: pos, // Keep original pos for reset
 						entryPos: probeEntryPos, // Position where probe is entered

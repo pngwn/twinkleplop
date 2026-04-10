@@ -37,7 +37,7 @@
 	],
 	"scripts": {
 		"build": "vite build --mode=debug && vite build",
-		"ts": "tsc",
+		"ts": "tsc --noEmit",
 		"types": "node dts.js",
 		"build:watch": "tsc --watch",
 		"clean": "rm -rf dist",

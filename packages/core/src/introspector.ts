@@ -26,6 +26,7 @@ export class TokenizerIntrospector {
 	compiledGrammar: CompiledGrammar | null = null;
 
 	initialState: number = 0;
+	private stateNameLookup: Map<string, number> | null = null;
 
 	// State session tracking
 	stateSessions: StateSession[] = [];
@@ -54,6 +55,7 @@ export class TokenizerIntrospector {
 		this.stateSessions = [];
 		this.currentStateSession = null;
 		this.stateSessionStack = [];
+		this.stateNameLookup = null;
 	}
 
 	init({
@@ -68,6 +70,7 @@ export class TokenizerIntrospector {
 		this.input = input;
 		this.compiledGrammar = compiledGrammar;
 		this.initialState = initialState;
+		this.stateNameLookup = null;
 
 		// Initialize first state session
 		this.currentStateSession = {
@@ -643,20 +646,20 @@ export class TokenizerIntrospector {
 
 			if (event.type === "PUSHED_STATE") {
 				// Get the actual from state from the event, or use lastState as fallback
-				const fromState = event.fromStateIndex !== undefined
-					? event.fromStateIndex
-					: event.fromState !== undefined
-						? event.fromState
-						: lastState;
+				const fromState = this._resolveState(
+					event.fromStateIndex,
+					event.fromState,
+					lastState
+				);
 
 				// Push current state to stack and move to new state
 				stateStack[stackPtr] = fromState;
 				stackPtr++;
-				const toState = event.toStateIndex !== undefined
-					? event.toStateIndex
-					: event.toState !== undefined
-						? event.toState
-						: currentState;
+				const toState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					currentState
+				);
 				currentState = toState;
 
 				// Replace any existing step at this position
@@ -682,10 +685,12 @@ export class TokenizerIntrospector {
 				if (stackPtr > 0) {
 					stackPtr--;
 					const poppedFrom = currentState;
-					currentState =
-						event.toStateIndex !== undefined
-							? event.toStateIndex
-							: stateStack[Math.max(0, stackPtr - 1)];
+					const fallbackCandidate = stateStack[Math.max(0, stackPtr - 1)];
+					currentState = this._resolveState(
+						event.toStateIndex,
+						event.toState,
+						fallbackCandidate !== undefined ? fallbackCandidate : currentState
+					);
 
 					// Only add route step if the state actually changed
 					if (poppedFrom !== currentState) {
@@ -707,8 +712,11 @@ export class TokenizerIntrospector {
 				}
 			} else if (event.type === "TRANSITIONED_STATE") {
 				// Direct state transition (no push/pop)
-				const toState =
-					event.toStateIndex !== undefined ? event.toStateIndex : currentState;
+				const toState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					currentState
+				);
 
 				// Only add if state actually changed
 				if (currentState !== toState) {
@@ -786,17 +794,17 @@ export class TokenizerIntrospector {
 			}
 
 			if (event.type === "PUSHED_STATE") {
-				const fromState = event.fromStateIndex !== undefined
-					? event.fromStateIndex
-					: event.fromState !== undefined
-						? event.fromState
-						: lastState;
+				const fromState = this._resolveState(
+					event.fromStateIndex,
+					event.fromState,
+					lastState
+				);
 
-				const toState = event.toStateIndex !== undefined
-					? event.toStateIndex
-					: event.toState !== undefined
-						? event.toState
-						: currentState;
+				const toState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					currentState
+				);
 
 				// Use the actual depth from the event if available
 				const actualDepth = event.stackDepth !== undefined ? event.stackDepth : stackPtr + 1;
@@ -831,11 +839,11 @@ export class TokenizerIntrospector {
 			} else if (event.type === "POPPED_STATE") {
 				// Pop from stack
 				const poppedFrom = currentState;
-				const toState = event.toStateIndex !== undefined
-					? event.toStateIndex
-					: typeof event.toState === "number"
-						? event.toState
-						: currentState;
+				const toState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					currentState
+				);
 
 				// Use the actual depth from the event if available
 				const actualDepth = event.stackDepth !== undefined ? event.stackDepth : Math.max(0, stackPtr - 1);
@@ -864,12 +872,11 @@ export class TokenizerIntrospector {
 				lastMatchedRule = null;
 				lastTokenEmitted = false;
 			} else if (event.type === "TRANSITIONED_STATE") {
-				const toState =
-					event.toStateIndex !== undefined
-						? event.toStateIndex
-						: typeof event.toState === "number"
-							? event.toState
-							: 0;
+				const toState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					currentState
+				);
 
 				// Transitions don't change depth - use current stackPtr
 				const step = {
@@ -963,18 +970,26 @@ export class TokenizerIntrospector {
 
 			if (event.type === "PUSHED_STATE") {
 				// Push current state to stack and move to new state
-				stateStack[stackPtr] =
-					event.fromStateIndex !== undefined ? event.fromStateIndex : lastState;
+				const fromState = this._resolveState(
+					event.fromStateIndex,
+					event.fromState,
+					lastState
+				);
+				stateStack[stackPtr] = fromState;
 				stackPtr++;
-				currentState =
-					event.toStateIndex !== undefined ? event.toStateIndex : currentState;
+				const toState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					currentState
+				);
+				currentState = toState;
 
 				route.push({
 					type: "PUSH",
-					from: lastState,
-					fromName: this._getStateName(lastState),
-					to: currentState,
-					toName: this._getStateName(currentState),
+					from: fromState,
+					fromName: this._getStateName(fromState),
+					to: toState,
+					toName: this._getStateName(toState),
 					position:
 						event.pos !== undefined && event.pos !== null ? event.pos : 0,
 					depth: stackPtr,
@@ -990,12 +1005,12 @@ export class TokenizerIntrospector {
 					const poppedFrom = currentState;
 					stackPtr--;
 					// Use the toState from the event
-					currentState =
-						event.toStateIndex !== undefined
-							? event.toStateIndex
-							: typeof event.toState === "number"
-								? event.toState
-								: stateStack[stackPtr]; // Fallback to stack if event doesn't have toState
+					const fallbackState = stateStack[stackPtr];
+					currentState = this._resolveState(
+						event.toStateIndex,
+						event.toState,
+						fallbackState !== undefined ? fallbackState : currentState
+					);
 					route.push({
 						type: "POP",
 						from: poppedFrom,
@@ -1013,12 +1028,11 @@ export class TokenizerIntrospector {
 					lastTokenEmitted = false;
 				}
 			} else if (event.type === "TRANSITIONED_STATE") {
-				const toState =
-					event.toStateIndex !== undefined
-						? event.toStateIndex
-						: typeof event.toState === "number"
-							? event.toState
-							: 0;
+				const toState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					currentState
+				);
 
 				route.push({
 					type: "TRANSITION",
@@ -1139,45 +1153,44 @@ export class TokenizerIntrospector {
 	getStateAtPosition(pos: number): StateInfo {
 		// Find the last state before this position, including the full stack
 		let currentState = this.initialState;
-		let stateStack = [];
+		const stateStack: number[] = [];
 		let stackPtr = 0;
 		for (const event of this.history) {
 			if (event.pos !== undefined && event.pos > pos) break;
 
 			if (event.type === "PUSHED_STATE") {
 				// Push the fromState to stack (the state we're leaving)
-				const stateToPush =
-					event.fromStateIndex !== undefined
-						? event.fromStateIndex
-						: currentState;
+				const stateToPush = this._resolveState(
+					event.fromStateIndex,
+					event.fromState,
+					currentState
+				);
 				stateStack[stackPtr++] = stateToPush;
 				// Move to the new state
-				currentState =
-					event.toStateIndex !== undefined
-						? event.toStateIndex
-						: typeof event.toState === "number"
-							? event.toState
-							: currentState;
+				currentState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					currentState
+				);
 			} else if (event.type === "POPPED_STATE") {
 				// Pop from stack and use the toState from the event
 				if (stackPtr > 0) {
 					stackPtr--;
 				}
 				// Use the toState from the event, not from the stack
-				currentState =
-					event.toStateIndex !== undefined
-						? event.toStateIndex
-						: typeof event.toState === "number"
-							? event.toState
-							: currentState;
+				const fallbackState = stackPtr >= 0 ? stateStack[stackPtr] : undefined;
+				currentState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					fallbackState !== undefined ? fallbackState : currentState
+				);
 			} else if (event.type === "TRANSITIONED_STATE") {
 				const prevState = currentState;
-				currentState =
-					event.toStateIndex !== undefined
-						? event.toStateIndex
-						: typeof event.toState === "number"
-							? event.toState
-							: currentState;
+				currentState = this._resolveState(
+					event.toStateIndex,
+					event.toState,
+					prevState
+				);
 			}
 		}
 		return {
@@ -1279,6 +1292,55 @@ export class TokenizerIntrospector {
 		}
 	}
 
+	private _resolveState(
+		index: number | undefined,
+		value: string | number | undefined,
+		fallback: number
+	): number {
+		if (typeof index === "number") {
+			return index;
+		}
+		if (typeof value === "number") {
+			return value;
+		}
+		if (typeof value === "string") {
+			const mapped = this._getStateIndexFromName(value);
+			if (mapped !== undefined) {
+				return mapped;
+			}
+		}
+		return fallback;
+	}
+
+	private _getStateIndexFromName(name: string): number | undefined {
+		const compiled = this.compiledGrammar?.states;
+		if (compiled && compiled.has(name)) {
+			return compiled.get(name);
+		}
+		if (this.options.stateNames) {
+			const lookup = this._ensureStateNameLookup();
+			const mapped = lookup.get(name);
+			if (mapped !== undefined) {
+				return mapped;
+			}
+		}
+		return undefined;
+	}
+
+	private _ensureStateNameLookup(): Map<string, number> {
+		if (!this.stateNameLookup) {
+			const lookup = new Map<string, number>();
+			const stateNames = this.options.stateNames;
+			if (stateNames) {
+				for (const [index, stateName] of Object.entries(stateNames)) {
+					lookup.set(stateName, Number(index));
+				}
+			}
+			this.stateNameLookup = lookup;
+		}
+		return this.stateNameLookup;
+	}
+
 	private _getStateName(stateIndex: number): string {
 		// Check if we have a grammar mapper
 		const mapper = (this.options as any).grammarMapper as
@@ -1288,11 +1350,15 @@ export class TokenizerIntrospector {
 			return mapper.getStateName(stateIndex);
 		}
 
-		// If we have a grammar passed directly (for tests)
-		if (this.grammar) {
-			const stateNames = Object.keys(this.grammar.states || {});
-			if (stateNames[stateIndex]) {
-				return stateNames[stateIndex];
+		const stateNames = this.options.stateNames;
+		if (stateNames && stateNames[stateIndex] !== undefined) {
+			return stateNames[stateIndex];
+		}
+		if (this.compiledGrammar?.states) {
+			for (const [name, index] of this.compiledGrammar.states.entries()) {
+				if (index === stateIndex) {
+					return name;
+				}
 			}
 		}
 
