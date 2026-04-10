@@ -142,40 +142,79 @@ const TEMPLATE_LITERAL = {
  */
 export default {
 	name: "javascript",
-	states: {
-		// Main state - default, / could be either regex or division
-		main: {
+
+	rulesets: {
+		// ---------------------------------------------------------------------------
+		// Atomic rulesets
+		// ---------------------------------------------------------------------------
+
+		// Line and block comments
+		js_comments: {
+			rules: [SINGLE_LINE_COMMENT, MULTI_LINE_COMMENT],
+		},
+
+		// All string forms including template literals
+		js_strings: {
+			rules: [STRING_DOUBLE, STRING_SINGLE, TEMPLATE_LITERAL],
+		},
+
+		// String forms without template literals (for function/paren body contexts)
+		js_strings_no_template: {
+			rules: [STRING_DOUBLE, STRING_SINGLE],
+		},
+
+		// Horizontal and vertical whitespace
+		js_whitespace: {
+			rules: [{ match: [" ", "\t", "\n", "\r"] }],
+		},
+
+		// Numbers in top-level contexts: sideways-transition to division after
+		js_numbers_top: {
 			rules: [
-				// Comments
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-
-				// Strings and template literals
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				TEMPLATE_LITERAL,
-
-				// Numbers
-				{
-					match: ["0x", "0X"],
-					token: "number",
-					state: "hex_number",
-					exit: true,
-				},
-				{
-					match: ["0b", "0B"],
-					token: "number",
-					state: "binary_number",
-					exit: true,
-				},
-				{
-					match: ["0o", "0O"],
-					token: "number",
-					state: "octal_number",
-					exit: true,
-				},
+				{ match: ["0x", "0X"], token: "number", state: "hex_number", exit: true },
+				{ match: ["0b", "0B"], token: "number", state: "binary_number", exit: true },
+				{ match: ["0o", "0O"], token: "number", state: "octal_number", exit: true },
 				{ range: DIGIT_RANGE, token: "number", state: "number", exit: true },
+			],
+		},
 
+		// Numbers in argument/group contexts: push nested number states
+		js_numbers_arg: {
+			rules: [
+				{ match: ["0x", "0X"], token: "number", state: "hex_number_arg" },
+				{ match: ["0b", "0B"], token: "number", state: "binary_number_arg" },
+				{ match: ["0o", "0O"], token: "number", state: "octal_number_arg" },
+				{ range: DIGIT_RANGE, token: "number", state: "number_arg" },
+			],
+		},
+
+		// ---------------------------------------------------------------------------
+		// Composite rulesets
+		// ---------------------------------------------------------------------------
+
+		// Shared foundation for main, regex_allow, division, and tmpl_* states.
+		// Excludes operators, punctuation, keywords, identifiers, and slash handling
+		// because those differ per state.
+		js_common: {
+			include: ["js_comments", "js_strings", "js_numbers_top", "js_whitespace"],
+			rules: [],
+		},
+
+		// Shared foundation for function_body, paren_group, and paren_group_tmpl.
+		// Uses arg-variant number states and excludes template literals.
+		js_body_common: {
+			include: ["js_comments", "js_strings_no_template", "js_numbers_arg"],
+			rules: [],
+		},
+	},
+
+	states: {
+		// -------------------------------------------------------------------------
+		// Main state — entry point; / is ambiguous (default: regex)
+		// -------------------------------------------------------------------------
+		main: {
+			include: "js_common",
+			rules: [
 				// Four-character operators
 				{ match: [">>>="], token: "operator" },
 
@@ -252,7 +291,7 @@ export default {
 					exit: true,
 				},
 
-				// Opening brackets - after these, / is regex
+				// Opening brackets — after these, / is regex
 				{
 					match: ["(", "{", "["],
 					token: "punctuation",
@@ -260,7 +299,7 @@ export default {
 					exit: true,
 				},
 
-				// Closing brackets - after these, / is division
+				// Closing brackets — after these, / is division
 				{
 					match: [")", "}", "]"],
 					token: "punctuation",
@@ -268,7 +307,7 @@ export default {
 					exit: true,
 				},
 
-				// Comma, semicolon - after these, / is regex
+				// Comma, semicolon — after these, / is regex
 				{
 					match: [";", ","],
 					token: "punctuation",
@@ -276,11 +315,8 @@ export default {
 					exit: true,
 				},
 
-				// Dot - don't change state
-				{
-					match: ["."],
-					token: "punctuation",
-				},
+				// Dot — don't change state
+				{ match: ["."], token: "punctuation" },
 
 				// Keywords that indicate regex follows
 				{
@@ -291,7 +327,7 @@ export default {
 					exit: true,
 				},
 
-				// Other keywords - most act like values
+				// Other keywords — most act like values
 				{
 					match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)),
 					boundary: true,
@@ -318,30 +354,12 @@ export default {
 					exit: true,
 				},
 
-				// Identifiers
-
-				{
-					match: ["_", "$"],
-					state: "identifier_probe",
-					exit: true,
-				},
-				{
-					range: LETTER_RANGE,
-					state: "identifier_probe",
-					exit: true,
-				},
+				// Identifiers (must come after keywords so keyword charMap wins)
+				{ match: ["_", "$"], state: "identifier_probe", exit: true },
+				{ range: LETTER_RANGE, state: "identifier_probe", exit: true },
 
 				// Default: / starts a regex at beginning of statement
-				{
-					match: "/",
-					token: "regex",
-					state: "regex_pattern",
-				},
-
-				// Whitespace
-				{
-					match: [" ", "\t", "\n", "\r"],
-				},
+				{ match: "/", token: "regex", state: "regex_pattern" },
 			],
 		},
 
@@ -349,7 +367,6 @@ export default {
 			mode: "probe",
 			fallback: "identifier",
 			rules: [
-				// First, match the first character and continue
 				{
 					match: ["("],
 					state: "function_name",
@@ -365,47 +382,24 @@ export default {
 
 		function_name: {
 			rules: [
-				// Continue function name
-				{
-					range: ALPHANUMERIC_RANGE,
-					token: "function",
-				},
-				{
-					match: ["_", "$"],
-					token: "function",
-				},
-				// Opening parenthesis - transition to arguments
+				{ range: ALPHANUMERIC_RANGE, token: "function" },
+				{ match: ["_", "$"], token: "function" },
 				{
 					match: "(",
 					token: "punctuation",
 					state: "function_body",
 					exit: true,
 				},
-				// Whitespace before opening paren
-				{
-					match: [" ", "\t"],
-				},
-				// Exit if we see anything else
+				{ match: [" ", "\t"] },
 			],
 		},
 
+		// -------------------------------------------------------------------------
+		// function_body — inside call-site parentheses (top-level context)
+		// -------------------------------------------------------------------------
 		function_body: {
+			include: "js_body_common",
 			rules: [
-				// Comments
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-
-				// Strings
-				STRING_DOUBLE,
-				STRING_SINGLE,
-
-				// Numbers
-				// Numbers (argument context)
-				{ match: ["0x", "0X"], token: "number", state: "hex_number_arg" },
-				{ match: ["0b", "0B"], token: "number", state: "binary_number_arg" },
-				{ match: ["0o", "0O"], token: "number", state: "octal_number_arg" },
-				{ range: DIGIT_RANGE, token: "number", state: "number_arg" },
-
 				// End of arguments
 				{
 					match: ")",
@@ -414,24 +408,14 @@ export default {
 					exit: true,
 				},
 
-				// Nested parentheses (for nested calls or grouping)
-				{
-					match: "(",
-					token: "punctuation",
-					state: "paren_group", // push a nested paren group
-				},
+				// Nested parentheses
+				{ match: "(", token: "punctuation", state: "paren_group" },
 
 				// Argument separator
-				{
-					match: ",",
-					token: "punctuation",
-				},
+				{ match: ",", token: "punctuation" },
 
-				// Operators (for expressions in arguments)
-				{
-					match: ["===", "!=="],
-					token: "operator",
-				},
+				// Operators
+				{ match: ["===", "!=="], token: "operator" },
 				{
 					match: ["--", "++", "<=", ">=", "==", "!=", "&&", "||"],
 					token: "operator",
@@ -448,77 +432,39 @@ export default {
 						"|",
 						"?",
 						"*",
-
 						"~",
 						"^",
 						"%",
 					],
 					token: "operator",
 				},
-				{
-					match: "/",
-					token: "regex",
-					state: "regex_pattern",
-				},
+				{ match: "/", token: "regex", state: "regex_pattern" },
 
 				// Other punctuation
-				{
-					match: ["[", "]", "{", "}"],
-					token: "punctuation",
-				},
-				{
-					match: [";", "."],
-					token: "punctuation",
-				},
+				{ match: ["[", "]", "{", "}"], token: "punctuation" },
+				{ match: [";", "."], token: "punctuation" },
 
-				// Boolean literals (more specific, so check before identifiers)
-				{
-					match: BOOLEAN_LITERALS,
-					token: "boolean",
-				},
+				// Literals
+				{ match: BOOLEAN_LITERALS, token: "boolean" },
 
-				// recursive identifier probe for nested functions
-				{
-					match: ["_", "$"],
-					state: "identifier_probe",
-					exit: true,
-				},
-				{
-					range: LETTER_RANGE,
-					state: "identifier_probe",
-					exit: true,
-				},
+				// Identifiers (recursive probe for nested function calls)
+				{ match: ["_", "$"], state: "identifier_probe", exit: true },
+				{ range: LETTER_RANGE, state: "identifier_probe", exit: true },
 			],
 		},
 
-		// Nested parentheses inside function arguments
+		// -------------------------------------------------------------------------
+		// paren_group — nested parentheses inside function arguments
+		// -------------------------------------------------------------------------
 		paren_group: {
+			include: "js_body_common",
 			rules: [
-				// Comments
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-
-				// Strings
-				STRING_DOUBLE,
-				STRING_SINGLE,
-
-				// Numbers (group context)
-				{ match: ["0x", "0X"], token: "number", state: "hex_number_arg" },
-				{ match: ["0b", "0B"], token: "number", state: "binary_number_arg" },
-				{ match: ["0o", "0O"], token: "number", state: "octal_number_arg" },
-				{ range: DIGIT_RANGE, token: "number", state: "number_arg" },
-
-				// End of this paren group – just pop
 				{ match: ")", token: "punctuation", exit: true },
-
-				// Nested parentheses
 				{ match: "(", token: "punctuation", state: "paren_group" },
 
-				// Argument separator and other punctuation
 				{ match: ",", token: "punctuation" },
 				{ match: ["[", "]", "{", "}", ";", "."], token: "punctuation" },
 
-				// Operators
 				{ match: ["===", "!=="], token: "operator" },
 				{
 					match: ["--", "++", "<=", ">=", "==", "!=", "&&", "||"],
@@ -544,10 +490,7 @@ export default {
 					token: "operator",
 				},
 
-				// Literals
 				{ match: BOOLEAN_LITERALS, token: "boolean" },
-
-				// Identifiers inside group (no probe here)
 				{ match: ["_", "$"], token: "identifier" },
 				{ range: ALPHANUMERIC_RANGE, token: "identifier" },
 			],
@@ -612,22 +555,15 @@ export default {
 
 		identifier: {
 			rules: [
-				{
-					match: ["_", "$"],
-					token: "identifier",
-				},
-				{
-					range: ALPHANUMERIC_RANGE,
-					token: "identifier",
-				},
+				{ match: ["_", "$"], token: "identifier" },
+				{ range: ALPHANUMERIC_RANGE, token: "identifier" },
 				// Opening brackets after an identifier
 				{
 					match: ["(", "[", "{"],
 					token: "punctuation",
-					state: "regex_allow", // Inside brackets, / is regex
+					state: "regex_allow",
 					exit: true,
 				},
-
 				// Closing brackets after an identifier
 				{
 					match: [")", "]", "}"],
@@ -635,7 +571,6 @@ export default {
 					state: "division",
 					exit: true,
 				},
-
 				// Comma and semicolon delimiters
 				{
 					match: [",", ";"],
@@ -643,21 +578,13 @@ export default {
 					state: "regex_allow",
 					exit: true,
 				},
-
 				// Dot accessor
 				{ match: ["."], token: "punctuation", state: "division", exit: true },
-
-				// Division operators should be tokenized here
+				// Division operators
 				{ match: "/=", token: "operator", state: "regex_allow", exit: true },
 				{ match: "/", token: "operator", state: "regex_allow", exit: true },
-
 				// Multi-char operators
-				{
-					match: [">>>="],
-					token: "operator",
-					state: "regex_allow",
-					exit: true,
-				},
+				{ match: [">>>="], token: "operator", state: "regex_allow", exit: true },
 				{
 					match: [
 						"===",
@@ -695,7 +622,6 @@ export default {
 					state: "regex_allow",
 					exit: true,
 				},
-
 				// Single-char operators
 				{
 					match: [
@@ -718,51 +644,21 @@ export default {
 					state: "regex_allow",
 					exit: true,
 				},
-
 				// Whitespace after identifier -> switch to division context
 				{ match: [" ", "\t", "\n", "\r"], state: "division", exit: true },
 			],
 		},
 
-		// After operators or contexts where / is a regex
+		// -------------------------------------------------------------------------
+		// regex_allow — after operators or opening brackets; / starts a regex
+		// -------------------------------------------------------------------------
 		regex_allow: {
+			include: "js_common",
 			rules: [
-				// Most rules same as main
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				TEMPLATE_LITERAL,
-
-				// Numbers
-				{
-					match: ["0x", "0X"],
-					token: "number",
-					state: "hex_number",
-					exit: true,
-				},
-				{
-					match: ["0b", "0B"],
-					token: "number",
-					state: "binary_number",
-					exit: true,
-				},
-				{
-					match: ["0o", "0O"],
-					token: "number",
-					state: "octal_number",
-					exit: true,
-				},
-				{ range: DIGIT_RANGE, token: "number", state: "number", exit: true },
-
 				// Here, / is a regex!
-				{
-					match: "/",
-					token: "regex",
-					state: "regex_pattern",
-				},
+				{ match: "/", token: "regex", state: "regex_pattern" },
 
-				// Operators (same as main)
+				// Operators (stay in regex_allow)
 				{ match: [">>>="], token: "operator" },
 				{
 					match: [
@@ -866,32 +762,19 @@ export default {
 					exit: true,
 				},
 
-				// Identifiers - transition to probe state without tokenizing
-				{
-					match: ["_", "$"],
-					state: "identifier_probe",
-					exit: true,
-				},
-				{
-					range: LETTER_RANGE,
-					state: "identifier_probe",
-					exit: true,
-				},
-
-				// Whitespace
-				{ match: [" ", "\t", "\n", "\r"] },
+				// Identifiers
+				{ match: ["_", "$"], state: "identifier_probe", exit: true },
+				{ range: LETTER_RANGE, state: "identifier_probe", exit: true },
 			],
 		},
 
-		// After values where / is division
+		// -------------------------------------------------------------------------
+		// division — after values or closing brackets; / is the division operator
+		// -------------------------------------------------------------------------
 		division: {
+			include: "js_common",
 			rules: [
-				// Most rules same as main
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				TEMPLATE_LITERAL,
+				// Opening brackets — after these, / is regex
 				{
 					match: ["(", "{", "["],
 					token: "punctuation",
@@ -899,28 +782,7 @@ export default {
 					exit: true,
 				},
 
-				// Numbers
-				{
-					match: ["0x", "0X"],
-					token: "number",
-					state: "hex_number",
-					exit: true,
-				},
-				{
-					match: ["0b", "0B"],
-					token: "number",
-					state: "binary_number",
-					exit: true,
-				},
-				{
-					match: ["0o", "0O"],
-					token: "number",
-					state: "octal_number",
-					exit: true,
-				},
-				{ range: DIGIT_RANGE, token: "number", state: "number", exit: true },
-
-				// Here, / is division! Check /= first
+				// Here, / is division — check /= first
 				{
 					match: "/=",
 					token: "operator",
@@ -1014,7 +876,6 @@ export default {
 				},
 
 				// Punctuation
-
 				{ match: [")", "}", "]"], token: "punctuation" },
 				{
 					match: [";", ","],
@@ -1039,221 +900,18 @@ export default {
 				},
 
 				// Literals
-				{
-					match: BOOLEAN_LITERALS,
-					boundary: true,
-					token: "boolean",
-				},
-				{
-					match: SPECIAL_VALUES,
-					boundary: true,
-					token: "keyword",
-				},
+				{ match: BOOLEAN_LITERALS, boundary: true, token: "boolean" },
+				{ match: SPECIAL_VALUES, boundary: true, token: "keyword" },
 
 				// Identifiers
-				{
-					match: ["_", "$"],
-					state: "identifier_probe",
-					exit: true,
-				},
-				{
-					range: LETTER_RANGE,
-					state: "identifier_probe",
-					exit: true,
-				},
-
-				// Whitespace
-				{ match: [" ", "\t", "\n", "\r"] },
+				{ match: ["_", "$"], state: "identifier_probe", exit: true },
+				{ range: LETTER_RANGE, state: "identifier_probe", exit: true },
 			],
 		},
 
-		// Start of identifier - use probe to check if it's a function
-		// identifier_probe: {
-		// 	mode: "probe",
-		// 	fallback: "identifier_continue",
-		// 	rules: [
-		// 		// Continue consuming identifier characters in probe mode
-		// 		{
-		// 			match: ["_", "$"],
-		// 			// Continue in probe mode
-		// 		},
-		// 		{
-		// 			range: ALPHANUMERIC_RANGE,
-		// 			// Continue in probe mode
-		// 		},
-		// 		// After identifier, check for function call pattern
-		// 		{
-		// 			match: "(",
-		// 			state: "function_name",
-		// 		},
-		// 		// Whitespace after identifier might precede opening paren
-		// 		{
-		// 			match: " ",
-		// 			// Continue in probe mode to check for opening paren
-		// 		},
-		// 		// Any other character means it's just a regular identifier
-		// 		{
-		// 			any: true,
-		// 			state: "identifier_continue",
-		// 		},
-		// 	],
-		// },
-
-		// Regular identifier
-		// identifier: {
-		// 	rules: [
-		// 		{ match: ["_", "$"], token: "identifier" },
-		// 		{ range: ALPHANUMERIC_RANGE, token: "identifier" },
-		// 		{
-		// 			any: true,
-		// 			exit: true,
-		// 		},
-		// 	],
-		// },
-
-		// Continue collecting function name
-		// function_name: {
-		// 	rules: [
-		// 		// Continue function name
-		// 		{ range: ALPHANUMERIC_RANGE, token: "function" },
-		// 		{ match: ["_", "$"], token: "function" },
-		// 		// Opening parenthesis - transition to function body
-		// 		{
-		// 			match: "(",
-		// 			token: "punctuation",
-		// 			state: "function_body",
-		// 			exit: true,
-		// 		},
-		// 		// Whitespace before opening paren
-		// 		{ match: [" ", "\t"] },
-		// 	],
-		// },
-
-		// Inside function arguments - handle full syntax including nested functions
-		// function_body: {
-		// 	rules: [
-		// 		// Comments
-		// 		SINGLE_LINE_COMMENT,
-		// 		MULTI_LINE_COMMENT,
-
-		// 		// Strings and template literals
-		// 		STRING_DOUBLE,
-		// 		STRING_SINGLE,
-		// 		TEMPLATE_LITERAL,
-
-		// 		// Numbers
-		// 		{ match: ["0x", "0X"], token: "number", state: "hex_number" },
-		// 		{ match: ["0b", "0B"], token: "number", state: "binary_number" },
-		// 		{ match: ["0o", "0O"], token: "number", state: "octal_number" },
-		// 		{ range: DIGIT_RANGE, token: "number", state: "number" },
-
-		// 		// End of arguments
-		// 		{
-		// 			match: ")",
-		// 			token: "punctuation",
-		// 			exit: true,
-		// 		},
-
-		// 		// Nested parentheses (for nested calls or grouping)
-		// 		{
-		// 			match: "(",
-		// 			token: "punctuation",
-		// 			state: "function_body", // Recursive for nested parens
-		// 		},
-
-		// 		// Argument separator
-		// 		{ match: ",", token: "punctuation" },
-
-		// 		// Spread/rest operator
-		// 		{ match: "...", token: "operator" },
-
-		// 		// Operators (for expressions in arguments)
-		// 		{ match: ["===", "!=="], token: "operator" },
-		// 		{
-		// 			match: [
-		// 				"--",
-		// 				"++",
-		// 				"<=",
-		// 				">=",
-		// 				"==",
-		// 				"!=",
-		// 				"&&",
-		// 				"||",
-		// 				"??",
-		// 				"?.",
-		// 				"=>",
-		// 			],
-		// 			token: "operator",
-		// 		},
-		// 		{
-		// 			match: [
-		// 				"-",
-		// 				"+",
-		// 				"<",
-		// 				">",
-		// 				"=",
-		// 				"!",
-		// 				"&",
-		// 				"|",
-		// 				"?",
-		// 				"*",
-		// 				"/",
-		// 				"~",
-		// 				"^",
-		// 				"%",
-		// 			],
-		// 			token: "operator",
-		// 		},
-
-		// 		// Other punctuation
-		// 		{ match: ["[", "]", "{", "}"], token: "punctuation" },
-		// 		{ match: [";", ".", ":"], token: "punctuation" },
-
-		// 		// Boolean and special values
-		// 		{ match: BOOLEAN_LITERALS, token: "boolean" },
-		// 		{ match: SPECIAL_VALUES, token: "keyword" },
-
-		// 		// Keywords
-		// 		{ match: KEYWORDS, boundary: true, token: "keyword" },
-
-		// 		// Recursive identifier probe for nested functions
-		// 		{
-		// 			match: ["_", "$"],
-		// 			token: "identifier",
-		// 			state: "identifier_continue",
-		// 		},
-		// 		{
-		// 			range: LETTER_RANGE,
-		// 			token: "identifier",
-		// 			state: "identifier_continue",
-		// 		},
-
-		// 		// Whitespace
-		// 		{ match: [" ", "\t", "\n", "\r"] },
-		// 	],
-		// },
-
-		// Continue collecting identifier characters
-		// identifier_continue: {
-		// 	rules: [
-		// 		{ match: ["_", "$"], token: "identifier" },
-		// 		{ range: ALPHANUMERIC_RANGE, token: "identifier" },
-		// 		// Special handling for opening brackets - they indicate function/array/object access
-		// 		{
-		// 			match: ["(", "[", "{"],
-		// 			token: "punctuation",
-		// 			state: "regex_allow", // Inside brackets, / is regex
-		// 			exit: true,
-		// 		},
-		// 		{
-		// 			any: true,
-		// 			state: "division", // After identifier, / is division
-		// 			exit: true,
-		// 		},
-		// 	],
-		// },
-
-		// Number states
+		// -------------------------------------------------------------------------
+		// Number states (top-level — sideways to division on exit)
+		// -------------------------------------------------------------------------
 		number: {
 			rules: [
 				{ range: DIGIT_RANGE, token: "number" },
@@ -1310,7 +968,9 @@ export default {
 			],
 		},
 
+		// -------------------------------------------------------------------------
 		// Template literal
+		// -------------------------------------------------------------------------
 		template_literal: {
 			rules: [
 				{ match: "${", token: "punctuation", state: "tmpl_main" },
@@ -1319,53 +979,68 @@ export default {
 			],
 		},
 
-		// Template interpolation (full JS with brace balancing)
-			template_interpolation: {
+		// -------------------------------------------------------------------------
+		// Template interpolation states
+		// -------------------------------------------------------------------------
+
+		// Full JS expression context inside ${ ... }
+		template_interpolation: {
+			include: ["js_comments", "js_strings", "js_numbers_arg", "js_whitespace"],
 			rules: [
 				// Exit at top-level closing brace
 				{ match: "}", token: "punctuation", exit: true },
 				// Balance nested braces inside interpolation
 				{ match: "{", token: "punctuation", state: "tmpl_brace" },
-				// Nested template literals
-				TEMPLATE_LITERAL,
-				// Comments
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-				// Strings
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				// Numbers (push/pop via *_arg variants)
-				{ match: ["0x", "0X"], token: "number", state: "hex_number_arg" },
-				{ match: ["0b", "0B"], token: "number", state: "binary_number_arg" },
-				{ match: ["0o", "0O"], token: "number", state: "octal_number_arg" },
-				{ range: DIGIT_RANGE, token: "number", state: "number_arg" },
 				// Regex literal allowed at expression boundaries
 				{ match: "/", token: "regex", state: "regex_pattern" },
 				// Operators
 				{ match: [">>>="], token: "operator" },
-				{ match: ["===","!==",">>>","<<=",">>=","**=","&&=","||=","??="], token: "operator" },
+				{
+					match: ["===", "!==", ">>>", "<<=", ">>=", "**=", "&&=", "||=", "??="],
+					token: "operator",
+				},
 				{ match: "...", token: "operator" },
-				{ match: ["++","--","<=",">=","==","!=","&&","||","<<",">>","**","??","?.","=>","+=","-=","*=","/=","%=","&=","|=","^="], token: "operator" },
-				{ match: ["-","+","<",">","=","!","&","|","?","*","~","^","%",":"], token: "operator" },
+				{
+					match: [
+						"++", "--", "<=", ">=", "==", "!=", "&&", "||", "<<", ">>",
+						"**", "??", "?.", "=>", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=",
+					],
+					token: "operator",
+				},
+				{
+					match: ["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%", ":"],
+					token: "operator",
+				},
 				// Punctuation and grouping
 				{ match: ["(", "["], token: "punctuation" },
 				{ match: [")", "]"], token: "punctuation", state: "tmpl_division" },
 				{ match: [";", ",", "."], token: "punctuation" },
 				// Keywords
 				{ match: REGEX_PRECEDING_KEYWORDS, boundary: true, token: "keyword" },
-				{ match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)), boundary: true, token: "keyword", state: "tmpl_division" },
+				{
+					match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)),
+					boundary: true,
+					token: "keyword",
+					state: "tmpl_division",
+				},
 				// Literals
-				{ match: BOOLEAN_LITERALS, boundary: true, token: "boolean", state: "tmpl_division" },
-				{ match: SPECIAL_VALUES, boundary: true, token: "keyword", state: "tmpl_division" },
+				{
+					match: BOOLEAN_LITERALS,
+					boundary: true,
+					token: "boolean",
+					state: "tmpl_division",
+				},
+				{
+					match: SPECIAL_VALUES,
+					boundary: true,
+					token: "keyword",
+					state: "tmpl_division",
+				},
 				// Identifiers
 				{ match: ["_", "$"], token: "identifier", state: "identifier_tmpl" },
 				{ range: LETTER_RANGE, token: "identifier", state: "identifier_tmpl" },
-				// Whitespace
-				{ match: [" ", "\t", "\n", "\r"] },
 			],
 		},
-
-		// (probe removed; identifiers in interpolation handled directly)
 
 		// Identifier inside interpolation
 		identifier_tmpl: {
@@ -1376,7 +1051,7 @@ export default {
 				{ match: ["("], token: "punctuation", state: "function_body_tmpl" },
 				{ match: ["["], token: "punctuation" },
 				{ match: ["{"], token: "punctuation", state: "tmpl_brace" },
-				// Closing brackets → hand back to division to reprocess and possibly close interpolation
+				// Closing brackets → hand back to division to reprocess
 				{ match: [")", "]", "}"], state: "tmpl_division", exit: true },
 				// Comma, semicolon → allow regex after
 				{ match: [",", ";"], token: "punctuation", state: "template_interpolation" },
@@ -1387,11 +1062,17 @@ export default {
 				{ match: "/", token: "operator", state: "template_interpolation" },
 				// Multi-char operators
 				{ match: [">>>="], token: "operator", state: "template_interpolation" },
-				{ match: [
-					"===","!==",">>>","<<=",">>=","**=","&&=","||=","??=",
-				], token: "operator", state: "template_interpolation" },
+				{
+					match: ["===", "!==", ">>>", "<<=", ">>=", "**=", "&&=", "||=", "??="],
+					token: "operator",
+					state: "template_interpolation",
+				},
 				// Single-char operators
-				{ match: ["-","+","<",">","=","!","&","|","?","*","~","^","%",":"], token: "operator", state: "template_interpolation" },
+				{
+					match: ["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%", ":"],
+					token: "operator",
+					state: "template_interpolation",
+				},
 				// Any non-identifier char: switch to division and reprocess
 				{ any: true, state: "tmpl_division", exit: true },
 			],
@@ -1406,20 +1087,12 @@ export default {
 			],
 		},
 
+		// -------------------------------------------------------------------------
+		// function_body_tmpl — call-site args inside template interpolation
+		// -------------------------------------------------------------------------
 		function_body_tmpl: {
+			include: ["js_comments", "js_strings", "js_numbers_arg"],
 			rules: [
-				// Comments
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-				// Strings and template literals
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				TEMPLATE_LITERAL,
-				// Numbers (argument context)
-				{ match: ["0x", "0X"], token: "number", state: "hex_number_arg" },
-				{ match: ["0b", "0B"], token: "number", state: "binary_number_arg" },
-				{ match: ["0o", "0O"], token: "number", state: "octal_number_arg" },
-				{ range: DIGIT_RANGE, token: "number", state: "number_arg" },
 				// End of arguments
 				{ match: ")", token: "punctuation", state: "tmpl_division", exit: true },
 				// Nested parentheses
@@ -1427,36 +1100,48 @@ export default {
 				// Argument separator
 				{ match: ",", token: "punctuation" },
 				// Operators
-				{ match: ["===","!=="], token: "operator" },
-				{ match: ["--","++","<=",">=","==","!=","&&","||"], token: "operator" },
-				{ match: ["-","+","<",">","=","!","&","|","?","*","/","~","^","%"], token: "operator" },
+				{ match: ["===", "!=="], token: "operator" },
+				{
+					match: ["--", "++", "<=", ">=", "==", "!=", "&&", "||"],
+					token: "operator",
+				},
+				{
+					match: [
+						"-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "/", "~", "^", "%",
+					],
+					token: "operator",
+				},
 				// Punctuation
 				{ match: ["[", "]", "{", "}"], token: "punctuation" },
 				{ match: [";", "."], token: "punctuation" },
 				// Literals
 				{ match: BOOLEAN_LITERALS, token: "boolean" },
-				// Identifiers inside args (reuse template probe)
+				// Identifiers inside args
 				{ match: ["_", "$"], token: "identifier", state: "identifier_tmpl" },
 				{ range: LETTER_RANGE, token: "identifier", state: "identifier_tmpl" },
 			],
 		},
 
+		// -------------------------------------------------------------------------
+		// paren_group_tmpl — nested parens inside template interpolation args
+		// -------------------------------------------------------------------------
 		paren_group_tmpl: {
+			include: "js_body_common",
 			rules: [
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				{ match: ["0x", "0X"], token: "number", state: "hex_number_arg" },
-				{ match: ["0b", "0B"], token: "number", state: "binary_number_arg" },
-				{ match: ["0o", "0O"], token: "number", state: "octal_number_arg" },
-				{ range: DIGIT_RANGE, token: "number", state: "number_arg" },
 				{ match: ")", token: "punctuation", exit: true },
 				{ match: "(", token: "punctuation", state: "paren_group_tmpl" },
 				{ match: ",", token: "punctuation" },
-				{ match: ["===","!=="], token: "operator" },
-				{ match: ["--","++","<=",">=","==","!=","&&","||"], token: "operator" },
-				{ match: ["-","+","<",">","=","!","&","|","?","*","/","~","^","%"], token: "operator" },
+				{ match: ["===", "!=="], token: "operator" },
+				{
+					match: ["--", "++", "<=", ">=", "==", "!=", "&&", "||"],
+					token: "operator",
+				},
+				{
+					match: [
+						"-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "/", "~", "^", "%",
+					],
+					token: "operator",
+				},
 				{ match: ["[", "]", "{", "}", ";", "."], token: "punctuation" },
 				{ match: BOOLEAN_LITERALS, token: "boolean" },
 				{ match: ["_", "$"], token: "identifier" },
@@ -1464,152 +1149,248 @@ export default {
 			],
 		},
 
-		// Division-like context within interpolation
-		tmpl_division: {
-			rules: [
-				{ match: "}", token: "punctuation", exit: true },
-				TEMPLATE_LITERAL,
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				{ match: ["(", "["], token: "punctuation", state: "tmpl_regex_allow" },
-				{ match: "{", token: "punctuation", state: "tmpl_brace" },
-				{ match: ["0x", "0X"], token: "number", state: "hex_number", exit: true },
-				{ match: ["0b", "0B"], token: "number", state: "binary_number", exit: true },
-				{ match: ["0o", "0O"], token: "number", state: "octal_number", exit: true },
-				{ range: DIGIT_RANGE, token: "number", state: "number", exit: true },
-				{ match: "/=", token: "operator", state: "tmpl_regex_allow" },
-				{ match: "/", token: "operator", state: "tmpl_regex_allow" },
-				{ match: [">>>="], token: "operator", state: "tmpl_regex_allow" },
-				{ match: ["===","!==",">>>","<<=",">>=","**=","&&=","||=","??="], token: "operator", state: "tmpl_regex_allow" },
-				{ match: "...", token: "operator", state: "tmpl_regex_allow" },
-				{ match: ["++","--","<=",">=","==","!=","&&","||","<<",">>","**","??","?.","=>","+=","-=","*","%","&=","|=","^="], token: "operator", state: "tmpl_regex_allow" },
-				{ match: ["-","+","<",">","=","!","&","|","?","*","~","^","%",":"], token: "operator", state: "tmpl_regex_allow" },
-				{ match: [")", "]"], token: "punctuation" },
-				{ match: [";", ",", "."], token: "punctuation" },
-				{ match: REGEX_PRECEDING_KEYWORDS, boundary: true, token: "keyword", state: "tmpl_regex_allow" },
-				{ match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)), boundary: true, token: "keyword", state: "tmpl_division" },
-				{ match: BOOLEAN_LITERALS, boundary: true, token: "boolean", state: "tmpl_division" },
-				{ match: SPECIAL_VALUES, boundary: true, token: "keyword", state: "tmpl_division" },
-				{ match: ["_", "$"], token: "identifier", state: "identifier_tmpl" },
-				{ range: LETTER_RANGE, token: "identifier", state: "identifier_tmpl" },
-				{ match: [" ", "\t", "\n", "\r"] },
-			],
-		},
-
-		// Regex-allowed context inside interpolation
-		tmpl_regex_allow: {
-			rules: [
-				{ match: "}", token: "punctuation", exit: true },
-				TEMPLATE_LITERAL,
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				// Numbers
-				{ match: ["0x", "0X"], token: "number", state: "hex_number", exit: true },
-				{ match: ["0b", "0B"], token: "number", state: "binary_number", exit: true },
-				{ match: ["0o", "0O"], token: "number", state: "octal_number", exit: true },
-				{ range: DIGIT_RANGE, token: "number", state: "number", exit: true },
-				// Here / is a regex
-				{ match: "/", token: "regex", state: "regex_pattern" },
-				// Operators & punctuation
-				{ match: [">>>="], token: "operator" },
-				{ match: ["===","!==",">>>","<<=",">>=","**=","&&=","||=","??="], token: "operator" },
-				{ match: "...", token: "operator" },
-				{ match: ["++","--","<=",">=","==","!=","&&","||","<<",">>","**","??","?.","=>","+=","-=","*","/","%","&=","|=","^="], token: "operator" },
-				{ match: ["-","+","<",">","=","!","&","|","?","*","~","^","%",":"], token: "operator" },
-				{ match: ["(", "{" , "["], token: "punctuation" },
-				{ match: [")", "}", "]"], token: "punctuation", state: "tmpl_division", exit: true },
-				{ match: [";", ",", "."], token: "punctuation" },
-				// Keywords & literals
-				{ match: REGEX_PRECEDING_KEYWORDS, boundary: true, token: "keyword" },
-				{ match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)), boundary: true, token: "keyword", state: "tmpl_division" },
-				{ match: BOOLEAN_LITERALS, boundary: true, token: "boolean", state: "tmpl_division" },
-				{ match: SPECIAL_VALUES, boundary: true, token: "keyword", state: "tmpl_division" },
-				// Identifiers
-				{ match: ["_", "$"], token: "identifier", state: "identifier_tmpl" },
-				{ range: LETTER_RANGE, token: "identifier", state: "identifier_tmpl" },
-				{ match: [" ", "\t", "\n", "\r"] },
-			],
-		},
-
-		// Main-like context inside interpolation (entry after ${)
+		// -------------------------------------------------------------------------
+		// tmpl_main — entry after ${ (regex allowed by default)
+		// -------------------------------------------------------------------------
 		tmpl_main: {
+			include: "js_common",
 			rules: [
 				{ match: "}", exit: true },
-				// Comments
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-				// Strings and template literals
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				TEMPLATE_LITERAL,
-				// Numbers
-				{ match: ["0x", "0X"], token: "number", state: "hex_number", exit: true },
-				{ match: ["0b", "0B"], token: "number", state: "binary_number", exit: true },
-				{ match: ["0o", "0O"], token: "number", state: "octal_number", exit: true },
-				{ range: DIGIT_RANGE, token: "number", state: "number", exit: true },
+				// Default: / starts a regex
+				{ match: "/", token: "regex", state: "regex_pattern" },
 				// Operators
 				{ match: [">>>="], token: "operator" },
-				{ match: ["===","!==",">>>","<<=",">>=","**=","&&=","||=","??="], token: "operator" },
+				{
+					match: ["===", "!==", ">>>", "<<=", ">>=", "**=", "&&=", "||=", "??="],
+					token: "operator",
+				},
 				{ match: "...", token: "operator" },
-				{ match: ["++","--","<=",">=","==","!=","&&","||","<<",">>","**","??","?.","=>","+=","-=","*=","/=","%=","&=","|=","^="], token: "operator", state: "tmpl_regex_allow", exit: true },
-				{ match: ["-","+","<",">","=","!","&","|","?","*","~","^","%",":"], token: "operator", state: "tmpl_regex_allow", exit: true },
+				{
+					match: [
+						"++", "--", "<=", ">=", "==", "!=", "&&", "||", "<<", ">>",
+						"**", "??", "?.", "=>", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=",
+					],
+					token: "operator",
+					state: "tmpl_regex_allow",
+					exit: true,
+				},
+				{
+					match: ["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%", ":"],
+					token: "operator",
+					state: "tmpl_regex_allow",
+					exit: true,
+				},
 				// Punctuation
-				{ match: ["(", "{", "["], token: "punctuation", state: "tmpl_regex_allow", exit: true },
-				{ match: [")", "]"], token: "punctuation", state: "tmpl_division", exit: true },
+				{
+					match: ["(", "{", "["],
+					token: "punctuation",
+					state: "tmpl_regex_allow",
+					exit: true,
+				},
+				{
+					match: [")", "]"],
+					token: "punctuation",
+					state: "tmpl_division",
+					exit: true,
+				},
 				{ match: [";", ","], token: "punctuation", state: "tmpl_regex_allow", exit: true },
 				{ match: ["."], token: "punctuation" },
 				// Keywords
-				{ match: REGEX_PRECEDING_KEYWORDS, boundary: true, token: "keyword", state: "tmpl_regex_allow", exit: true },
-				{ match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)), boundary: true, token: "keyword", state: "tmpl_division", exit: true },
+				{
+					match: REGEX_PRECEDING_KEYWORDS,
+					boundary: true,
+					token: "keyword",
+					state: "tmpl_regex_allow",
+					exit: true,
+				},
+				{
+					match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)),
+					boundary: true,
+					token: "keyword",
+					state: "tmpl_division",
+					exit: true,
+				},
 				// Literals
-				{ match: BOOLEAN_LITERALS, boundary: true, token: "boolean", state: "tmpl_division", exit: true },
-				{ match: SPECIAL_VALUES, boundary: true, token: "keyword", state: "tmpl_division", exit: true },
+				{
+					match: BOOLEAN_LITERALS,
+					boundary: true,
+					token: "boolean",
+					state: "tmpl_division",
+					exit: true,
+				},
+				{
+					match: SPECIAL_VALUES,
+					boundary: true,
+					token: "keyword",
+					state: "tmpl_division",
+					exit: true,
+				},
 				// Identifiers
 				{ match: ["_", "$"], token: "identifier", state: "identifier_tmpl" },
 				{ range: LETTER_RANGE, token: "identifier", state: "identifier_tmpl" },
-				// Default: allow regex at start
-				{ match: "/", token: "regex", state: "regex_pattern" },
-				// Whitespace
-				{ match: [" ", "\t", "\n", "\r"] },
 			],
 		},
 
-		// Brace-balanced block inside interpolation
+		// -------------------------------------------------------------------------
+		// tmpl_division — after a value inside interpolation; / is division
+		// -------------------------------------------------------------------------
+		tmpl_division: {
+			include: "js_common",
+			rules: [
+				{ match: "}", token: "punctuation", exit: true },
+				{ match: ["(", "["], token: "punctuation", state: "tmpl_regex_allow" },
+				{ match: "{", token: "punctuation", state: "tmpl_brace" },
+				{ match: "/=", token: "operator", state: "tmpl_regex_allow" },
+				{ match: "/", token: "operator", state: "tmpl_regex_allow" },
+				{ match: [">>>="], token: "operator", state: "tmpl_regex_allow" },
+				{
+					match: ["===", "!==", ">>>", "<<=", ">>=", "**=", "&&=", "||=", "??="],
+					token: "operator",
+					state: "tmpl_regex_allow",
+				},
+				{ match: "...", token: "operator", state: "tmpl_regex_allow" },
+				{
+					match: [
+						"++", "--", "<=", ">=", "==", "!=", "&&", "||", "<<", ">>",
+						"**", "??", "?.", "=>", "+=", "-=", "*", "%", "&=", "|=", "^=",
+					],
+					token: "operator",
+					state: "tmpl_regex_allow",
+				},
+				{
+					match: ["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%", ":"],
+					token: "operator",
+					state: "tmpl_regex_allow",
+				},
+				{ match: [")", "]"], token: "punctuation" },
+				{ match: [";", ",", "."], token: "punctuation" },
+				{
+					match: REGEX_PRECEDING_KEYWORDS,
+					boundary: true,
+					token: "keyword",
+					state: "tmpl_regex_allow",
+				},
+				{
+					match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)),
+					boundary: true,
+					token: "keyword",
+					state: "tmpl_division",
+				},
+				{ match: BOOLEAN_LITERALS, boundary: true, token: "boolean", state: "tmpl_division" },
+				{ match: SPECIAL_VALUES, boundary: true, token: "keyword", state: "tmpl_division" },
+				{ match: ["_", "$"], token: "identifier", state: "identifier_tmpl" },
+				{ range: LETTER_RANGE, token: "identifier", state: "identifier_tmpl" },
+			],
+		},
+
+		// -------------------------------------------------------------------------
+		// tmpl_regex_allow — after operator inside interpolation; / is regex
+		// -------------------------------------------------------------------------
+		tmpl_regex_allow: {
+			include: "js_common",
+			rules: [
+				{ match: "}", token: "punctuation", exit: true },
+				// Here / is a regex
+				{ match: "/", token: "regex", state: "regex_pattern" },
+				// Operators
+				{ match: [">>>="], token: "operator" },
+				{
+					match: ["===", "!==", ">>>", "<<=", ">>=", "**=", "&&=", "||=", "??="],
+					token: "operator",
+				},
+				{ match: "...", token: "operator" },
+				{
+					match: [
+						"++", "--", "<=", ">=", "==", "!=", "&&", "||", "<<", ">>",
+						"**", "??", "?.", "=>", "+=", "-=", "*", "/", "%", "&=", "|=", "^=",
+					],
+					token: "operator",
+				},
+				{
+					match: ["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%", ":"],
+					token: "operator",
+				},
+				{ match: ["(", "{", "["], token: "punctuation" },
+				{
+					match: [")", "}", "]"],
+					token: "punctuation",
+					state: "tmpl_division",
+					exit: true,
+				},
+				{ match: [";", ",", "."], token: "punctuation" },
+				// Keywords & literals
+				{ match: REGEX_PRECEDING_KEYWORDS, boundary: true, token: "keyword" },
+				{
+					match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)),
+					boundary: true,
+					token: "keyword",
+					state: "tmpl_division",
+				},
+				{
+					match: BOOLEAN_LITERALS,
+					boundary: true,
+					token: "boolean",
+					state: "tmpl_division",
+				},
+				{
+					match: SPECIAL_VALUES,
+					boundary: true,
+					token: "keyword",
+					state: "tmpl_division",
+				},
+				// Identifiers
+				{ match: ["_", "$"], token: "identifier", state: "identifier_tmpl" },
+				{ range: LETTER_RANGE, token: "identifier", state: "identifier_tmpl" },
+			],
+		},
+
+		// -------------------------------------------------------------------------
+		// tmpl_brace — brace-balanced block inside interpolation
+		// -------------------------------------------------------------------------
 		tmpl_brace: {
+			include: "js_common",
 			rules: [
 				{ match: "}", exit: true },
 				{ match: "{", token: "punctuation", state: "tmpl_brace" },
-				TEMPLATE_LITERAL,
-				SINGLE_LINE_COMMENT,
-				MULTI_LINE_COMMENT,
-				STRING_DOUBLE,
-				STRING_SINGLE,
-				{ match: ["0x", "0X"], token: "number", state: "hex_number", exit: true },
-				{ match: ["0b", "0B"], token: "number", state: "binary_number", exit: true },
-				{ match: ["0o", "0O"], token: "number", state: "octal_number", exit: true },
-				{ range: DIGIT_RANGE, token: "number", state: "number", exit: true },
 				{ match: "/", token: "regex", state: "regex_pattern" },
 				{ match: [">>>="], token: "operator" },
-				{ match: ["===","!==",">>>","<<=",">>=","**=","&&=","||=","??="], token: "operator" },
+				{
+					match: ["===", "!==", ">>>", "<<=", ">>=", "**=", "&&=", "||=", "??="],
+					token: "operator",
+				},
 				{ match: "...", token: "operator" },
-				{ match: ["++","--","<=",">=","==","!=","&&","||","<<",">>","**","??","?.","=>","+=","-=","*=","/=","%=","&=","|=","^="], token: "operator" },
-				{ match: ["-","+","<",">","=","!","&","|","?","*","~","^","%",":"], token: "operator" },
-				{ match: ["(",")","[","]", ",", ".", ";"], token: "punctuation" },
-				{ match: REGEX_PRECEDING_KEYWORDS, boundary: true, token: "keyword" },
-				{ match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)), boundary: true, token: "keyword" },
+				{
+					match: [
+						"++", "--", "<=", ">=", "==", "!=", "&&", "||", "<<", ">>",
+						"**", "??", "?.", "=>", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=",
+					],
+					token: "operator",
+				},
+				{
+					match: ["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%", ":"],
+					token: "operator",
+				},
+				{ match: ["(", ")", "[", "]", ",", ".", ";"], token: "punctuation" },
+				{
+					match: REGEX_PRECEDING_KEYWORDS,
+					boundary: true,
+					token: "keyword",
+				},
+				{
+					match: KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k)),
+					boundary: true,
+					token: "keyword",
+				},
 				{ match: BOOLEAN_LITERALS, boundary: true, token: "boolean" },
 				{ match: SPECIAL_VALUES, boundary: true, token: "keyword" },
 				{ match: ["_", "$"], state: "identifier_probe", exit: true },
 				{ range: LETTER_RANGE, state: "identifier_probe", exit: true },
-				{ match: [" ", "\t", "\n", "\r"] },
 			],
 		},
 
-		// Regex pattern
+		// -------------------------------------------------------------------------
+		// Regex pattern states
+		// -------------------------------------------------------------------------
 		regex_pattern: {
 			rules: [
 				{ match: "/", token: "regex", state: "regex_flags", exit: true },
