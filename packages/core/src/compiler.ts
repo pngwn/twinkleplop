@@ -297,9 +297,12 @@ export function compile(grammar: Grammar): CompiledGrammar {
 			// If probe state has a fallback, store it
 			if (state.fallback) {
 				const fallbackStateId = stateMap.get(state.fallback);
-				if (fallbackStateId !== undefined) {
-					probeFallbacks.set(stateId, fallbackStateId);
+				if (fallbackStateId === undefined) {
+					throw new Error(
+						`Grammar "${grammar.name ?? "unnamed"}": probe state "${stateName}" fallback references unknown state "${state.fallback}"`,
+					);
 				}
+				probeFallbacks.set(stateId, fallbackStateId);
 			}
 		}
 
@@ -314,11 +317,23 @@ export function compile(grammar: Grammar): CompiledGrammar {
 			// Handle state transitions and exits
 			if (rule.state && rule.exit) {
 				// Sideways transition: exit current state and enter new state
-				nextState = stateMap.get(rule.state) || 255;
+				const sid = stateMap.get(rule.state);
+				if (sid === undefined) {
+					throw new Error(
+						`Grammar "${grammar.name ?? "unnamed"}": state "${stateName}" rule ${ruleIdx} references unknown state "${rule.state}"`,
+					);
+				}
+				nextState = sid;
 				stackOp = 2; // Use exit operation, but with a target state
 			} else if (rule.state) {
 				// Regular push transition
-				nextState = stateMap.get(rule.state) || 255;
+				const sid = stateMap.get(rule.state);
+				if (sid === undefined) {
+					throw new Error(
+						`Grammar "${grammar.name ?? "unnamed"}": state "${stateName}" rule ${ruleIdx} references unknown state "${rule.state}"`,
+					);
+				}
+				nextState = sid;
 				stackOp = 1;
 			} else if (rule.exit) {
 				// Regular pop/exit

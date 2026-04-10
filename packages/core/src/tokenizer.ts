@@ -209,6 +209,16 @@ export function tokenize(
 						}
 					}
 				}
+
+				// Check if this single-char charMaps rule has previously failed as a
+				// probe trigger. The multi-char bucket path has this check inline, but
+				// charMaps matches reach here without going through that loop.
+				if (matchedRuleIdx === 255 && hasFailedProbes && charClass !== 255) {
+					const testKey = (pos << 16) | (currentState << 8) | charClass;
+					if (failedProbes.has(testKey)) {
+						charClass = 255;
+					}
+				}
 			}
 
 			if (charClass !== 255) {
