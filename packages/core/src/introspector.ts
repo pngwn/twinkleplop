@@ -104,7 +104,7 @@ export class TokenizerIntrospector {
 		charStr: string;
 		currentState: number;
 		stackPtr: number;
-		stateStack: Uint8Array | number[];
+		stateStack: Uint16Array | number[];
 		probeMode?: boolean;
 	}): void {
 		// Track character processing in current state session
@@ -168,13 +168,13 @@ export class TokenizerIntrospector {
 		if (this.currentStateSession) {
 			if (this.currentStateSession.isProbe) {
 				// For probe states, only track if this rule causes a state change
-				if (transition !== 255 && transition !== currentState) {
+				if (transition !== 65535 && transition !== currentState) {
 					// This is the disambiguating rule - track it once
 					this.currentStateSession.rulesApplied.set(ruleName, 1);
 				}
 			} else if (!probeMode) {
 				// For normal states, track all rules that keep us in the same state
-				if (transition === 255 || transition === currentState) {
+				if (transition === 65535 || transition === currentState) {
 					const count = this.currentStateSession.rulesApplied.get(ruleName) || 0;
 					this.currentStateSession.rulesApplied.set(ruleName, count + 1);
 				}
@@ -186,8 +186,8 @@ export class TokenizerIntrospector {
 			ruleIndex: charClass,
 			ruleName: ruleName,
 			matchedLength,
-			transition: transition !== 255 ? this._getStateName(transition) : null,
-			tokenType: tokenType !== 255 ? this._getTokenName(tokenType) : null,
+			transition: transition !== 65535 ? this._getStateName(transition) : null,
+			tokenType: tokenType !== 65535 ? this._getTokenName(tokenType) : null,
 			stackOp: this._getStackOpName(stackOp),
 			currentState: this._getStateName(currentState),
 			pos,

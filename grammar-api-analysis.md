@@ -194,7 +194,7 @@ An LLM using `grammar.md` as its sole reference would likely:
 
 ---
 
-#### C1 — `match_within` API/docs mismatch (`begin` vs `start`)
+#### C1 — `match_within` API/docs mismatch (`begin` vs `start`) -- DONE
 
 **Location:** `grammar.md:44` vs `types.ts:14–18`, `compiler.ts:181`
 
@@ -233,7 +233,7 @@ match_within?: {
 
 ---
 
-#### C2 — `multiline` property on `match_within` silently ignored
+#### C2 — `multiline` property on `match_within` silently ignored -- DONE
 
 **Location:** `packages/javascript/src/grammar.js:125,130` vs `types.ts:14–18`
 
@@ -261,7 +261,7 @@ The generated content state uses `range: [0, 127]` as its fallback rule (`compil
 
 ---
 
-#### C3 — No state reference validation: typos compile silently to no-ops
+#### C3 — No state reference validation: typos compile silently to no-ops -- DONE
 
 **Location:** `compiler.ts:317`, `compiler.ts:299–303`
 
@@ -312,7 +312,7 @@ for (const [stateName, state] of Object.entries(processedGrammar.states)) {
 
 ---
 
-#### C4 — Hard 255-state limit undocumented; silent corruption above limit
+#### C4 — Hard 255-state limit undocumented; silent corruption above limit -- DONE
 
 **Location:** `compiler.ts:267–268`, `compiler.ts:271–272`
 
@@ -702,7 +702,7 @@ export interface ValidationResult {
 
 This validation pass would catch C1, C3, C4 (approaching limit), C5, M4, m1 at compile time.
 
-### A2 — `multiline` support in `match_within`
+### A2 — `multiline` support in `match_within` -- DONE
 
 Add `multiline?: boolean` to `match_within` type (`types.ts:14`). When `false`, the generated content state's fallback range excludes `\n` (charCode 10). Default: `true` (current behavior, backward compatible).
 
@@ -727,7 +727,7 @@ if (state.override) {
 }
 ```
 
-### A4 — Upgrade to `Uint16Array` for 65535-state capacity (C4 long-term)
+### A4 — Upgrade to `Uint16Array` for 65535-state capacity (C4 long-term) -- DONE
 
 Replace `Uint8Array` with `Uint16Array` for `transitions`, `charMaps`, `fallbackTransitions`, and `probeMask`. Change all `255` sentinels to `65535`. Change `probeFallbacks` value type from `number` (byte) to `number` (uint16). The performance impact is negligible — `Uint16Array` has the same indexed access pattern, and modern engines handle both equally efficiently.
 

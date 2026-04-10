@@ -15,6 +15,7 @@ export interface GrammarRule {
 		start: string;
 		end: string;
 		escape?: string;
+		multiline?: boolean;
 	};
 	any?: boolean;
 	boundary?: boolean;
@@ -47,12 +48,12 @@ export interface PatternInfo {
 
 export interface CompiledGrammar {
 	states: Map<string, number>;
-	transitions: Uint8Array;
-	charMaps: Uint8Array;
+	transitions: Uint16Array;
+	charMaps: Uint16Array;
 	keywords: Map<string, number>;
 	tokenTypes: string[];
 	patterns: Map<number, (PatternInfo[] | null)[]>;
-	fallbackTransitions: Uint8Array;
+	fallbackTransitions: Uint16Array;
 	// Use object map for faster non-ASCII lookups per state
 	nonAsciiChars: Map<number, Record<number, number>>;
 	// Retain set for external tooling, but also include fast mask for hot path
@@ -88,7 +89,7 @@ export interface IntrospectorEvent {
 	currentState?: string | number;
 	currentStateIndex?: number;
 	stackDepth?: number;
-	stateStack?: string[] | number[] | Uint8Array;
+	stateStack?: string[] | number[] | Uint16Array;
 	stateStackIndices?: number[];
 	fullStatePath?: string[] | number[];
 	fullStateIndices?: number[];

@@ -9,7 +9,7 @@
  * prescriptive — the assertions describe what actually happens today.
  */
 
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, vi } from "vitest";
 import { compile } from "./compiler";
 import { tokenize } from "./tokenizer";
 import type { Grammar, TokenizeResult } from "./types";
@@ -122,22 +122,25 @@ describe("C5: exit:true in root state", () => {
 			},
 		};
 
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const compiled = compile(grammar);
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining('rule 0 in root state "main"')
+		);
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining("exit will be a no-op")
+		);
+		warnSpy.mockRestore();
+
 		const result = tokenize("axb", compiled);
 		const tokens = tokenValues(result, "axb");
 
-		// CURRENT BEHAVIOR:
-		// 'a' → letter (main stays)
-		// 'x' → x token emitted, exit fires but stackPtr=0 so pop is skipped, stays in main
-		// 'b' → letter (still in main — exit was a no-op)
+		// exit fires but stackPtr=0 so pop is skipped, stays in main
 		expect(tokens).toEqual([
 			{ type: "letter", value: "a" },
 			{ type: "x", value: "x" },
 			{ type: "letter", value: "b" },
 		]);
-
-		// DESIRED (after fix): compile() should warn:
-		// 'Grammar warning: rule 0 in root state "main" has exit:true with no parent state'
 	});
 
 	test("exit with sideways in root state IS valid — transitions without stack change", () => {
@@ -257,16 +260,12 @@ describe("C1: match_within begin vs start", () => {
 		expect(tokens).toContainEqual({ type: "word", value: "world" });
 	});
 
-	test("using 'begin' (documented but wrong) produces no string token", () => {
-		// grammar.md:44 documents 'begin' — but types.ts:15 and compiler use 'start'.
-		// Using 'begin' produces undefined for rule.match_within.start,
-		// so the generated entry rule has match: undefined — it never fires.
+	test("using 'begin' (documented but wrong) throws a clear error at compile time", () => {
 		const grammar = {
 			name: "match-within-begin",
 			states: {
 				main: {
 					rules: [
-						// Using 'begin' as documented in grammar.md (WRONG — should be 'start')
 						{ match_within: { begin: '"', end: '"' }, token: "string" },
 						{ range: ["a", "z"], token: "word" },
 					],
@@ -274,20 +273,7 @@ describe("C1: match_within begin vs start", () => {
 			},
 		} as unknown as Grammar;
 
-		// CURRENT: compiles without error
-		expect(() => compile(grammar)).not.toThrow();
-
-		const compiled = compile(grammar);
-		const result = tokenize('"hello" world', compiled);
-		const tokens = tokenValues(result, '"hello" world');
-
-		// CURRENT BEHAVIOR: no "string" token — the match_within rule never fires
-		// because the generated entry rule has match: undefined.
-		const stringTokens = tokens.filter((t) => t.type === "string");
-		expect(stringTokens).toHaveLength(0);
-
-		// DESIRED (after fix): compile() should throw:
-		// 'match_within uses "start" not "begin"'
+		expect(() => compile(grammar)).toThrow('match_within uses "start" not "begin"');
 	});
 });
 

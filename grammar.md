@@ -41,7 +41,8 @@ A rule must contain exactly one matcher property:
   - `{ "range": ["a", "z"], "token": "identifier" }`
   - `{ "range": [["0", "9"], ["A", "Z"]], "token": "hex*digit" }`
 - `match_within`: matches between two delimeters with an optonal escape character.
-  - `{ match_within: { begin: "'", end: "'", escape: "\\"}, token: "string" }`
+  - `{ match_within: { start: "'", end: "'", escape: "\\"}, token: "string" }`
+  - `multiline` (default `true`): when `false`, the match stops at a newline (the string does not span lines).
 
 #### Actions
 

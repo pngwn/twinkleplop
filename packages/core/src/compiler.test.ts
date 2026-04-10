@@ -36,8 +36,8 @@ describe("compile", () => {
 		const charCodeA = "a".charCodeAt(0);
 		const charCodeB = "b".charCodeAt(0);
 
-		expect(compiled.charMaps[rootState! * 128 + charCodeA]).not.toBe(255);
-		expect(compiled.charMaps[rootState! * 128 + charCodeB]).not.toBe(255);
+		expect(compiled.charMaps[rootState! * 128 + charCodeA]).not.toBe(65535);
+		expect(compiled.charMaps[rootState! * 128 + charCodeB]).not.toBe(65535);
 		expect(new Set(compiled.tokenTypes)).toEqual(new Set(["letter-a", "letter-b"]));
 	});
 
@@ -111,8 +111,8 @@ describe("compile", () => {
 
 		expect(compiled.states).toBeInstanceOf(Map);
 		expect(compiled.states.get("root")).toBe(0);
-		expect(compiled.transitions).toBeInstanceOf(Uint8Array);
-		expect(compiled.charMaps).toBeInstanceOf(Uint8Array);
+		expect(compiled.transitions).toBeInstanceOf(Uint16Array);
+		expect(compiled.charMaps).toBeInstanceOf(Uint16Array);
 		expect(compiled.keywords).toBeInstanceOf(Map);
 		expect(compiled.tokenTypes).toEqual(["letter-a", "letter-b"]);
 	});
@@ -260,7 +260,7 @@ describe("compile", () => {
 		expect(compiled.charMaps[13]).toBe(0);
 	});
 
-	it("should fill unmapped characters with 255", () => {
+	it("should fill unmapped characters with 65535", () => {
 		const grammar: Grammar = {
 			name: "test",
 			states: {
@@ -278,8 +278,8 @@ describe("compile", () => {
 		const compiled = compile(grammar);
 
 		expect(compiled.charMaps[97]).toBe(0);
-		expect(compiled.charMaps[98]).toBe(255);
-		expect(compiled.charMaps[65]).toBe(255);
+		expect(compiled.charMaps[98]).toBe(65535);
+		expect(compiled.charMaps[65]).toBe(65535);
 	});
 
 	it("should handle numeric character codes in ranges", () => {
@@ -301,7 +301,7 @@ describe("compile", () => {
 
 		expect(compiled.charMaps[48]).toBe(0);
 		expect(compiled.charMaps[57]).toBe(0);
-		expect(compiled.charMaps[47]).toBe(255);
-		expect(compiled.charMaps[58]).toBe(255);
+		expect(compiled.charMaps[47]).toBe(65535);
+		expect(compiled.charMaps[58]).toBe(65535);
 	});
 });

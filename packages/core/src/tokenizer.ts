@@ -47,7 +47,7 @@ export function tokenize(
 	const tokens = new Uint32Array(len * 3);
 	let tokenCount = 0;
 
-	const stateStack = new Uint8Array(256);
+	const stateStack = new Uint16Array(256);
 	let stackPtr = 0;
 	let currentState = 0;
 
@@ -63,7 +63,7 @@ export function tokenize(
 	let prevAdvancedPos = -1;
 
 	// Track the last token for coalescing
-	let lastTokenType: number = 255;
+	let lastTokenType: number = 65535;
 	let lastTokenEnd: number = -1;
 
 	// Probe mode tracking
@@ -122,7 +122,7 @@ export function tokenize(
 		if (char < 128) {
 			// Check bucketed multi-character patterns first
 			let matchedLength: number = 0;
-			let matchedRuleIdx: number = 255;
+			let matchedRuleIdx: number = 65535;
 			// Early bail if no patterns for this state
 			// Inline bucket check for hot path
 			if (stateBuckets) {
@@ -183,14 +183,14 @@ export function tokenize(
 
 			// Directly use matched rule or lookup char map
 			let charClass = matchedRuleIdx;
-			if (charClass === 255) {
+			if (charClass === 65535) {
 				charClass = charMaps[charMapBase + char];
 			}
 
-			if (charClass !== 255) {
+			if (charClass !== 65535) {
 				// Check boundary for single-character matches if required
 				if (
-					matchedRuleIdx === 255 &&
+					matchedRuleIdx === 65535 &&
 					boundaryRules &&
 					boundaryRules.has(currentState * 256 + charClass)
 				) {
@@ -205,7 +205,7 @@ export function tokenize(
 							nextChar === 36 // $
 						) {
 							// Boundary check failed - skip this match
-							charClass = 255;
+							charClass = 65535;
 						}
 					}
 				}
@@ -213,15 +213,15 @@ export function tokenize(
 				// Check if this single-char charMaps rule has previously failed as a
 				// probe trigger. The multi-char bucket path has this check inline, but
 				// charMaps matches reach here without going through that loop.
-				if (matchedRuleIdx === 255 && hasFailedProbes && charClass !== 255) {
+				if (matchedRuleIdx === 65535 && hasFailedProbes && charClass !== 65535) {
 					const testKey = (pos << 16) | (currentState << 8) | charClass;
 					if (failedProbes.has(testKey)) {
-						charClass = 255;
+						charClass = 65535;
 					}
 				}
 			}
 
-			if (charClass !== 255) {
+			if (charClass !== 65535) {
 				const tBase = transBase3 + charClass * 3;
 				const transition = transitions[tBase];
 				const tokenType = transitions[tBase + 1];
@@ -229,11 +229,11 @@ export function tokenize(
 
 				// Determine target state
 				let targetState = currentState;
-				if (stackOp === 1 && transition !== 255) {
+				if (stackOp === 1 && transition !== 65535) {
 					targetState = transition;
 				} else if (stackOp === 2 && stackPtr > 0) {
 					targetState = stateStack[stackPtr - 1];
-				} else if (transition !== 255) {
+				} else if (transition !== 65535) {
 					targetState = transition;
 				}
 
@@ -287,7 +287,7 @@ export function tokenize(
 				}
 
 				// Emit token only if not in probe state
-				if (!isInProbeState && tokenType !== 255) {
+				if (!isInProbeState && tokenType !== 65535) {
 					const newEnd = pos + (matchedLength || 1);
 					if (tokenType === lastTokenType && pos === lastTokenEnd) {
 						// Extend previous token
@@ -337,7 +337,7 @@ export function tokenize(
 					if (stackOp !== 2) {
 						// Not an exit - advance by matched length
 						pos += matchedLength || 1;
-					} else if (stackOp === 2 && transition !== 255 && matchedLength > 0) {
+					} else if (stackOp === 2 && transition !== 65535 && matchedLength > 0) {
 						// Sideways transition with an explicit pattern match - advance by pattern length
 						pos += matchedLength;
 					}
@@ -381,7 +381,7 @@ export function tokenize(
 					// Exit operation - either pop to parent or sideways transition
 					const prevState = currentState;
 
-					if (transition !== 255) {
+					if (transition !== 65535) {
 						// Sideways transition: exit current state and enter new sibling state
 						// The stack depth remains the same
 						currentState = transition;
@@ -425,7 +425,7 @@ export function tokenize(
 					transBase3 = (currentState << 8) * 3;
 					nonAsciiState =
 						nonAsciiChars && (nonAsciiChars as any).get(currentState);
-				} else if (transition !== 255) {
+				} else if (transition !== 65535) {
 					const prevState = currentState;
 					currentState = transition;
 					const transitionPos =
@@ -650,14 +650,14 @@ export function tokenize(
 		} else {
 			// Handle non-ASCII characters (>= 128)
 			// First check if there's a specific match for this character
-			let matchedRuleIdx = 255;
+			let matchedRuleIdx = 65535;
 			// Early bail if no non-ASCII mappings exist at all
 			if (nonAsciiState) {
 				const v = (nonAsciiState as any)[char];
 				if (v !== undefined) matchedRuleIdx = v as number;
 			}
 
-			if (matchedRuleIdx !== 255) {
+			if (matchedRuleIdx !== 65535) {
 				// Found a specific match for this non-ASCII character
 				const tBase = transBase3 + matchedRuleIdx * 3;
 				const transition = transitions[tBase];
@@ -666,11 +666,11 @@ export function tokenize(
 
 				// Determine target state
 				let targetState = currentState;
-				if (stackOp === 1 && transition !== 255) {
+				if (stackOp === 1 && transition !== 65535) {
 					targetState = transition;
 				} else if (stackOp === 2 && stackPtr > 0) {
 					targetState = stateStack[stackPtr - 1];
-				} else if (transition !== 255) {
+				} else if (transition !== 65535) {
 					targetState = transition;
 				}
 
@@ -714,7 +714,7 @@ export function tokenize(
 				}
 
 				// Emit token only if not in probe state
-				if (!isInProbeState && tokenType !== 255) {
+				if (!isInProbeState && tokenType !== 65535) {
 					const newEnd = pos + 1;
 					if (tokenType === lastTokenType && startPos === lastTokenEnd) {
 						// Extend previous token
@@ -758,7 +758,7 @@ export function tokenize(
 					// For sideways transitions with no pattern match (any: true), don't advance
 					if (stackOp !== 2) {
 						pos++;
-					} else if (stackOp === 2 && transition !== 255) {
+					} else if (stackOp === 2 && transition !== 65535) {
 						// Sideways transition - don't advance to let new state process the character
 					}
 					// Otherwise: regular exit (pop) - don't advance
@@ -795,7 +795,7 @@ export function tokenize(
 					// Exit operation - either pop to parent or sideways transition
 					const prevState = currentState;
 
-					if (transition !== 255) {
+					if (transition !== 65535) {
 						// Sideways transition: exit current state and enter new sibling state
 						// The stack depth remains the same
 						currentState = transition;
@@ -837,7 +837,7 @@ export function tokenize(
 					stateBuckets = patterns ? patterns.get(currentState) : undefined;
 					charMapBase = currentState * 128;
 					transBase3 = currentState * 256 * 3;
-				} else if (transition !== 255) {
+				} else if (transition !== 65535) {
 					const prevState = currentState;
 					currentState = transition;
 					const transitionPos =
@@ -904,7 +904,7 @@ export function tokenize(
 				// INTROSPECTION_END
 
 				// Emit token only if not in probe state
-				if (!isInProbeState && tokenType !== 255) {
+				if (!isInProbeState && tokenType !== 65535) {
 					const newEnd = pos + 1;
 					if (tokenType === lastTokenType && startPos === lastTokenEnd) {
 						// Extend previous token
@@ -972,7 +972,7 @@ export function tokenize(
 					// Exit operation - either pop to parent or sideways transition
 					const prevState = currentState;
 
-					if (transition !== 255) {
+					if (transition !== 65535) {
 						// Sideways transition: exit current state and enter new sibling state
 						// The stack depth remains the same
 						currentState = transition;
@@ -1010,7 +1010,7 @@ export function tokenize(
 					stateBuckets = patterns ? patterns.get(currentState) : undefined;
 					charMapBase = currentState * 128;
 					transBase3 = currentState * 256 * 3;
-				} else if (transition !== 255) {
+				} else if (transition !== 65535) {
 					const prevState = currentState;
 					currentState = transition;
 					// INTROSPECTION_START
