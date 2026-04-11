@@ -6,6 +6,8 @@ export { verify, type VerifyIssue } from "./verify";
 export { toHtml } from "./generator";
 export {
 	createLanguage,
+	embedGrammars,
+	embedInterleaved,
 	reclassify,
 	rewriteTypes,
 	type,

@@ -1,7 +1,11 @@
 import { compile } from "@twinkleplop/core/compile";
 import { createLanguage } from "@twinkleplop/core";
 import { default as raw_grammar } from "./grammar.js";
-import { reclassifiers, functionVariableRules } from "./reclassifiers.js";
+import {
+	reclassifiers,
+	functionVariableRules,
+	scanTaggedTemplate,
+} from "./reclassifiers.js";
 
 // Three-tier API surface shared by every language package:
 //
@@ -13,7 +17,16 @@ import { reclassifiers, functionVariableRules } from "./reclassifiers.js";
 //
 // Typical use is `import { language } from "@twinkleplop/javascript"` — the
 // full enriched experience without composing anything by hand.
+//
+// `functionVariableRules` and `scanTaggedTemplate` are exported so benchmarks
+// and advanced consumers can compose custom pipelines without copy-pasting
+// the canonical rules/scanner.
 
 export const grammar = compile(raw_grammar);
 export const language = createLanguage(grammar, reclassifiers);
-export { raw_grammar, reclassifiers, functionVariableRules };
+export {
+	raw_grammar,
+	reclassifiers,
+	functionVariableRules,
+	scanTaggedTemplate,
+};

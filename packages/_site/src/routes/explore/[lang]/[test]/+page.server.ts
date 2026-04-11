@@ -10,9 +10,12 @@ function getTestFiles(lang: string) {
 	);
 
 	const css_files = test
+		// .js files are snapshot outputs for assertion tests, not input fixtures.
 		.filter((file) => !file.endsWith('.js'))
 		.map((file) => [
-			file.replace('.css', ''),
+			// Strip the last file extension (`.css`, `.html`, `.txt`, ...) so the
+			// URL-facing test name is just the basename.
+			file.replace(/\.[^.]+$/, ''),
 			fs.readFileSync(
 				path.join(import.meta.dirname, '..', '..', '..', '..', '..', '..', lang, 'test', file),
 				'utf-8'

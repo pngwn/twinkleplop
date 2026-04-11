@@ -1,0 +1,31 @@
+<style>
+  /* CSS inside <style> is tokenized by the CSS language. */
+  :root {
+    --primary: #ff6b6b;
+    --secondary: #4ecdc4;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--primary);
+    font-family: "Helvetica Neue", sans-serif;
+  }
+
+  .card {
+    background: var(--secondary);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1rem 1.5rem;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 640px) {
+    .card {
+      padding: 0.75rem;
+    }
+  }
+</style>

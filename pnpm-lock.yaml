@@ -39,6 +39,9 @@ importers:
       '@twinkleplop/css':
         specifier: workspace:*
         version: link:../css
+      '@twinkleplop/html':
+        specifier: workspace:*
+        version: link:../html
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../javascript
@@ -104,6 +107,9 @@ importers:
       '@twinkleplop/css':
         specifier: workspace:*
         version: link:../css
+      '@twinkleplop/html':
+        specifier: workspace:*
+        version: link:../html
       '@vitest/ui':
         specifier: ^2.1.8
         version: 2.1.9(vitest@2.1.9)
@@ -147,13 +153,29 @@ importers:
         specifier: workspace:*
         version: link:../core
 
-  packages/grammar-utils: {}
+  packages/html:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../core
+      '@twinkleplop/css':
+        specifier: workspace:*
+        version: link:../css
+      '@twinkleplop/javascript':
+        specifier: workspace:*
+        version: link:../javascript
 
   packages/javascript:
     dependencies:
       '@twinkleplop/core':
         specifier: workspace:*
         version: link:../core
+      '@twinkleplop/css':
+        specifier: workspace:*
+        version: link:../css
+      '@twinkleplop/html':
+        specifier: workspace:*
+        version: link:../html
 
   packages/whitespace:
     dependencies:

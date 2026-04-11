@@ -146,18 +146,174 @@ export type TokenPatternSpec =
 
 // A rewrite rule says: starting at a token of type `anchor` (optionally
 // matching `anchorValue`), if the following token stream matches `when`,
-// rewrite the anchor token's type to `rewrite`.
+// apply `rewrite`:
+//   - `string`   → rewrite the anchor token's type to this name (Phase 1).
+//   - object map → for each `{ captureName: typeName }` entry, find the
+//                  capture() with that name in `when` and rewrite every
+//                  token inside the captured range to the target type
+//                  (Phase 3). Missing captures silently skip.
 export interface RewriteRule {
 	anchor: string;
 	anchorValue?: string | string[];
 	when: TokenPatternSpec;
-	rewrite: string;
+	rewrite: string | Record<string, string>;
 }
 
 export interface RewriteOptions {
 	// Token type names treated as trivia and skipped between pattern elements.
 	// For JavaScript this is typically ["comment"].
 	trivia?: string[];
+}
+
+// A "language function" — the common-case entry point every language package
+// exports via `createLanguage`. Takes source text, returns the full enriched
+// TokenizeResult. This is what `embedGrammars` calls to sub-tokenize a span.
+export type LanguageFn = (input: string) => TokenizeResult;
+
+// Detailed embed entry for cases that need slicing / delimiter wrapping.
+// - `trimStart`/`trimEnd` skip that many chars at the respective end of the
+//   host token before passing the content to the sub-language.
+// - `wrapToken` (optional) names a host token type. If set, the trimmed
+//   delimiter chars are re-emitted as tokens of this type so they stay
+//   styled — useful for tagged-template backticks which would otherwise
+//   become untokenized gaps in the output.
+export interface EmbedEntry {
+	language: LanguageFn;
+	trimStart?: number;
+	trimEnd?: number;
+	wrapToken?: string;
+}
+
+// Mapping from host token type names to the sub-language (or detailed
+// EmbedEntry) to apply when the host emits a token of that type. When
+// `embedGrammars` encounters such a token, it calls the language on the
+// token's source slice, merges the sub-result's token types into the host's,
+// remaps sub type IDs, and splices the remapped tokens in place of the
+// original host token.
+export interface EmbedMapping {
+	[hostTypeName: string]: LanguageFn | EmbedEntry;
+}
+
+// ---------------------------------------------------------------------------
+// embedInterleaved — generic discontinuous embedding
+// ---------------------------------------------------------------------------
+//
+// Some host-language constructs produce a "group" of tokens where content
+// for a sub-language is interleaved with host-language "holes" that must be
+// preserved verbatim. Tagged template literals are the exemplar case —
+// `html`<p class="${cls}">hi</p>`` has HTML content broken up by a JS
+// interpolation that needs to stay highlighted as JS.
+//
+// `embedInterleaved` handles this generically: the user provides a scanner
+// callback that finds a group in the token stream and describes its regions
+// (content chunks, hole chunks, synthetic delimiter wrappers). The transform
+// then builds a single virtual source string, tokenizes it with the
+// sub-language in one call (giving the sub-tokenizer full state continuity
+// across holes), and splices the result back into the host stream with
+// positions remapped to the real source.
+
+/**
+ * Region kinds describing how each part of a group contributes to the output.
+ */
+export type Region = ContentRegion | HoleRegion | SyntheticRegion;
+
+/**
+ * Content region — its source bytes are copied into the virtual source and
+ * handed to the sub-language. Sub-tokens covering this range are emitted in
+ * the output at their remapped real positions.
+ */
+export interface ContentRegion {
+	kind: "content";
+	/** Start of the range in the real host input (inclusive). */
+	sourceStart: number;
+	/** End of the range in the real host input (exclusive). */
+	sourceEnd: number;
+}
+
+/**
+ * Hole region — its source bytes become placeholder-filled in the virtual
+ * source so the sub-language's state machine flows across them. In the output,
+ * the original host tokens in `[tokenStart, tokenEnd)` are emitted verbatim
+ * in place of the hole.
+ */
+export interface HoleRegion {
+	kind: "hole";
+	/** Start of the range in the real host input (inclusive). */
+	sourceStart: number;
+	/** End of the range in the real host input (exclusive). */
+	sourceEnd: number;
+	/** First host token index to emit verbatim. */
+	tokenStart: number;
+	/** One past the last host token index to emit verbatim. */
+	tokenEnd: number;
+}
+
+/**
+ * Synthetic region — does not contribute to the virtual source and has no
+ * corresponding host token. A NEW token is synthesized at the region's
+ * position with the given type name. Used for delimiter characters that
+ * are part of a larger host token but need to appear as separate tokens in
+ * the output (e.g. the backticks of a JS tagged template).
+ */
+export interface SyntheticRegion {
+	kind: "synthetic";
+	/** Start of the range covered by the synthetic token (inclusive). */
+	sourceStart: number;
+	/** End of the range covered by the synthetic token (exclusive). */
+	sourceEnd: number;
+	/** Token type name — merged into tokenTypes if not already present. */
+	typeName: string;
+}
+
+/**
+ * A group descriptor returned by a scan callback. Describes everything the
+ * core primitive needs to process a discontinuous embedded group.
+ */
+export interface GroupDescriptor {
+	/** Host token index where the group begins (inclusive). */
+	tokenStart: number;
+	/** Host token index where the group ends (exclusive). */
+	tokenEnd: number;
+	/**
+	 * The group's regions in source order. The scanner is responsible for
+	 * ensuring regions are non-overlapping and cover the group meaningfully.
+	 */
+	regions: Region[];
+	/**
+	 * Optional per-group sub-language override. If set, this language is
+	 * used instead of the config's default — lets one scanner route
+	 * different groups to different sub-languages (e.g. `html` vs `css`
+	 * tagged templates in one pass).
+	 */
+	language?: LanguageFn;
+}
+
+/**
+ * Scanner callback — called at each host token position. Returns a
+ * GroupDescriptor if a group starts at `startIdx`, or null if not. The
+ * scanner is the only host-specific code; the core transform is entirely
+ * language-agnostic.
+ */
+export type GroupScanFn = (
+	tokens: Uint32Array,
+	input: string,
+	startIdx: number,
+	tokenTypes: string[],
+) => GroupDescriptor | null;
+
+export interface EmbedInterleavedConfig {
+	/** Scanner that finds groups in the host token stream. */
+	scan: GroupScanFn;
+	/**
+	 * Default sub-language used when a descriptor omits `language`. May be
+	 * omitted if every descriptor supplies its own.
+	 */
+	language?: LanguageFn;
+	/**
+	 * Character used to fill hole spans in the virtual source. Must be
+	 * "neutral" for the sub-language's tokenizer. Default: " ".
+	 */
+	holeChar?: string;
 }
 
 // Introspector types

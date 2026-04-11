@@ -3,6 +3,7 @@ import { tokenize, toHtml, } from "@twinkleplop/core";
 import { compile } from "@twinkleplop/core/compile";
 import { grammar as css, raw_grammar as raw_css_grammar } from "@twinkleplop/css";
 import { language as javascript, } from "@twinkleplop/javascript";
+import { language as html } from "@twinkleplop/html";
 import { createHighlighter } from "shiki";
 import Prism from "prismjs";
 import loadLanguages from "prismjs/components/index.js";
@@ -16,13 +17,22 @@ import {
 	largeJS,
 	complexJS
 } from "./javascript-samples.js";
+import {
+	tinyHTML,
+	smallHTML,
+	mediumHTML,
+	largeHTML,
+	largeEmbeddedHTML,
+} from "./html-samples.js";
 
 // ============================================================================
 // Library Comparison Suite
 // Benchmarks Twinkleplop against other popular syntax highlighters
 // ============================================================================
 
-loadLanguages(["css", "javascript"]);
+// Prism: `markup` is the registered name; `html` is an alias that resolves
+// to the markup language. Loading `markup` covers both.
+loadLanguages(["css", "javascript", "markup"]);
 
 let shikiHighlighter;
 let starryNight;
@@ -33,12 +43,15 @@ beforeAll(async () => {
 	if (!shikiHighlighter) {
 		shikiHighlighter = await createHighlighter({
 			themes: ["github-light"],
-			langs: ["css", "javascript"],
-		});
+			langs: ["css", "javascript", "html"],
+    });
+
+
 	}
 
 	if (!starryNight) {
-		starryNight = await createStarryNight(common);
+    starryNight = await createStarryNight(common);
+
 	}
 });
 
@@ -318,20 +331,322 @@ describe.skip("HTML Generation Performance", () => {
 //JavaScript Benchmarks
 //============================================================================
 
-describe("JavaScript - Tiny (~1 line)", () => {
-	bench.skip(
-		"Twinkleplop - tokenize only",
-		() => {
-			const tokens = tokenize(tinyJS, javascript);
-		},
-		{ warmupTime: 1000 }
-	);
+// describe("JavaScript - Tiny (~1 line)", () => {
+// 	bench.skip(
+// 		"Twinkleplop - tokenize only",
+// 		() => {
+// 			const tokens = tokenize(tinyJS, javascript);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Twinkleplop",
+// 		() => {
+// 			const tokens = javascript(tinyJS);
+// 			const html = toHtml(tinyJS, tokens);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Shiki",
+// 		() => {
+// 			const html = shikiHighlighter.codeToHtml(tinyJS, {
+// 				lang: "javascript",
+// 				theme: "github-light",
+// 			});
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Prism",
+// 		() => {
+// 			const html = Prism.highlight(tinyJS, Prism.languages.javascript, "javascript");
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"highlight.js",
+// 		() => {
+// 			const result = hljs.highlight(tinyJS, { language: "javascript" });
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Starry Night",
+// 		() => {
+// 			const scope = starryNight.flagToScope("javascript");
+// 			if (scope) {
+// 				const tree = starryNight.highlight(tinyJS, scope);
+// 			}
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+// });
+
+// describe("JavaScript - Small (~10 lines)", () => {
+// 	bench.skip(
+// 		"Twinkleplop - tokenize only",
+// 		() => {
+// 			const tokens = tokenize(smallJS, javascript);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Twinkleplop",
+// 		() => {
+// 			const tokens = javascript(smallJS);
+// 			const html = toHtml(smallJS, tokens);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Shiki",
+// 		() => {
+// 			const html = shikiHighlighter.codeToHtml(smallJS, {
+// 				lang: "javascript",
+// 				theme: "github-light",
+// 			});
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Prism",
+// 		() => {
+// 			const html = Prism.highlight(smallJS, Prism.languages.javascript, "javascript");
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"highlight.js",
+// 		() => {
+// 			const result = hljs.highlight(smallJS, { language: "javascript" });
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Starry Night",
+// 		() => {
+// 			const scope = starryNight.flagToScope("javascript");
+// 			if (scope) {
+// 				const tree = starryNight.highlight(smallJS, scope);
+// 			}
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+// });
+
+// describe("JavaScript - Medium (~65 lines)", () => {
+// 	bench.skip(
+// 		"Twinkleplop - tokenize only",
+// 		() => {
+// 			const tokens = tokenize(mediumJS, javascript);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Twinkleplop",
+// 		() => {
+// 			const tokens = javascript(mediumJS);
+// 			const html = toHtml(mediumJS, tokens);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Shiki",
+// 		() => {
+// 			const html = shikiHighlighter.codeToHtml(mediumJS, {
+// 				lang: "javascript",
+// 				theme: "github-light",
+// 			});
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Prism",
+// 		() => {
+// 			const html = Prism.highlight(mediumJS, Prism.languages.javascript, "javascript");
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"highlight.js",
+// 		() => {
+// 			const result = hljs.highlight(mediumJS, { language: "javascript" });
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Starry Night",
+// 		() => {
+// 			const scope = starryNight.flagToScope("javascript");
+// 			if (scope) {
+// 				const tree = starryNight.highlight(mediumJS, scope);
+// 			}
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+// });
+
+// describe("JavaScript - Large (~200 lines)", () => {
+// 	bench.skip(
+// 		"Twinkleplop - tokenize only",
+// 		() => {
+// 			const tokens = javascript(largeJS);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Twinkleplop",
+// 		() => {
+// 			const tokens = javascript(largeJS);
+// 			const html = toHtml(largeJS, tokens);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Shiki",
+// 		() => {
+// 			const html = shikiHighlighter.codeToHtml(largeJS, {
+// 				lang: "javascript",
+// 				theme: "github-light",
+// 			});
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Prism",
+// 		() => {
+// 			const html = Prism.highlight(largeJS, Prism.languages.javascript, "javascript");
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"highlight.js",
+// 		() => {
+// 			const result = hljs.highlight(largeJS, { language: "javascript" });
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Starry Night",
+// 		() => {
+// 			const scope = starryNight.flagToScope("javascript");
+// 			if (scope) {
+// 				const tree = starryNight.highlight(largeJS, scope);
+// 			}
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+// });
+
+// describe("JavaScript - Complex (~350 lines)", () => {
+// 	bench.skip(
+// 		"Twinkleplop - tokenize only",
+// 		() => {
+// 			const tokens = tokenize(complexJS, javascript);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Twinkleplop",
+// 		() => {
+// 			const tokens = javascript(complexJS);
+// 			const html = toHtml(complexJS, tokens);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Shiki",
+// 		() => {
+// 			const html = shikiHighlighter.codeToHtml(complexJS, {
+// 				lang: "javascript",
+// 				theme: "github-light",
+// 			});
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Prism",
+// 		() => {
+// 			const html = Prism.highlight(complexJS, Prism.languages.javascript, "javascript");
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"highlight.js",
+// 		() => {
+// 			const result = hljs.highlight(complexJS, { language: "javascript" });
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+
+// 	bench(
+// 		"Starry Night",
+// 		() => {
+// 			const scope = starryNight.flagToScope("javascript");
+// 			if (scope) {
+// 				const tree = starryNight.highlight(complexJS, scope);
+// 			}
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+// });
+
+//============================================================================
+//HTML Benchmarks
+//============================================================================
+//
+// Twinkleplop's `html.language()` is the full pipeline including the
+// reclassifier's embedGrammars for <script> and <style> content. The
+// comparison samples here are pure HTML with NO embedded code, so every
+// highlighter is measured on apples-to-apples "structural HTML only" work.
+// (The embedded-content case is covered separately in the reclassifier
+// overhead suite.)
+//
+// Highlight.js uses the `xml` language for HTML (no separate `html`
+// registration). Prism uses `markup`, aliased to `html`. Shiki and
+// Starry Night both expose `html` directly.
+
+const html_samples = [
+  { name: "tiny", code: tinyHTML, size: "1 line" },
+  { name: "small", code: smallHTML, size: "10 lines" },
+  { name: "medium", code: mediumHTML, size: "100 lines" },
+  { name: "large", code: largeHTML, size: "1000 lines" },
+  { name: "largeEmbedded", code: largeEmbeddedHTML, size: "1000 lines" },
+];
+
+for (const sample of html_samples) {
+  describe(`HTML (tokenise) - ${sample.name} (${sample.size})`, () => {
+
 
 	bench(
 		"Twinkleplop",
 		() => {
-			const tokens = javascript(tinyJS);
-			const html = toHtml(tinyJS, tokens);
+			const tokens = html(sample.code);
 		},
 		{ warmupTime: 1000 }
 	);
@@ -339,8 +654,47 @@ describe("JavaScript - Tiny (~1 line)", () => {
 	bench(
 		"Shiki",
 		() => {
-			const html = shikiHighlighter.codeToHtml(tinyJS, {
-				lang: "javascript",
+			const output = shikiHighlighter.codeToTokens(sample.code, {
+				lang: "html",
+				theme: "github-light",
+      });
+		},
+		{ warmupTime: 1000 }
+	);
+
+	bench(
+		"Prism",
+		() => {
+      const output = Prism.tokenize(sample.code, Prism.languages.markup, "markup");
+		},
+		{ warmupTime: 1000 }
+	);
+
+
+
+
+  });
+}
+
+
+for (const sample of html_samples) {
+  describe(`HTML - ${sample.name} (${sample.size})`, () => {
+
+
+	bench(
+		"Twinkleplop",
+		() => {
+			const tokens = html(sample.code);
+			const output = toHtml(sample.code, tokens);
+		},
+		{ warmupTime: 1000 }
+	);
+
+	bench(
+		"Shiki",
+		() => {
+			const output = shikiHighlighter.codeToHtml(sample.code, {
+				lang: "html",
 				theme: "github-light",
 			});
 		},
@@ -350,7 +704,7 @@ describe("JavaScript - Tiny (~1 line)", () => {
 	bench(
 		"Prism",
 		() => {
-			const html = Prism.highlight(tinyJS, Prism.languages.javascript, "javascript");
+			const output = Prism.highlight(sample.code, Prism.languages.markup, "markup");
 		},
 		{ warmupTime: 1000 }
 	);
@@ -358,7 +712,7 @@ describe("JavaScript - Tiny (~1 line)", () => {
 	bench(
 		"highlight.js",
 		() => {
-			const result = hljs.highlight(tinyJS, { language: "javascript" });
+			const result = hljs.highlight(sample.code, { language: "xml" });
 		},
 		{ warmupTime: 1000 }
 	);
@@ -366,242 +720,104 @@ describe("JavaScript - Tiny (~1 line)", () => {
 	bench(
 		"Starry Night",
 		() => {
-			const scope = starryNight.flagToScope("javascript");
+			const scope = starryNight.flagToScope("html");
 			if (scope) {
-				const tree = starryNight.highlight(tinyJS, scope);
+				const tree = starryNight.highlight(sample.code, scope);
 			}
 		},
 		{ warmupTime: 1000 }
 	);
-});
+  });
+}
 
-describe("JavaScript - Small (~10 lines)", () => {
-	bench.skip(
-		"Twinkleplop - tokenize only",
-		() => {
-			const tokens = tokenize(smallJS, javascript);
-		},
-		{ warmupTime: 1000 }
-	);
 
-	bench(
-		"Twinkleplop",
-		() => {
-			const tokens = javascript(smallJS);
-			const html = toHtml(smallJS, tokens);
-		},
-		{ warmupTime: 1000 }
-	);
 
-	bench(
-		"Shiki",
-		() => {
-			const html = shikiHighlighter.codeToHtml(smallJS, {
-				lang: "javascript",
-				theme: "github-light",
-			});
-		},
-		{ warmupTime: 1000 }
-	);
 
-	bench(
-		"Prism",
-		() => {
-			const html = Prism.highlight(smallJS, Prism.languages.javascript, "javascript");
-		},
-		{ warmupTime: 1000 }
-	);
 
-	bench(
-		"highlight.js",
-		() => {
-			const result = hljs.highlight(smallJS, { language: "javascript" });
-		},
-		{ warmupTime: 1000 }
-	);
 
-	bench(
-		"Starry Night",
-		() => {
-			const scope = starryNight.flagToScope("javascript");
-			if (scope) {
-				const tree = starryNight.highlight(smallJS, scope);
-			}
-		},
-		{ warmupTime: 1000 }
-	);
-});
+//============================================================================
+// HTML with embedded CSS + JS — cross-language comparison
+//============================================================================
+//
+// Realistic full-page sample (~300 lines) containing substantial inline
+// <style> and <script> blocks. This is the apples-to-apples "highlight a
+// real webpage" benchmark. Every library is expected to produce some level
+// of sub-language highlighting for the script/style contents, with varying
+// fidelity:
+//
+//   - Twinkleplop:  full CSS + full JS pipelines via the embedGrammars
+//                   reclassifier, including function-variable detection
+//                   inside the <script> body.
+//   - Prism:        the `markup` language uses sub-language hooks to
+//                   tokenize script/style contents as JS/CSS.
+//   - Shiki:        TextMate HTML grammar embeds source.js / source.css
+//                   via injection rules.
+//   - Starry Night: TextMate grammar injection produces multi-language
+//                   highlighting for script/style bodies.
+//   - highlight.js: the xml language does NOT sub-tokenize script/style
+//                   content by default — it just marks the tag structure.
+//                   Numbers will look artificially fast for this reason.
 
-describe("JavaScript - Medium (~65 lines)", () => {
-	bench.skip(
-		"Twinkleplop - tokenize only",
-		() => {
-			const tokens = tokenize(mediumJS, javascript);
-		},
-		{ warmupTime: 1000 }
-	);
+// describe("HTML - Large with embedded CSS/JS (~300 lines)", () => {
+// 	bench(
+// 		"Twinkleplop - tokenize only",
+// 		() => {
+// 			const tokens = html(largeEmbeddedHTML);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
 
-	bench(
-		"Twinkleplop",
-		() => {
-			const tokens = javascript(mediumJS);
-			const html = toHtml(mediumJS, tokens);
-		},
-		{ warmupTime: 1000 }
-	);
+// 	bench(
+// 		"Twinkleplop",
+// 		() => {
+// 			const tokens = html(largeEmbeddedHTML);
+// 			const output = toHtml(largeEmbeddedHTML, tokens);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
 
-	bench(
-		"Shiki",
-		() => {
-			const html = shikiHighlighter.codeToHtml(mediumJS, {
-				lang: "javascript",
-				theme: "github-light",
-			});
-		},
-		{ warmupTime: 1000 }
-	);
+// 	bench(
+// 		"Shiki",
+// 		() => {
+// 			const output = shikiHighlighter.codeToHtml(largeEmbeddedHTML, {
+// 				lang: "html",
+// 				theme: "github-light",
+// 			});
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
 
-	bench(
-		"Prism",
-		() => {
-			const html = Prism.highlight(mediumJS, Prism.languages.javascript, "javascript");
-		},
-		{ warmupTime: 1000 }
-	);
+// 	bench(
+// 		"Prism",
+// 		() => {
+// 			const output = Prism.highlight(
+// 				largeEmbeddedHTML,
+// 				Prism.languages.markup,
+// 				"markup",
+// 			);
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
 
-	bench(
-		"highlight.js",
-		() => {
-			const result = hljs.highlight(mediumJS, { language: "javascript" });
-		},
-		{ warmupTime: 1000 }
-	);
+// 	bench(
+// 		"highlight.js",
+// 		() => {
+// 			const result = hljs.highlight(largeEmbeddedHTML, { language: "xml" });
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
 
-	bench(
-		"Starry Night",
-		() => {
-			const scope = starryNight.flagToScope("javascript");
-			if (scope) {
-				const tree = starryNight.highlight(mediumJS, scope);
-			}
-		},
-		{ warmupTime: 1000 }
-	);
-});
-
-describe("JavaScript - Large (~200 lines)", () => {
-	bench.skip(
-		"Twinkleplop - tokenize only",
-		() => {
-			const tokens = javascript(largeJS);
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"Twinkleplop",
-		() => {
-			const tokens = javascript(largeJS);
-			const html = toHtml(largeJS, tokens);
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"Shiki",
-		() => {
-			const html = shikiHighlighter.codeToHtml(largeJS, {
-				lang: "javascript",
-				theme: "github-light",
-			});
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"Prism",
-		() => {
-			const html = Prism.highlight(largeJS, Prism.languages.javascript, "javascript");
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"highlight.js",
-		() => {
-			const result = hljs.highlight(largeJS, { language: "javascript" });
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"Starry Night",
-		() => {
-			const scope = starryNight.flagToScope("javascript");
-			if (scope) {
-				const tree = starryNight.highlight(largeJS, scope);
-			}
-		},
-		{ warmupTime: 1000 }
-	);
-});
-
-describe("JavaScript - Complex (~350 lines)", () => {
-	bench.skip(
-		"Twinkleplop - tokenize only",
-		() => {
-			const tokens = tokenize(complexJS, javascript);
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"Twinkleplop",
-		() => {
-			const tokens = javascript(complexJS);
-			const html = toHtml(complexJS, tokens);
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"Shiki",
-		() => {
-			const html = shikiHighlighter.codeToHtml(complexJS, {
-				lang: "javascript",
-				theme: "github-light",
-			});
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"Prism",
-		() => {
-			const html = Prism.highlight(complexJS, Prism.languages.javascript, "javascript");
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"highlight.js",
-		() => {
-			const result = hljs.highlight(complexJS, { language: "javascript" });
-		},
-		{ warmupTime: 1000 }
-	);
-
-	bench(
-		"Starry Night",
-		() => {
-			const scope = starryNight.flagToScope("javascript");
-			if (scope) {
-				const tree = starryNight.highlight(complexJS, scope);
-			}
-		},
-		{ warmupTime: 1000 }
-	);
-});
+// 	bench(
+// 		"Starry Night",
+// 		() => {
+// 			const scope = starryNight.flagToScope("html");
+// 			if (scope) {
+// 				const tree = starryNight.highlight(largeEmbeddedHTML, scope);
+// 			}
+// 		},
+// 		{ warmupTime: 1000 }
+// 	);
+// });
 
 // // JavaScript-specific performance analysis
 // describe("JavaScript Regex vs Division Performance", () => {

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Embedded languages</title>
+    <style>
+      :root {
+        --accent: #00b894;
+        --bg: #0f0f0f;
+      }
+      body {
+        background: var(--bg);
+        color: #eaeaea;
+        font-family: system-ui, sans-serif;
+      }
+      .btn {
+        background: var(--accent);
+        border-radius: 4px;
+        padding: 0.5em 1em;
+      }
+      .btn:hover {
+        filter: brightness(1.1);
+      }
+    </style>
+  </head>
+  <body>
+    <button class="btn" id="hi">Click me</button>
+    <script>
+      const el = document.getElementById("hi");
+      const greet = name => `Hello, ${name}!`;
+      const onClick = async () => {
+        el.textContent = greet("world");
+        await new Promise(r => setTimeout(r, 500));
+      };
+      el.addEventListener("click", onClick);
+    </script>
+  </body>
+</html>

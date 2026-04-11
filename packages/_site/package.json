@@ -30,6 +30,7 @@
 		"@twinkleplop/clike": "workspace:*",
 		"@twinkleplop/core": "workspace:*",
 		"@twinkleplop/css": "workspace:*",
+		"@twinkleplop/html": "workspace:*",
 		"@twinkleplop/javascript": "workspace:*",
 		"@twinkleplop/whitespace": "workspace:*",
 		"prismjs": "^1.30.0"

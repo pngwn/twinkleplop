@@ -1,0 +1,14 @@
+<script>
+  // JavaScript inside <script> is tokenized by the JS language, with its
+  // reclassifiers applied (so `greet` becomes a `function` token).
+  const greet = (name) => `Hello, ${name}!`;
+
+  async function main() {
+    const names = ["world", "twinkleplop"];
+    for (const name of names) {
+      console.log(greet(name));
+    }
+  }
+
+  main();
+</script>

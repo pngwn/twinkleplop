@@ -33,3 +33,12 @@ html`<div>${content}</div>`
 css`.class { color: ${color}; }`
 gql`query { user(id: ${id}) { name } }`
 tmpl`heloo ${name()}`
+
+// Nested braces inside interpolations — stack-tracked brace depth so the
+// first `}` inside an inner object/block doesn't close the interpolation.
+`${fn({a: 1})}`
+`${{a: 1}}`
+`${{a: {b: 2}}}`
+`${function() { return 1; }}`
+`${() => ({key: val})}`
+`${obj.method({k: v}).b}`

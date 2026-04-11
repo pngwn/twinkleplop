@@ -590,9 +590,13 @@ export default {
 		// -------------------------------------------------------------------------
 		// tmpl_regex_allow — inside `${...}`, "expression expected" context
 		//
-		// Pushed from template_literal on `${`. All transitions to other tmpl_*
-		// states use `goto` (sideways) so the stack depth stays at 2 throughout
-		// the interpolation. `}` in any tmpl_* state pops back to template_literal.
+		// Pushed from template_literal on `${`. Transitions between tmpl_* states
+		// use `goto` (sideways) to keep depth constant, EXCEPT for `{` which
+		// pushes (enters) `tmpl_regex_allow` recursively to track brace depth.
+		// This makes `}` pop one brace level at a time — the interpolation only
+		// truly ends when the stack pops back to `template_literal`, which
+		// naturally handles nested object literals, function bodies, and block
+		// statements inside `${...}` expressions like `${fn({a: 1})}`.
 		// -------------------------------------------------------------------------
 		tmpl_regex_allow: {
 			rules: [
@@ -602,7 +606,9 @@ export default {
 
 				match("}", TOKENS.punctuation, leave()),
 				match("/", TOKENS.regex, enter("regex_pattern")),
-				match(["(", "{", "["], TOKENS.punctuation),
+				// `{` pushes tmpl_regex_allow recursively — tracks brace depth.
+				match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
+				match(["(", "["], TOKENS.punctuation),
 				match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
 				match([";", ",", "."], TOKENS.punctuation),
 
@@ -620,7 +626,10 @@ export default {
 				...keywordsLiterals("tmpl_regex_allow", null),
 
 				match("}", TOKENS.punctuation, leave()),
-				match(["(", "{", "["], TOKENS.punctuation, goto("tmpl_regex_allow")),
+				// `{` pushes tmpl_regex_allow to track brace depth (same as
+				// tmpl_regex_allow — after `{` we're back in expression context).
+				match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
+				match(["(", "["], TOKENS.punctuation, goto("tmpl_regex_allow")),
 				match("/", TOKENS.operator, goto("tmpl_regex_allow")),
 				match([")", "]"], TOKENS.punctuation),
 				match([";", ","], TOKENS.punctuation, goto("tmpl_regex_allow")),
@@ -664,7 +673,9 @@ export default {
 		// -------------------------------------------------------------------------
 		// function_body_tmpl — call-site args inside `${...}`. Mirror of base
 		// function_body but transitions to tmpl_division on `)` so we stay in
-		// the interpolation universe.
+		// the interpolation universe. `{` pushes tmpl_regex_allow to track
+		// brace depth and `}` leaves so nested object literals inside call
+		// arguments (like `${fn({a: 1})}`) work correctly.
 		// -------------------------------------------------------------------------
 		function_body_tmpl: {
 			rules: [
@@ -682,7 +693,10 @@ export default {
 				),
 				match("/", TOKENS.regex, enter("regex_pattern")),
 
-				match(["[", "]", "{", "}"], TOKENS.punctuation),
+				// Brace-depth tracking inside interpolation: `{` pushes, `}` pops.
+				match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
+				match("}", TOKENS.punctuation, leave()),
+				match(["[", "]"], TOKENS.punctuation),
 				match([";", "."], TOKENS.punctuation),
 
 				match(BOOLEAN_LITERALS, TOKENS.boolean),
@@ -704,7 +718,10 @@ export default {
 				match(["_", "$", ALNUM], TOKENS.identifier),
 				// Tagged template literal inside an interpolation
 				TEMPLATE_LITERAL,
-				match(["(", "[", "{"], TOKENS.punctuation, goto("tmpl_regex_allow")),
+				// `{` pushes a new brace level so `}` pops one level at a time
+				// — required for `${ obj.method({a: 1}) }` and similar.
+				match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
+				match(["(", "["], TOKENS.punctuation, goto("tmpl_regex_allow")),
 				match("}", TOKENS.punctuation, leave()),
 				match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
 				match([",", ";"], TOKENS.punctuation, goto("tmpl_regex_allow")),

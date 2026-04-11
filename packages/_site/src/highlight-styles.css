@@ -94,12 +94,35 @@ pre[class*='language-'] {
 	color: #fbbf24;
 }
 
-::highlight(tag) {
+::highlight(tag),
+::highlight(tag-name) {
 	color: #38bdf8;
+}
+
+::highlight(doctype) {
+	color: #ff7733;
+	font-style: italic;
 }
 
 ::highlight(property) {
 	color: #38bdf8;
+}
+
+::highlight(boolean) {
+	color: #d2a6ff;
+}
+
+::highlight(template) {
+	color: #b8cc52;
+}
+
+/* raw_script / raw_style should never reach the renderer — embedGrammars
+   replaces them with the sub-language's tokens — but style them as faint
+   placeholders so a broken pipeline is visually obvious. */
+::highlight(raw_script),
+::highlight(raw_style) {
+	color: #f87171;
+	background: #f8717122;
 }
 
 ::highlight(inserted) {
@@ -180,6 +203,7 @@ pre[class*='language-'] {
 ::highlight(builtin),
 ::highlight(variable),
 ::highlight(id),
+::highlight(identifier),
 ::highlight(keyword),
 ::highlight(operator),
 ::highlight(punctuation),
@@ -187,7 +211,11 @@ pre[class*='language-'] {
 ::highlight(attr-name),
 ::highlight(selector),
 ::highlight(tag),
+::highlight(tag-name),
+::highlight(doctype),
 ::highlight(property),
+::highlight(boolean),
+::highlight(template),
 ::highlight(inserted),
 ::highlight(changed),
 ::highlight(deleted),

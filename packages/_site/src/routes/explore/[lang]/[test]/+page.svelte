@@ -41,6 +41,14 @@
 				grammar: () => import('@twinkleplop/javascript'),
 				test: () => import('@twinkleplop/javascript/test')
 			}
+		],
+		[
+			'html',
+			{
+				grammar: () => import('@twinkleplop/html'),
+				// HTML package doesn't expose an output-snapshot subpath.
+				test: () => Promise.resolve({})
+			}
 		]
 ]);
 

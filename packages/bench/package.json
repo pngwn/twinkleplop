@@ -11,6 +11,7 @@
 	"devDependencies": {
 		"@twinkleplop/core": "workspace:*",
 		"@twinkleplop/css": "workspace:*",
+		"@twinkleplop/html": "workspace:*",
 		"@vitest/ui": "^2.1.8",
 		"prismjs": "^1.30.0",
 		"shiki": "^3.12.0",
