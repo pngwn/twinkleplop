@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { tokenize } from "@twinkleplop/core";
-import { grammar } from "./index.js";
+import { tokenize, } from "@twinkleplop/core";
+import { verify } from '@twinkleplop/core/compile';
+import { grammar, raw_grammar } from "./index.js";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -38,6 +39,11 @@ function getTokens(input) {
 }
 
 describe("CSS Grammar", () => {
+  test("verify", () => {
+    const issues = verify(raw_grammar);
+    expect(issues).toEqual([]);
+  });
+
 	for (let i = 0; i < input_files.length; i++) {
 		const testName = input_files[i][0].replace(".css", "");
 		it(`should tokenize ${testName}`, () => {

@@ -1,4 +1,5 @@
 export { compile } from "./compiler";
+export { verify, type VerifyIssue } from "./verify";
 export {
 	ANY,
 	ASCII,

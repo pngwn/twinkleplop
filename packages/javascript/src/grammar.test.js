@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { tokenize } from "@twinkleplop/core";
-import { grammar } from "./index.js";
+import { verify } from "@twinkleplop/core/compile";
+
+import { grammar, raw_grammar } from "./index.js";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -36,7 +38,12 @@ function getTokens(input) {
 	return tokens;
 }
 
-describe("C-Like Grammar", () => {
+describe("JavaScript Grammar", () => {
+  test("verify", () => {
+    const issues = verify(raw_grammar);
+    expect(issues).toEqual([]);
+  });
+
 	for (let i = 0; i < input_files.length; i++) {
 		const testName = input_files[i][0].replace(".txt", "");
 		it(`should tokenize ${testName}`, () => {

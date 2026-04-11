@@ -377,16 +377,6 @@ export default {
 			],
 		},
 
-		negative_number: {
-			rules: [
-				match(DIGIT, TOKENS.operator, enter("number")),
-				match(".", TOKENS.operator, enter("decimal")),
-				match(LETTER, TOKENS.keyword, enter("value_keyword")),
-				match("-", T_CSS_VARIABLE, enter("css_custom_property")),
-				fallback({ token: TOKENS.operator, exit: true }),
-			],
-		},
-
 		unit: {
 			rules: [match(LETTER, TOKENS.unit), fallback(leave())],
 		},
