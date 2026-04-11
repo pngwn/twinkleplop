@@ -8,15 +8,68 @@
 	import CodePanel from '$lib/components/CodePanel.svelte';
 	import TokensPanel from '$lib/components/TokensPanel.svelte';
 	import RoutePanel from '$lib/components/RoutePanel.svelte';
+	import PrismPanel from '$lib/components/PrismPanel.svelte';
 	import InspectorPanel from '$lib/components/InspectorPanel.svelte';
 
 	let { data } = $props();
 
+	const lang_map = new Map([
+		[
+			'css',
+			{
+				grammar: () => import('@twinkleplop/css'),
+				test: () => import('@twinkleplop/css/test')
+			}
+		],
+		[
+			'whitespace',
+			{
+				grammar: () => import('@twinkleplop/whitespace'),
+				test: () => import('@twinkleplop/whitespace/test')
+			}
+		],
+		[
+			'clike',
+			{
+				grammar: () => import('@twinkleplop/clike'),
+				test: () => import('@twinkleplop/clike/test')
+			}
+		],
+		[
+			'javascript',
+			{
+				grammar: () => import('@twinkleplop/javascript'),
+				test: () => import('@twinkleplop/javascript/test')
+			}
+		]
+]);
+
+	if (!lang_map.get(data.lang)) {
+		throw new Error(`Language ${data.lang} not found`);
+	}
+
+	const allLanguages = Array.from(lang_map.keys())
+	let grammar = $state()
+	let raw_grammar = $state();
+	async function get_mod() {
+		const x = await lang_map.get(data.lang)?.grammar();
+		console.log(x)
+		raw_grammar = x?.raw_grammar;
+		grammar = x.language
+		;
+	}
+
+	$effect(() => {
+		get_mod();
+	})
+	// const mod = $derived(await get_mod());
+
 	let source = $derived(data.css_files.find(([file]) => file === data.test)?.[1]);
+
 
 	// Create the mapper with your original and compiled grammars
 	let mapper = $derived(
-		data.raw_grammar && data.grammar && new GrammarMapper(data.raw_grammar, data.grammar)
+		raw_grammar && grammar && new GrammarMapper(raw_grammar, grammar)
 	);
 
 	// Create an introspector with the grammar mapper for readable names
@@ -30,12 +83,12 @@
 	);
 
 	let tokens = $derived(
-		source && data.grammar && tokenize(source, data.grammar, introspector as any)
+		source && grammar && grammar(source)
 	);
 
 	let position = $state(0);
 	let selectedToken = $state(0);
-	let rightPanelView = $state<'tokens' | 'route'>('tokens');
+	let rightPanelView = $state<'tokens' | 'route' | 'compare'>('tokens');
 
 	// Component references
 	let codePanelRef = $state<CodePanel>();
@@ -135,6 +188,9 @@
 		} else if (event.key === '2' && (event.ctrlKey || event.metaKey)) {
 			event.preventDefault();
 			rightPanelView = 'route';
+		} else if (event.key === '3' && (event.ctrlKey || event.metaKey)) {
+			event.preventDefault();
+			rightPanelView = 'compare';
 		}
 	}
 
@@ -149,7 +205,7 @@
 		lang={data.lang}
 		test={data.test}
 		cssFiles={data.css_files}
-		allLanguages={data.allLanguages}
+		allLanguages={allLanguages}
 	/>
 
 	<div class="main-content">
@@ -173,6 +229,14 @@
 				>
 					State Route
 				</button>
+				<button
+					class="panel-tab"
+					class:active={rightPanelView === 'compare'}
+					onclick={() => (rightPanelView = 'compare')}
+					title="Comparison (Cmd+3)"
+				>
+					Comparison
+				</button>
 			</div>
 
 			{#if rightPanelView === 'tokens' && source && tokens}
@@ -183,8 +247,10 @@
 					{selectedToken}
 					onTokenSelect={handleTokenSelect}
 				/>
-			{:else}
+			{:else if rightPanelView === 'route'}
 				<RoutePanel {activeRoute} {position} rawGrammar={data.raw_grammar} />
+			{:else}
+				<PrismPanel {source} lang={data.lang} />
 			{/if}
 		</div>
 	</div>

@@ -82,6 +82,84 @@ export interface TokenizeResult {
 	tokenTypes: string[];
 }
 
+// Reclassifier types
+//
+// A Reclassifier is a pure function over a TokenizeResult that may rewrite
+// token types, splice new tokens in, or both. Multiple reclassifiers are
+// composed into a pipeline by `reclassify(...)`. Phase 1 only supports
+// in-place type rewriting via `rewriteTypes`; future phases add embedding.
+
+export type Reclassifier = (
+	input: string,
+	result: TokenizeResult,
+) => TokenizeResult;
+
+export type ReclassifierPipeline = Reclassifier[];
+
+// Pattern language for `rewriteTypes` — tag-discriminated union so authors
+// build patterns with the exported combinator helpers (`type`, `seq`,
+// `anyOf`, `optional`, `capture`, `balancedParens`).
+
+export interface TypePatternSpec {
+	__kind: "type";
+	typeName: string;
+	value?: string | string[];
+}
+
+export interface SeqPatternSpec {
+	__kind: "seq";
+	children: TokenPatternSpec[];
+}
+
+export interface AnyOfPatternSpec {
+	__kind: "anyOf";
+	branches: TokenPatternSpec[];
+}
+
+export interface OptionalPatternSpec {
+	__kind: "optional";
+	inner: TokenPatternSpec;
+}
+
+export interface CapturePatternSpec {
+	__kind: "capture";
+	name: string;
+	inner: TokenPatternSpec;
+}
+
+// Walk tokens counting paren depth inside punctuation tokens until depth
+// returns to zero. Used for arrow-function parameter lists.
+export interface BalancedPatternSpec {
+	__kind: "balanced";
+	open: string;
+	close: string;
+	maxTokens?: number;
+}
+
+export type TokenPatternSpec =
+	| TypePatternSpec
+	| SeqPatternSpec
+	| AnyOfPatternSpec
+	| OptionalPatternSpec
+	| CapturePatternSpec
+	| BalancedPatternSpec;
+
+// A rewrite rule says: starting at a token of type `anchor` (optionally
+// matching `anchorValue`), if the following token stream matches `when`,
+// rewrite the anchor token's type to `rewrite`.
+export interface RewriteRule {
+	anchor: string;
+	anchorValue?: string | string[];
+	when: TokenPatternSpec;
+	rewrite: string;
+}
+
+export interface RewriteOptions {
+	// Token type names treated as trivia and skipped between pattern elements.
+	// For JavaScript this is typically ["comment"].
+	trivia?: string[];
+}
+
 // Introspector types
 export interface IntrospectorOptions {
 	log?: ((type: string, data: any) => void) | null;

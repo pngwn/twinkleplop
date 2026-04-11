@@ -17,6 +17,7 @@
 		"@sveltejs/adapter-auto": "^6.0.0",
 		"@sveltejs/kit": "^2.22.0",
 		"@sveltejs/vite-plugin-svelte": "^6.0.0",
+		"@types/prismjs": "^1.26.6",
 		"mdsvex": "^0.12.3",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
@@ -26,10 +27,11 @@
 		"vite": "^7.0.4"
 	},
 	"dependencies": {
+		"@twinkleplop/clike": "workspace:*",
 		"@twinkleplop/core": "workspace:*",
 		"@twinkleplop/css": "workspace:*",
+		"@twinkleplop/javascript": "workspace:*",
 		"@twinkleplop/whitespace": "workspace:*",
-		"@twinkleplop/clike": "workspace:*",
-		"@twinkleplop/javascript": "workspace:*"
+		"prismjs": "^1.30.0"
 	}
 }

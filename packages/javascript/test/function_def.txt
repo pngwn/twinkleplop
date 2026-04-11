@@ -6,10 +6,23 @@ foo_bar(one, two, three) {
 
 }
 
-f42(one, _, t_o) {
+
+const foo = (x, y) => x + y;
+
+const bar = async (x, y) => x + y;
+
+const baz = function() {
 
 }
 
-fn($1, $2, $3, _$1) {
-
+const obj = {
+  foo() {
+  },
+  bar: (x, y) => x + y,
+  baz: async (x, y) => x + y,
 }
+
+const foo = (a, (b, c)) => (a, b, c)
+const foo = cond ? () => 1 : () => 2
+const foo = foo = (() => fn)()
+const foo = (a, (b, (c, d))) => (a, b, c, d)
