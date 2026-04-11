@@ -15,7 +15,8 @@ export default defineConfig(({ mode }) => {
 					resolve(__dirname, "src/index.ts"),
 					resolve(__dirname, "src/compiler_index.ts"),
 					resolve(__dirname, "src/introspector.ts"),
-					resolve(__dirname, "src/grammar-mapper.ts"),
+          resolve(__dirname, "src/grammar-mapper.ts"),
+					resolve(__dirname, "src/tokens.ts"),
 				],
 				name: "Twinkleplop",
 				fileName: (format, entryName) => {
@@ -28,6 +29,8 @@ export default defineConfig(({ mode }) => {
 							return `twinkleplop.introspector.js`;
 						case "grammar-mapper":
 							return `twinkleplop.grammar-mapper.js`;
+						case "tokens":
+							return `twinkleplop.tokens.js`;
 						default:
 							return `twinkleplop.${format}.${isDebug ? "debug" : "production"}.js`;
 					}

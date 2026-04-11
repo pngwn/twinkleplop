@@ -35,38 +35,18 @@ export default [
 		"end": 79
 	},
 	{
-		"type": "operator",
+		"type": "template",
 		"start": 79,
-		"end": 80
+		"end": 81
 	},
 	{
 		"type": "template",
-		"start": 80,
-		"end": 83
-	},
-	{
-		"type": "identifier",
-		"start": 83,
-		"end": 86
-	},
-	{
-		"type": "identifier",
-		"start": 87,
-		"end": 93
-	},
-	{
-		"type": "identifier",
-		"start": 94,
-		"end": 96
-	},
-	{
-		"type": "identifier",
-		"start": 97,
-		"end": 98
+		"start": 82,
+		"end": 97
 	},
 	{
 		"type": "punctuation",
-		"start": 98,
+		"start": 97,
 		"end": 99
 	},
 	{
@@ -92,22 +72,22 @@ export default [
 	{
 		"type": "template",
 		"start": 106,
-		"end": 133
+		"end": 107
 	},
 	{
-		"type": "operator",
-		"start": 148,
-		"end": 149
+		"type": "comment",
+		"start": 109,
+		"end": 132
 	},
 	{
-		"type": "operator",
+		"type": "template",
+		"start": 132,
+		"end": 171
+	},
+	{
+		"type": "comment",
 		"start": 173,
-		"end": 174
-	},
-	{
-		"type": "regex",
-		"start": 174,
-		"end": 192
+		"end": 193
 	},
 	{
 		"type": "template",
@@ -142,6 +122,16 @@ export default [
 	{
 		"type": "template",
 		"start": 217,
+		"end": 218
+	},
+	{
+		"type": "punctuation",
+		"start": 218,
+		"end": 219
+	},
+	{
+		"type": "template",
+		"start": 219,
 		"end": 225
 	},
 	{
@@ -180,19 +170,29 @@ export default [
 		"end": 274
 	},
 	{
-		"type": "identifier",
-		"start": 275,
-		"end": 276
+		"type": "template",
+		"start": 274,
+		"end": 275
 	},
 	{
 		"type": "punctuation",
-		"start": 276,
+		"start": 275,
 		"end": 277
+	},
+	{
+		"type": "identifier",
+		"start": 277,
+		"end": 281
 	},
 	{
 		"type": "punctuation",
 		"start": 281,
 		"end": 282
+	},
+	{
+		"type": "identifier",
+		"start": 282,
+		"end": 290
 	},
 	{
 		"type": "punctuation",
@@ -202,17 +202,32 @@ export default [
 	{
 		"type": "template",
 		"start": 291,
-		"end": 294
+		"end": 292
+	},
+	{
+		"type": "template",
+		"start": 293,
+		"end": 302
 	},
 	{
 		"type": "punctuation",
-		"start": 303,
+		"start": 302,
 		"end": 304
+	},
+	{
+		"type": "identifier",
+		"start": 304,
+		"end": 309
 	},
 	{
 		"type": "operator",
 		"start": 310,
 		"end": 311
+	},
+	{
+		"type": "identifier",
+		"start": 312,
+		"end": 320
 	},
 	{
 		"type": "punctuation",
@@ -222,12 +237,22 @@ export default [
 	{
 		"type": "template",
 		"start": 321,
-		"end": 324
+		"end": 322
+	},
+	{
+		"type": "template",
+		"start": 323,
+		"end": 332
 	},
 	{
 		"type": "punctuation",
-		"start": 333,
+		"start": 332,
 		"end": 334
+	},
+	{
+		"type": "identifier",
+		"start": 334,
+		"end": 342
 	},
 	{
 		"type": "operator",
@@ -245,208 +270,303 @@ export default [
 		"end": 355
 	},
 	{
-		"type": "string",
+		"type": "identifier",
 		"start": 356,
-		"end": 366
+		"end": 360
 	},
 	{
 		"type": "punctuation",
-		"start": 366,
-		"end": 367
+		"start": 360,
+		"end": 361
+	},
+	{
+		"type": "string",
+		"start": 361,
+		"end": 371
+	},
+	{
+		"type": "punctuation",
+		"start": 371,
+		"end": 373
 	},
 	{
 		"type": "template",
-		"start": 367,
-		"end": 394
+		"start": 373,
+		"end": 374
+	},
+	{
+		"type": "comment",
+		"start": 376,
+		"end": 399
+	},
+	{
+		"type": "template",
+		"start": 399,
+		"end": 408
 	},
 	{
 		"type": "punctuation",
-		"start": 403,
-		"end": 404
+		"start": 408,
+		"end": 410
+	},
+	{
+		"type": "identifier",
+		"start": 410,
+		"end": 419
 	},
 	{
 		"type": "punctuation",
-		"start": 413,
-		"end": 414
-	},
-	{
-		"type": "punctuation",
-		"start": 415,
-		"end": 416
-	},
-	{
-		"type": "punctuation",
-		"start": 418,
+		"start": 419,
 		"end": 420
 	},
 	{
-		"type": "template",
+		"type": "identifier",
 		"start": 420,
-		"end": 423
+		"end": 421
 	},
 	{
 		"type": "punctuation",
-		"start": 432,
-		"end": 433
+		"start": 421,
+		"end": 422
+	},
+	{
+		"type": "identifier",
+		"start": 423,
+		"end": 424
 	},
 	{
 		"type": "punctuation",
-		"start": 436,
+		"start": 424,
+		"end": 426
+	},
+	{
+		"type": "template",
+		"start": 426,
+		"end": 427
+	},
+	{
+		"type": "template",
+		"start": 428,
 		"end": 437
 	},
 	{
 		"type": "punctuation",
-		"start": 443,
-		"end": 444
+		"start": 437,
+		"end": 439
 	},
 	{
-		"type": "template",
-		"start": 444,
-		"end": 447
+		"type": "identifier",
+		"start": 439,
+		"end": 442
 	},
 	{
 		"type": "punctuation",
-		"start": 455,
-		"end": 456
+		"start": 442,
+		"end": 443
+	},
+	{
+		"type": "identifier",
+		"start": 443,
+		"end": 449
+	},
+	{
+		"type": "punctuation",
+		"start": 449,
+		"end": 450
+	},
+	{
+		"type": "template",
+		"start": 450,
+		"end": 451
+	},
+	{
+		"type": "template",
+		"start": 452,
+		"end": 460
 	},
 	{
 		"type": "punctuation",
 		"start": 460,
-		"end": 461
+		"end": 462
+	},
+	{
+		"type": "identifier",
+		"start": 462,
+		"end": 466
 	},
 	{
 		"type": "punctuation",
-		"start": 472,
-		"end": 475
+		"start": 466,
+		"end": 467
+	},
+	{
+		"type": "identifier",
+		"start": 467,
+		"end": 478
+	},
+	{
+		"type": "punctuation",
+		"start": 478,
+		"end": 481
 	},
 	{
 		"type": "template",
-		"start": 475,
-		"end": 491
+		"start": 481,
+		"end": 482
 	},
 	{
-		"type": "number",
+		"type": "comment",
+		"start": 484,
+		"end": 496
+	},
+	{
+		"type": "template",
 		"start": 496,
-		"end": 497
-	},
-	{
-		"type": "number",
-		"start": 504,
-		"end": 505
+		"end": 512
 	},
 	{
 		"type": "template",
-		"start": 505,
-		"end": 508
+		"start": 513,
+		"end": 524
 	},
 	{
 		"type": "template",
-		"start": 528,
-		"end": 565
+		"start": 525,
+		"end": 535
 	},
 	{
-		"type": "operator",
-		"start": 565,
+		"type": "identifier",
+		"start": 535,
+		"end": 541
+	},
+	{
+		"type": "template",
+		"start": 542,
+		"end": 544
+	},
+	{
+		"type": "comment",
+		"start": 546,
 		"end": 566
 	},
 	{
-		"type": "operator",
-		"start": 569,
+		"type": "identifier",
+		"start": 566,
 		"end": 570
 	},
 	{
-		"type": "punctuation",
-		"start": 571,
-		"end": 572
+		"type": "template",
+		"start": 570,
+		"end": 576
 	},
 	{
 		"type": "punctuation",
-		"start": 579,
-		"end": 580
+		"start": 576,
+		"end": 578
 	},
 	{
-		"type": "operator",
-		"start": 580,
-		"end": 581
-	},
-	{
-		"type": "regex",
-		"start": 581,
-		"end": 587
+		"type": "identifier",
+		"start": 578,
+		"end": 585
 	},
 	{
 		"type": "punctuation",
-		"start": 592,
-		"end": 593
-	},
-	{
-		"type": "keyword",
-		"start": 593,
-		"end": 598
-	},
-	{
-		"type": "punctuation",
-		"start": 599,
-		"end": 600
-	},
-	{
-		"type": "punctuation",
-		"start": 609,
-		"end": 610
-	},
-	{
-		"type": "punctuation",
-		"start": 615,
-		"end": 617
-	},
-	{
-		"type": "punctuation",
-		"start": 618,
-		"end": 619
+		"start": 585,
+		"end": 586
 	},
 	{
 		"type": "template",
-		"start": 619,
-		"end": 625
+		"start": 586,
+		"end": 593
+	},
+	{
+		"type": "identifier",
+		"start": 594,
+		"end": 597
+	},
+	{
+		"type": "template",
+		"start": 597,
+		"end": 614
 	},
 	{
 		"type": "punctuation",
-		"start": 631,
-		"end": 632
+		"start": 614,
+		"end": 616
+	},
+	{
+		"type": "identifier",
+		"start": 616,
+		"end": 621
 	},
 	{
 		"type": "punctuation",
-		"start": 637,
-		"end": 638
+		"start": 621,
+		"end": 622
 	},
 	{
-		"type": "punctuation",
-		"start": 643,
-		"end": 644
+		"type": "template",
+		"start": 622,
+		"end": 626
 	},
 	{
-		"type": "punctuation",
-		"start": 646,
+		"type": "identifier",
+		"start": 627,
+		"end": 630
+	},
+	{
+		"type": "template",
+		"start": 630,
 		"end": 648
 	},
 	{
 		"type": "punctuation",
-		"start": 649,
+		"start": 648,
 		"end": 650
 	},
 	{
-		"type": "punctuation",
-		"start": 656,
-		"end": 657
+		"type": "identifier",
+		"start": 650,
+		"end": 652
 	},
 	{
 		"type": "punctuation",
-		"start": 658,
-		"end": 659
+		"start": 652,
+		"end": 653
 	},
 	{
 		"type": "template",
-		"start": 659,
-		"end": 660
+		"start": 653,
+		"end": 666
+	},
+	{
+		"type": "identifier",
+		"start": 667,
+		"end": 671
+	},
+	{
+		"type": "template",
+		"start": 671,
+		"end": 678
+	},
+	{
+		"type": "punctuation",
+		"start": 678,
+		"end": 680
+	},
+	{
+		"type": "identifier",
+		"start": 680,
+		"end": 684
+	},
+	{
+		"type": "punctuation",
+		"start": 684,
+		"end": 687
+	},
+	{
+		"type": "template",
+		"start": 687,
+		"end": 688
 	}
 ];

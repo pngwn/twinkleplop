@@ -3,7 +3,7 @@ class Animal {
   constructor(name) {
     this.name = name;
   }
-  
+
   speak() {
     console.log(`${this.name} makes a sound`);
   }
@@ -15,7 +15,7 @@ class Dog extends Animal {
     super(name);
     this.breed = breed;
   }
-  
+
   speak() {
     super.speak();
     console.log('Woof!');
@@ -25,7 +25,7 @@ class Dog extends Animal {
 // Static members
 class MathUtils {
   static PI = 3.14159;
-  
+
   static calculateArea(radius) {
     return this.PI * radius ** 2;
   }
@@ -35,11 +35,11 @@ class MathUtils {
 class Person {
   #privateField;
   #privateMethod() {}
-  
+
   constructor(name) {
     this.#privateField = name;
   }
-  
+
   get name() {
     return this.#privateField;
   }
@@ -59,19 +59,19 @@ const NamedClass = class CustomName {
 // Getters and setters
 class Temperature {
   #celsius;
-  
+
   get celsius() {
     return this.#celsius;
   }
-  
+
   set celsius(value) {
     this.#celsius = value;
   }
-  
+
   get fahrenheit() {
     return this.#celsius * 9/5 + 32;
   }
-  
+
   set fahrenheit(value) {
     this.#celsius = (value - 32) * 5/9;
   }
@@ -80,7 +80,7 @@ class Temperature {
 // Static initialization blocks
 class Config {
   static data;
-  
+
   static {
     this.data = loadConfig();
   }

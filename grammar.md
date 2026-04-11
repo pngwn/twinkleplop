@@ -1,176 +1,349 @@
-## Language Definition Schema
+# Language Definition Guide
 
-Language grammars are defined in a declarative, serializable format. This format is designed to be an intuitive abstraction, hiding the underlying complexity of the state machine from the grammar author.
-
-### Top-Level Structure
-
-A language definition is a JSON object with two root properties:
-
-- `"name"`: A string identifying the language (e.g., `"javascript"`).
-- `"states"`: An object where each key is a state name (e.g., `"main"`, `"template_literal"`) and the value is an object containing a `rule` property that is an array of rules.
-
-The first state defined in the states object is implicitly the initial state for tokenization.
-
-```JSON
-{
-  "name": "javascript",
-  "groups": { ... },
-  "states": {
-    "main": {
-      "rules": [ /* rules for the main state */ ],
-    },
-    "template_literal":{
-      "rules": [ /* rules for the template_literal state */ ]
-    }
-  }
-}
-```
-
-### Rule Object Structure
-
-Each state is defined by an array of rule objects. The engine evaluates these rules in the order they appear in the array. A rule object can contain the following properties:
-
-#### Matchers
-
-A rule must contain exactly one matcher property:
-
-- `"match"`: Matches an exact string or an array of strings. Ideal for keywords, operators, and other fixed sequences.
-  - `{ match: "const", token: "keyword" }`
-  - `{ match: ["+", "-", "*", "/"], token: "operator" }`
-- `"range"`: Matches a single character if it falls within a specified range or set of ranges.
-  - `{ "range": ["a", "z"], "token": "identifier" }`
-  - `{ "range": [["0", "9"], ["A", "Z"]], "token": "hex*digit" }`
-- `match_within`: matches between two delimeters with an optonal escape character.
-  - `{ match_within: { start: "'", end: "'", escape: "\\"}, token: "string" }`
-  - `multiline` (default `true`): when `false`, the match stops at a newline (the string does not span lines).
-
-#### Actions
-
-A rule specifies actions to be taken upon a successful match:
-
-- `"token"`: An optional string that defines the token type for the matched text (e.g., `"keyword"`, `"string"`). If `token` is not present then the pointer will not be progressed and no token will be generated.
-- `"state"`: Pushes a new state onto the stack. This is used with begin/end rules to apply a different set of rules to the content between the delimiters. It can also be used with a match rule to handle recursive language constructs. A state can be progressed without generating a token and consuming the current character.
-- `"exit"`: A pop operation. `exit` can only be `true`.
-  - `{ "match": "}", "token": "punctuation", "exit": true }`
-
-#### Triggering modes to handle ambiguity
-
-A rule can optionally have a `mode` property that determines the behaviour of the tokenizer. This can be `tokenize` and `probe`
-
-By default the mode is `tokenize` and will progress the pointer and generate tokens if a `token` is defined
-
-In some cases it isn't possible to know what you are dealing with until you enter a disambiguating token, lets use CSS as an example. CSS has simple syntax but is highly recursive, lets take the following valid CSS:
-
-```css
-div {
-	a:hover one two three {
-		a: hover one two three;
-	}
-}
-```
-
-After we enter the `div` block it is impossible to know if `a:hover one two three` is a chain of selectors or a property and a value until we see either a `{`, `;`, `}` or EOF. Normal states without tokens (transition only states) aren't useful here because we actually need to continue scanning the input stream. In order to disambiguate these cases, twinkleplop supports `probing` a kind of controlled backtracking . When `mode: probe` states will transition as normal and characters will be matched but upon moving to a state that has a `mode: tokenise` the pointer will reset to the index it had when `mode: probe` was initialised. Probe states are special in that they will continue to consume characters, even if there is no match until either a match is found and EOF is reach. If EOF is reached we transition to the `fallback` state.
-
-This is the format:
+Grammars are plain JavaScript modules built with a small set of helpers from `@twinkleplop/core`. Each helper is a pure factory that returns a rule (or partial rule) object — the compiler doesn't care whether you hand-write those objects or call a helper. The helpers just remove boilerplate and let you compose rules with ordinary JS (spread, `map`, function calls).
 
 ```js
-probe_identifier: {
+import {
+  match, on, keyword, within, fallback, range,
+  enter, goto, leave, to,
+  LETTER, DIGIT, ALNUM, HEX,
+} from "@twinkleplop/core";
+
+import * as TOKENS from "@twinkleplop/core/tokens";
+
+export default {
+  name: "mylang",
+  states: {
+    main: {
+      rules: [
+        within("//", "\n", TOKENS.comment),
+        keyword(["if", "else", "while"]),
+        match(["_", "$", LETTER], TOKENS.identifier),
+        match(DIGIT, TOKENS.number),
+        match(["+", "-", "*", "/"], TOKENS.operator),
+      ],
+    },
+  },
+};
+```
+
+The first state declared in `states` is the initial state for tokenization.
+
+---
+
+## Token names
+
+Token types are just strings. Any string is valid. `@twinkleplop/core/tokens` exports a set of conventional names to avoid typos, to show at a glance which tokens are recognised by default themes, and to play well with minification:
+
+```js
+import * as TOKENS from "@twinkleplop/core/tokens";
+
+TOKENS.identifier  // "identifier"
+TOKENS.keyword     // "keyword"
+TOKENS.string      // "string"
+TOKENS.function    // "function"   (dot access is fine — see note below)
+```
+
+Standard names include: `boolean`, `comment`, `function`, `identifier`, `keyword`, `number`, `operator`, `property`, `punctuation`, `regex`, `selector`, `string`, `template`, plus CSS-ish extras (`attribute`, `class_name`, `css_var`, `id`, `pseudo`, `unit`).
+
+Custom token types can still be passed as plain strings to any helper:
+
+```js
+match("@media", "at_rule")   // "at_rule" is a custom token — just a string
+```
+
+> **Note on `TOKENS.function`**: because `function` is a reserved word, the module uses the ES2022 string-literal export form internally (`export { fn as "function" }`). Dot access (`TOKENS.function`) and bracket access (`TOKENS["function"]`) both resolve it.
+
+---
+
+## Rule factories
+
+A rule object has at most one matcher (`match` / `range` / `match_within` / `any`) plus optional actions (`token`, `state`, `exit`, `boundary`). The helpers below build valid rule objects for you.
+
+### `match(patterns, token, transition?)`
+
+Build a rule with a token. `patterns` can be a single string, an array of strings, a `range(...)` tag, or a mix of both. `transition` is a partial rule spread into the result (see transition helpers below).
+
+```js
+match("const", TOKENS.keyword)
+// → { match: "const", token: "keyword" }
+
+match(["+", "-", "*", "/"], TOKENS.operator)
+// → { match: ["+", "-", "*", "/"], token: "operator" }
+
+match(DIGIT, TOKENS.number)
+// → { token: "number", range: [["0","9"]] }
+
+match(["_", "$", LETTER], TOKENS.identifier)
+// → { match: ["_", "$"], range: [["a","z"],["A","Z"]], token: "identifier" }
+
+match("/", TOKENS.regex, enter("regex_pattern"))
+// → { match: "/", token: "regex", state: "regex_pattern" }
+```
+
+A single `match(...)` call can emit a rule with **both** `match` and `range` set — the compiler handles that natively and it lets you collapse what would otherwise be two rules (one for literal starts like `_`/`$`, one for letter ranges) into one.
+
+### `on(patterns, transition?)`
+
+Token-less variant of `match` — for rules that change state but don't emit a token. Same pattern rules as `match`.
+
+```js
+on(["_", "$", LETTER], goto("identifier_probe"))
+// → { match: ["_", "$"], range: [["a","z"],["A","Z"]], state: "identifier_probe", exit: true }
+
+on([" ", "\t", "\n", "\r"])
+// → { match: [" ", "\t", "\n", "\r"] }  (consume whitespace, stay in state)
+```
+
+### `range(pairs)`
+
+Build a character-range tag to use inside `match(...)` or `on(...)`:
+
+```js
+range([["0", "7"]])              // octal digits
+range([["a", "z"], ["A", "Z"]])  // letters
+```
+
+Pre-built range tags are re-exported for convenience:
+
+```js
+LOWER   // [["a","z"]]
+UPPER   // [["A","Z"]]
+LETTER  // [["a","z"], ["A","Z"]]
+DIGIT   // [["0","9"]]
+ALNUM   // [["a","z"], ["A","Z"], ["0","9"]]
+HEX     // [["0","9"], ["a","f"], ["A","F"]]
+```
+
+### `keyword(words, transition?, token?)`
+
+Whole-word match with a word-boundary check. Defaults `token` to `"keyword"`:
+
+```js
+keyword(["if", "else", "while"])
+// → { match: ["if","else","while"], boundary: true, token: "keyword" }
+
+keyword(["true", "false"], {}, TOKENS.boolean)
+// → { match: ["true","false"], boundary: true, token: "boolean" }
+
+keyword(["return"], goto("regex_allow"))
+// → { match: ["return"], boundary: true, token: "keyword", state: "regex_allow", exit: true }
+```
+
+Word-boundary means the character after the match must not be an identifier character (`[a-zA-Z0-9_$]`), so `return` matches but `returning` does not.
+
+### `within(start, end, token, opts?)`
+
+A bounded match — strings, comments, delimited blocks. `opts` can set `escape` (an escape-character prefix) and `multiline` (default `true`; set `false` to stop at newlines).
+
+```js
+within("//", "\n", TOKENS.comment)
+// single-line comment
+
+within("/*", "*/", TOKENS.comment)
+// block comment
+
+within('"', '"', TOKENS.string, { escape: "\\", multiline: true })
+// double-quoted string with escapes, may span lines
+```
+
+### `fallback(opts?)`
+
+Matches anything the other rules didn't claim. Equivalent to `{ any: true, ...opts }`.
+
+```js
+fallback()                             // { any: true }  (consume + stay)
+fallback({ token: TOKENS.regex })      // emit a token
+fallback(leave())                      // pop the state
+fallback(goto("division"))             // sideways transition (doesn't consume the char)
+```
+
+`any: true` combined with a sideways transition (`state + exit: true`) does **not** consume the character — it re-processes it in the destination state. This is how you "hand back" a character when you realise you're in the wrong context.
+
+---
+
+## Transition helpers
+
+State transitions are just partial rule objects you spread into a full rule. All helpers return plain objects, so you can mix them freely with your own fields.
+
+```js
+enter("foo")   // → { state: "foo" }              push; enters foo, parent stays on stack
+goto("foo")    // → { state: "foo", exit: true }  sideways; replaces current state
+leave()        // → { exit: true }                pop; returns to parent
+to("foo")      // → { state: "foo", exit: true }  same as goto
+to(null)       // → {}                            stay in current state
+```
+
+`to()` is convenient for parameterised rule factories where the destination may be `null` to mean "stay":
+
+```js
+const operators = (afterOp) =>
+  match(ALL_OPERATORS, TOKENS.operator, to(afterOp));
+
+operators("regex_allow")  // sideways to regex_allow after an operator
+operators(null)           // stay — e.g. inside regex_allow where an operator keeps us here
+```
+
+### Which transition to use
+
+| Helper  | Stack op | When to use |
+|---|---|---|
+| `enter(s)` | push | Entering a nested context you'll return from (string body, parenthesised expression, regex pattern, …). |
+| `goto(s)`  | replace | Changing context without nesting — e.g. flipping between `regex_allow` and `division`. The parent state is dropped. |
+| `leave()`  | pop | Exiting a nested context. The character IS consumed; use `fallback(leave())` to exit without consuming. |
+| `to(s?)`   | optional goto | Factory helpers that take a nullable destination — `null` = stay, string = goto. |
+
+---
+
+## State shape
+
+A state is an object with a `rules` array. Rules are tried top-to-bottom in order; the **first matching rule wins**. Multi-char patterns within any rule are compared longest-first inside each first-character bucket, so `/=` always beats `/` regardless of source order.
+
+```js
+states: {
+  main: {
+    rules: [ /* … */ ],
+  },
+  string: {
+    rules: [ /* … */ ],
+  },
+}
+```
+
+Optional fields on a state:
+
+| Field | Meaning |
+|---|---|
+| `mode: "probe"` | Enter probe mode when this state is reached — see "Probe states" below. |
+| `fallback: "state_name"` | Target state if probing hits EOF without matching (probe states only). |
+| `extend: "group_name"` or `[…]` | Inherit rules from one or more groups declared at the top of the grammar. |
+| `include: "ruleset_name"` or `[…]` | Prepend rules from a named ruleset (see below). |
+
+### Sharing rules with arrays
+
+Because states are plain objects, the easiest way to share rules is a regular JavaScript array you spread into each state's `rules`:
+
+```js
+const js_common = [
+  within("//", "\n", TOKENS.comment),
+  within("/*", "*/", TOKENS.comment),
+  within('"', '"', TOKENS.string, { escape: "\\", multiline: true }),
+  on([" ", "\t", "\n", "\r"]),
+];
+
+states: {
+  main: {
+    rules: [
+      ...js_common,
+      match(["(", "{", "["], TOKENS.punctuation, goto("regex_allow")),
+      // …
+    ],
+  },
+  division: {
+    rules: [
+      ...js_common,
+      match("/", TOKENS.operator, goto("regex_allow")),
+      // …
+    ],
+  },
+}
+```
+
+This replaces most uses of the older `rulesets` / `include` machinery — a spread is simpler than a declared ruleset, and you can parameterise it with a plain function when the destination state varies:
+
+```js
+const operators = (after) => match(OP_ALL, TOKENS.operator, to(after));
+
+states: {
+  main:        { rules: [..., operators("regex_allow"), ...] },
+  regex_allow: { rules: [..., operators(null), ...] },
+}
+```
+
+### `include` and `extend` (still supported)
+
+The compiler still accepts `include` on states and `extend` on groups when you want a declarative reusable block. `include` takes a ruleset name (or array of names) from the top-level `rulesets` field, and those rules are prepended to the state's own rules:
+
+```js
+export default {
+  name: "javascript",
+  rulesets: {
+    js_strings: {
+      rules: [
+        within('"', '"', TOKENS.string, { escape: "\\", multiline: true }),
+        within("'", "'", TOKENS.string, { escape: "\\", multiline: true }),
+      ],
+    },
+  },
+  states: {
+    main: {
+      include: "js_strings",
+      rules: [ /* own rules, tried AFTER included rules */ ],
+    },
+  },
+};
+```
+
+For most grammars, plain arrays + spread are simpler than rulesets; reach for `include`/`extend` only if you want a declarative reusable block.
+
+---
+
+## Probe states — resolving contextual ambiguity
+
+Some grammars have tokens whose type depends on what comes next. CSS is the canonical case: after entering a block, you can't tell whether `a:hover one two three` is a chain of selectors or a property + value until you hit a `{`, `;`, `}`, or EOF.
+
+A **probe state** scans ahead without committing. When it transitions to a non-probe state, the tokenizer rewinds its pointer to the position it was at when the probe started — but now with the correct target state. If the probe reaches EOF without matching, it transitions to `fallback`.
+
+```js
+identifier_probe: {
   mode: "probe",
-  fallback: "property",
-  // notice that the rules are only positive matches.
-  // this state will cycle through the input until there is a match or EOF
+  fallback: "identifier",
   rules: [
-    {
-      match: "{",
-      state: "selector",
-    },
-    {
-      match: [";", "}"],
-      state: "property",
-    },
+    on("(", goto("function_name")),
+    on(
+      [".", " ", ")", ";", "}", "{", "[", ",", ...OPERATORS],
+      goto("identifier"),
+    ),
   ],
 },
 ```
 
-An example can illustrate:
+Inside a probe state, rules are positive-match only — the probe keeps consuming characters until it either matches a rule or hits EOF. When it matches, the pointer rewinds and tokenization resumes in the new state with full context.
 
-After entering the div and working through whitespace we are here:
+---
 
-```css
-...
-v
-a:hover one two three {
-    a:hover one two three;
-  }
-}
+## Disambiguation rules
+
+- **Maximal munch**: when one pattern is a prefix of another (`>` vs `>>`, `/` vs `/=`), the longer match wins. The compiler handles this automatically — all patterns in a first-char bucket are sorted by descending length, so you don't need to order your `match(...)` calls carefully.
+- **Contextual ambiguity**: use probe states (above).
+- **Word boundaries**: use `keyword(...)` (or pass `boundary: true` manually) so `return` doesn't match inside `returning`.
+
+---
+
+## Whitespace
+
+Whitespace has no special treatment — add an explicit rule that consumes it without emitting a token if you want to skip it:
+
+```js
+on([" ", "\t", "\n", "\r"])
 ```
 
-We cannot determine the token type at this point so we enter probe mode. We then progress until we reach a disambiguating character, in the simple case `{` or `;`.
+---
 
-```css
-...
-                      v
-a:hover one two three {
-    a:hover one two three;
-  }
-}
+## Writing a custom helper
+
+Helpers are pure factories, so building your own is just a JS function that returns a rule or an array of rules:
+
+```js
+// Shortcut for a sideways transition that emits a punctuation token
+const punct = (chars, dest) =>
+  match(chars, TOKENS.punctuation, goto(dest));
+
+// Multi-rule helper — keyword branching for a language with two contexts
+const keywords = (regexDest, divDest) => [
+  keyword(REGEX_PRECEDING, to(regexDest)),
+  keyword(VALUE_KEYWORDS, to(divDest)),
+];
 ```
 
-At this point we know if it is a selector or a property. So we transition to the appropriate state (`selector`). Since that state has `mode: tokenize`, we go back to the index we were in when we initialised the probe mode but now with new information about our context.
-
-```css
-...
-v
-a:hover one two three {
-    a:hover one two three;
-  }
-}
-```
-
-### Handling Ambiguity
-
-- _Maximal Munch Principle:_ For ambiguities where one token is a prefix of another (e.g., `>` vs. `>>`, `#if` vs. `#ifdef`), the engine must adhere to the "longest match" rule. Character lookahead (10,568 ops/sec) outperforms complex trie matching (1,794 ops/sec) by 5.9x. Order rules from longest to shortest and use simple character lookahead.
-- _Contextual Ambiguity:_ For ambiguities where a token's role depends on what follows it (e.g., CSS nested selectors), using the `mode` option to probe the state is utilised.
-
-### Reusing rules
-
-When design complex grammars you may find yourself reaching for the same rules again and again, while rules can simply ve pulled into a const and spread in various places, `twinkleplop` also has direct support for reusable blocks.
-
-You can define a reusable state in the top level `groups` field.
-
-```json
-{
-	"name": "javascript",
-	"groups": {
-		"resuable_state": {
-			"mode": "",
-			"rules": []
-		}
-	}
-}
-```
-
-These groups than then be used and extended in state definitions:
-
-```json
-{
-  "name": "javascript",
-  "groups": {
-    "reusable": { ... }
-   },
-  "states": {
-    "main": {
-      "extend": "resuable",
-      "rules": [ /* rules for the main state */ ],
-    },
-  }
-}
-```
-
-### Whitespace Handling
-
-Whitespace between tokens is handled implicitly by the runtime engine and should be ignored.
-
-## Token Naming Convention
-
-The system adopts a simple, flat token naming convention, avoiding the complexity of dot-separated hierarchical scopes found in TextMate.9 Standard token names like `keyword`, `string`, `comment`, `number`, `operator`, `punctuation`, `property`, and `selector` are encouraged. This aligns with modern systems like VS Code's semantic highlighting and simplifies the creation of themes.
+Custom helpers compose with the built-in ones and can be parameterised however you like — since it's just JavaScript, there are no artificial limits.

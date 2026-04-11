@@ -16,7 +16,7 @@ template literal`
 // Complex expressions
 `User: ${user.firstName} ${user.lastName}`
 `Total: $${price * quantity}`
-`Status: ${isActive ? 'Active' : 'Inactive'}`
+`Status: ${isActive ? 'Active' : func("inactive")}`
 
 // With function calls
 `Result: ${calculate(x, y)}`
@@ -32,3 +32,4 @@ template literal`
 html`<div>${content}</div>`
 css`.class { color: ${color}; }`
 gql`query { user(id: ${id}) { name } }`
+tmpl`heloo ${name()}`

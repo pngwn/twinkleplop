@@ -5,6 +5,8 @@ import type {
 	GrammarState,
 	GrammarRule,
 	Ruleset,
+	IncludeEntry,
+	ParamBinding,
 } from "./types";
 import {
 	ASCII,
@@ -32,13 +34,119 @@ function toArray(value?: string | string[]): string[] {
 	return Array.isArray(value) ? value : [value];
 }
 
+// Normalize an IncludeEntry | IncludeEntry[] | string | string[] to IncludeEntry[]
+function toIncludeArray(value?: IncludeEntry | IncludeEntry[]): IncludeEntry[] {
+	if (!value) return [];
+	if (Array.isArray(value)) return value as IncludeEntry[];
+	return [value as IncludeEntry];
+}
+
+// Apply param bindings to a set of rules, substituting $param references.
+// Returns cloned rules with substitutions applied.
+function substituteParams(
+	rules: GrammarRule[],
+	bindings: Record<string, ParamBinding>,
+): GrammarRule[] {
+	return rules.map((rule) => {
+		const cloned: GrammarRule = { ...rule };
+
+		// Handle state param substitution
+		if (typeof cloned.state === "string" && cloned.state.startsWith("$")) {
+			const paramName = cloned.state.slice(1);
+			const binding = bindings[paramName];
+			if (binding === null) {
+				// null binding: remove both state and exit from clone
+				delete cloned.state;
+				delete cloned.exit;
+			} else if (typeof binding === "string") {
+				cloned.state = binding;
+			}
+		}
+
+		// Handle token param substitution
+		if (typeof cloned.token === "string" && cloned.token.startsWith("$")) {
+			const paramName = cloned.token.slice(1);
+			const binding = bindings[paramName];
+			if (binding === null) {
+				delete cloned.token;
+			} else if (typeof binding === "string") {
+				cloned.token = binding;
+			}
+		}
+
+		return cloned;
+	});
+}
+
+// Instantiate a parameterized ruleset with given bindings.
+// Returns the flat rule list for this instantiation.
+function instantiateRuleset(
+	name: string,
+	bindings: Record<string, ParamBinding>,
+	rulesets: Record<string, Ruleset>,
+	flatRulesets: Map<string, GrammarRule[]>,
+): GrammarRule[] {
+	const ruleset = rulesets[name];
+	if (!ruleset || !ruleset.params) {
+		throw new Error(
+			`rule set "${name}" is not parameterized; remove the "with" binding`,
+		);
+	}
+
+	const params = ruleset.params;
+
+	// Validate bindings: check for missing required params and unknown keys
+	for (const [paramName, paramType] of Object.entries(params)) {
+		const isOptional = (paramType as string).endsWith("?");
+		if (!isOptional && !(paramName in bindings)) {
+			throw new Error(
+				`missing required param "${paramName}" when including rule set "${name}"`,
+			);
+		}
+	}
+	for (const key of Object.keys(bindings)) {
+		if (!(key in params)) {
+			throw new Error(
+				`unknown param "${key}" when including rule set "${name}"`,
+			);
+		}
+	}
+
+	// Resolve sub-includes from flatRulesets (plain strings only for now)
+	const subRules: GrammarRule[] = [];
+	for (const entry of toIncludeArray(ruleset.include)) {
+		if (typeof entry !== "string") {
+			throw new Error(
+				`rule set "${name}" has a parameterized sub-include, which is not supported`,
+			);
+		}
+		const flat = flatRulesets.get(entry);
+		if (!flat) {
+			throw new Error(`unknown rule set "${entry}" in rule set "${name}"`);
+		}
+		subRules.push(...flat);
+	}
+
+	const substituted = substituteParams(ruleset.rules, bindings);
+	return [...subRules, ...substituted];
+}
+
 // Flatten a ruleset's include chain into a single ordered rule list (DFS, cycle-safe).
+// Parameterized rulesets (those with `params`) are skipped — they can only be instantiated
+// via { set, with } entries in state or ruleset includes.
 function flattenRulesets(
 	rulesets: Record<string, Ruleset>,
 	stateNames: Set<string>,
 ): Map<string, GrammarRule[]> {
 	const result = new Map<string, GrammarRule[]>();
 	const resolving: string[] = []; // ordered path for cycle reporting
+
+	// Identify all parameterized (template) rulesets
+	const templates = new Set<string>(
+		Object.entries(rulesets)
+			.filter(([, rs]) => rs.params)
+			.map(([n]) => n),
+	);
 
 	const resolveRuleset = (name: string): GrammarRule[] => {
 		const cached = result.get(name);
@@ -58,7 +166,13 @@ function flattenRulesets(
 		resolving.push(name);
 		const flat: GrammarRule[] = [];
 
-		for (const includeName of toArray(ruleset.include)) {
+		for (const entry of toIncludeArray(ruleset.include)) {
+			if (typeof entry !== "string") {
+				throw new Error(
+					`parameterized include ({ set, with }) is not allowed within a concrete rule set definition (in rule set "${name}")`,
+				);
+			}
+			const includeName = entry;
 			if (stateNames.has(includeName)) {
 				throw new Error(
 					`"${includeName}" refers to a tokeniser state; include accepts rule-set names only`,
@@ -67,6 +181,11 @@ function flattenRulesets(
 			if (!rulesets[includeName]) {
 				throw new Error(
 					`unknown rule set "${includeName}" in rule set "${name}"`,
+				);
+			}
+			if (templates.has(includeName)) {
+				throw new Error(
+					`rule set "${includeName}" is parameterized; use { set: "${includeName}", with: { ... } } to provide bindings`,
 				);
 			}
 			flat.push(...resolveRuleset(includeName));
@@ -79,6 +198,8 @@ function flattenRulesets(
 	};
 
 	for (const name of Object.keys(rulesets)) {
+		// Skip parameterized rulesets — they are instantiated on demand
+		if (templates.has(name)) continue;
 		resolveRuleset(name);
 	}
 
@@ -96,49 +217,113 @@ export function resolveIncludes(grammar: Grammar): Grammar {
 	if (!hasRulesets && !hasStateIncludes) return grammar;
 
 	const stateNames = new Set(Object.keys(grammar.states));
-	const flatRulesets = flattenRulesets(grammar.rulesets ?? {}, stateNames);
+	const rulesets = grammar.rulesets ?? {};
+	const flatRulesets = flattenRulesets(rulesets, stateNames);
+
+	// Identify all parameterized (template) rulesets
+	const templates = new Set<string>(
+		Object.entries(rulesets)
+			.filter(([, rs]) => rs.params)
+			.map(([n]) => n),
+	);
 
 	// Track which ruleset names are actually referenced (for unused-ruleset warning)
 	const referencedRulesets = new Set<string>();
 
-	// Record references within ruleset includes
-	for (const rs of Object.values(grammar.rulesets ?? {})) {
-		for (const name of toArray(rs.include)) {
-			referencedRulesets.add(name);
+	// Record references within ruleset includes (plain strings only in concrete rulesets)
+	for (const rs of Object.values(rulesets)) {
+		for (const entry of toIncludeArray(rs.include)) {
+			if (typeof entry === "string") {
+				referencedRulesets.add(entry);
+			}
 		}
 	}
 
 	const resolvedStates: Record<string, GrammarState> = {};
 
 	for (const [stateName, state] of Object.entries(grammar.states)) {
-		const includes = toArray(state.include);
-		if (includes.length === 0) {
+		const includeEntries = toIncludeArray(state.include);
+		if (includeEntries.length === 0) {
 			resolvedStates[stateName] = state;
 			continue;
 		}
 
 		const seen = new Set<string>();
 		const effectiveRules: GrammarRule[] = [];
+		// Track all included rules (including parameterized instantiations) for dead-rule detection
+		const allIncludedRules: GrammarRule[] = [];
+		// Track include entry names for dead rule warning messages
+		const includeNames: string[] = [];
 
-		for (const includeName of includes) {
-			if (stateNames.has(includeName)) {
-				throw new Error(
-					`"${includeName}" refers to a tokeniser state; include accepts rule-set names only`,
-				);
+		for (const entry of includeEntries) {
+			if (typeof entry === "string") {
+				// Plain string include
+				const includeName = entry;
+				if (stateNames.has(includeName)) {
+					throw new Error(
+						`"${includeName}" refers to a tokeniser state; include accepts rule-set names only`,
+					);
+				}
+				if (!flatRulesets.has(includeName)) {
+					if (templates.has(includeName)) {
+						throw new Error(
+							`rule set "${includeName}" is parameterized; use { set: "${includeName}", with: { ... } } to provide bindings`,
+						);
+					}
+					throw new Error(
+						`unknown rule set "${includeName}" in include of state "${stateName}"`,
+					);
+				}
+				if (seen.has(includeName)) {
+					throw new Error(
+						`duplicate include "${includeName}" in state "${stateName}"`,
+					);
+				}
+				seen.add(includeName);
+				referencedRulesets.add(includeName);
+				const flat = flatRulesets.get(includeName) as GrammarRule[];
+				effectiveRules.push(...flat);
+				allIncludedRules.push(...flat);
+				includeNames.push(includeName);
+			} else {
+				// Parameterized include: { set, with }
+				const { set: setName, with: withBindings } = entry;
+				if (!withBindings) {
+					// { set: "name" } without `with` — treat as error for parameterized, pass-through for non-param
+					if (templates.has(setName)) {
+						throw new Error(
+							`rule set "${setName}" is parameterized; use { set: "${setName}", with: { ... } } to provide bindings`,
+						);
+					}
+					// Non-parameterized with no bindings — error (must include with `with` only for parameterized)
+					throw new Error(
+						`rule set "${setName}" is not parameterized; use a plain string include instead of { set, with }`,
+					);
+				}
+				if (!templates.has(setName)) {
+					// Providing `with` bindings for a non-parameterized ruleset
+					if (!rulesets[setName]) {
+						throw new Error(
+							`unknown rule set "${setName}" in include of state "${stateName}"`,
+						);
+					}
+					throw new Error(
+						`rule set "${setName}" is not parameterized; remove the "with" binding`,
+					);
+				}
+				// Duplicate detection: key on ruleset name only
+				if (seen.has(setName)) {
+					throw new Error(
+						`duplicate include "${setName}" in state "${stateName}"`,
+					);
+				}
+				seen.add(setName);
+				referencedRulesets.add(setName);
+				const instantiated = instantiateRuleset(setName, withBindings, rulesets, flatRulesets);
+				effectiveRules.push(...instantiated);
+				allIncludedRules.push(...instantiated);
+				includeNames.push(setName);
 			}
-			if (!flatRulesets.has(includeName)) {
-				throw new Error(
-					`unknown rule set "${includeName}" in include of state "${stateName}"`,
-				);
-			}
-			if (seen.has(includeName)) {
-				throw new Error(
-					`duplicate include "${includeName}" in state "${stateName}"`,
-				);
-			}
-			seen.add(includeName);
-			referencedRulesets.add(includeName);
-			effectiveRules.push(...(flatRulesets.get(includeName) as GrammarRule[]));
 		}
 
 		const ownRules = state.rules ?? [];
@@ -148,18 +333,18 @@ export function resolveIncludes(grammar: Grammar): Grammar {
 		for (const ownRule of ownRules) {
 			if (ownRule.match === undefined) continue;
 			const ownMatch = JSON.stringify(ownRule.match);
-			for (const includeName of includes) {
-				const includedRules = flatRulesets.get(includeName) as GrammarRule[];
-				for (const incRule of includedRules) {
-					if (
-						incRule.match !== undefined &&
-						JSON.stringify(incRule.match) === ownMatch
-					) {
-						console.warn(
-							`Grammar warning: rule in state "${stateName}" is shadowed by an earlier rule from included set "${includeName}"`,
-						);
-						break;
-					}
+			for (let i = 0; i < allIncludedRules.length; i++) {
+				const incRule = allIncludedRules[i];
+				if (
+					incRule.match !== undefined &&
+					JSON.stringify(incRule.match) === ownMatch
+				) {
+					// Find which include name this belongs to (best-effort: use first include name)
+					const warningIncludeName = includeNames[0] ?? "unknown";
+					console.warn(
+						`Grammar warning: rule in state "${stateName}" is shadowed by an earlier rule from included set "${warningIncludeName}"`,
+					);
+					break;
 				}
 			}
 		}
@@ -177,13 +362,13 @@ export function resolveIncludes(grammar: Grammar): Grammar {
 	}
 
 	// Warn about rulesets defined but never referenced
-	for (const name of Object.keys(grammar.rulesets ?? {})) {
+	for (const name of Object.keys(rulesets)) {
 		if (!referencedRulesets.has(name)) {
 			console.warn(`Grammar warning: rule set "${name}" is defined but never used`);
 		}
 	}
 
-	const { rulesets, ...grammarRest } = grammar;
+	const { rulesets: _rulesets, ...grammarRest } = grammar;
 	return { ...grammarRest, states: resolvedStates };
 }
 

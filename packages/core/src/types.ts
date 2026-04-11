@@ -24,13 +24,18 @@ export interface GrammarRule {
 	exit?: boolean;
 }
 
+export type ParamBinding = string | boolean | null;
+export type ParamType = "state" | "state?" | "token" | "token?" | "match" | "boolean";
+export type IncludeEntry = string | { set: string; with?: Record<string, ParamBinding> };
+
 export interface Ruleset {
-	include?: string | string[];
+	params?: Record<string, ParamType>;
+	include?: IncludeEntry | IncludeEntry[];
 	rules: GrammarRule[];
 }
 
 export interface GrammarState {
-	include?: string | string[];
+	include?: IncludeEntry | IncludeEntry[];
 	rules?: GrammarRule[];
 	mode?: "probe" | "tokenise";
 	fallback?: string;

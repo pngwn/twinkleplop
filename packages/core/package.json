@@ -18,6 +18,10 @@
 			"types": "./dist/types.d.ts",
 			"import": "./dist/twinkleplop.compiler.js"
 		},
+		"./tokens": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/twinkleplop.tokens.js"
+		},
 		"./introspector": {
 			"types": "./dist/types.d.ts",
 			"import": "./dist/twinkleplop.introspector.js"

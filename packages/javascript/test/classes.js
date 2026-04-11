@@ -81,88 +81,83 @@ export default [
 	},
 	{
 		"type": "function",
-		"start": 83,
+		"start": 81,
+		"end": 86
+	},
+	{
+		"type": "punctuation",
+		"start": 86,
 		"end": 88
 	},
 	{
 		"type": "punctuation",
-		"start": 88,
+		"start": 89,
 		"end": 90
 	},
 	{
-		"type": "punctuation",
-		"start": 91,
-		"end": 92
-	},
-	{
 		"type": "identifier",
-		"start": 97,
-		"end": 104
+		"start": 95,
+		"end": 102
 	},
 	{
 		"type": "punctuation",
-		"start": 104,
-		"end": 105
+		"start": 102,
+		"end": 103
 	},
 	{
 		"type": "function",
-		"start": 105,
+		"start": 103,
+		"end": 106
+	},
+	{
+		"type": "punctuation",
+		"start": 106,
+		"end": 107
+	},
+	{
+		"type": "template",
+		"start": 107,
 		"end": 108
 	},
 	{
 		"type": "punctuation",
 		"start": 108,
-		"end": 109
-	},
-	{
-		"type": "identifier",
-		"start": 110,
-		"end": 111
-	},
-	{
-		"type": "punctuation",
-		"start": 111,
-		"end": 112
+		"end": 110
 	},
 	{
 		"type": "keyword",
-		"start": 112,
-		"end": 116
+		"start": 110,
+		"end": 114
 	},
 	{
 		"type": "punctuation",
-		"start": 116,
-		"end": 117
+		"start": 114,
+		"end": 115
 	},
 	{
 		"type": "identifier",
-		"start": 117,
-		"end": 121
+		"start": 115,
+		"end": 119
 	},
 	{
 		"type": "punctuation",
-		"start": 121,
-		"end": 122
+		"start": 119,
+		"end": 120
 	},
 	{
-		"type": "identifier",
-		"start": 123,
-		"end": 128
-	},
-	{
-		"type": "identifier",
-		"start": 129,
-		"end": 130
-	},
-	{
-		"type": "identifier",
-		"start": 131,
-		"end": 136
+		"type": "template",
+		"start": 120,
+		"end": 135
 	},
 	{
 		"type": "punctuation",
-		"start": 137,
-		"end": 139
+		"start": 135,
+		"end": 137
+	},
+	{
+		"type": "punctuation",
+		"start": 140,
+		"end": 141
 	},
 	{
 		"type": "punctuation",
@@ -170,64 +165,64 @@ export default [
 		"end": 143
 	},
 	{
-		"type": "punctuation",
-		"start": 144,
-		"end": 145
-	},
-	{
 		"type": "comment",
-		"start": 147,
-		"end": 168
+		"start": 145,
+		"end": 166
 	},
 	{
 		"type": "keyword",
-		"start": 168,
-		"end": 173
+		"start": 166,
+		"end": 171
 	},
 	{
 		"type": "identifier",
-		"start": 174,
-		"end": 177
+		"start": 172,
+		"end": 175
 	},
 	{
 		"type": "keyword",
-		"start": 178,
-		"end": 185
+		"start": 176,
+		"end": 183
 	},
 	{
 		"type": "identifier",
-		"start": 186,
+		"start": 184,
+		"end": 190
+	},
+	{
+		"type": "punctuation",
+		"start": 191,
 		"end": 192
 	},
 	{
-		"type": "punctuation",
-		"start": 193,
-		"end": 194
-	},
-	{
 		"type": "function",
-		"start": 197,
-		"end": 208
+		"start": 195,
+		"end": 206
 	},
 	{
 		"type": "punctuation",
-		"start": 208,
-		"end": 209
+		"start": 206,
+		"end": 207
 	},
 	{
 		"type": "identifier",
-		"start": 209,
-		"end": 213
+		"start": 207,
+		"end": 211
 	},
 	{
 		"type": "punctuation",
+		"start": 211,
+		"end": 212
+	},
+	{
+		"type": "identifier",
 		"start": 213,
-		"end": 214
+		"end": 218
 	},
 	{
-		"type": "identifier",
-		"start": 215,
-		"end": 220
+		"type": "punctuation",
+		"start": 218,
+		"end": 219
 	},
 	{
 		"type": "punctuation",
@@ -235,103 +230,108 @@ export default [
 		"end": 221
 	},
 	{
-		"type": "punctuation",
-		"start": 222,
-		"end": 223
-	},
-	{
 		"type": "keyword",
-		"start": 228,
-		"end": 233
+		"start": 226,
+		"end": 231
 	},
 	{
 		"type": "punctuation",
-		"start": 233,
-		"end": 234
+		"start": 231,
+		"end": 232
 	},
 	{
 		"type": "identifier",
-		"start": 234,
+		"start": 232,
+		"end": 236
+	},
+	{
+		"type": "punctuation",
+		"start": 236,
 		"end": 238
 	},
 	{
-		"type": "punctuation",
-		"start": 238,
-		"end": 240
-	},
-	{
 		"type": "keyword",
-		"start": 245,
-		"end": 249
+		"start": 243,
+		"end": 247
 	},
 	{
 		"type": "punctuation",
-		"start": 249,
-		"end": 250
+		"start": 247,
+		"end": 248
 	},
 	{
 		"type": "identifier",
-		"start": 250,
-		"end": 255
+		"start": 248,
+		"end": 253
 	},
 	{
 		"type": "operator",
-		"start": 256,
-		"end": 257
+		"start": 254,
+		"end": 255
 	},
 	{
 		"type": "identifier",
-		"start": 258,
-		"end": 263
+		"start": 256,
+		"end": 261
 	},
 	{
 		"type": "punctuation",
-		"start": 263,
-		"end": 264
+		"start": 261,
+		"end": 262
 	},
 	{
 		"type": "punctuation",
-		"start": 267,
-		"end": 268
+		"start": 265,
+		"end": 266
 	},
 	{
 		"type": "function",
-		"start": 274,
+		"start": 270,
+		"end": 275
+	},
+	{
+		"type": "punctuation",
+		"start": 275,
+		"end": 277
+	},
+	{
+		"type": "punctuation",
+		"start": 278,
 		"end": 279
 	},
 	{
-		"type": "punctuation",
-		"start": 279,
-		"end": 281
-	},
-	{
-		"type": "punctuation",
-		"start": 282,
-		"end": 283
-	},
-	{
 		"type": "keyword",
-		"start": 288,
-		"end": 293
+		"start": 284,
+		"end": 289
 	},
 	{
 		"type": "punctuation",
-		"start": 293,
-		"end": 294
+		"start": 289,
+		"end": 290
 	},
 	{
 		"type": "function",
-		"start": 294,
-		"end": 299
+		"start": 290,
+		"end": 295
 	},
 	{
 		"type": "punctuation",
-		"start": 299,
-		"end": 302
+		"start": 295,
+		"end": 298
 	},
 	{
 		"type": "identifier",
-		"start": 307,
+		"start": 303,
+		"end": 310
+	},
+	{
+		"type": "punctuation",
+		"start": 310,
+		"end": 311
+	},
+	{
+		"type": "function",
+		"start": 311,
 		"end": 314
 	},
 	{
@@ -340,129 +340,129 @@ export default [
 		"end": 315
 	},
 	{
-		"type": "function",
-		"start": 315,
-		"end": 318
-	},
-	{
-		"type": "punctuation",
-		"start": 318,
-		"end": 319
-	},
-	{
 		"type": "string",
-		"start": 319,
-		"end": 326
+		"start": 315,
+		"end": 322
 	},
 	{
 		"type": "punctuation",
-		"start": 326,
+		"start": 322,
+		"end": 324
+	},
+	{
+		"type": "punctuation",
+		"start": 327,
 		"end": 328
 	},
 	{
 		"type": "punctuation",
-		"start": 331,
-		"end": 332
-	},
-	{
-		"type": "punctuation",
-		"start": 333,
-		"end": 334
+		"start": 329,
+		"end": 330
 	},
 	{
 		"type": "comment",
-		"start": 336,
-		"end": 354
+		"start": 332,
+		"end": 350
 	},
 	{
 		"type": "keyword",
-		"start": 354,
-		"end": 359
+		"start": 350,
+		"end": 355
 	},
 	{
 		"type": "identifier",
-		"start": 360,
-		"end": 369
+		"start": 356,
+		"end": 365
 	},
 	{
 		"type": "punctuation",
-		"start": 370,
-		"end": 371
+		"start": 366,
+		"end": 367
 	},
 	{
 		"type": "keyword",
-		"start": 374,
-		"end": 380
+		"start": 370,
+		"end": 376
 	},
 	{
 		"type": "identifier",
-		"start": 381,
-		"end": 383
+		"start": 377,
+		"end": 379
 	},
 	{
 		"type": "operator",
-		"start": 384,
-		"end": 385
+		"start": 380,
+		"end": 381
 	},
 	{
 		"type": "number",
-		"start": 386,
-		"end": 393
+		"start": 382,
+		"end": 389
 	},
 	{
 		"type": "punctuation",
-		"start": 393,
-		"end": 394
+		"start": 389,
+		"end": 390
 	},
 	{
 		"type": "keyword",
-		"start": 400,
-		"end": 406
+		"start": 394,
+		"end": 400
 	},
 	{
 		"type": "punctuation",
-		"start": 420,
-		"end": 421
+		"start": 414,
+		"end": 415
 	},
 	{
 		"type": "punctuation",
-		"start": 427,
-		"end": 428
+		"start": 421,
+		"end": 422
 	},
 	{
 		"type": "punctuation",
+		"start": 423,
+		"end": 424
+	},
+	{
+		"type": "keyword",
 		"start": 429,
-		"end": 430
+		"end": 435
 	},
 	{
 		"type": "keyword",
-		"start": 435,
+		"start": 436,
+		"end": 440
+	},
+	{
+		"type": "punctuation",
+		"start": 440,
 		"end": 441
 	},
 	{
-		"type": "keyword",
-		"start": 442,
-		"end": 446
-	},
-	{
-		"type": "punctuation",
-		"start": 446,
-		"end": 447
+		"type": "operator",
+		"start": 444,
+		"end": 445
 	},
 	{
 		"type": "operator",
-		"start": 450,
-		"end": 451
-	},
-	{
-		"type": "operator",
-		"start": 459,
-		"end": 461
+		"start": 453,
+		"end": 455
 	},
 	{
 		"type": "number",
-		"start": 462,
-		"end": 463
+		"start": 456,
+		"end": 457
+	},
+	{
+		"type": "punctuation",
+		"start": 457,
+		"end": 458
+	},
+	{
+		"type": "punctuation",
+		"start": 461,
+		"end": 462
 	},
 	{
 		"type": "punctuation",
@@ -470,409 +470,419 @@ export default [
 		"end": 464
 	},
 	{
-		"type": "punctuation",
-		"start": 467,
-		"end": 468
-	},
-	{
-		"type": "punctuation",
-		"start": 469,
-		"end": 470
-	},
-	{
 		"type": "comment",
-		"start": 472,
-		"end": 490
+		"start": 466,
+		"end": 484
 	},
 	{
 		"type": "keyword",
-		"start": 490,
-		"end": 495
+		"start": 484,
+		"end": 489
 	},
 	{
 		"type": "punctuation",
-		"start": 503,
-		"end": 504
+		"start": 497,
+		"end": 498
 	},
 	{
 		"type": "punctuation",
-		"start": 520,
-		"end": 521
+		"start": 514,
+		"end": 515
 	},
 	{
 		"type": "punctuation",
-		"start": 538,
-		"end": 540
+		"start": 532,
+		"end": 534
 	},
 	{
 		"type": "punctuation",
-		"start": 541,
-		"end": 543
+		"start": 535,
+		"end": 537
 	},
 	{
 		"type": "punctuation",
-		"start": 560,
-		"end": 561
+		"start": 552,
+		"end": 553
 	},
 	{
 		"type": "punctuation",
+		"start": 557,
+		"end": 558
+	},
+	{
+		"type": "punctuation",
+		"start": 559,
+		"end": 560
+	},
+	{
+		"type": "keyword",
 		"start": 565,
-		"end": 566
+		"end": 569
 	},
 	{
 		"type": "punctuation",
-		"start": 567,
-		"end": 568
-	},
-	{
-		"type": "keyword",
-		"start": 573,
-		"end": 577
-	},
-	{
-		"type": "punctuation",
-		"start": 577,
-		"end": 578
+		"start": 569,
+		"end": 570
 	},
 	{
 		"type": "operator",
-		"start": 592,
-		"end": 593
+		"start": 584,
+		"end": 585
 	},
 	{
 		"type": "punctuation",
-		"start": 598,
-		"end": 599
+		"start": 590,
+		"end": 591
 	},
 	{
 		"type": "punctuation",
-		"start": 602,
-		"end": 603
+		"start": 594,
+		"end": 595
 	},
 	{
 		"type": "keyword",
-		"start": 609,
-		"end": 612
+		"start": 599,
+		"end": 602
 	},
 	{
 		"type": "punctuation",
-		"start": 617,
-		"end": 619
+		"start": 607,
+		"end": 609
 	},
 	{
 		"type": "punctuation",
-		"start": 620,
-		"end": 621
+		"start": 610,
+		"end": 611
 	},
 	{
 		"type": "keyword",
-		"start": 626,
-		"end": 632
+		"start": 616,
+		"end": 622
 	},
 	{
 		"type": "keyword",
-		"start": 633,
-		"end": 637
+		"start": 623,
+		"end": 627
 	},
 	{
 		"type": "punctuation",
-		"start": 637,
-		"end": 638
+		"start": 627,
+		"end": 628
 	},
 	{
 		"type": "punctuation",
-		"start": 651,
-		"end": 652
+		"start": 641,
+		"end": 642
 	},
 	{
 		"type": "punctuation",
-		"start": 655,
-		"end": 656
+		"start": 645,
+		"end": 646
 	},
 	{
 		"type": "punctuation",
-		"start": 657,
-		"end": 658
+		"start": 647,
+		"end": 648
 	},
 	{
 		"type": "comment",
-		"start": 660,
-		"end": 681
+		"start": 650,
+		"end": 671
 	},
 	{
 		"type": "keyword",
-		"start": 681,
+		"start": 671,
+		"end": 676
+	},
+	{
+		"type": "operator",
+		"start": 685,
 		"end": 686
 	},
 	{
-		"type": "operator",
-		"start": 695,
-		"end": 696
+		"type": "keyword",
+		"start": 687,
+		"end": 692
+	},
+	{
+		"type": "punctuation",
+		"start": 693,
+		"end": 694
+	},
+	{
+		"type": "punctuation",
+		"start": 708,
+		"end": 710
+	},
+	{
+		"type": "punctuation",
+		"start": 711,
+		"end": 713
+	},
+	{
+		"type": "punctuation",
+		"start": 714,
+		"end": 716
 	},
 	{
 		"type": "keyword",
-		"start": 697,
-		"end": 702
-	},
-	{
-		"type": "punctuation",
-		"start": 703,
-		"end": 704
-	},
-	{
-		"type": "punctuation",
 		"start": 718,
-		"end": 720
-	},
-	{
-		"type": "punctuation",
-		"start": 721,
 		"end": 723
 	},
 	{
-		"type": "punctuation",
-		"start": 724,
-		"end": 726
-	},
-	{
-		"type": "keyword",
-		"start": 728,
-		"end": 733
-	},
-	{
 		"type": "operator",
-		"start": 745,
-		"end": 746
+		"start": 735,
+		"end": 736
 	},
 	{
 		"type": "keyword",
-		"start": 747,
-		"end": 752
+		"start": 737,
+		"end": 742
 	},
 	{
 		"type": "punctuation",
-		"start": 764,
-		"end": 765
+		"start": 754,
+		"end": 755
 	},
 	{
 		"type": "keyword",
-		"start": 768,
+		"start": 758,
+		"end": 764
+	},
+	{
+		"type": "punctuation",
+		"start": 772,
 		"end": 774
 	},
 	{
 		"type": "punctuation",
-		"start": 782,
-		"end": 784
-	},
-	{
-		"type": "punctuation",
-		"start": 785,
-		"end": 786
+		"start": 775,
+		"end": 776
 	},
 	{
 		"type": "keyword",
-		"start": 791,
-		"end": 797
+		"start": 781,
+		"end": 787
 	},
 	{
 		"type": "punctuation",
-		"start": 808,
-		"end": 809
+		"start": 798,
+		"end": 799
 	},
 	{
 		"type": "punctuation",
-		"start": 813,
-		"end": 814
+		"start": 803,
+		"end": 804
 	},
 	{
 		"type": "punctuation",
-		"start": 817,
-		"end": 818
+		"start": 807,
+		"end": 808
 	},
 	{
 		"type": "punctuation",
-		"start": 819,
-		"end": 821
+		"start": 809,
+		"end": 811
 	},
 	{
 		"type": "comment",
-		"start": 823,
-		"end": 846
+		"start": 813,
+		"end": 836
 	},
 	{
 		"type": "keyword",
-		"start": 846,
-		"end": 851
+		"start": 836,
+		"end": 841
 	},
 	{
 		"type": "punctuation",
-		"start": 864,
-		"end": 865
+		"start": 854,
+		"end": 855
 	},
 	{
 		"type": "punctuation",
-		"start": 876,
-		"end": 877
+		"start": 866,
+		"end": 867
 	},
 	{
 		"type": "keyword",
-		"start": 883,
+		"start": 871,
+		"end": 874
+	},
+	{
+		"type": "punctuation",
+		"start": 882,
+		"end": 884
+	},
+	{
+		"type": "punctuation",
+		"start": 885,
 		"end": 886
 	},
 	{
-		"type": "punctuation",
-		"start": 894,
-		"end": 896
-	},
-	{
-		"type": "punctuation",
-		"start": 897,
-		"end": 898
+		"type": "keyword",
+		"start": 891,
+		"end": 897
 	},
 	{
 		"type": "keyword",
-		"start": 903,
-		"end": 909
+		"start": 898,
+		"end": 902
+	},
+	{
+		"type": "punctuation",
+		"start": 902,
+		"end": 903
+	},
+	{
+		"type": "punctuation",
+		"start": 911,
+		"end": 912
+	},
+	{
+		"type": "punctuation",
+		"start": 915,
+		"end": 916
 	},
 	{
 		"type": "keyword",
-		"start": 910,
-		"end": 914
+		"start": 920,
+		"end": 923
 	},
 	{
 		"type": "punctuation",
-		"start": 914,
-		"end": 915
+		"start": 931,
+		"end": 932
 	},
 	{
 		"type": "punctuation",
-		"start": 923,
-		"end": 924
+		"start": 937,
+		"end": 938
 	},
 	{
 		"type": "punctuation",
-		"start": 927,
-		"end": 928
+		"start": 939,
+		"end": 940
 	},
 	{
 		"type": "keyword",
-		"start": 934,
-		"end": 937
-	},
-	{
-		"type": "punctuation",
 		"start": 945,
-		"end": 946
+		"end": 949
 	},
 	{
 		"type": "punctuation",
-		"start": 951,
-		"end": 952
-	},
-	{
-		"type": "punctuation",
-		"start": 953,
-		"end": 954
-	},
-	{
-		"type": "keyword",
-		"start": 959,
-		"end": 963
-	},
-	{
-		"type": "punctuation",
-		"start": 963,
-		"end": 964
+		"start": 949,
+		"end": 950
 	},
 	{
 		"type": "operator",
-		"start": 973,
-		"end": 974
+		"start": 959,
+		"end": 960
 	},
 	{
 		"type": "punctuation",
-		"start": 980,
-		"end": 981
+		"start": 966,
+		"end": 967
 	},
 	{
 		"type": "punctuation",
-		"start": 984,
-		"end": 985
+		"start": 970,
+		"end": 971
 	},
 	{
 		"type": "keyword",
-		"start": 991,
-		"end": 994
+		"start": 975,
+		"end": 978
 	},
 	{
 		"type": "punctuation",
+		"start": 989,
+		"end": 991
+	},
+	{
+		"type": "punctuation",
+		"start": 992,
+		"end": 993
+	},
+	{
+		"type": "keyword",
+		"start": 998,
+		"end": 1004
+	},
+	{
+		"type": "keyword",
 		"start": 1005,
-		"end": 1007
-	},
-	{
-		"type": "punctuation",
-		"start": 1008,
 		"end": 1009
 	},
 	{
-		"type": "keyword",
-		"start": 1014,
+		"type": "punctuation",
+		"start": 1009,
+		"end": 1010
+	},
+	{
+		"type": "operator",
+		"start": 1019,
 		"end": 1020
 	},
 	{
-		"type": "keyword",
+		"type": "number",
 		"start": 1021,
-		"end": 1025
+		"end": 1022
 	},
 	{
-		"type": "punctuation",
+		"type": "operator",
+		"start": 1022,
+		"end": 1023
+	},
+	{
+		"type": "number",
+		"start": 1023,
+		"end": 1024
+	},
+	{
+		"type": "operator",
 		"start": 1025,
 		"end": 1026
 	},
 	{
-		"type": "operator",
-		"start": 1035,
-		"end": 1036
-	},
-	{
 		"type": "number",
-		"start": 1037,
-		"end": 1038
-	},
-	{
-		"type": "operator",
-		"start": 1038,
-		"end": 1039
-	},
-	{
-		"type": "number",
-		"start": 1039,
-		"end": 1040
-	},
-	{
-		"type": "operator",
-		"start": 1041,
-		"end": 1042
-	},
-	{
-		"type": "number",
-		"start": 1043,
-		"end": 1045
+		"start": 1027,
+		"end": 1029
 	},
 	{
 		"type": "punctuation",
-		"start": 1045,
-		"end": 1046
+		"start": 1029,
+		"end": 1030
 	},
 	{
 		"type": "punctuation",
-		"start": 1049,
-		"end": 1050
+		"start": 1033,
+		"end": 1034
 	},
 	{
 		"type": "keyword",
-		"start": 1056,
+		"start": 1038,
+		"end": 1041
+	},
+	{
+		"type": "punctuation",
+		"start": 1052,
+		"end": 1053
+	},
+	{
+		"type": "punctuation",
+		"start": 1058,
 		"end": 1059
+	},
+	{
+		"type": "punctuation",
+		"start": 1060,
+		"end": 1061
+	},
+	{
+		"type": "keyword",
+		"start": 1066,
+		"end": 1070
 	},
 	{
 		"type": "punctuation",
@@ -880,24 +890,39 @@ export default [
 		"end": 1071
 	},
 	{
-		"type": "punctuation",
-		"start": 1076,
-		"end": 1077
+		"type": "operator",
+		"start": 1080,
+		"end": 1081
 	},
 	{
 		"type": "punctuation",
-		"start": 1078,
-		"end": 1079
+		"start": 1082,
+		"end": 1083
 	},
 	{
-		"type": "keyword",
-		"start": 1084,
-		"end": 1088
+		"type": "operator",
+		"start": 1089,
+		"end": 1090
+	},
+	{
+		"type": "number",
+		"start": 1091,
+		"end": 1093
 	},
 	{
 		"type": "punctuation",
-		"start": 1088,
-		"end": 1089
+		"start": 1093,
+		"end": 1094
+	},
+	{
+		"type": "operator",
+		"start": 1095,
+		"end": 1096
+	},
+	{
+		"type": "number",
+		"start": 1097,
+		"end": 1098
 	},
 	{
 		"type": "operator",
@@ -905,123 +930,88 @@ export default [
 		"end": 1099
 	},
 	{
+		"type": "number",
+		"start": 1099,
+		"end": 1100
+	},
+	{
 		"type": "punctuation",
 		"start": 1100,
 		"end": 1101
 	},
 	{
-		"type": "operator",
-		"start": 1107,
-		"end": 1108
-	},
-	{
-		"type": "number",
-		"start": 1109,
-		"end": 1111
+		"type": "punctuation",
+		"start": 1104,
+		"end": 1105
 	},
 	{
 		"type": "punctuation",
-		"start": 1111,
-		"end": 1112
-	},
-	{
-		"type": "operator",
-		"start": 1113,
-		"end": 1114
-	},
-	{
-		"type": "number",
-		"start": 1115,
-		"end": 1116
-	},
-	{
-		"type": "operator",
-		"start": 1116,
-		"end": 1117
-	},
-	{
-		"type": "number",
-		"start": 1117,
-		"end": 1118
-	},
-	{
-		"type": "punctuation",
-		"start": 1118,
-		"end": 1119
-	},
-	{
-		"type": "punctuation",
-		"start": 1122,
-		"end": 1123
-	},
-	{
-		"type": "punctuation",
-		"start": 1124,
-		"end": 1125
+		"start": 1106,
+		"end": 1107
 	},
 	{
 		"type": "comment",
-		"start": 1127,
-		"end": 1159
+		"start": 1109,
+		"end": 1141
 	},
 	{
 		"type": "keyword",
-		"start": 1159,
+		"start": 1141,
+		"end": 1146
+	},
+	{
+		"type": "punctuation",
+		"start": 1154,
+		"end": 1155
+	},
+	{
+		"type": "keyword",
+		"start": 1158,
 		"end": 1164
 	},
 	{
 		"type": "punctuation",
-		"start": 1172,
-		"end": 1173
+		"start": 1169,
+		"end": 1170
 	},
 	{
 		"type": "keyword",
-		"start": 1176,
+		"start": 1174,
+		"end": 1180
+	},
+	{
+		"type": "punctuation",
+		"start": 1181,
 		"end": 1182
 	},
 	{
-		"type": "punctuation",
+		"type": "keyword",
 		"start": 1187,
-		"end": 1188
-	},
-	{
-		"type": "keyword",
-		"start": 1194,
-		"end": 1200
+		"end": 1191
 	},
 	{
 		"type": "punctuation",
-		"start": 1201,
-		"end": 1202
-	},
-	{
-		"type": "keyword",
-		"start": 1207,
-		"end": 1211
-	},
-	{
-		"type": "punctuation",
-		"start": 1211,
-		"end": 1212
+		"start": 1191,
+		"end": 1192
 	},
 	{
 		"type": "operator",
+		"start": 1197,
+		"end": 1198
+	},
+	{
+		"type": "punctuation",
+		"start": 1209,
+		"end": 1212
+	},
+	{
+		"type": "punctuation",
+		"start": 1215,
+		"end": 1216
+	},
+	{
+		"type": "punctuation",
 		"start": 1217,
 		"end": 1218
-	},
-	{
-		"type": "punctuation",
-		"start": 1229,
-		"end": 1232
-	},
-	{
-		"type": "punctuation",
-		"start": 1235,
-		"end": 1236
-	},
-	{
-		"type": "punctuation",
-		"start": 1237,
-		"end": 1238
 	}
 ];
