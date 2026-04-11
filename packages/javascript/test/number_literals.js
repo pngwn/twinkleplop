@@ -212,27 +212,32 @@ export default [
 	{
 		"type": "number",
 		"start": 455,
-		"end": 456
-	},
-	{
-		"type": "punctuation",
-		"start": 466,
-		"end": 467
+		"end": 464
 	},
 	{
 		"type": "number",
-		"start": 467,
-		"end": 470
+		"start": 465,
+		"end": 478
 	},
 	{
-		"type": "operator",
+		"type": "number",
+		"start": 479,
+		"end": 489
+	},
+	{
+		"type": "number",
+		"start": 490,
+		"end": 511
+	},
+	{
+		"type": "number",
+		"start": 512,
+		"end": 524
+	},
+	{
+		"type": "comment",
 		"start": 526,
-		"end": 527
-	},
-	{
-		"type": "regex",
-		"start": 527,
-		"end": 548
+		"end": 549
 	},
 	{
 		"type": "number",

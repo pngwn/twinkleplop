@@ -600,13 +600,13 @@ export default [
 		"end": 526
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 526,
 		"end": 534
 	},
 	{
 		"type": "punctuation",
-		"start": 535,
+		"start": 534,
 		"end": 537
 	},
 	{

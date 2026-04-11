@@ -410,9 +410,19 @@ export default [
 		"end": 400
 	},
 	{
+		"type": "function",
+		"start": 401,
+		"end": 414
+	},
+	{
 		"type": "punctuation",
 		"start": 414,
 		"end": 415
+	},
+	{
+		"type": "identifier",
+		"start": 415,
+		"end": 421
 	},
 	{
 		"type": "punctuation",
@@ -440,9 +450,19 @@ export default [
 		"end": 441
 	},
 	{
+		"type": "identifier",
+		"start": 441,
+		"end": 443
+	},
+	{
 		"type": "operator",
 		"start": 444,
 		"end": 445
+	},
+	{
+		"type": "identifier",
+		"start": 446,
+		"end": 452
 	},
 	{
 		"type": "operator",
@@ -480,14 +500,29 @@ export default [
 		"end": 489
 	},
 	{
+		"type": "identifier",
+		"start": 490,
+		"end": 496
+	},
+	{
 		"type": "punctuation",
 		"start": 497,
 		"end": 498
 	},
 	{
+		"type": "identifier",
+		"start": 502,
+		"end": 514
+	},
+	{
 		"type": "punctuation",
 		"start": 514,
 		"end": 515
+	},
+	{
+		"type": "function",
+		"start": 519,
+		"end": 532
 	},
 	{
 		"type": "punctuation",
@@ -500,9 +535,19 @@ export default [
 		"end": 537
 	},
 	{
+		"type": "function",
+		"start": 541,
+		"end": 552
+	},
+	{
 		"type": "punctuation",
 		"start": 552,
 		"end": 553
+	},
+	{
+		"type": "identifier",
+		"start": 553,
+		"end": 557
 	},
 	{
 		"type": "punctuation",
@@ -525,9 +570,19 @@ export default [
 		"end": 570
 	},
 	{
+		"type": "identifier",
+		"start": 571,
+		"end": 583
+	},
+	{
 		"type": "operator",
 		"start": 584,
 		"end": 585
+	},
+	{
+		"type": "identifier",
+		"start": 586,
+		"end": 590
 	},
 	{
 		"type": "punctuation",
@@ -543,6 +598,11 @@ export default [
 		"type": "keyword",
 		"start": 599,
 		"end": 602
+	},
+	{
+		"type": "function",
+		"start": 603,
+		"end": 607
 	},
 	{
 		"type": "punctuation",
@@ -570,6 +630,11 @@ export default [
 		"end": 628
 	},
 	{
+		"type": "identifier",
+		"start": 629,
+		"end": 641
+	},
+	{
 		"type": "punctuation",
 		"start": 641,
 		"end": 642
@@ -595,6 +660,11 @@ export default [
 		"end": 676
 	},
 	{
+		"type": "identifier",
+		"start": 677,
+		"end": 684
+	},
+	{
 		"type": "operator",
 		"start": 685,
 		"end": 686
@@ -608,6 +678,11 @@ export default [
 		"type": "punctuation",
 		"start": 693,
 		"end": 694
+	},
+	{
+		"type": "function",
+		"start": 697,
+		"end": 708
 	},
 	{
 		"type": "punctuation",
@@ -630,6 +705,11 @@ export default [
 		"end": 723
 	},
 	{
+		"type": "identifier",
+		"start": 724,
+		"end": 734
+	},
+	{
 		"type": "operator",
 		"start": 735,
 		"end": 736
@@ -640,6 +720,11 @@ export default [
 		"end": 742
 	},
 	{
+		"type": "identifier",
+		"start": 743,
+		"end": 753
+	},
+	{
 		"type": "punctuation",
 		"start": 754,
 		"end": 755
@@ -648,6 +733,11 @@ export default [
 		"type": "keyword",
 		"start": 758,
 		"end": 764
+	},
+	{
+		"type": "function",
+		"start": 765,
+		"end": 772
 	},
 	{
 		"type": "punctuation",
@@ -665,9 +755,19 @@ export default [
 		"end": 787
 	},
 	{
+		"type": "identifier",
+		"start": 788,
+		"end": 798
+	},
+	{
 		"type": "punctuation",
 		"start": 798,
 		"end": 799
+	},
+	{
+		"type": "identifier",
+		"start": 799,
+		"end": 803
 	},
 	{
 		"type": "punctuation",
@@ -695,9 +795,19 @@ export default [
 		"end": 841
 	},
 	{
+		"type": "identifier",
+		"start": 842,
+		"end": 853
+	},
+	{
 		"type": "punctuation",
 		"start": 854,
 		"end": 855
+	},
+	{
+		"type": "identifier",
+		"start": 859,
+		"end": 866
 	},
 	{
 		"type": "punctuation",
@@ -708,6 +818,11 @@ export default [
 		"type": "keyword",
 		"start": 871,
 		"end": 874
+	},
+	{
+		"type": "function",
+		"start": 875,
+		"end": 882
 	},
 	{
 		"type": "punctuation",
@@ -735,6 +850,11 @@ export default [
 		"end": 903
 	},
 	{
+		"type": "identifier",
+		"start": 904,
+		"end": 911
+	},
+	{
 		"type": "punctuation",
 		"start": 911,
 		"end": 912
@@ -750,9 +870,19 @@ export default [
 		"end": 923
 	},
 	{
+		"type": "function",
+		"start": 924,
+		"end": 931
+	},
+	{
 		"type": "punctuation",
 		"start": 931,
 		"end": 932
+	},
+	{
+		"type": "identifier",
+		"start": 932,
+		"end": 937
 	},
 	{
 		"type": "punctuation",
@@ -775,9 +905,19 @@ export default [
 		"end": 950
 	},
 	{
+		"type": "identifier",
+		"start": 951,
+		"end": 958
+	},
+	{
 		"type": "operator",
 		"start": 959,
 		"end": 960
+	},
+	{
+		"type": "identifier",
+		"start": 961,
+		"end": 966
 	},
 	{
 		"type": "punctuation",
@@ -793,6 +933,11 @@ export default [
 		"type": "keyword",
 		"start": 975,
 		"end": 978
+	},
+	{
+		"type": "function",
+		"start": 979,
+		"end": 989
 	},
 	{
 		"type": "punctuation",
@@ -818,6 +963,11 @@ export default [
 		"type": "punctuation",
 		"start": 1009,
 		"end": 1010
+	},
+	{
+		"type": "identifier",
+		"start": 1011,
+		"end": 1018
 	},
 	{
 		"type": "operator",
@@ -865,9 +1015,19 @@ export default [
 		"end": 1041
 	},
 	{
+		"type": "function",
+		"start": 1042,
+		"end": 1052
+	},
+	{
 		"type": "punctuation",
 		"start": 1052,
 		"end": 1053
+	},
+	{
+		"type": "identifier",
+		"start": 1053,
+		"end": 1058
 	},
 	{
 		"type": "punctuation",
@@ -890,6 +1050,11 @@ export default [
 		"end": 1071
 	},
 	{
+		"type": "identifier",
+		"start": 1072,
+		"end": 1079
+	},
+	{
 		"type": "operator",
 		"start": 1080,
 		"end": 1081
@@ -898,6 +1063,11 @@ export default [
 		"type": "punctuation",
 		"start": 1082,
 		"end": 1083
+	},
+	{
+		"type": "identifier",
+		"start": 1083,
+		"end": 1088
 	},
 	{
 		"type": "operator",
@@ -960,6 +1130,11 @@ export default [
 		"end": 1146
 	},
 	{
+		"type": "identifier",
+		"start": 1147,
+		"end": 1153
+	},
+	{
 		"type": "punctuation",
 		"start": 1154,
 		"end": 1155
@@ -968,6 +1143,11 @@ export default [
 		"type": "keyword",
 		"start": 1158,
 		"end": 1164
+	},
+	{
+		"type": "identifier",
+		"start": 1165,
+		"end": 1169
 	},
 	{
 		"type": "punctuation",
@@ -995,9 +1175,19 @@ export default [
 		"end": 1192
 	},
 	{
+		"type": "identifier",
+		"start": 1192,
+		"end": 1196
+	},
+	{
 		"type": "operator",
 		"start": 1197,
 		"end": 1198
+	},
+	{
+		"type": "function",
+		"start": 1199,
+		"end": 1209
 	},
 	{
 		"type": "punctuation",

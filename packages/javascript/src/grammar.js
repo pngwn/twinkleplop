@@ -161,7 +161,7 @@ const OP_1CHAR = [
 // Full operator set (excludes bare `/`, which is state-dependent).
 const OP_ALL = [...OP_4CHAR, ...OP_3CHAR, OP_SPREAD, ...OP_2CHAR, ...OP_1CHAR];
 
-// Subset used by identifier_probe (legacy set — preserved byte-for-byte).
+// Operator subset used by identifier_probe's "not a function call" rule.
 const PROBE_OPERATORS = [
 	"===",
 	"!==",
@@ -187,6 +187,24 @@ const PROBE_OPERATORS = [
 	"~",
 	"^",
 	"%",
+];
+
+// Non-operator chars that terminate an identifier and signal "not a function
+// call". Used by both identifier_probe and identifier_probe_tmpl.
+const IDENTIFIER_TERMINATORS = [
+	".",
+	" ",
+	"\t",
+	"\n",
+	"\r",
+	")",
+	"[",
+	"]",
+	"{",
+	"}",
+	";",
+	",",
+	"`",
 ];
 
 // ---------------------------------------------------------------------------
@@ -332,7 +350,7 @@ export default {
 			rules: [
 				on("(", goto("function_name")),
 				on(
-					[".", " ", ")", ";", "}", "{", "[", ",", ...PROBE_OPERATORS],
+					[...IDENTIFIER_TERMINATORS, ...PROBE_OPERATORS],
 					goto(TOKENS.identifier),
 				),
 			],
@@ -394,10 +412,11 @@ export default {
 
 		// -------------------------------------------------------------------------
 		// Number states — argument/group context (pop back on exit)
+		// Each continuation accepts `_` as a numeric separator.
 		// -------------------------------------------------------------------------
 		number_arg: {
 			rules: [
-				match(DIGIT, TOKENS.number),
+				match(["_", DIGIT], TOKENS.number),
 				match(".", TOKENS.number, enter("decimal_number_arg")),
 				match(["e", "E"], TOKENS.number, enter("exponent_sign_arg")),
 				match("n", TOKENS.number, leave()),
@@ -407,7 +426,7 @@ export default {
 
 		decimal_number_arg: {
 			rules: [
-				match(DIGIT, TOKENS.number),
+				match(["_", DIGIT], TOKENS.number),
 				match(["e", "E"], TOKENS.number, enter("exponent_sign_arg")),
 				fallback(leave()),
 			],
@@ -421,12 +440,12 @@ export default {
 		},
 
 		exponent_digits_arg: {
-			rules: [match(DIGIT, TOKENS.number), fallback(leave())],
+			rules: [match(["_", DIGIT], TOKENS.number), fallback(leave())],
 		},
 
 		hex_number_arg: {
 			rules: [
-				match(HEX, TOKENS.number),
+				match(["_", HEX], TOKENS.number),
 				match("n", TOKENS.number, leave()),
 				fallback(leave()),
 			],
@@ -434,7 +453,7 @@ export default {
 
 		binary_number_arg: {
 			rules: [
-				match(["0", "1"], TOKENS.number),
+				match(["_", "0", "1"], TOKENS.number),
 				match("n", TOKENS.number, leave()),
 				fallback(leave()),
 			],
@@ -442,7 +461,7 @@ export default {
 
 		octal_number_arg: {
 			rules: [
-				match(range([["0", "7"]]), TOKENS.number),
+				match(["_", range([["0", "7"]])], TOKENS.number),
 				match("n", TOKENS.number, leave()),
 				fallback(leave()),
 			],
@@ -497,10 +516,13 @@ export default {
 
 		// -------------------------------------------------------------------------
 		// Number states — top-level (sideways to division on exit)
+		//
+		// Each continuation rule accepts `_` as a numeric separator (ES2021),
+		// so literals like `1_000_000` or `0xFF_FF_FF` are one number token.
 		// -------------------------------------------------------------------------
 		number: {
 			rules: [
-				match(DIGIT, TOKENS.number),
+				match(["_", DIGIT], TOKENS.number),
 				match(".", TOKENS.number, enter("decimal_number")),
 				match(["e", "E"], TOKENS.number, enter("exponent_sign")),
 				match("n", TOKENS.number, goto("division")),
@@ -510,7 +532,7 @@ export default {
 
 		decimal_number: {
 			rules: [
-				match(DIGIT, TOKENS.number),
+				match(["_", DIGIT], TOKENS.number),
 				match(["e", "E"], TOKENS.number, enter("exponent_sign")),
 				fallback(goto("division")),
 			],
@@ -524,12 +546,15 @@ export default {
 		},
 
 		exponent_digits: {
-			rules: [match(DIGIT, TOKENS.number), fallback(goto("division"))],
+			rules: [
+				match(["_", DIGIT], TOKENS.number),
+				fallback(goto("division")),
+			],
 		},
 
 		hex_number: {
 			rules: [
-				match(HEX, TOKENS.number),
+				match(["_", HEX], TOKENS.number),
 				match("n", TOKENS.number, goto("division")),
 				fallback(goto("division")),
 			],
@@ -537,7 +562,7 @@ export default {
 
 		binary_number: {
 			rules: [
-				match(["0", "1"], TOKENS.number),
+				match(["_", "0", "1"], TOKENS.number),
 				match("n", TOKENS.number, goto("division")),
 				fallback(goto("division")),
 			],
@@ -545,7 +570,7 @@ export default {
 
 		octal_number: {
 			rules: [
-				match(range([["0", "7"]]), TOKENS.number),
+				match(["_", range([["0", "7"]])], TOKENS.number),
 				match("n", TOKENS.number, goto("division")),
 				fallback(goto("division")),
 			],
@@ -581,7 +606,7 @@ export default {
 				match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
 				match([";", ",", "."], TOKENS.punctuation),
 
-				match(["_", "$", LETTER], TOKENS.identifier, goto("identifier_tmpl")),
+				on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
 			],
 		},
 
@@ -601,16 +626,78 @@ export default {
 				match([";", ","], TOKENS.punctuation, goto("tmpl_regex_allow")),
 				match(".", TOKENS.punctuation),
 
-				match(["_", "$", LETTER], TOKENS.identifier, goto("identifier_tmpl")),
+				on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
+			],
+		},
+
+		// -------------------------------------------------------------------------
+		// identifier_probe_tmpl — tmpl-aware version of identifier_probe
+		//
+		// Same probe semantics as the base identifier_probe, but fallbacks /
+		// matches to tmpl-aware targets so function-call detection keeps us in
+		// the interpolation universe.
+		// -------------------------------------------------------------------------
+		identifier_probe_tmpl: {
+			mode: "probe",
+			fallback: "identifier_tmpl",
+			rules: [
+				on("(", goto("function_name_tmpl")),
+				on(
+					[...IDENTIFIER_TERMINATORS, ...PROBE_OPERATORS],
+					goto("identifier_tmpl"),
+				),
+			],
+		},
+
+		// -------------------------------------------------------------------------
+		// function_name_tmpl — emits `function` tokens for a call-site identifier
+		// inside `${...}`. Mirror of base function_name.
+		// -------------------------------------------------------------------------
+		function_name_tmpl: {
+			rules: [
+				match(["_", "$", ALNUM], TOKENS.function),
+				match("(", TOKENS.punctuation, goto("function_body_tmpl")),
+				on([" ", "\t"]),
+			],
+		},
+
+		// -------------------------------------------------------------------------
+		// function_body_tmpl — call-site args inside `${...}`. Mirror of base
+		// function_body but transitions to tmpl_division on `)` so we stay in
+		// the interpolation universe.
+		// -------------------------------------------------------------------------
+		function_body_tmpl: {
+			rules: [
+				...js_body_common,
+
+				match(")", TOKENS.punctuation, goto("tmpl_division")),
+				match("(", TOKENS.punctuation, enter("paren_group")),
+				match(",", TOKENS.punctuation),
+
+				match(["===", "!=="], TOKENS.operator),
+				match(["--", "++", "<=", ">=", "==", "!=", "&&", "||"], TOKENS.operator),
+				match(
+					["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%"],
+					TOKENS.operator,
+				),
+				match("/", TOKENS.regex, enter("regex_pattern")),
+
+				match(["[", "]", "{", "}"], TOKENS.punctuation),
+				match([";", "."], TOKENS.punctuation),
+
+				match(BOOLEAN_LITERALS, TOKENS.boolean),
+
+				on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
 			],
 		},
 
 		// -------------------------------------------------------------------------
 		// identifier_tmpl — inside an identifier inside `${...}`
 		//
-		// Mirrors the base `identifier` state but with tmpl_* targets. `}` is
-		// carved out as `leave()` so the closing brace of the interpolation pops
-		// directly back to template_literal.
+		// Entered from identifier_probe_tmpl's fallback when the identifier is
+		// NOT a function call. Mirrors the base `identifier` state with tmpl_*
+		// targets; `}` is carved out as `leave()` so the closing brace of the
+		// interpolation pops directly back to template_literal.
 		// -------------------------------------------------------------------------
 		identifier_tmpl: {
 			rules: [

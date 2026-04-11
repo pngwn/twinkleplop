@@ -231,7 +231,12 @@ export function tokenize(
 				let targetState = currentState;
 				if (stackOp === 1 && transition !== 65535) {
 					targetState = transition;
+				} else if (stackOp === 2 && transition !== 65535) {
+					// Sideways transition: target is the explicit transition,
+					// not the state below on the stack.
+					targetState = transition;
 				} else if (stackOp === 2 && stackPtr > 0) {
+					// Pure exit (pop): target is the parent on the stack.
 					targetState = stateStack[stackPtr - 1];
 				} else if (transition !== 65535) {
 					targetState = transition;
@@ -668,7 +673,12 @@ export function tokenize(
 				let targetState = currentState;
 				if (stackOp === 1 && transition !== 65535) {
 					targetState = transition;
+				} else if (stackOp === 2 && transition !== 65535) {
+					// Sideways transition: target is the explicit transition,
+					// not the state below on the stack.
+					targetState = transition;
 				} else if (stackOp === 2 && stackPtr > 0) {
+					// Pure exit (pop): target is the parent on the stack.
 					targetState = stateStack[stackPtr - 1];
 				} else if (transition !== 65535) {
 					targetState = transition;

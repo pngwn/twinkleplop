@@ -100,8 +100,78 @@ export default [
 		"end": 51
 	},
 	{
-		"type": "regex",
+		"type": "operator",
 		"start": 52,
-		"end": 59
+		"end": 53
+	},
+	{
+		"type": "operator",
+		"start": 54,
+		"end": 55
+	},
+	{
+		"type": "operator",
+		"start": 56,
+		"end": 57
+	},
+	{
+		"type": "comment",
+		"start": 59,
+		"end": 80
+	},
+	{
+		"type": "regex",
+		"start": 80,
+		"end": 84
+	},
+	{
+		"type": "comment",
+		"start": 86,
+		"end": 98
+	},
+	{
+		"type": "number",
+		"start": 98,
+		"end": 99
+	},
+	{
+		"type": "operator",
+		"start": 100,
+		"end": 101
+	},
+	{
+		"type": "number",
+		"start": 102,
+		"end": 103
+	},
+	{
+		"type": "operator",
+		"start": 104,
+		"end": 105
+	},
+	{
+		"type": "number",
+		"start": 106,
+		"end": 107
+	},
+	{
+		"type": "operator",
+		"start": 108,
+		"end": 109
+	},
+	{
+		"type": "number",
+		"start": 110,
+		"end": 111
+	},
+	{
+		"type": "operator",
+		"start": 112,
+		"end": 113
+	},
+	{
+		"type": "number",
+		"start": 114,
+		"end": 115
 	}
 ];
