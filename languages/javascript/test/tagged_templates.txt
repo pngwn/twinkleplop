@@ -1,0 +1,116 @@
+// ==========================================================================
+// Tagged template literals — JS hosting HTML and CSS via the reclassifier
+// ==========================================================================
+//
+// Every tagged template below is fully tokenised: the contents are handed
+// to the HTML or CSS sub-language, positions are remapped, and the backticks
+// are preserved as template tokens. Interpolations (`${expr}`) stay as JS.
+
+
+// --- Non-interpolated tagged templates -------------------------------------
+
+const greeting = html`<p class="hi">Hello, world</p>`;
+const theme = css`
+	:root {
+		--primary: #0070f3;
+		--bg: #0a0a0a;
+	}
+	body {
+		background: var(--bg);
+		color: var(--primary);
+		font-family: system-ui, sans-serif;
+	}
+`;
+
+
+// --- Content-position interpolations ---------------------------------------
+//
+// The sub-language sees a well-formed document (with space-filled holes)
+// and the matching tokens get spliced back at the real positions.
+
+const welcome = (name) => html`
+	<section class="welcome">
+		<h1>Hello, ${name}!</h1>
+		<p>Welcome to <em>twinkleplop</em>.</p>
+	</section>
+`;
+
+const List = ({ items }) => html`
+	<ul class="list">
+		${items.map((item) => html`<li>${item.label}</li>`)}
+	</ul>
+`;
+
+
+// --- Attribute-position interpolations (the exemplar case) -----------------
+//
+// The HTML sub-tokenizer sees `<p class="   ">hi</p>` and correctly parses
+// the attribute value as a string. The string token then splits at the
+// hole boundary so the ${cls} tokens sit between two `"` string pieces.
+
+const Card = ({ variant, href, title }) => html`
+	<article class="card card--${variant}" data-id="${title}">
+		<a class="card__link" href="${href}" target="_blank" rel="noopener">
+			${title}
+		</a>
+	</article>
+`;
+
+
+// --- Tag-name-position interpolations --------------------------------------
+
+const Dynamic = (Tag, children) => html`<${Tag} class="dynamic">${children}</${Tag}>`;
+
+
+// --- Nested brace expressions (grammar-layer brace-depth tracking) ---------
+
+const meta = html`
+	<meta name="config" content="${JSON.stringify({ theme: "dark", debug: true })}" />
+	<meta name="size" content="${getSize({ width: 1024, height: 768 })}" />
+`;
+
+
+// --- CSS-tagged templates --------------------------------------------------
+
+const buttonStyles = (color) => css`
+	.btn {
+		background: ${color};
+		padding: 0.5rem 1rem;
+		border-radius: 4px;
+	}
+	.btn:hover {
+		filter: brightness(1.1);
+	}
+`;
+
+
+// --- HTML with embedded CSS via css`...` -----------------------------------
+//
+// Recursion: the outer html`...` embeds HTML, and the css`...` expression
+// inside its <style> interpolation embeds CSS. Everything composes through
+// the reclassifier.
+
+const Page = () => html`
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<title>Demo</title>
+			<style>${css`body { margin: 0; background: #111; }`}</style>
+		</head>
+		<body>
+			<h1>Hello</h1>
+		</body>
+	</html>
+`;
+
+
+// --- Function-variable rule still fires around tagged templates ------------
+
+const render = (data) => html`
+	<output>${JSON.stringify(data)}</output>
+`;
+
+const compute = async () => {
+	const data = await fetch("/api/data");
+	return render(await data.json());
+};

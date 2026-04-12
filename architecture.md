@@ -9,9 +9,9 @@ This document outlines the design for a high-performance syntax highlighting lib
 The architecture is guided by four core principles:
 
 - _Performance First:_ The runtime must be highly optimized. Character scanning with charCodeAt() provides the fastest tokenization, with computed array indices for state transitions (4.6x faster than string keys) and dense lookup tables for O(1) character classification.
-- _Separation of Concerns:_ The core runtime engine is completely language-agnostic. All language-specific logic is defined in external, declarative data files.
+- _Separation of Concerns:_ The core runtime engine is completely language-agnostic. All language-specific logic is defined in external, declarative data files. Cross-language concerns (embedding, enrichment) live in a separate post-tokenization layer — the reclassifier — so the hot-path tokenizer never needs to know about multi-language composition.
 - _Declarative, User-Friendly Grammars:_ Language definitions should be intuitive for authors to create and maintain. The schema should be a high-level abstraction over the underlying state machine, focusing on describing the language's structure rather than the machine's implementation details.
-- _Robustness and Power:_ The system must be capable of handling complex, real-world language features, including nested contexts (like template literals), language injection (like Markdown code fences), and grammatical ambiguities.
+- _Robustness and Power:_ The system handles complex, real-world language features including nested contexts (JavaScript template literals with brace-depth-tracked interpolations), cross-language embedding (HTML hosting CSS and JavaScript, JavaScript hosting HTML/CSS via tagged templates, arbitrary host grammars hosting sub-languages), interleaved content with preserved interpolation holes (attribute-position interpolations in lit-html-style templates), and grammatical ambiguities via probe-mode contextual disambiguation.
 
 ## 2. Core Architecture
 
@@ -69,6 +69,71 @@ The engine acts as a transducer, producing output as it processes the input ([Li
   - Pre-compute class name array indexed by token type for O(1) rendering
 
 The final rendering of this data into styled HTML is a separate, subsequent step.
+
+### 2.3. The Reclassifier Pipeline
+
+The tokenizer produces a raw token stream that is correct for single-language input but does not handle two important classes of problem:
+
+1. **Multi-token lookahead refinement.** Recognizing that an `identifier` token should be reclassified as a `function` token based on multi-token patterns (Prism's "function-variable" case: `const foo = () => { }` → `foo` is a function). The state machine cannot cheaply express this — it would require chained probe states and balanced-paren matching at every `=` in the file.
+2. **Cross-language embedding.** Handing off `<script>` content in HTML to the JavaScript tokenizer, or tokenizing the content of a JS tagged template literal (`` html`<div>${expr}</div>` ``) as HTML. A monolithic grammar approach requires either duplicating sub-language rules into the host grammar (~150 lines of JS template-mirror states for one language) or running multiple separate tokenizers with no composition.
+
+Both of these are token-stream transformations: they take a `TokenizeResult` and produce a new `TokenizeResult`. They compose naturally as a **pipeline of pure transforms** that sits between the tokenizer and the renderer:
+
+```
+source → tokenize(hostGrammar) → raw tokens
+raw tokens → reclassify([transform1, transform2, ...]) → enriched tokens
+enriched tokens → toHtml()
+```
+
+The reclassifier is **architecturally outside the hot-path tokenizer**. The tokenizer stays focused on one language at a time and knows nothing about embedding or enrichment. Consumers who only want raw tokenization pay zero reclassifier cost. Consumers who want the full enriched experience compose transforms explicitly.
+
+#### 2.3.1. Three Canonical Transforms
+
+Three built-in transforms cover the space of token-stream modifications:
+
+**`rewriteTypes(rules)`** — pattern-match windows of tokens and rewrite token type IDs in place. No new tokens, no position changes. Used for in-language refinement like function-variable detection. Rules are declarative using a small combinator DSL (`seq`, `type`, `anyOf`, `optional`, `capture`, `balancedParens`) with trivia skipping between pattern elements. Rules are indexed by anchor type ID for O(1) dispatch in the hot loop.
+
+**`embedGrammars(mapping)`** — for host tokens of specific types (typically "raw" content spans emitted by the host grammar), invoke a sub-language on the token's source range and splice the result into the stream. Host tokens marking the embed point (e.g. the `<script>` tag) are decided by the HOST GRAMMAR — the reclassifier only executes the embedding. This is the correct separation because the host grammar has live parser state when deciding embed boundaries; the reclassifier only sees tokens after the fact. Used for HTML's `<script>` → JS and `<style>` → CSS.
+
+**`embedInterleaved(config)`** — the generic solution for **discontinuous embedded content** where sub-language tokens are broken up by preserved host-language "holes". A host-specific scanner callback identifies groups in the token stream and describes them as a list of regions (content, hole, synthetic). The transform:
+
+1. Builds a **virtual source** by concatenating content regions, filling hole regions with placeholder characters of matching byte length.
+2. Sub-tokenizes the virtual source **in one call**, giving the sub-language full state continuity across holes.
+3. Remaps virtual token positions back to real host source offsets via a piecewise-linear position map.
+4. Splits any sub-tokens that straddle a content-hole boundary at the boundary and drops hole-internal pieces.
+5. Emits regions in source order: content pieces (sub-tokens), holes (original host tokens passed verbatim), synthetic pieces (fresh tokens for host delimiter characters that are part of a larger host token).
+
+The exemplar use case is JS tagged templates with attribute-position interpolations: `` html`<p class="${cls}">hi</p>` ``. The HTML sub-tokenizer sees a well-formed attribute value (with space-filled hole) and parses it correctly; the resulting string token is then split at the hole boundary so the `${cls}` JS tokens sit between two `"` string pieces.
+
+#### 2.3.2. Region Kinds
+
+`embedInterleaved` models a group as a sequence of three region kinds:
+
+- **`content`** — source bytes copied into the virtual source and tokenized by the sub-language. Output: sub-tokens at remapped real positions.
+- **`hole`** — source bytes replaced by placeholder in the virtual source (so the sub-tokenizer's state flows past them). Output: the original host tokens for this range, passed through verbatim.
+- **`synthetic`** — neither virtual nor passthrough. A NEW token is synthesized at the region's position with a user-specified type name. This handles delimiter characters that are part of a larger host token but need to appear as separate tokens in the output — e.g. the `` ` `` at the start of a JS tagged template's first token, which must emit as a standalone `template` token so it stays styled.
+
+#### 2.3.3. Fixed-Point Iteration for Nested Cases
+
+When a host language can contain itself inside an interpolation hole (e.g. `` html`<style>${css`body { color: red; }`}</style>` ``), a single scan pass finds only the outer group and emits the inner group's tokens verbatim as part of the hole. `embedInterleaved` runs its single-pass transform **iteratively** until it reaches a fixed point — the first pass handles the outermost groups, subsequent passes peel off one level of nesting each. Termination is detected when a pass produces the same reference as its input (no groups found). A safety bound guards against pathological scanners.
+
+#### 2.3.4. Flat Token-Type Merging
+
+When a sub-language contributes token types the host doesn't have (e.g. HTML's `tag-name` appearing inside a JS tagged template), those types are merged into a cloned `tokenTypes` array by name. Shared type names (`identifier`, `keyword`, `string`, `comment`) deduplicate. Host type IDs are preserved so rules compiled against the host's original vocabulary keep working after sub-language types are appended. The output is still a plain `TokenizeResult` — the renderer needs no changes to handle multi-language tokens.
+
+#### 2.3.5. Three-Tier Language Package API
+
+Every language package exports three things at the same name level:
+
+- **`grammar`** — the compiled base grammar. Consumers who want raw tokens and zero pipeline cost import this.
+- **`reclassifiers`** — the language's default reclassifier list (e.g. function-variable detection + tagged-template embedding for JavaScript). Consumers who want to prepend or append their own rules import this.
+- **`language`** — a one-call convenience function `(input) → TokenizeResult` built via `createLanguage(grammar, reclassifiers)`. Runs tokenize + the full reclassifier pipeline. This is what most consumers use.
+
+`createLanguage` is a core-provided helper so every language package composes its pipeline the same way.
+
+#### 2.3.6. Pure Transforms
+
+Every reclassifier transform follows the same contract: `(input, TokenizeResult) → TokenizeResult`. Transforms clone both `tokens` (Uint32Array memcpy) and `tokenTypes` (small string[] slice) so they never mutate the caller's input. Empty pipelines return the input reference unchanged, so `reclassify([])` is free (~40 ns per call). The convenience `language()` function has no measurable overhead vs a manually composed pipeline.
 
 ## 3. Language Definition Schema
 
@@ -266,7 +331,3 @@ To ensure correctness and facilitate contributions, the library will support tes
 
 - _Snapshot Testing:_ Based on the Prism.js test suite, this involves a test file containing a code snippet and a corresponding JSON file representing the expected token stream. This is ideal for verifying the entire output for a given file. [See Prism testing guide for more info](https://prismjs.com/test-suite.html)
 - _Assertion-Based Testing_: Based on the TextMate grammar test model, this allows assertions to be written directly into test files as comments (e.g., `// ^ keyword`). This is excellent for targeted unit tests of specific language features.Adopting these formats allows for the potential reuse of the vast test suites from these projects, providing a strong foundation for correctness. [See tmgrammmer tests for more info](https://github.com/PanAeon/vscode-tmgrammar-test)
-
-```
-
-```
