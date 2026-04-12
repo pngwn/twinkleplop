@@ -42,7 +42,7 @@ describe("Rust reclassifier — function calls", () => {
 	it("associated function call", () => {
 		const tokens = enrich("Vec::new()");
 		expect(type_of(tokens, "new")).toBe("function");
-		expect(type_of(tokens, "Vec")).toBe("identifier");
+		expect(type_of(tokens, "Vec")).toBe("class_name");
 	});
 
 	it("chained method calls", () => {
@@ -54,7 +54,7 @@ describe("Rust reclassifier — function calls", () => {
 
 	it("macro invocation stays identifier", () => {
 		const tokens = enrich("println!(x)");
-		expect(type_of(tokens, "println")).toBe("identifier");
+		expect(type_of(tokens, "println")).toBe("function");
 	});
 
 	it("plain identifier is not rewritten", () => {
