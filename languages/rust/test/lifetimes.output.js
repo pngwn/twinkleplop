@@ -235,7 +235,7 @@ export const test = [
 		"end": 112
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 113,
 		"end": 116
 	},

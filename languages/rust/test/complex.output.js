@@ -25,7 +25,7 @@ export const test = [
 		"end": 22
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 22,
 		"end": 29
 	},
@@ -70,7 +70,7 @@ export const test = [
 		"end": 50
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 51,
 		"end": 55
 	},
@@ -120,7 +120,7 @@ export const test = [
 		"end": 86
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 87,
 		"end": 93
 	},
@@ -185,7 +185,7 @@ export const test = [
 		"end": 130
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 131,
 		"end": 138
 	},
@@ -195,7 +195,7 @@ export const test = [
 		"end": 139
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 139,
 		"end": 145
 	},
@@ -205,7 +205,7 @@ export const test = [
 		"end": 146
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 147,
 		"end": 150
 	},
@@ -255,7 +255,7 @@ export const test = [
 		"end": 169
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 170,
 		"end": 176
 	},
@@ -345,7 +345,7 @@ export const test = [
 		"end": 222
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 231,
 		"end": 237
 	},
@@ -375,7 +375,7 @@ export const test = [
 		"end": 277
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 278,
 		"end": 285
 	},
@@ -455,7 +455,7 @@ export const test = [
 		"end": 346
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 347,
 		"end": 353
 	},
@@ -470,7 +470,7 @@ export const test = [
 		"end": 357
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 358,
 		"end": 361
 	},
@@ -505,7 +505,7 @@ export const test = [
 		"end": 378
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 378,
 		"end": 383
 	},
@@ -800,7 +800,7 @@ export const test = [
 		"end": 730
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 740,
 		"end": 742
 	},
@@ -840,7 +840,7 @@ export const test = [
 		"end": 768
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 769,
 		"end": 775
 	},
@@ -855,7 +855,7 @@ export const test = [
 		"end": 779
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 780,
 		"end": 783
 	},
@@ -890,7 +890,7 @@ export const test = [
 		"end": 800
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 800,
 		"end": 805
 	},
@@ -1060,7 +1060,7 @@ export const test = [
 		"end": 929
 	},
 	{
-		"type": "identifier",
+		"type": "class_name",
 		"start": 934,
 		"end": 936
 	},
