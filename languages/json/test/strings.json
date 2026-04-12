@@ -1,0 +1,9 @@
+{
+  "simple": "hello world",
+  "escaped_quote": "she said \"hi\"",
+  "backslash": "path\\to\\file",
+  "unicode": "\u0041\u0042\u0043",
+  "controls": "line1\nline2\ttab\r\b\f",
+  "slash": "a\/b",
+  "empty": ""
+}

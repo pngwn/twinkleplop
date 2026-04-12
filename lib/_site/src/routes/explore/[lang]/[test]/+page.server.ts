@@ -4,10 +4,12 @@ import { type Grammar, type TokenizeResult, tokenize } from '@twinkleplop/core';
 
 
 
+// project root -> languages/<lang>/test/
+const PROJECT_ROOT = path.join(import.meta.dirname, '..', '..', '..', '..', '..', '..', '..');
+
 function get_test_files(lang: string) {
-	const test = fs.readdirSync(
-		path.join(import.meta.dirname, '..', '..', '..', '..', '..', '..', lang, 'test')
-	);
+	const test_dir = path.join(PROJECT_ROOT, 'languages', lang, 'test');
+	const test = fs.readdirSync(test_dir);
 
 	const css_files = test
 		// .js files are snapshot outputs for assertion tests, not input fixtures.
@@ -16,10 +18,7 @@ function get_test_files(lang: string) {
 			// Strip the last file extension (`.css`, `.html`, `.txt`, ...) so the
 			// URL-facing test name is just the basename.
 			file.replace(/\.[^.]+$/, ''),
-			fs.readFileSync(
-				path.join(import.meta.dirname, '..', '..', '..', '..', '..', '..', lang, 'test', file),
-				'utf-8'
-			)
+			fs.readFileSync(path.join(test_dir, file), 'utf-8')
 		]);
 
 	return css_files;

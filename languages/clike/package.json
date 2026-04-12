@@ -4,7 +4,10 @@
 	"type": "module",
 	"main": "src/index.js",
 	"exports": {
-		".": "./src/index.js",
+		".": {
+			"source": "./src/index.js",
+			"import": "./dist/index.js"
+		},
 		"./test": "./test/index.js"
 	},
 	"dependencies": {

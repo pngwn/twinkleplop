@@ -1,0 +1,10 @@
+export { test as attributes } from "./attributes.output.js";
+export { test as basics } from "./basics.output.js";
+export { test as chars } from "./chars.output.js";
+export { test as comments } from "./comments.output.js";
+export { test as complex } from "./complex.output.js";
+export { test as keywords } from "./keywords.output.js";
+export { test as lifetimes } from "./lifetimes.output.js";
+export { test as numbers } from "./numbers.output.js";
+export { test as operators } from "./operators.output.js";
+export { test as strings } from "./strings.output.js";

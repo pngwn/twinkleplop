@@ -9,7 +9,8 @@
 	const lang_map: Record<string, string> = {
 		css: 'css',
 		javascript: 'javascript',
-		clike: 'clike'
+		clike: 'clike',
+		rust: 'rust'
 	};
 
 	function escape_html(s: string): string {
@@ -25,7 +26,7 @@
 	$effect(() => {
 		const current_src = src;
 		const current_lang = prism_lang;
-
+		console.log({current_lang})
 		if (!current_lang) {
 			prism_html = '';
 			return;
@@ -34,7 +35,9 @@
 		let cancelled = false;
 		(async () => {
 			const Prism = (await import('prismjs')).default;
+			const loaded_lang = (await import('prismjs/components/prism-rust'))
 			if (cancelled) return;
+			console.log(loaded_lang)
 			const grammar = Prism.languages[current_lang];
 			if (!grammar) {
 				prism_html = '';

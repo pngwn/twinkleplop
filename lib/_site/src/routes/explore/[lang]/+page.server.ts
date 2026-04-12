@@ -5,7 +5,8 @@ import { redirect } from '@sveltejs/kit';
 const DEFAULTS: Record<string, string> = {
 	whitespace: 'whitespace_css',
 	html: 'embedded',
-	svelte: 'counter'
+	svelte: 'counter',
+	rust: 'complex'
 };
 
 export const load = async ({ params }) => {

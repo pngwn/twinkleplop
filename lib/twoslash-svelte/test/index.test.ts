@@ -17,11 +17,10 @@ import { dirname, join } from "node:path";
 import { create_highlighter } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const fixture = (name) => readFileSync(join(here, "fixtures", name), "utf8");
+const fixture = (name:string) => readFileSync(join(here, "fixtures", name), "utf8");
 
 describe("@twinkleplop/twoslash-svelte", () => {
-	/** @type {(code: string) => string} */
-	let highlight;
+	let highlight: (code: string) => string;
 
 	beforeAll(() => {
 		highlight = create_highlighter();

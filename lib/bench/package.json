@@ -4,8 +4,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"bench:internal": "vitest bench",
-		"bench": "vitest bench src/library/comparison-suite.bench.js",
+		"bench:internal": "vitest bench --run ",
+		"bench": "vitest  bench --run src/library/comparison-suite.bench.js",
 		"bench:ui": "vitest bench --ui"
 	},
 	"devDependencies": {

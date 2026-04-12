@@ -165,18 +165,6 @@ hr {
 	gap: 1rem;
 }
 
-// thin
-// extralight
-// light
-// regular
-// medium
-// demibold
-// bold
-// extrabold
-// black
-// extrablack
-
-
 @font-face {
 	font-family: 'Pixel Code';
 	src: url('/PixelCode-Thin.woff2') format('woff2');
@@ -246,9 +234,6 @@ hr {
 	font-weight: 1000;
 	font-style: normal;
 }
-
-// italics
-
 
 @font-face {
 	font-family: 'Pixel Code';

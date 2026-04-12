@@ -67,7 +67,8 @@ pre[class*='language-'] {
 
 ::highlight(variable),
 ::highlight(id),
-::highlight(identifier) {
+::highlight(identifier),
+::highlight(lifetime) {
 	color: #bfbdb6;
 }
 
@@ -104,11 +105,14 @@ pre[class*='language-'] {
 	font-style: italic;
 }
 
-::highlight(property) {
+::highlight(property),
+::highlight(attribute),
+::highlight(class_name) {
 	color: #38bdf8;
 }
 
-::highlight(boolean) {
+::highlight(boolean),
+::highlight(attr-sigil) {
 	color: #d2a6ff;
 }
 

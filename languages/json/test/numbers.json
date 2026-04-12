@@ -1,0 +1,10 @@
+{
+  "integer": 42,
+  "negative": -17,
+  "zero": 0,
+  "decimal": 3.14,
+  "exponent": 1e10,
+  "negative_exponent": 2.5e-3,
+  "positive_exponent": 1E+5,
+  "large": 9999999999999
+}

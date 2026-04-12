@@ -57,6 +57,13 @@
 				// Svelte package doesn't expose an output-snapshot subpath.
 				test: () => Promise.resolve({})
 			}
+		],
+		[
+			'rust',
+			{
+				grammar: () => import('@twinkleplop/rust'),
+				test: () => import('@twinkleplop/rust/test')
+			}
 		]
 ]);
 

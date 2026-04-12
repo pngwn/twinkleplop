@@ -254,7 +254,7 @@ export function tokenize(
 				// INTROSPECTION_START
 				if (INTROSPECTION && introspector) {
 					introspector.matched_rule({
-						charClass: char_class,
+						char_class: char_class,
 						matched_length: matched_length,
 						transition,
 						token_type: token_type,

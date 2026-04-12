@@ -22,7 +22,8 @@ import {
 	optional,
 	rewrite_types,
 	seq,
-	type,
+  type,
+  capture
 } from "@twinkleplop/core";
 
 // Cross-language references are imported lazily so the HTML ↔ JS workspace
@@ -92,6 +93,13 @@ export const function_variable_rules = [
 			any_of(function_expression, arrow_function),
 		),
 		rewrite: "function",
+  },
+  {
+		anchor: "identifier",
+		when: seq(
+			type("operator", [":"]),
+		),
+		rewrite: "property",
 	},
 ];
 

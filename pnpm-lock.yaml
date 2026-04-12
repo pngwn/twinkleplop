@@ -64,6 +64,18 @@ importers:
         specifier: workspace:*
         version: link:../html
 
+  languages/json:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
+  languages/rust:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/svelte:
     dependencies:
       '@twinkleplop/core':
@@ -99,6 +111,9 @@ importers:
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript
+      '@twinkleplop/rust':
+        specifier: workspace:*
+        version: link:../../languages/rust
       '@twinkleplop/svelte':
         specifier: workspace:*
         version: link:../../languages/svelte
