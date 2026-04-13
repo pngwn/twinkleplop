@@ -1,0 +1,18 @@
+@Component({
+  selector: "app-root",
+  template: "<h1>Hello</h1>"
+})
+class AppComponent {
+  @Input() title: string;
+  @Output() clicked = new EventEmitter();
+
+  @HostListener("click")
+  onClick() {
+    this.clicked.emit();
+  }
+}
+
+@Injectable()
+class UserService {
+  @Inject(HttpClient) private http: HttpClient;
+}

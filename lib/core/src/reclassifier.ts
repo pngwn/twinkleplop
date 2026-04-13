@@ -208,7 +208,7 @@ function compile_pattern(
  * `idx`. returns the index AFTER the last matched token on success, or
  * `NO_MATCH` on failure. trivia tokens are skipped on entry.
  */
-const NO_MATCH = -1;
+const NO_MATCH = -2;
 
 function skip_trivia(
 	tokens: Uint32Array,
@@ -217,6 +217,15 @@ function skip_trivia(
 	trivia: Uint8Array,
 ): number {
 	while (idx < count && trivia[tokens[idx * 3]]) idx++;
+	return idx;
+}
+
+function skip_trivia_backward(
+	tokens: Uint32Array,
+	idx: number,
+	trivia: Uint8Array,
+): number {
+	while (idx >= 0 && trivia[tokens[idx * 3]]) idx--;
 	return idx;
 }
 
@@ -386,6 +395,97 @@ function match_balanced(
 }
 
 // ---------------------------------------------------------------------------
+// backward matcher (for `before` lookbehind patterns)
+// ---------------------------------------------------------------------------
+//
+// matches a compiled pattern against the token stream scanning LEFT from the
+// given index. supports type, seq (right-to-left), any_of, and optional.
+// balanced_parens and capture are not supported in lookbehind — they are
+// forward-only constructs.
+//
+// value matching uses ends-with semantics rather than exact match. this
+// handles token coalescing: adjacent punctuation like `({` is one token,
+// but for lookbehind you care about the trailing character (the part
+// immediately before the anchor). `type("punctuation", ["{"])` matches
+// a token ending with `{`, so `({` and `{` both match.
+
+function match_pattern_backward(
+	pattern: CompiledPattern,
+	tokens: Uint32Array,
+	idx: number,
+	input: string,
+	trivia: Uint8Array,
+): number {
+	idx = skip_trivia_backward(tokens, idx, trivia);
+
+	switch (pattern.kind) {
+		case 0: {
+			// TYPE (ends-with value matching for lookbehind)
+			if (idx < 0) return NO_MATCH;
+			const base = idx * 3;
+			if (tokens[base] !== pattern.type_id) return NO_MATCH;
+			if (pattern.values !== null) {
+				const start = tokens[base + 1];
+				const end = tokens[base + 2];
+				const source = input.slice(start, end);
+				let ok = false;
+				for (let i = 0; i < pattern.values.length; i++) {
+					if (source.endsWith(pattern.values[i])) {
+						ok = true;
+						break;
+					}
+				}
+				if (!ok) return NO_MATCH;
+			}
+			return idx - 1;
+		}
+		case 1: {
+			// SEQ (match children right-to-left)
+			let cur = idx;
+			for (let i = pattern.children.length - 1; i >= 0; i--) {
+				cur = match_pattern_backward(
+					pattern.children[i],
+					tokens,
+					cur,
+					input,
+					trivia,
+				);
+				if (cur === NO_MATCH) return NO_MATCH;
+			}
+			return cur;
+		}
+		case 2: {
+			// ANY_OF
+			for (let i = 0; i < pattern.branches.length; i++) {
+				const r = match_pattern_backward(
+					pattern.branches[i],
+					tokens,
+					idx,
+					input,
+					trivia,
+				);
+				if (r !== NO_MATCH) return r;
+			}
+			return NO_MATCH;
+		}
+		case 3: {
+			// OPTIONAL
+			const r = match_pattern_backward(
+				pattern.inner,
+				tokens,
+				idx,
+				input,
+				trivia,
+			);
+			return r !== NO_MATCH ? r : idx;
+		}
+		default:
+			// balanced_parens and capture are not supported in lookbehind
+			return NO_MATCH;
+	}
+}
+
+// ---------------------------------------------------------------------------
 // rewrite_types
 // ---------------------------------------------------------------------------
 
@@ -396,6 +496,7 @@ interface CompiledRule {
 	anchor_target_id: number;
 	// capture rewrite targets (phase 3 form). null if no capture rewrites.
 	capture_targets: { name: string; target_id: number }[] | null;
+	before: CompiledPattern | null;
 	when: CompiledPattern;
 	// does `when` (or any nested branch) contain a capture()? if false we
 	// can skip allocating a captures Map in the hot loop.
@@ -468,6 +569,9 @@ export function rewrite_types(
 				anchor_value_set,
 				anchor_target_id,
 				capture_targets,
+				before: rule.before
+					? compile_pattern(rule.before, name_to_id)
+					: null,
 				when: compile_pattern(rule.when, name_to_id),
 				needs_captures: capture_targets !== null && has_capture(rule.when),
 			});
@@ -507,6 +611,16 @@ export function rewrite_types(
 					const s = tokens[i * 3 + 1];
 					const e = tokens[i * 3 + 2];
 					if (!rule.anchor_value_set.has(input.slice(s, e))) continue;
+				}
+				if (rule.before !== null) {
+					const behind = match_pattern_backward(
+						rule.before,
+						tokens,
+						i - 1,
+						input,
+						trivia,
+					);
+					if (behind === NO_MATCH) continue;
 				}
 				const captures: Captures | null = rule.needs_captures
 					? new Map()

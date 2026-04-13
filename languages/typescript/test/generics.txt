@@ -1,0 +1,19 @@
+function identity<T>(arg: T): T {
+  return arg;
+}
+
+class Container<T> {
+  private value: T;
+  constructor(val: T) {
+    this.value = val;
+  }
+  get(): T {
+    return this.value;
+  }
+}
+
+const result = identity<string>("hello");
+const map = new Map<string, number>();
+const arr: Array<number> = [1, 2, 3];
+
+type Wrapped<T extends object> = { data: T };

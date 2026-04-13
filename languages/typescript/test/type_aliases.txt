@@ -1,0 +1,8 @@
+type Status = "active" | "inactive" | "pending";
+type ID = number | string;
+type Callback = (value: string) => void;
+type Pair = [string, number];
+type Nullable = string | null | undefined;
+type ReadonlyUser = Readonly<User>;
+type Partial<T> = { [K in keyof T]?: T[K] };
+type ReturnType<T> = T extends (...args: any[]) => infer R ? R : never;

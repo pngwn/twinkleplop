@@ -145,8 +145,9 @@ export type TokenPatternSpec =
 	| BalancedPatternSpec;
 
 // A rewrite rule says: starting at a token of type `anchor` (optionally
-// matching `anchor_value`), if the following token stream matches `when`,
-// apply `rewrite`:
+// matching `anchor_value`), if the token stream after the anchor matches
+// `when` (and optionally the token stream before the anchor matches
+// `before`), apply `rewrite`:
 //   - `string`   → rewrite the anchor token's type to this name (Phase 1).
 //   - object map → for each `{ capture_name: type_name }` entry, find the
 //                  capture() with that name in `when` and rewrite every
@@ -155,6 +156,7 @@ export type TokenPatternSpec =
 export interface RewriteRule {
 	anchor: string;
 	anchor_value?: string | string[];
+	before?: TokenPatternSpec;
 	when: TokenPatternSpec;
 	rewrite: string | Record<string, string>;
 }

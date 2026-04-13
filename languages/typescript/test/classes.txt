@@ -1,0 +1,30 @@
+class Animal {
+  constructor(public name: string) {}
+}
+
+class Dog extends Animal implements Pet {
+  breed: string;
+
+  constructor(name: string, breed: string) {
+    super(name);
+    this.breed = breed;
+  }
+
+  speak(): string {
+    return `${this.name} barks`;
+  }
+}
+
+abstract class Vehicle {
+  abstract start(): void;
+  abstract stop(): void;
+}
+
+class Car extends Vehicle {
+  override start(): void {
+    console.log("Vroom!");
+  }
+  override stop(): void {
+    console.log("Stopped.");
+  }
+}

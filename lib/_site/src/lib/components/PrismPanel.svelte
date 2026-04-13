@@ -10,7 +10,8 @@
 		css: 'css',
 		javascript: 'javascript',
 		clike: 'clike',
-		rust: 'rust'
+		rust: 'rust',
+		typescript: "typescript"
 	};
 
 	function escape_html(s: string): string {
@@ -35,9 +36,9 @@
 		let cancelled = false;
 		(async () => {
 			const Prism = (await import('prismjs')).default;
-			const loaded_lang = (await import('prismjs/components/prism-rust'))
+			await import('prismjs/components/prism-rust');
+			await import('prismjs/components/prism-typescript');
 			if (cancelled) return;
-			console.log(loaded_lang)
 			const grammar = Prism.languages[current_lang];
 			if (!grammar) {
 				prism_html = '';

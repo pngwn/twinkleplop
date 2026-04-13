@@ -1,0 +1,32 @@
+type Foo = string;
+interface Bar {}
+enum Baz { A, B }
+namespace NS {
+  export const x = 1;
+}
+declare const VERSION: string;
+declare function log(msg: string): void;
+declare module "module" {}
+
+abstract class Base {}
+class Child extends Base implements Serializable {}
+
+function guard(x: unknown): x is string {
+  return typeof x === "string";
+}
+
+const y = value as number;
+const z = obj satisfies Schema;
+
+type Keys = keyof User;
+type Inferred<T> = T extends Array<infer U> ? U : T;
+
+using resource = getResource();
+
+public class Open {}
+private class Closed {}
+protected class Semi {}
+readonly class Immutable {}
+
+override method() {}
+accessor prop = "value";

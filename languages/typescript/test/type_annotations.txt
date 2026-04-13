@@ -1,0 +1,19 @@
+let x: number;
+const name: string = "hello";
+var flag: boolean = true;
+let anything: any = 42;
+let nothing: never;
+let mystery: unknown = getValue();
+let obj: object = {};
+let sym: symbol = Symbol("id");
+let big: bigint = 100n;
+
+function greet(name: string, age: number): string {
+  return `Hello ${name}, age ${age}`;
+}
+
+const add = (a: number, b: number): number => a + b;
+
+function process(input: string | number): void {
+  console.log(input);
+}

@@ -1,9 +1,9 @@
-import { compile } from "@twinkleplop/core/compile";
 import { create_language } from "@twinkleplop/core";
+import { compile } from "@twinkleplop/core/compile";
 import { default as raw_grammar } from "./grammar.js";
 import {
-	reclassifiers,
 	function_variable_rules,
+	reclassifiers,
 	scan_tagged_template,
 } from "./reclassifiers.js";
 
@@ -30,3 +30,36 @@ export {
 	function_variable_rules,
 	scan_tagged_template,
 };
+
+// shared grammar building blocks for derived languages (e.g. typescript)
+export {
+	KEYWORDS,
+	BOOLEAN_LITERALS,
+	SPECIAL_VALUES,
+	REGEX_PRECEDING_KEYWORDS,
+	DIVISION_KEYWORDS,
+	OP_4CHAR,
+	OP_3CHAR,
+	OP_SPREAD,
+	OP_2CHAR,
+	OP_1CHAR,
+	OP_ALL,
+	PROBE_OPERATORS,
+	IDENTIFIER_TERMINATORS,
+	SINGLE_LINE_COMMENT,
+	MULTI_LINE_COMMENT,
+	STRING_DOUBLE,
+	STRING_SINGLE,
+	TEMPLATE_LITERAL,
+	js_comments,
+	js_strings,
+	js_whitespace,
+	js_numbers_top,
+	js_numbers_arg,
+	js_common,
+	js_body_common,
+	js_tmpl_common,
+	js_paren_common,
+	operators,
+	keywordsLiterals,
+} from "./grammar.js";

@@ -1,0 +1,23 @@
+declare module "express" {
+  interface Request {
+    user?: User;
+  }
+  interface Response {
+    json(body: any): void;
+  }
+}
+
+declare namespace NodeJS {
+  interface ProcessEnv {
+    NODE_ENV: string;
+    PORT?: string;
+  }
+}
+
+import type { User } from "./types";
+export type { User };
+
+export type Config = {
+  debug: boolean;
+  port: number;
+};

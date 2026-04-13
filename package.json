@@ -7,7 +7,9 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"bench": "vitest bench",
-		"build": "pnpm --filter='./languages/**' exec vite build --config ../../build/language.vite.config.ts"
+		"build:languages": "pnpm --filter='./languages/**' exec vite build --config ../../build/language.vite.config.ts",
+		"build:lib": "pnpm --filter=@twinkleplop/core -r build",
+		"build": "pnpm build:lib && pnpm build:languages"
 	},
 	"keywords": [
 

@@ -1,0 +1,23 @@
+abstract class Shape {
+  abstract area(): number;
+  abstract perimeter(): number;
+}
+
+class Circle extends Shape {
+  public readonly radius: number;
+  private _area: number;
+  protected color: string;
+
+  constructor(radius: number) {
+    super();
+    this.radius = radius;
+  }
+
+  override area(): number {
+    return Math.PI * this.radius ** 2;
+  }
+
+  override perimeter(): number {
+    return 2 * Math.PI * this.radius;
+  }
+}

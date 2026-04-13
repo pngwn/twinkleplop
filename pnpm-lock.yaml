@@ -88,6 +88,15 @@ importers:
         specifier: workspace:*
         version: link:../javascript
 
+  languages/typescript:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+      '@twinkleplop/javascript':
+        specifier: workspace:*
+        version: link:../javascript
+
   languages/whitespace:
     dependencies:
       '@twinkleplop/core':
@@ -123,6 +132,9 @@ importers:
       '@twinkleplop/twoslash-svelte':
         specifier: workspace:*
         version: link:../twoslash-svelte
+      '@twinkleplop/typescript':
+        specifier: workspace:*
+        version: link:../../languages/typescript
       '@twinkleplop/whitespace':
         specifier: workspace:*
         version: link:../../languages/whitespace

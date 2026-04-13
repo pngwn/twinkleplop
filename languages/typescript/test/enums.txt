@@ -1,0 +1,20 @@
+enum Direction {
+  Up,
+  Down,
+  Left,
+  Right
+}
+
+enum Color {
+  Red = "RED",
+  Green = "GREEN",
+  Blue = "BLUE"
+}
+
+enum StatusCode {
+  OK = 200,
+  NotFound = 404,
+  ServerError = 500
+}
+
+const dir: Direction = Direction.Up;

@@ -1,0 +1,51 @@
+// comments work
+/* block comments too */
+
+const x = 42;
+let str = "hello";
+var re = /pattern/gi;
+
+function add(a, b) {
+  return a + b;
+}
+
+const arrow = (x) => x * 2;
+const obj = { key: "value", nested: { a: 1 } };
+const arr = [1, 2, 3];
+
+if (x > 0) {
+  console.log("positive");
+} else {
+  console.log("non-positive");
+}
+
+for (let i = 0; i < 10; i++) {
+  arr.push(i);
+}
+
+class Foo extends Bar {
+  constructor() {
+    super();
+  }
+  method() {
+    return this.value;
+  }
+}
+
+const tmpl = `hello ${name}, you are ${age} years old`;
+const tagged = html`<div class="${cls}">${content}</div>`;
+
+async function fetchData() {
+  const result = await fetch("/api");
+  return result.json();
+}
+
+export { add };
+import { something } from "module";
+
+const nums = [0xFF, 0b1010, 0o777, 1_000_000, 1.5e10];
+const ops = a === b || c !== d && e >= f;
+const ternary = x ? "yes" : "no";
+const spread = { ...obj, extra: true };
+const nullish = x ?? "default";
+const chain = obj?.prop?.method?.();

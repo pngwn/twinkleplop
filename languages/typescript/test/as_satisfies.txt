@@ -1,0 +1,14 @@
+const x = value as string;
+const y = input as unknown as number;
+const z = [1, 2, 3] as const;
+const el = document.getElementById("app") as HTMLElement;
+
+const config = {
+  port: 3000,
+  host: "localhost"
+} satisfies ServerConfig;
+
+const palette = {
+  red: [255, 0, 0],
+  green: "#00ff00"
+} satisfies Record<string, string | number[]>;

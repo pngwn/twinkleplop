@@ -113,6 +113,34 @@ describe("JavaScript reclassifier — function-variable (negative cases)", () =>
 	});
 });
 
+describe("JavaScript reclassifier — property detection", () => {
+	it("object literal: { key: value }", () => {
+		const tokens = enrich("const o = { key: 1 }");
+		expect(type_of(tokens, "key")).toBe("property");
+	});
+
+	it("object literal after comma: { a: 1, b: 2 }", () => {
+		const tokens = enrich("const o = { a: 1, b: 2 }");
+		expect(type_of(tokens, "a")).toBe("property");
+		expect(type_of(tokens, "b")).toBe("property");
+	});
+
+	it("function param is NOT property: fn(body: any)", () => {
+		const tokens = enrich("json(body: any)");
+		expect(type_of(tokens, "body")).toBe("identifier");
+	});
+
+	it("ternary colon is NOT property: a ? b : c", () => {
+		const tokens = enrich("x ? b : c");
+		expect(type_of(tokens, "b")).toBe("identifier");
+	});
+
+	it("nested object in call: fn({a: 1})", () => {
+		const tokens = enrich("fn({a: 1})");
+		expect(type_of(tokens, "a")).toBe("property");
+	});
+});
+
 describe("JavaScript reclassifier — known limitations (documented misses)", () => {
 	// These cases are where the Prism-style lookahead heuristic is known to
 	// miss. They're documented here so regressions show up if the rule ever
@@ -315,7 +343,7 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 			tokens.filter((t) => t.type === "tag-name" && t.value === "p"),
 		).toHaveLength(2);
 		expect(type_of(tokens, "fn")).toBe("function");
-		expect(type_of(tokens, "a")).toBe("identifier");
+		expect(type_of(tokens, "a")).toBe("property");
 		expect(type_of(tokens, "1")).toBe("number");
 	});
 

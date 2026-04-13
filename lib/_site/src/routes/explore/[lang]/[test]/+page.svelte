@@ -64,6 +64,13 @@
 				grammar: () => import('@twinkleplop/rust'),
 				test: () => import('@twinkleplop/rust/test')
 			}
+		],
+		[
+			'typescript',
+			{
+				grammar: () => import('@twinkleplop/typescript'),
+				test: () => import('@twinkleplop/typescript/test')
+			}
 		]
 ]);
 

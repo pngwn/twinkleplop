@@ -20,16 +20,15 @@ import {
 	within,
 } from "@twinkleplop/core";
 
-
+import { define_grammar } from "@twinkleplop/core/compile";
 //Tokens
 import * as TOKENS from "@twinkleplop/core/tokens";
-import { define_grammar } from "@twinkleplop/core/compile";
 
 // ---------------------------------------------------------------------------
 // Keyword / literal sets
 // ---------------------------------------------------------------------------
 
-const KEYWORDS = [
+export const KEYWORDS = [
 	// Control flow
 	"if",
 	"else",
@@ -82,11 +81,11 @@ const KEYWORDS = [
 	"set",
 ];
 
-const BOOLEAN_LITERALS = ["true", "false"];
-const SPECIAL_VALUES = ["undefined", "null", "NaN", "Infinity"];
+export const BOOLEAN_LITERALS = ["true", "false"];
+export const SPECIAL_VALUES = ["undefined", "null", "NaN", "Infinity"];
 
 // Keywords after which `/` starts a regex.
-const REGEX_PRECEDING_KEYWORDS = [
+export const REGEX_PRECEDING_KEYWORDS = [
 	"return",
 	"throw",
 	"typeof",
@@ -103,7 +102,7 @@ const REGEX_PRECEDING_KEYWORDS = [
 ];
 
 // Keywords after which `/` is division (value-producing keywords).
-const DIVISION_KEYWORDS = KEYWORDS.filter(
+export const DIVISION_KEYWORDS = KEYWORDS.filter(
 	(k) => !REGEX_PRECEDING_KEYWORDS.includes(k),
 );
 
@@ -115,10 +114,20 @@ const DIVISION_KEYWORDS = KEYWORDS.filter(
 // rule matching a flat list of operators yields correct longest-match
 // semantics (`/=` wins over `/`, `>>>=` wins over `>>>`, etc.).
 
-const OP_4CHAR = [">>>="];
-const OP_3CHAR = ["===", "!==", ">>>", "<<=", ">>=", "**=", "&&=", "||=", "??="];
-const OP_SPREAD = "...";
-const OP_2CHAR = [
+export const OP_4CHAR = [">>>="];
+export const OP_3CHAR = [
+	"===",
+	"!==",
+	">>>",
+	"<<=",
+	">>=",
+	"**=",
+	"&&=",
+	"||=",
+	"??=",
+];
+export const OP_SPREAD = "...";
+export const OP_2CHAR = [
 	"++",
 	"--",
 	"<=",
@@ -142,7 +151,7 @@ const OP_2CHAR = [
 	"|=",
 	"^=",
 ];
-const OP_1CHAR = [
+export const OP_1CHAR = [
 	"-",
 	"+",
 	"<",
@@ -160,10 +169,16 @@ const OP_1CHAR = [
 ];
 
 // Full operator set (excludes bare `/`, which is state-dependent).
-const OP_ALL = [...OP_4CHAR, ...OP_3CHAR, OP_SPREAD, ...OP_2CHAR, ...OP_1CHAR];
+export const OP_ALL = [
+	...OP_4CHAR,
+	...OP_3CHAR,
+	OP_SPREAD,
+	...OP_2CHAR,
+	...OP_1CHAR,
+];
 
 // Operator subset used by identifier_probe's "not a function call" rule.
-const PROBE_OPERATORS = [
+export const PROBE_OPERATORS = [
 	"===",
 	"!==",
 	"--",
@@ -192,7 +207,7 @@ const PROBE_OPERATORS = [
 
 // Non-operator chars that terminate an identifier and signal "not a function
 // call". Used by both identifier_probe and identifier_probe_tmpl.
-const IDENTIFIER_TERMINATORS = [
+export const IDENTIFIER_TERMINATORS = [
 	".",
 	" ",
 	"\t",
@@ -212,29 +227,33 @@ const IDENTIFIER_TERMINATORS = [
 // Common rule constants
 // ---------------------------------------------------------------------------
 
-const SINGLE_LINE_COMMENT = within("//", "\n", "comment");
-const MULTI_LINE_COMMENT = within("/*", "*/", "comment");
-const STRING_DOUBLE = within('"', '"', TOKENS.string, {
+export const SINGLE_LINE_COMMENT = within("//", "\n", "comment");
+export const MULTI_LINE_COMMENT = within("/*", "*/", "comment");
+export const STRING_DOUBLE = within('"', '"', TOKENS.string, {
 	escape: "\\",
 	multiline: true,
 });
-const STRING_SINGLE = within("'", "'", TOKENS.string, {
+export const STRING_SINGLE = within("'", "'", TOKENS.string, {
 	escape: "\\",
 	multiline: true,
 });
-const TEMPLATE_LITERAL = match("`", TOKENS.template, enter("template_literal"));
+export const TEMPLATE_LITERAL = match(
+	"`",
+	TOKENS.template,
+	enter("template_literal"),
+);
 
 // ---------------------------------------------------------------------------
 // Rule groups (shared fragments, spread into states)
 // ---------------------------------------------------------------------------
 
-const js_comments = [SINGLE_LINE_COMMENT, MULTI_LINE_COMMENT];
-const js_strings = [STRING_DOUBLE, STRING_SINGLE, TEMPLATE_LITERAL];
-const js_whitespace = [on([" ", "\t", "\n", "\r"])];
+export const js_comments = [SINGLE_LINE_COMMENT, MULTI_LINE_COMMENT];
+export const js_strings = [STRING_DOUBLE, STRING_SINGLE, TEMPLATE_LITERAL];
+export const js_whitespace = [on([" ", "\t", "\n", "\r"])];
 
 // Numbers in top-level contexts — sideways-transition to the number state
 // (which eventually exits to `division`).
-const js_numbers_top = [
+export const js_numbers_top = [
 	match(["0x", "0X"], TOKENS.number, goto("hex_number")),
 	match(["0b", "0B"], TOKENS.number, goto("binary_number")),
 	match(["0o", "0O"], TOKENS.number, goto("octal_number")),
@@ -243,7 +262,7 @@ const js_numbers_top = [
 
 // Numbers in argument/group contexts — push nested number states (pop back
 // instead of sideways-transitioning to `division`).
-const js_numbers_arg = [
+export const js_numbers_arg = [
 	match(["0x", "0X"], TOKENS.number, enter("hex_number_arg")),
 	match(["0b", "0B"], TOKENS.number, enter("binary_number_arg")),
 	match(["0o", "0O"], TOKENS.number, enter("octal_number_arg")),
@@ -253,7 +272,7 @@ const js_numbers_arg = [
 // Shared foundation for main / regex_allow / division / tmpl_* states.
 // Excludes operators, punctuation, keywords, identifiers, and slash handling —
 // those differ per state.
-const js_common = [
+export const js_common = [
 	...js_comments,
 	...js_strings,
 	...js_numbers_top,
@@ -262,7 +281,7 @@ const js_common = [
 
 // Shared foundation for function_body / paren_group. Uses arg-variant number
 // states (pop back instead of sideways to top-level `division`).
-const js_body_common = [
+export const js_body_common = [
 	...js_comments,
 	...js_strings,
 	...js_numbers_arg,
@@ -272,7 +291,7 @@ const js_body_common = [
 // states (push semantics → pop back to the tmpl context instead of sideways to
 // base `division`) and keeps template literals in the strings set so nested
 // `${...}` can push a fresh `template_literal`.
-const js_tmpl_common = [
+export const js_tmpl_common = [
 	...js_comments,
 	...js_strings,
 	...js_numbers_arg,
@@ -280,7 +299,7 @@ const js_tmpl_common = [
 ];
 
 // Rules used inside `paren_group`.
-const js_paren_common = [
+export const js_paren_common = [
 	match(")", TOKENS.punctuation, leave()),
 	match(",", TOKENS.punctuation),
 	match(["[", "]", "{", "}", ";", "."], TOKENS.punctuation),
@@ -299,13 +318,17 @@ const js_paren_common = [
 // ---------------------------------------------------------------------------
 
 // Full operator set as one rule. `after` = null → stay; string → sideways.
-const operators = (after: null | "regex_allow" | "tmpl_regex_allow") => match(OP_ALL, TOKENS.operator, to(after));
+export const operators = (after: null | "regex_allow" | "tmpl_regex_allow") =>
+	match(OP_ALL, TOKENS.operator, to(after));
 
 // Keyword + literal branching.
 //   regexDest → where REGEX_PRECEDING_KEYWORDS go after matching
 //   divDest   → where DIVISION_KEYWORDS / literals go after matching
 // null → stay in current state.
-const keywordsLiterals = (regexDest: null | "regex_allow" | "tmpl_regex_allow", divDest: null| "division" | "tmpl_division") => [
+export const keywordsLiterals = (
+	regexDest: null | "regex_allow" | "tmpl_regex_allow",
+	divDest: null | "division" | "tmpl_division",
+) => [
 	keyword(REGEX_PRECEDING_KEYWORDS, to(regexDest)),
 	keyword(DIVISION_KEYWORDS, to(divDest)),
 	keyword(BOOLEAN_LITERALS, to(divDest), TOKENS.boolean),
@@ -381,7 +404,10 @@ export default define_grammar({
 
 				// Operators (legacy subset — no compound assigns here)
 				match(["===", "!=="], TOKENS.operator),
-				match(["--", "++", "<=", ">=", "==", "!=", "&&", "||"], TOKENS.operator),
+				match(
+					["--", "++", "<=", ">=", "==", "!=", "&&", "||"],
+					TOKENS.operator,
+				),
 				match(
 					["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%"],
 					TOKENS.operator,
@@ -547,10 +573,7 @@ export default define_grammar({
 		},
 
 		exponent_digits: {
-			rules: [
-				match(["_", DIGIT], TOKENS.number),
-				fallback(goto("division")),
-			],
+			rules: [match(["_", DIGIT], TOKENS.number), fallback(goto("division"))],
 		},
 
 		hex_number: {
@@ -687,7 +710,10 @@ export default define_grammar({
 				match(",", TOKENS.punctuation),
 
 				match(["===", "!=="], TOKENS.operator),
-				match(["--", "++", "<=", ">=", "==", "!=", "&&", "||"], TOKENS.operator),
+				match(
+					["--", "++", "<=", ">=", "==", "!=", "&&", "||"],
+					TOKENS.operator,
+				),
 				match(
 					["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%"],
 					TOKENS.operator,

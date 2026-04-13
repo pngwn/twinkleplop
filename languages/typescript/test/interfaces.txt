@@ -1,0 +1,18 @@
+interface User {
+  name: string;
+  age: number;
+  email?: string;
+  readonly id: number;
+}
+
+interface Animal {
+  sound(): string;
+  move(distance: number): void;
+}
+
+interface Repository extends Collection {
+  field: thing;
+  find(id: number): User;
+  save(user: User): void;
+  field: thing;
+}

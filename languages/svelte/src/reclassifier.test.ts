@@ -80,7 +80,7 @@ describe("Svelte language — `{expression}` interpolations", () => {
 		const tokens = enrich(src);
 		// `fn` is a function (probe mode detected the call).
 		expect(type_of(tokens, "fn")).toBe("function");
-		expect(type_of(tokens, "a")).toBe("identifier");
+		expect(type_of(tokens, "a")).toBe("property");
 		expect(type_of(tokens, "1")).toBe("number");
 	});
 

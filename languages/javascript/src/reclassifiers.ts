@@ -18,21 +18,21 @@
 import {
 	any_of,
 	balanced_parens,
+	capture,
 	embed_interleaved,
 	optional,
 	rewrite_types,
 	seq,
-  type,
-  capture
+	type,
 } from "@twinkleplop/core";
 
+import { language as css_language } from "@twinkleplop/css";
 // Cross-language references are imported lazily so the HTML ↔ JS workspace
 // cycle (HTML embeds JS for `<script>`, JS embeds HTML for `` html`...` ``)
 // resolves cleanly. The imported bindings may be `undefined` at module-eval
 // time; by wrapping them in closures we defer the lookup until the sub
 // language is actually invoked, by which point both modules are ready.
 import { language as html_language } from "@twinkleplop/html";
-import { language as css_language } from "@twinkleplop/css";
 
 // ---------------------------------------------------------------------------
 // function-variable detection
@@ -77,11 +77,7 @@ const arrow_function = any_of(
 	// `x => ...` — single unparenthesized parameter
 	seq(type("identifier"), type("operator", "=>")),
 	// `async x => ...`
-	seq(
-		type("keyword", "async"),
-		type("identifier"),
-		type("operator", "=>"),
-	),
+	seq(type("keyword", "async"), type("identifier"), type("operator", "=>")),
 );
 
 export const function_variable_rules = [
@@ -93,12 +89,80 @@ export const function_variable_rules = [
 			any_of(function_expression, arrow_function),
 		),
 		rewrite: "function",
-  },
-  {
+	},
+	// label exclusion: identifier followed by `:` then a statement keyword
+	// is a label, not a property. must come before the property rule so
+	// first-match-wins blocks the property rewrite.
+	{
 		anchor: "identifier",
 		when: seq(
 			type("operator", [":"]),
+			type("keyword", ["for", "while", "do", "if", "switch", "try", "with"]),
 		),
+		rewrite: "identifier",
+	},
+	// {
+	// 	anchor: "identifier",
+	// 	before: any_of(
+	// 		type("punctuation", [";"]),
+	// 		type("keyword", [
+	// 			"readonly",
+	// 			"public",
+	// 			"private",
+	// 			"protected",
+	// 			"static",
+	// 			"abstract",
+	// 			"override",
+	// 			"accessor",
+	// 			"declare",
+	// 		]),
+	// 		seq(
+	// 			type("keyword", ["interface"]),
+	// 			type("identifier"),
+	// 			type("punctuation", ["{"]),
+	// 		),
+	// 		seq(
+	// 			type("keyword", ["interface"]),
+	// 			type("identifier"),
+	// 			type("keyword", ["extends"]),
+	// 			type("identifier"),
+	// 			type("punctuation", ["{"]),
+	// 		),
+	// 	),
+	// 	when: seq(type("operator", [":", "?:"]), type("type")),
+	// 	rewrite: "property",
+	// },
+	// type annotation exclusion: identifier followed by `:` then a builtin
+	// type token (string, number, boolean, etc.) is a type annotation, not
+	// a property. catches class fields and typed function parameters. also
+	// excludes interface members with builtin types, which is an accepted
+	// tradeoff. only fires in grammars that emit a "type" token (typescript).
+	{
+		anchor: "identifier",
+    when: any_of(
+      seq(type("operator", [":", "?:"]), type("type")),
+      seq(type("operator", [":", "?:"]), type("identifier"), type("punctuation", [";"]))
+    ),
+		rewrite: "identifier",
+	},
+	{
+		anchor: "identifier",
+		before: any_of(
+			type("punctuation", ["{", ","]),
+			// class/interface member modifiers
+			type("keyword", [
+				"readonly",
+				"public",
+				"private",
+				"protected",
+				"static",
+				"abstract",
+				"override",
+				"accessor",
+				"declare",
+			]),
+		),
+		when: seq(type("operator", [":", "?:"])),
 		rewrite: "property",
 	},
 ];
@@ -157,7 +221,8 @@ function get_type_ids(token_types) {
  * @returns {import("@twinkleplop/core").GroupDescriptor | null}
  */
 export function scan_tagged_template(tokens, input, i, token_types) {
-	const { identifier_id, template_id, punctuation_id } = get_type_ids(token_types);
+	const { identifier_id, template_id, punctuation_id } =
+		get_type_ids(token_types);
 	if (identifier_id < 0 || template_id < 0 || punctuation_id < 0) return null;
 	const count = tokens.length / 3;
 	if (i >= count) return null;
@@ -175,7 +240,8 @@ export function scan_tagged_template(tokens, input, i, token_types) {
 	else return null;
 
 	const first_chunk = i + 1;
-	if (first_chunk >= count || tokens[first_chunk * 3] !== template_id) return null;
+	if (first_chunk >= count || tokens[first_chunk * 3] !== template_id)
+		return null;
 	const first_start = tokens[first_chunk * 3 + 1];
 	if (input[first_start] !== "`") return null;
 

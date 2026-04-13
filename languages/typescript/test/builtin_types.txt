@@ -1,0 +1,22 @@
+let a: number = 42;
+let b: string = "hello";
+let c: boolean = true;
+let d: any = null;
+let e: never;
+let f: unknown = undefined;
+let g: object = {};
+let h: symbol = Symbol();
+let i: bigint = 9007199254740991n;
+let j: void = undefined;
+
+type Complex = {
+  num: number;
+  str: string;
+  bool: boolean;
+  opt?: any;
+  nothing: never;
+  unk: unknown;
+  obj: object;
+  sym: symbol;
+  big: bigint;
+};
