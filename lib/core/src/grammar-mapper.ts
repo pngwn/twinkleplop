@@ -176,6 +176,25 @@ export class GrammarMapper {
 		return this.token_names[token_type] || `token_${token_type}`;
 	}
 
+	// stage 8: slot-introspection helpers. translate slot ids back to their
+	// declared name and decode raw u8 storage to the slot's surface type.
+	slot_name(slot_id: number): string {
+		return (
+			this.compiled_grammar.slot_name_of_id?.[slot_id] ?? `slot_${slot_id}`
+		);
+	}
+
+	decode_slot_value(slot_id: number, value: number): boolean | number | string {
+		const enum_values =
+			this.compiled_grammar.slot_enum_values?.[slot_id];
+		if (enum_values) {
+			return enum_values[value] ?? value;
+		}
+		const type = this.compiled_grammar.slot_type_of_id?.[slot_id] ?? 1;
+		if (type === 0) return value !== 0; // bool
+		return value; // u8
+	}
+
 	describe_transition(
 		from_state: number,
 		to_state: number,

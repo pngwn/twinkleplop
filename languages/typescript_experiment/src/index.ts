@@ -1,0 +1,21 @@
+import { create_language } from "@twinkleplop/core";
+import { compile } from "@twinkleplop/core/compile";
+import { default as raw_grammar } from "./grammar.js";
+import {
+	function_variable_rules,
+	reclassifiers,
+	scan_tagged_template,
+} from "./reclassifiers.js";
+
+// experimental TypeScript package. identical surface to @twinkleplop/typescript;
+// the grammar evolves across stages to move class/interface-body handling out
+// of the reclassifier pipeline and into structural states.
+
+export const grammar = compile(raw_grammar);
+export const language = create_language(grammar, reclassifiers);
+export {
+	raw_grammar,
+	reclassifiers,
+	function_variable_rules,
+	scan_tagged_template,
+};

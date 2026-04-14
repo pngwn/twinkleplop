@@ -3,6 +3,53 @@ import type { TokenizerIntrospector } from "./introspector";
 // Character class symbol types
 export type CharacterClassSymbol = symbol;
 
+// Slot types
+//
+// slots are typed, bounded, named sidecar variables attached to a state. they
+// initialize when the state is pushed, restore on pop, and can be read by rules
+// as `slot_when` predicates and written as `slot_set` actions. each slot name is
+// declared exactly once in a grammar; references from outside the owning state
+// must be qualified as "owner_state.slot_name". see SLOTS_PROPOSAL.md for the
+// full semantics.
+
+export type SlotType = "bool" | "u8";
+
+export interface SlotDeclaration {
+	type: SlotType;
+	// default omitted: every rule that pushes the owning state must include
+	// `slot_set` covering this slot. enforced at compile time.
+	default?: boolean | number | string;
+	// only valid when type === "u8". length <= 256. when present, `default`
+	// (and any literal in `slot_when`/`slot_set`) must be a string in `values`.
+	values?: string[];
+}
+
+// a comparator value used in `slot_when`. a bare value is sugar for `{ eq: ... }`.
+// `gt`/`lt`/`gte`/`lte` are valid only on numeric (u8) slots.
+export type SlotComparator =
+	| boolean
+	| number
+	| string
+	| { eq: boolean | number | string }
+	| { ne: boolean | number | string }
+	| { gt: number }
+	| { lt: number }
+	| { gte: number }
+	| { lte: number };
+
+// an update value used in `slot_set`. a bare value is sugar for `{ set: ... }`.
+// `inc`/`dec` are valid only on u8 slots; `"toggle"` is valid only on bool slots
+// (and the compiler rejects it when the slot is an enum that happens to include
+// a value named "toggle").
+export type SlotUpdate =
+	| boolean
+	| number
+	| string
+	| { set: boolean | number | string }
+	| { inc: number }
+	| { dec: number }
+	| "toggle";
+
 // Grammar types
 export interface GrammarRule {
 	match?: string | string[] | CharacterClassSymbol;
@@ -22,6 +69,13 @@ export interface GrammarRule {
 	token?: string;
 	state?: string;
 	exit?: boolean;
+	// slot predicates: rule fires only if every entry's comparator passes.
+	// keys are bare slot names (when the rule lives in the owning state) or
+	// qualified "owner_state.slot_name" (otherwise).
+	slot_when?: Record<string, SlotComparator>;
+	// slot updates applied after token emission and state transition.
+	// keys follow the same qualification rule as slot_when.
+	slot_set?: Record<string, SlotUpdate>;
 }
 
 export type ParamBinding = string | boolean | null;
@@ -40,6 +94,10 @@ export interface GrammarState {
 	mode?: "probe" | "tokenise";
 	fallback?: string;
 	extend?: string | string[];
+	// slot declarations owned by this state. each entry is initialized when
+	// the state is pushed and restored to its prior value when popped. slot
+	// names are globally unique within a grammar.
+	slots?: Record<string, SlotDeclaration>;
 }
 
 export interface Grammar {
@@ -74,6 +132,45 @@ export interface CompiledGrammar {
 	probe_fallbacks?: Map<number, number>;
 	// track which rules require boundary checking (state * 256 + rule_idx)
 	boundary_rules?: Set<number>;
+	// slot metadata. zero-sized when the grammar declares no slots — runtime
+	// gates all slot work behind `slot_count > 0`.
+	slot_count: number;
+	// 0 = bool, 1 = u8 (incl. enum encoded as u8). indexed by global slot id.
+	slot_type_of_id: Uint8Array;
+	// initial value when the owning state is pushed. for slots without a
+	// declared default this is 0; the compiler enforces that the pushing rule
+	// includes a slot_set covering the slot, so the placeholder is never read.
+	slot_default_of_id: Uint8Array;
+	// per-slot enum value strings, or null for non-enum slots. index = slot id.
+	slot_enum_values: (string[] | null)[];
+	// global slot id -> declared name, for diagnostics and introspection.
+	slot_name_of_id: string[];
+	// global slot id -> state id of the declaring (owning) state. used by
+	// later compile passes (rule lowering, visibility analysis) and by tools.
+	slot_owner_of_id: Uint16Array;
+	// per-state list of (slot_id, default) pairs, packed pairwise. populated
+	// only for states that declare slots; absent entries mean "no slots on
+	// this state". consumed by the runtime push/pop loops.
+	slot_decls_for_state: Map<number, Uint8Array>;
+	// per-rule packed slot predicates. offset = (state_id * 256 + rule_idx).
+	// 0xFFFFFFFF sentinel = no predicates. payload at the offset is
+	// length-prefixed: [count, slot_id_0, op_0, value_0, ...].
+	rule_slot_predicate_offsets: Uint32Array;
+	rule_slot_predicates_flat: Uint8Array;
+	// per-rule packed slot updates. same layout discipline as predicates.
+	rule_slot_update_offsets: Uint32Array;
+	rule_slot_updates_flat: Uint8Array;
+	// per-state mask: 1 if the state has any slot-predicated rules. mirrors
+	// `probe_mask` so the tokenizer's per-state-change cache step can decide
+	// in O(1) whether to consult the predicate-rules list. always allocated
+	// (zero-filled when no slot-gated rules exist).
+	slot_predicate_mask: Uint8Array;
+	// per-state list of slot-gated rules in declaration order. these rules
+	// are kept out of char_maps / state_buckets / fallback_transitions so the
+	// runtime can iterate them deterministically with first-match-wins
+	// semantics that respect their slot_when predicates. PatternInfo with
+	// length === 0 represents an `any: true` slot-gated rule.
+	predicate_rules: Map<number, PatternInfo[]>;
 }
 
 // Tokenizer types
@@ -376,6 +473,12 @@ export interface IntrospectorEvent {
 	timestamp?: number;
 	token_emitted?: boolean;
 	text?: string;
+	// stage 8: decoded snapshot of all live slot values at the moment the
+	// event fires. keyed by slot name; values are decoded to their declared
+	// representation (boolean for bool slots, enum string for enum slots,
+	// raw integer for plain u8). undefined when the grammar declares no
+	// slots or the event source didn't supply a snapshot.
+	slot_snapshot?: Record<string, boolean | number | string>;
 }
 
 export interface InputContext {
@@ -544,6 +647,11 @@ export interface IGrammarMapper {
 	get_rule_name(state_index: number, rule_index: number): string;
 	get_rule_details(state_index: number, rule_index: number): RuleDetails | null;
 	get_token_name(token_type: number): string;
+	// stage 8: slot id ↔ name and decoded value lookup. defaults gracefully
+	// for slot-free grammars (where slot_name_of_id / slot_enum_values are
+	// empty arrays).
+	slot_name(slot_id: number): string;
+	decode_slot_value(slot_id: number, value: number): boolean | number | string;
 	describe_transition(
 		from_state: number,
 		to_state: number,

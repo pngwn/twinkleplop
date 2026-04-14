@@ -419,3 +419,60 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		).toBe(false);
 	});
 });
+
+describe("JavaScript reclassifier — class field exclusion", () => {
+	// the bug: `class C { name: T = value; }` would otherwise rewrite `name`
+	// to property because it's preceded by `{` and followed by `:`. the
+	// type-annotation rule didn't catch it (`: id =` doesn't end in `;`).
+	// the new exclusion rule's lookbehind matches the actual `class IDENT
+	// [extends IDENT] {` header sequence, so it's precise.
+
+	it("first class field with a default value stays as identifier", () => {
+		const tokens = enrich("class Foo { bar: T = 1; }");
+		expect(type_of(tokens, "bar")).toBe("identifier");
+	});
+
+	it("works with extends in the class header", () => {
+		const tokens = enrich("class Foo extends Bar { baz: T = 2; }");
+		expect(type_of(tokens, "baz")).toBe("identifier");
+	});
+
+	it("works with a class-member modifier between { and the field name", () => {
+		const tokens = enrich(`class Foo { static name: T = "x"; }`);
+		expect(type_of(tokens, "name")).toBe("identifier");
+	});
+
+	it("regression: destructure-with-default keeps the key as property", () => {
+		const tokens = enrich("let { a: b = c } = obj;");
+		expect(type_of(tokens, "a")).toBe("property");
+	});
+
+	it("regression: object literal with assignment value keeps the key as property", () => {
+		const tokens = enrich("let obj = { a: b = 1 };");
+		expect(type_of(tokens, "a")).toBe("property");
+	});
+
+	it("regression: regular object literal property classification still works", () => {
+		const tokens = enrich("let obj = { a: b, c: d };");
+		expect(type_of(tokens, "a")).toBe("property");
+		expect(type_of(tokens, "c")).toBe("property");
+	});
+
+	it("regression: class field with no default still classifies as identifier", () => {
+		const tokens = enrich("class Foo { bar: T; }");
+		expect(type_of(tokens, "bar")).toBe("identifier");
+	});
+
+	it("regression: subsequent class fields (after ;) stay as identifier", () => {
+		const tokens = enrich("class C { x; y: T = 5; z = 6; w: T = 7; }");
+		expect(type_of(tokens, "y")).toBe("identifier");
+		expect(type_of(tokens, "z")).toBe("identifier");
+		expect(type_of(tokens, "w")).toBe("identifier");
+	});
+
+	it("methods continue to classify as function", () => {
+		const tokens = enrich("class Foo { bar: T = 1; method() { return 1; } }");
+		expect(type_of(tokens, "bar")).toBe("identifier");
+		expect(type_of(tokens, "method")).toBe("function");
+	});
+});

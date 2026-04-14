@@ -272,11 +272,13 @@ export class TokenizerIntrospector {
 		to_state,
 		stack_ptr,
 		pos,
+		slot_snapshot,
 	}: {
 		from_state: number;
 		to_state: number;
 		stack_ptr: number;
 		pos?: number;
+		slot_snapshot?: Uint8Array;
 	}): void {
 		const transition: IntrospectorEvent = {
 			type: "PUSHED_STATE",
@@ -286,6 +288,7 @@ export class TokenizerIntrospector {
 			to_state_index: to_state,
 			stack_depth: stack_ptr,
 			pos: pos,
+			slot_snapshot: this._capture_slots(slot_snapshot),
 		};
 
 		this._add_to_history(transition);
@@ -317,11 +320,13 @@ export class TokenizerIntrospector {
 		to_state,
 		stack_ptr,
 		pos,
+		slot_snapshot,
 	}: {
 		from_state: number;
 		to_state: number;
 		stack_ptr: number;
 		pos?: number;
+		slot_snapshot?: Uint8Array;
 	}): void {
 		// end current state session
 		if (this.current_state_session) {
@@ -337,11 +342,75 @@ export class TokenizerIntrospector {
 			to_state_index: to_state,
 			stack_depth: stack_ptr,
 			pos: pos,
+			slot_snapshot: this._capture_slots(slot_snapshot),
 		};
 
 		this._add_to_history(transition);
 		this._log("POPPED_STATE", transition);
 		this.state_transitions.push(transition);
+	}
+
+	// stage 8: emitted when a rule's slot_set updates fire. captures the
+	// post-update slot values so debug traces can show how each slot
+	// evolves rule-by-rule.
+	slot_write({
+		state,
+		rule_idx,
+		pos,
+		slot_snapshot,
+	}: {
+		state: number;
+		rule_idx: number;
+		pos?: number;
+		slot_snapshot?: Uint8Array;
+	}): void {
+		const event: IntrospectorEvent = {
+			type: "SLOT_WRITE",
+			current_state: this._get_state_name(state),
+			current_state_index: state,
+			rule_index: rule_idx,
+			rule_name: this._get_rule_name(state, rule_idx),
+			pos: pos,
+			slot_snapshot: this._capture_slots(slot_snapshot),
+		};
+		this._add_to_history(event);
+		this._log("SLOT_WRITE", event);
+	}
+
+	// decode raw slot_values into a name-keyed snapshot the user can read.
+	// returns undefined when the grammar declares no slots or the caller
+	// didn't supply a buffer (slot-free grammar pays no introspection cost).
+	private _capture_slots(
+		slot_values: Uint8Array | undefined,
+	): Record<string, boolean | number | string> | undefined {
+		if (!slot_values || !this.compiled_grammar) return undefined;
+		const slot_count = this.compiled_grammar.slot_count;
+		if (slot_count === 0) return undefined;
+		const mapper = this.options.grammar_mapper;
+		const result: Record<string, boolean | number | string> = {};
+		for (let i = 0; i < slot_count; i++) {
+			const value = slot_values[i];
+			const name =
+				mapper?.slot_name(i) ??
+				this.compiled_grammar.slot_name_of_id?.[i] ??
+				`slot_${i}`;
+			if (mapper) {
+				result[name] = mapper.decode_slot_value(i, value);
+			} else {
+				// fall back to raw decoding when no mapper is attached.
+				const enum_values =
+					this.compiled_grammar.slot_enum_values?.[i];
+				const type = this.compiled_grammar.slot_type_of_id?.[i] ?? 1;
+				if (enum_values) {
+					result[name] = enum_values[value] ?? value;
+				} else if (type === 0) {
+					result[name] = value !== 0;
+				} else {
+					result[name] = value;
+				}
+			}
+		}
+		return result;
 	}
 
 	transitioned_state({

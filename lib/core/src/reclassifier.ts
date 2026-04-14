@@ -38,7 +38,10 @@ import type {
 // ---------------------------------------------------------------------------
 
 /** Match a single token of the given type, optionally with a source-text value constraint. */
-export function type(type_name: string, value?: string | string[]): TypePatternSpec {
+export function type(
+	type_name: string,
+	value?: string | string[],
+): TypePatternSpec {
 	return { __kind: "type", type_name, value };
 }
 
@@ -58,7 +61,10 @@ export function optional(inner: TokenPatternSpec): OptionalPatternSpec {
 }
 
 /** Tag the inner pattern's span with a capture name (reserved for future rewrite targeting). */
-export function capture(name: string, inner: TokenPatternSpec): CapturePatternSpec {
+export function capture(
+	name: string,
+	inner: TokenPatternSpec,
+): CapturePatternSpec {
 	return { __kind: "capture", name, inner };
 }
 
@@ -187,7 +193,8 @@ function compile_pattern(
 				inner: compile_pattern(spec.inner, name_to_id),
 			};
 		case "balanced": {
-			const punctuation_type_id = name_to_id.get("punctuation") ?? NEVER_MATCHES;
+			const punctuation_type_id =
+				name_to_id.get("punctuation") ?? NEVER_MATCHES;
 			return {
 				kind: 4,
 				punctuation_type_id,
@@ -517,6 +524,19 @@ export function rewrite_types(
 	rules: RewriteRule[],
 	options: RewriteOptions = {},
 ): Reclassifier {
+	// rule compilation cache. keyed by the result.token_types array
+	// reference; in practice tokenize() always returns the SAME
+	// compiled_grammar.token_types reference, so the cache hits on every
+	// subsequent call for the same grammar. on a cache miss we recompile
+	// and snapshot any new type names that were appended (rewrite targets
+	// that weren't in the original vocab) so we can re-extend the per-call
+	// token_types clone consistently.
+	let cached_input_types: string[] | null = null;
+	let cached_compiled: CompiledRule[] | null = null;
+	let cached_by_anchor: Map<number, CompiledRule[]> | null = null;
+	let cached_trivia: Uint8Array | null = null;
+	let cached_appended_types: string[] | null = null;
+
 	return (input: string, result: TokenizeResult): TokenizeResult => {
 		// clone both arrays so the transform is pure -- the caller's raw
 		// TokenizeResult is never mutated. Uint32Array clone is a fast memcpy;
@@ -524,9 +544,34 @@ export function rewrite_types(
 		const tokens = new Uint32Array(result.tokens);
 		const token_types = result.token_types.slice();
 
-		// resolve name -> id (allocating new ids for target types that don't exist).
+		// fast path: same vocabulary as last call → reuse the compiled rules
+		// and trivia mask. only need to re-append rewrite-target types that
+		// the cache discovered on first compile.
+		if (
+			cached_input_types === result.token_types &&
+			cached_compiled !== null &&
+			cached_by_anchor !== null &&
+			cached_trivia !== null &&
+			cached_appended_types !== null
+		) {
+			for (let i = 0; i < cached_appended_types.length; i++) {
+				token_types.push(cached_appended_types[i]);
+			}
+			if (cached_compiled.length === 0) return { tokens, token_types };
+			return run_rewrite_loop(
+				input,
+				tokens,
+				token_types,
+				cached_by_anchor,
+				cached_trivia,
+			);
+		}
+
+		// slow path: compile rules and populate the cache.
+		const original_len = result.token_types.length;
 		const name_to_id = new Map<string, number>();
-		for (let i = 0; i < token_types.length; i++) name_to_id.set(token_types[i], i);
+		for (let i = 0; i < token_types.length; i++)
+			name_to_id.set(token_types[i], i);
 		const ensure_id = (name: string): number => {
 			let id = name_to_id.get(name);
 			if (id === undefined) {
@@ -537,11 +582,10 @@ export function rewrite_types(
 			return id;
 		};
 
-		// compile rules once against the name->id map.
 		const compiled: CompiledRule[] = [];
 		for (const rule of rules) {
 			const anchor_id = name_to_id.get(rule.anchor);
-			if (anchor_id === undefined) continue; // anchor type not in result
+			if (anchor_id === undefined) continue;
 
 			let anchor_target_id = -1;
 			let capture_targets: { name: string; target_id: number }[] | null = null;
@@ -560,7 +604,9 @@ export function rewrite_types(
 			let anchor_value_set: Set<string> | null = null;
 			if (rule.anchor_value !== undefined) {
 				anchor_value_set = new Set(
-					Array.isArray(rule.anchor_value) ? rule.anchor_value : [rule.anchor_value],
+					Array.isArray(rule.anchor_value)
+						? rule.anchor_value
+						: [rule.anchor_value],
 				);
 			}
 
@@ -569,16 +615,12 @@ export function rewrite_types(
 				anchor_value_set,
 				anchor_target_id,
 				capture_targets,
-				before: rule.before
-					? compile_pattern(rule.before, name_to_id)
-					: null,
+				before: rule.before ? compile_pattern(rule.before, name_to_id) : null,
 				when: compile_pattern(rule.when, name_to_id),
 				needs_captures: capture_targets !== null && has_capture(rule.when),
 			});
 		}
-		if (compiled.length === 0) return { tokens, token_types };
 
-		// index rules by anchor type_id for O(1) dispatch in the hot loop.
 		const by_anchor = new Map<number, CompiledRule[]>();
 		for (const r of compiled) {
 			let list = by_anchor.get(r.anchor_id);
@@ -589,7 +631,6 @@ export function rewrite_types(
 			list.push(r);
 		}
 
-		// trivia type_id mask (Uint8Array indexed by type_id -- rejects >=256).
 		const trivia = new Uint8Array(Math.max(256, token_types.length));
 		if (options.trivia) {
 			for (const name of options.trivia) {
@@ -598,66 +639,86 @@ export function rewrite_types(
 			}
 		}
 
-		const count = tokens.length / 3;
-		for (let i = 0; i < count; i++) {
-			const type = tokens[i * 3];
-			if (trivia[type]) continue;
-			const rules_for_anchor = by_anchor.get(type);
-			if (!rules_for_anchor) continue;
+		// snapshot any types that ensure_id appended past the original input
+		// vocab so the fast path can re-extend cleanly on subsequent calls.
+		cached_input_types = result.token_types;
+		cached_compiled = compiled;
+		cached_by_anchor = by_anchor;
+		cached_trivia = trivia;
+		cached_appended_types = token_types.slice(original_len);
 
-			for (let r = 0; r < rules_for_anchor.length; r++) {
-				const rule = rules_for_anchor[r];
-				if (rule.anchor_value_set !== null) {
-					const s = tokens[i * 3 + 1];
-					const e = tokens[i * 3 + 2];
-					if (!rule.anchor_value_set.has(input.slice(s, e))) continue;
-				}
-				if (rule.before !== null) {
-					const behind = match_pattern_backward(
-						rule.before,
-						tokens,
-						i - 1,
-						input,
-						trivia,
-					);
-					if (behind === NO_MATCH) continue;
-				}
-				const captures: Captures | null = rule.needs_captures
-					? new Map()
-					: null;
-				const end = match_pattern(
-					rule.when,
+		if (compiled.length === 0) return { tokens, token_types };
+		return run_rewrite_loop(input, tokens, token_types, by_anchor, trivia);
+	};
+}
+
+// hot loop extracted so the fast and slow paths share it. closes over
+// nothing mutable; pure walk over `tokens` applying matched rule rewrites
+// in place.
+function run_rewrite_loop(
+	input: string,
+	tokens: Uint32Array,
+	token_types: string[],
+	by_anchor: Map<number, CompiledRule[]>,
+	trivia: Uint8Array,
+): TokenizeResult {
+	const count = tokens.length / 3;
+	for (let i = 0; i < count; i++) {
+		const type = tokens[i * 3];
+		if (trivia[type]) continue;
+		const rules_for_anchor = by_anchor.get(type);
+		if (!rules_for_anchor) continue;
+
+		for (let r = 0; r < rules_for_anchor.length; r++) {
+			const rule = rules_for_anchor[r];
+			if (rule.anchor_value_set !== null) {
+				const s = tokens[i * 3 + 1];
+				const e = tokens[i * 3 + 2];
+				if (!rule.anchor_value_set.has(input.slice(s, e))) continue;
+			}
+			if (rule.before !== null) {
+				const behind = match_pattern_backward(
+					rule.before,
 					tokens,
-					i + 1,
-					count,
+					i - 1,
 					input,
 					trivia,
-					captures,
 				);
-				if (end === NO_MATCH) continue;
+				if (behind === NO_MATCH) continue;
+			}
+			const captures: Captures | null = rule.needs_captures ? new Map() : null;
+			const end = match_pattern(
+				rule.when,
+				tokens,
+				i + 1,
+				count,
+				input,
+				trivia,
+				captures,
+			);
+			if (end === NO_MATCH) continue;
 
-				// apply rewrites. anchor-target form simply flips the anchor's
-				// type; capture-target form walks each named span and rewrites
-				// every token in the range.
-				if (rule.anchor_target_id !== -1) {
-					tokens[i * 3] = rule.anchor_target_id;
-				}
-				if (rule.capture_targets !== null && captures !== null) {
-					for (let c = 0; c < rule.capture_targets.length; c++) {
-						const target = rule.capture_targets[c];
-						const span = captures.get(target.name);
-						if (span === undefined) continue;
-						for (let t = span[0]; t < span[1]; t++) {
-							tokens[t * 3] = target.target_id;
-						}
+			// apply rewrites. anchor-target form simply flips the anchor's
+			// type; capture-target form walks each named span and rewrites
+			// every token in the range.
+			if (rule.anchor_target_id !== -1) {
+				tokens[i * 3] = rule.anchor_target_id;
+			}
+			if (rule.capture_targets !== null && captures !== null) {
+				for (let c = 0; c < rule.capture_targets.length; c++) {
+					const target = rule.capture_targets[c];
+					const span = captures.get(target.name);
+					if (span === undefined) continue;
+					for (let t = span[0]; t < span[1]; t++) {
+						tokens[t * 3] = target.target_id;
 					}
 				}
-				break; // first-match-wins per position
 			}
+			break; // first-match-wins per position
 		}
+	}
 
-		return { tokens, token_types };
-	};
+	return { tokens, token_types };
 }
 
 // ---------------------------------------------------------------------------
@@ -696,7 +757,9 @@ interface NormalizedEmbedEntry {
 	wrap_token: string | null;
 }
 
-function normalize_embed_entry(value: LanguageFn | EmbedEntry): NormalizedEmbedEntry {
+function normalize_embed_entry(
+	value: LanguageFn | EmbedEntry,
+): NormalizedEmbedEntry {
 	if (typeof value === "function") {
 		return { language: value, trim_start: 0, trim_end: 0, wrap_token: null };
 	}
@@ -749,7 +812,14 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
 			const content = input.slice(content_start, content_end);
 			const sub = entry.language(content);
 			const sub_count = sub.tokens.length / 3;
-			embeds.push({ host_idx: i, sub, content_start, entry, host_start, host_end });
+			embeds.push({
+				host_idx: i,
+				sub,
+				content_start,
+				entry,
+				host_start,
+				host_end,
+			});
 			// one host token is replaced by: [optional start wrapper] + sub
 			// tokens + [optional end wrapper]. count the wrappers only when
 			// the trim actually skipped something AND wrap_token is set.
@@ -766,7 +836,8 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
 		// merge sub token_types into a cloned host token_types. dedup by name.
 		const token_types = host_types.slice();
 		const name_to_id = new Map<string, number>();
-		for (let i = 0; i < token_types.length; i++) name_to_id.set(token_types[i], i);
+		for (let i = 0; i < token_types.length; i++)
+			name_to_id.set(token_types[i], i);
 		const ensure_id = (name: string): number => {
 			let id = name_to_id.get(name);
 			if (id === undefined) {
@@ -890,7 +961,9 @@ interface GroupToken {
 // buggy scanner from running forever.
 const MAX_EMBED_ITERATIONS = 16;
 
-export function embed_interleaved(config: EmbedInterleavedConfig): Reclassifier {
+export function embed_interleaved(
+	config: EmbedInterleavedConfig,
+): Reclassifier {
 	const hole_char = config.hole_char ?? " ";
 	return (input: string, result: TokenizeResult): TokenizeResult => {
 		// iterate the single-pass transform until it reaches a fixed point.
@@ -931,7 +1004,8 @@ function embed_interleaved_once(
 	// grammars contribute new type names.
 	const token_types = host_types.slice();
 	const name_to_id = new Map<string, number>();
-	for (let i = 0; i < token_types.length; i++) name_to_id.set(token_types[i], i);
+	for (let i = 0; i < token_types.length; i++)
+		name_to_id.set(token_types[i], i);
 	const ensure_id = (name: string): number => {
 		let id = name_to_id.get(name);
 		if (id === undefined) {
@@ -1005,7 +1079,10 @@ function embed_interleaved_once(
 	let group_idx = 0;
 	let host_idx = 0;
 	while (host_idx < host_count) {
-		if (group_idx < groups.length && groups[group_idx].token_start === host_idx) {
+		if (
+			group_idx < groups.length &&
+			groups[group_idx].token_start === host_idx
+		) {
 			const g = groups[group_idx++];
 			for (let k = 0; k < g.out.length; k++) {
 				const t = g.out[k];
@@ -1071,9 +1148,10 @@ function process_group(
 			const v_start = virtual_source.length;
 			// use single-char placeholder repeated to match the byte length.
 			// byte-aligned so positions map cleanly.
-			virtual_source += hole_char.length === 1
-				? hole_char.repeat(len)
-				: hole_char.repeat(len).slice(0, len);
+			virtual_source +=
+				hole_char.length === 1
+					? hole_char.repeat(len)
+					: hole_char.repeat(len).slice(0, len);
 			hole_virtual_ranges.push({ v_start, v_end: virtual_source.length });
 		}
 		// synthetic regions don't contribute to virtual source.

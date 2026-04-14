@@ -25,6 +25,7 @@ import {
 	seq,
 	type,
 } from "@twinkleplop/core";
+import type { Reclassifier } from "@twinkleplop/core";
 
 import { language as css_language } from "@twinkleplop/css";
 // Cross-language references are imported lazily so the HTML ↔ JS workspace
@@ -101,37 +102,42 @@ export const function_variable_rules = [
 		),
 		rewrite: "identifier",
 	},
-	// {
-	// 	anchor: "identifier",
-	// 	before: any_of(
-	// 		type("punctuation", [";"]),
-	// 		type("keyword", [
-	// 			"readonly",
-	// 			"public",
-	// 			"private",
-	// 			"protected",
-	// 			"static",
-	// 			"abstract",
-	// 			"override",
-	// 			"accessor",
-	// 			"declare",
-	// 		]),
-	// 		seq(
-	// 			type("keyword", ["interface"]),
-	// 			type("identifier"),
-	// 			type("punctuation", ["{"]),
-	// 		),
-	// 		seq(
-	// 			type("keyword", ["interface"]),
-	// 			type("identifier"),
-	// 			type("keyword", ["extends"]),
-	// 			type("identifier"),
-	// 			type("punctuation", ["{"]),
-	// 		),
-	// 	),
-	// 	when: seq(type("operator", [":", "?:"]), type("type")),
-	// 	rewrite: "property",
-	// },
+	// class field exclusion: the first member of a class body that has the
+	// shape `name: type = value` would otherwise match the property rule
+	// below (preceded by `{`, followed by `:`). type-annotation rules can't
+	// catch it because the value-with-default form `: id =` doesn't end in
+	// `;`. this lookbehind is precise: matches only the actual class header
+	// `class IDENT [extends IDENT] {` plus optional class-member modifier,
+	// so destructure-with-default `let { a: b = c }` and object literals
+	// with assignment values stay unaffected.
+	{
+		anchor: "identifier",
+		before: seq(
+			type("keyword", ["class"]),
+			type("identifier"),
+			optional(seq(type("keyword", ["extends"]), type("identifier"))),
+			type("punctuation", ["{"]),
+			optional(
+				type("keyword", [
+					"readonly",
+					"public",
+					"private",
+					"protected",
+					"static",
+					"abstract",
+					"override",
+					"accessor",
+					"declare",
+				]),
+			),
+		),
+		when: seq(
+			type("operator", [":", "?:"]),
+			type("identifier"),
+			type("operator", ["="]),
+		),
+		rewrite: "identifier",
+	},
 	// type annotation exclusion: identifier followed by `:` then a builtin
 	// type token (string, number, boolean, etc.) is a type annotation, not
 	// a property. catches class fields and typed function parameters. also
@@ -139,10 +145,14 @@ export const function_variable_rules = [
 	// tradeoff. only fires in grammars that emit a "type" token (typescript).
 	{
 		anchor: "identifier",
-    when: any_of(
-      seq(type("operator", [":", "?:"]), type("type")),
-      seq(type("operator", [":", "?:"]), type("identifier"), type("punctuation", [";"]))
-    ),
+		when: any_of(
+			seq(type("operator", [":", "?:"]), type("type")),
+			seq(
+				type("operator", [":", "?:"]),
+				type("identifier"),
+				type("punctuation", [";"]),
+			),
+		),
 		rewrite: "identifier",
 	},
 	{
@@ -359,7 +369,128 @@ export function scan_tagged_template(tokens, input, i, token_types) {
 // JS stream (including the `html`/`css` identifier and its surrounding
 // context) before any splicing. embed_interleaved preserves the trigger
 // identifier in the output, so subsequent passes could still see it.
+// Stateful pass: walk the token stream once, identify brace depths that
+// belong to interface bodies, and promote `identifier` followed by `:` (or
+// `?:`) inside them to `property`. The rule-based reclassifier can't tell
+// interface members apart from class fields by lookbehind alone (subsequent
+// members are preceded by `;`, not the `interface IDENT {` header), so this
+// small stateful function fills the gap. Plain JS (no `interface` keyword)
+// is unaffected — the scan finds nothing to promote.
+export const interface_member_promoter: Reclassifier = (input, result) => {
+	const { tokens, token_types } = result;
+	const n = tokens.length / 3;
+	if (n === 0) return result;
+
+	const identifier_id = token_types.indexOf("identifier");
+	const keyword_id = token_types.indexOf("keyword");
+	const punctuation_id = token_types.indexOf("punctuation");
+	const operator_id = token_types.indexOf("operator");
+	const comment_id = token_types.indexOf("comment");
+	if (
+		identifier_id < 0 ||
+		keyword_id < 0 ||
+		punctuation_id < 0 ||
+		operator_id < 0
+	) {
+		// grammar doesn't use one of the required token types — nothing to do.
+		return result;
+	}
+
+	// allocate the property type if it isn't present yet.
+	let property_id = token_types.indexOf("property");
+	if (property_id < 0) {
+		property_id = token_types.length;
+		token_types.push("property");
+	}
+
+	const text = (i: number): string =>
+		input.slice(tokens[i * 3 + 1], tokens[i * 3 + 2]);
+
+	const next_non_trivia = (from: number): number => {
+		for (let i = from; i < n; i++) {
+			if (tokens[i * 3] !== comment_id) return i;
+		}
+		return -1;
+	};
+
+	let brace_depth = 0;
+	let paren_depth = 0;
+	let bracket_depth = 0;
+	const interface_depths = new Set<number>();
+
+	for (let i = 0; i < n; i++) {
+		const type_id = tokens[i * 3];
+
+		// detect `interface IDENT [extends IDENT (. IDENT)* (, ...)*] {`.
+		if (type_id === keyword_id && text(i) === "interface") {
+			const name_idx = next_non_trivia(i + 1);
+			if (name_idx === -1 || tokens[name_idx * 3] !== identifier_id) continue;
+			let cur = next_non_trivia(name_idx + 1);
+			if (
+				cur !== -1 &&
+				tokens[cur * 3] === keyword_id &&
+				text(cur) === "extends"
+			) {
+				// walk through the extends list (identifiers separated by `.` or `,`)
+				// until we hit `{`. defensive: bail if we don't find `{`.
+				cur = next_non_trivia(cur + 1);
+				while (cur !== -1) {
+					if (tokens[cur * 3] === punctuation_id && text(cur) === "{") break;
+					cur = next_non_trivia(cur + 1);
+				}
+			}
+			if (
+				cur === -1 ||
+				tokens[cur * 3] !== punctuation_id ||
+				text(cur) !== "{"
+			)
+				continue;
+			// the `{` itself is processed by the depth-tracking branch below,
+			// which will increment brace_depth to N+1. mark N+1 as an
+			// interface body.
+			interface_depths.add(brace_depth + 1);
+			i = cur - 1; // re-enter the loop on cur to count the `{`.
+			continue;
+		}
+
+		if (type_id === punctuation_id) {
+			const t = text(i);
+			if (t === "{") brace_depth++;
+			else if (t === "}") {
+				interface_depths.delete(brace_depth);
+				brace_depth--;
+			} else if (t === "(") paren_depth++;
+			else if (t === ")") paren_depth--;
+			else if (t === "[") bracket_depth++;
+			else if (t === "]") bracket_depth--;
+		}
+
+		// inside an interface body — but NOT inside a method-signature
+		// parameter list `(...)` or a computed-key bracket `[...]` — an
+		// identifier followed by `:` (or `?:`) is a member name. promote
+		// to property. the paren/bracket guard prevents typed params like
+		// `find(id: number)` from being promoted as interface members.
+		if (
+			interface_depths.has(brace_depth) &&
+			paren_depth === 0 &&
+			bracket_depth === 0 &&
+			type_id === identifier_id
+		) {
+			const next = next_non_trivia(i + 1);
+			if (next !== -1 && tokens[next * 3] === operator_id) {
+				const t = text(next);
+				if (t === ":" || t === "?:") {
+					tokens[i * 3] = property_id;
+				}
+			}
+		}
+	}
+
+	return result;
+};
+
 export const reclassifiers = [
 	rewrite_types(function_variable_rules, { trivia: ["comment"] }),
+	interface_member_promoter,
 	embed_interleaved({ scan: scan_tagged_template }),
 ];

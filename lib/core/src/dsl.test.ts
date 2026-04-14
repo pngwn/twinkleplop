@@ -14,7 +14,9 @@ import {
 	match,
 	on,
 	range,
+	set_slots,
 	to,
+	when_slots,
 	within,
 } from "./dsl";
 
@@ -255,5 +257,75 @@ describe("fallback helper", () => {
 
 	test("fallback with leave()", () => {
 		expect(fallback(leave())).toEqual({ any: true, exit: true });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Slot helpers
+// ---------------------------------------------------------------------------
+
+describe("when_slots", () => {
+	test("wraps conditions in a slot_when partial rule", () => {
+		expect(when_slots({ kind: "class" })).toEqual({
+			slot_when: { kind: "class" },
+		});
+	});
+
+	test("accepts qualified names and structured comparators", () => {
+		expect(
+			when_slots({
+				"member_body.kind": "interface",
+				"class_body.field_count": { gt: 0 },
+			}),
+		).toEqual({
+			slot_when: {
+				"member_body.kind": "interface",
+				"class_body.field_count": { gt: 0 },
+			},
+		});
+	});
+
+	test("composes with enter via spread", () => {
+		expect({
+			...enter("type_annotation"),
+			...when_slots({ "member_body.kind": "class" }),
+		}).toEqual({
+			state: "type_annotation",
+			slot_when: { "member_body.kind": "class" },
+		});
+	});
+});
+
+describe("set_slots", () => {
+	test("wraps updates in a slot_set partial rule", () => {
+		expect(set_slots({ seen_field: true })).toEqual({
+			slot_set: { seen_field: true },
+		});
+	});
+
+	test("accepts inc/dec/toggle operators and qualified names", () => {
+		expect(
+			set_slots({
+				"class_body.field_count": { inc: 1 },
+				"class_body.seen_field": "toggle",
+			}),
+		).toEqual({
+			slot_set: {
+				"class_body.field_count": { inc: 1 },
+				"class_body.seen_field": "toggle",
+			},
+		});
+	});
+
+	test("composes with enter and when_slots via spread", () => {
+		expect({
+			...enter("member_body"),
+			...when_slots({ "outer.kind": "class" }),
+			...set_slots({ "outer.field_count": { inc: 1 } }),
+		}).toEqual({
+			state: "member_body",
+			slot_when: { "outer.kind": "class" },
+			slot_set: { "outer.field_count": { inc: 1 } },
+		});
 	});
 });

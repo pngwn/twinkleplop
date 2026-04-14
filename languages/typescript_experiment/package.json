@@ -1,0 +1,22 @@
+{
+	"name": "@twinkleplop/typescript_experiment",
+	"version": "0.1.0",
+	"type": "module",
+	"main": "src/index.js",
+	"exports": {
+		".": {
+			"source": "./src/index.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"dependencies": {
+		"@twinkleplop/core": "workspace:*",
+		"@twinkleplop/javascript": "workspace:*"
+	},
+	"devDependencies": {
+		"@twinkleplop/typescript": "workspace:*"
+	},
+	"scripts": {
+		"test": "vitest"
+	}
+}
