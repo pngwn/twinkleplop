@@ -3,6 +3,7 @@ import { compile } from "@twinkleplop/core/compile";
 import { default as raw_grammar } from "./grammar.js";
 import {
 	function_variable_rules,
+	interface_member_promoter,
 	reclassifiers,
 	scan_tagged_template,
 } from "./reclassifiers.js";
@@ -18,9 +19,11 @@ import {
 // Typical use is `import { language } from "@twinkleplop/javascript"` — the
 // full enriched experience without composing anything by hand.
 //
-// `function_variable_rules` and `scan_tagged_template` are exported so benchmarks
-// and advanced consumers can compose custom pipelines without copy-pasting
-// the canonical rules/scanner.
+// Individual reclassifier pieces (`function_variable_rules`,
+// `interface_member_promoter`, `scan_tagged_template`) are exported so
+// benchmarks and advanced consumers can compose custom pipelines without
+// copy-pasting the canonical rules or opt out of the cross-language
+// tagged-template embedder when they want a JS-only pipeline.
 
 export const grammar = compile(raw_grammar);
 export const language = create_language(grammar, reclassifiers);
@@ -28,6 +31,7 @@ export {
 	raw_grammar,
 	reclassifiers,
 	function_variable_rules,
+	interface_member_promoter,
 	scan_tagged_template,
 };
 

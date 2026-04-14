@@ -140,27 +140,6 @@ interface CompiledCapture {
 	inner: CompiledPattern;
 }
 
-/**
- * true if the pattern tree contains any capture node. passed into
- * `compile_pattern` and propagated up so the matcher knows whether to bother
- * allocating a captures map at runtime. lets capture-free rules keep the
- * phase 1 hot-path cost.
- */
-function has_capture(spec: TokenPatternSpec): boolean {
-	switch (spec.__kind) {
-		case "capture":
-			return true;
-		case "seq":
-			return spec.children.some(has_capture);
-		case "anyOf":
-			return spec.branches.some(has_capture);
-		case "optional":
-			return has_capture(spec.inner);
-		default:
-			return false;
-	}
-}
-
 function compile_pattern(
 	spec: TokenPatternSpec,
 	name_to_id: Map<string, number>,
@@ -210,22 +189,10 @@ function compile_pattern(
 // Matcher engine
 // ---------------------------------------------------------------------------
 
-/**
- * try to match `pattern` against `tokens` starting at logical token index
- * `idx`. returns the index AFTER the last matched token on success, or
- * `NO_MATCH` on failure. trivia tokens are skipped on entry.
- */
+// sentinel returned by the matchers to indicate a failed match; callers
+// use `=== NO_MATCH` checks rather than sentinel-aware arithmetic so the
+// value is otherwise opaque.
 const NO_MATCH = -2;
-
-function skip_trivia(
-	tokens: Uint32Array,
-	idx: number,
-	count: number,
-	trivia: Uint8Array,
-): number {
-	while (idx < count && trivia[tokens[idx * 3]]) idx++;
-	return idx;
-}
 
 function skip_trivia_backward(
 	tokens: Uint32Array,
@@ -236,170 +203,11 @@ function skip_trivia_backward(
 	return idx;
 }
 
-/**
- * a captures bag -- maps name -> [startTokenIdx, endTokenIdxExclusive]. passed
- * as a Map reference through the matcher for rules that have captures.
- * rules without any capture pattern pass `null` so we pay zero cost.
- *
- * on failed matches within an `anyOf` branch the map is NOT rolled back --
- * later-successful branches will overwrite any stale captures with their own,
- * and on full rule failure the caller simply discards the map.
- */
-type Captures = Map<string, [number, number]>;
-
-function match_pattern(
-	pattern: CompiledPattern,
-	tokens: Uint32Array,
-	idx: number,
-	count: number,
-	input: string,
-	trivia: Uint8Array,
-	captures: Captures | null,
-): number {
-	idx = skip_trivia(tokens, idx, count, trivia);
-
-	switch (pattern.kind) {
-		case 0: {
-			// TYPE
-			if (idx >= count) return NO_MATCH;
-			const base = idx * 3;
-			if (tokens[base] !== pattern.type_id) return NO_MATCH;
-			if (pattern.values !== null) {
-				const start = tokens[base + 1];
-				const end = tokens[base + 2];
-				const source = input.slice(start, end);
-				let ok = false;
-				for (let i = 0; i < pattern.values.length; i++) {
-					if (pattern.values[i] === source) {
-						ok = true;
-						break;
-					}
-				}
-				if (!ok) return NO_MATCH;
-			}
-			return idx + 1;
-		}
-		case 1: {
-			// SEQ
-			let cur = idx;
-			for (let i = 0; i < pattern.children.length; i++) {
-				cur = match_pattern(
-					pattern.children[i],
-					tokens,
-					cur,
-					count,
-					input,
-					trivia,
-					captures,
-				);
-				if (cur === NO_MATCH) return NO_MATCH;
-			}
-			return cur;
-		}
-		case 2: {
-			// ANY_OF
-			for (let i = 0; i < pattern.branches.length; i++) {
-				const r = match_pattern(
-					pattern.branches[i],
-					tokens,
-					idx,
-					count,
-					input,
-					trivia,
-					captures,
-				);
-				if (r !== NO_MATCH) return r;
-			}
-			return NO_MATCH;
-		}
-		case 3: {
-			// OPTIONAL
-			const r = match_pattern(
-				pattern.inner,
-				tokens,
-				idx,
-				count,
-				input,
-				trivia,
-				captures,
-			);
-			return r === NO_MATCH ? idx : r;
-		}
-		case 4: {
-			// BALANCED
-			return match_balanced(pattern, tokens, idx, count, input);
-		}
-		case 5: {
-			// CAPTURE -- remember the starting index, match inner, record the span.
-			// `idx` has already been advanced past trivia at the top of this fn.
-			const start = idx;
-			const end = match_pattern(
-				pattern.inner,
-				tokens,
-				idx,
-				count,
-				input,
-				trivia,
-				captures,
-			);
-			if (end === NO_MATCH) return NO_MATCH;
-			if (captures !== null) captures.set(pattern.name, [start, end]);
-			return end;
-		}
-	}
-}
-
-/**
- * the first token must be a punctuation token whose source contains the open
- * character. walk forward counting parens inside punctuation tokens only.
- * returns the logical index after the token that closed the outermost pair.
- */
-function match_balanced(
-	pattern: CompiledBalanced,
-	tokens: Uint32Array,
-	idx: number,
-	count: number,
-	input: string,
-): number {
-	if (idx >= count) return NO_MATCH;
-	const base = idx * 3;
-	if (tokens[base] !== pattern.punctuation_type_id) return NO_MATCH;
-
-	let depth = 0;
-	const start = tokens[base + 1];
-	const end = tokens[base + 2];
-	if (input.charCodeAt(start) !== pattern.open_code) return NO_MATCH;
-
-	// scan the first punctuation token -- might already balance (e.g. `()`).
-	for (let p = start; p < end; p++) {
-		const c = input.charCodeAt(p);
-		if (c === pattern.open_code) depth++;
-		else if (c === pattern.close_code) {
-			depth--;
-			if (depth === 0) return idx + 1;
-		}
-	}
-
-	// walk subsequent tokens, counting parens only in punctuation tokens.
-	const limit = Math.min(count, idx + 1 + pattern.max_tokens);
-	for (let i = idx + 1; i < limit; i++) {
-		const b = i * 3;
-		if (tokens[b] === pattern.punctuation_type_id) {
-			const s = tokens[b + 1];
-			const e = tokens[b + 2];
-			for (let p = s; p < e; p++) {
-				const c = input.charCodeAt(p);
-				if (c === pattern.open_code) depth++;
-				else if (c === pattern.close_code) {
-					depth--;
-					if (depth === 0) return i + 1;
-				}
-			}
-		}
-	}
-
-	return NO_MATCH;
-}
+// the forward matcher used to be a recursive descent over `CompiledPattern`
+// with a per-match `captures: Map`. it has been replaced by the bytecode
+// interpreter (see match_bytecode below). the `CompiledPattern` tree is
+// retained only for `before` lookbehind, which uses a different scan
+// direction and ends-with value semantics.
 
 // ---------------------------------------------------------------------------
 // backward matcher (for `before` lookbehind patterns)
@@ -493,6 +301,571 @@ function match_pattern_backward(
 }
 
 // ---------------------------------------------------------------------------
+// bytecode compilation (forward matcher)
+// ---------------------------------------------------------------------------
+//
+// compiles the forward pattern tree to a flat Int32Array program executed by
+// `match_bytecode`. the tree form above is kept alive to back `before`
+// lookbehind only. rationale: the forward matcher is the hot path, and a
+// bytecode VM removes per-node recursion, object-ref pointer chasing, and
+// (with the side-table value pool below) `input.slice()` allocation on
+// value checks. the backward matcher is rarely used and has ends-with
+// semantics that don't share the same implementation.
+//
+// opcode shapes (int32 slots):
+//   OP_TYPE       type_id values_id          — 3 slots
+//   OP_ALT        alt_pc                     — 2 slots  (push backtrack)
+//   OP_JUMP       target_pc                  — 2 slots
+//   OP_COMMIT                                — 1 slot   (pop backtrack)
+//   OP_CAP_BEGIN  slot_id                    — 2 slots
+//   OP_CAP_END    slot_id                    — 2 slots
+//   OP_BALANCED   punct_id open close maxtok — 5 slots
+//   OP_MATCH                                 — 1 slot
+//
+// any_of(A, B, C):
+//   ALT L1; <A>; COMMIT; JUMP end;
+//   L1: ALT L2; <B>; COMMIT; JUMP end;
+//   L2: <C>;            (last branch — no ALT, failure propagates)
+//   end:
+//
+// optional(inner):
+//   ALT end; <inner>; COMMIT; end:
+//
+// value_id -1 means "no value constraint". otherwise indexes a packed
+// Uint16Array value pool with an int32 offsets side table — see
+// compile_value_set / value_set_matches below.
+
+const OP_TYPE = 0;
+const OP_ALT = 1;
+const OP_JUMP = 2;
+const OP_COMMIT = 3;
+const OP_CAP_BEGIN = 4;
+const OP_CAP_END = 5;
+const OP_BALANCED = 6;
+const OP_MATCH = 7;
+
+// per-rule-group compilation context. one `CompileCtx` is built per
+// `rewrite_types` call and threaded through every rule compile. the program
+// buffer grows monotonically; all rules' code shares it with per-rule
+// `when_pc` entry points. value_pool and value_offsets are similarly shared
+// across all rules in the group.
+interface CompileCtx {
+	program: Int32Array; // growable via reserve()
+	program_len: number; // current write cursor (valid slots = program[0..len))
+	value_pool: Uint16Array; // growable
+	value_pool_len: number;
+	value_offsets: Int32Array; // [2 * id] = offset, [2 * id + 1] = n_values
+	value_offsets_len: number; // # of allocated value sets (entries = 2 * this)
+}
+
+function make_compile_ctx(): CompileCtx {
+	return {
+		program: new Int32Array(64),
+		program_len: 0,
+		value_pool: new Uint16Array(32),
+		value_pool_len: 0,
+		value_offsets: new Int32Array(16),
+		value_offsets_len: 0,
+	};
+}
+
+function reserve_program(ctx: CompileCtx, slots: number): void {
+	const need = ctx.program_len + slots;
+	if (need <= ctx.program.length) return;
+	let next = ctx.program.length * 2;
+	while (next < need) next *= 2;
+	const grown = new Int32Array(next);
+	grown.set(ctx.program);
+	ctx.program = grown;
+}
+
+function emit(ctx: CompileCtx, ...words: number[]): void {
+	reserve_program(ctx, words.length);
+	for (let i = 0; i < words.length; i++) {
+		ctx.program[ctx.program_len++] = words[i];
+	}
+}
+
+// compile a value set (string[] | null) into the shared pool, return id.
+// id -1 means "no constraint". no dedup — value sets are small and rules few.
+function compile_value_set(ctx: CompileCtx, values: string[] | null): number {
+	if (values === null) return -1;
+	// grow value_offsets if needed (each entry = 2 int32 slots).
+	if ((ctx.value_offsets_len + 1) * 2 > ctx.value_offsets.length) {
+		const grown = new Int32Array(ctx.value_offsets.length * 2);
+		grown.set(ctx.value_offsets);
+		ctx.value_offsets = grown;
+	}
+	// compute total code units across all values (+ 1 length header each).
+	let total = 0;
+	for (let i = 0; i < values.length; i++) total += 1 + values[i].length;
+	if (ctx.value_pool_len + total > ctx.value_pool.length) {
+		let next = ctx.value_pool.length * 2;
+		while (next < ctx.value_pool_len + total) next *= 2;
+		const grown = new Uint16Array(next);
+		grown.set(ctx.value_pool);
+		ctx.value_pool = grown;
+	}
+	const id = ctx.value_offsets_len;
+	const offset = ctx.value_pool_len;
+	ctx.value_offsets[id * 2] = offset;
+	ctx.value_offsets[id * 2 + 1] = values.length;
+	ctx.value_offsets_len++;
+	for (let i = 0; i < values.length; i++) {
+		const v = values[i];
+		ctx.value_pool[ctx.value_pool_len++] = v.length;
+		for (let j = 0; j < v.length; j++) {
+			ctx.value_pool[ctx.value_pool_len++] = v.charCodeAt(j);
+		}
+	}
+	return id;
+}
+
+// capture-slot allocator scoped to a single rule. distinct names get dense
+// indices 0..n-1. max_slots is read by run_rewrite_loop to clear the dirty
+// bitfield at rule entry.
+interface CaptureSlots {
+	name_to_slot: Map<string, number>;
+	max_slots: number;
+}
+
+function make_capture_slots(): CaptureSlots {
+	return { name_to_slot: new Map(), max_slots: 0 };
+}
+
+function allocate_slot(slots: CaptureSlots, name: string): number {
+	let id = slots.name_to_slot.get(name);
+	if (id === undefined) {
+		id = slots.max_slots++;
+		slots.name_to_slot.set(name, id);
+	}
+	return id;
+}
+
+// recursive emitter. all forward jumps are back-patched: when the target PC
+// is not yet known (ALT next_alt_pc, JUMP end_pc), we emit a placeholder
+// (0) and record the operand PC in a local patch list, then overwrite the
+// slot once the target PC is known.
+function compile_pattern_bytecode(
+	spec: TokenPatternSpec,
+	name_to_id: Map<string, number>,
+	ctx: CompileCtx,
+	slots: CaptureSlots,
+): void {
+	switch (spec.__kind) {
+		case "type": {
+			const type_id = name_to_id.get(spec.type_name) ?? NEVER_MATCHES;
+			let value_values: string[] | null = null;
+			if (spec.value !== undefined) {
+				value_values = Array.isArray(spec.value) ? spec.value : [spec.value];
+			}
+			const values_id = compile_value_set(ctx, value_values);
+			emit(ctx, OP_TYPE, type_id, values_id);
+			return;
+		}
+		case "seq": {
+			for (let i = 0; i < spec.children.length; i++) {
+				compile_pattern_bytecode(spec.children[i], name_to_id, ctx, slots);
+			}
+			return;
+		}
+		case "anyOf": {
+			// emit each branch; all but the last is preceded by ALT and
+			// followed by COMMIT + JUMP end. patch addresses once known.
+			const end_patch_pcs: number[] = [];
+			const branches = spec.branches;
+			for (let i = 0; i < branches.length; i++) {
+				const is_last = i === branches.length - 1;
+				let alt_patch_pc = -1;
+				if (!is_last) {
+					emit(ctx, OP_ALT, 0);
+					alt_patch_pc = ctx.program_len - 1;
+				}
+				compile_pattern_bytecode(branches[i], name_to_id, ctx, slots);
+				if (!is_last) {
+					emit(ctx, OP_COMMIT);
+					emit(ctx, OP_JUMP, 0);
+					end_patch_pcs.push(ctx.program_len - 1);
+					// back-patch ALT -> next branch start
+					ctx.program[alt_patch_pc] = ctx.program_len;
+				}
+			}
+			const end_pc = ctx.program_len;
+			for (let i = 0; i < end_patch_pcs.length; i++) {
+				ctx.program[end_patch_pcs[i]] = end_pc;
+			}
+			return;
+		}
+		case "optional": {
+			emit(ctx, OP_ALT, 0);
+			const alt_patch_pc = ctx.program_len - 1;
+			compile_pattern_bytecode(spec.inner, name_to_id, ctx, slots);
+			emit(ctx, OP_COMMIT);
+			ctx.program[alt_patch_pc] = ctx.program_len;
+			return;
+		}
+		case "capture": {
+			const slot = allocate_slot(slots, spec.name);
+			emit(ctx, OP_CAP_BEGIN, slot);
+			compile_pattern_bytecode(spec.inner, name_to_id, ctx, slots);
+			emit(ctx, OP_CAP_END, slot);
+			return;
+		}
+		case "balanced": {
+			const punct_id = name_to_id.get("punctuation") ?? NEVER_MATCHES;
+			emit(
+				ctx,
+				OP_BALANCED,
+				punct_id,
+				spec.open.charCodeAt(0),
+				spec.close.charCodeAt(0),
+				spec.max_tokens ?? 200,
+			);
+			return;
+		}
+	}
+}
+
+// dev-only helper. prints one-opcode-per-line disassembly starting at
+// start_pc, stopping when it hits the first OP_MATCH. useful for debugging
+// the compiler output when tests disagree with expectations.
+//
+// not exported — call from a debugger or temporarily export during bring-up.
+function disassemble_program(
+	program: Int32Array,
+	start_pc: number,
+	end_pc: number,
+): string {
+	const lines: string[] = [];
+	let pc = start_pc;
+	while (pc < end_pc) {
+		const op = program[pc];
+		let line: string;
+		switch (op) {
+			case OP_TYPE:
+				line = `${pc}: TYPE type=${program[pc + 1]} values=${program[pc + 2]}`;
+				pc += 3;
+				break;
+			case OP_ALT:
+				line = `${pc}: ALT -> ${program[pc + 1]}`;
+				pc += 2;
+				break;
+			case OP_JUMP:
+				line = `${pc}: JUMP -> ${program[pc + 1]}`;
+				pc += 2;
+				break;
+			case OP_COMMIT:
+				line = `${pc}: COMMIT`;
+				pc += 1;
+				break;
+			case OP_CAP_BEGIN:
+				line = `${pc}: CAP_BEGIN slot=${program[pc + 1]}`;
+				pc += 2;
+				break;
+			case OP_CAP_END:
+				line = `${pc}: CAP_END slot=${program[pc + 1]}`;
+				pc += 2;
+				break;
+			case OP_BALANCED:
+				line = `${pc}: BALANCED punct=${program[pc + 1]} open=${program[pc + 2]} close=${program[pc + 3]} max=${program[pc + 4]}`;
+				pc += 5;
+				break;
+			case OP_MATCH:
+				line = `${pc}: MATCH`;
+				pc += 1;
+				break;
+			default:
+				line = `${pc}: <unknown op ${op}>`;
+				pc += 1;
+				break;
+		}
+		lines.push(line);
+		if (op === OP_MATCH) break;
+	}
+	return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// bytecode interpreter (forward matcher)
+// ---------------------------------------------------------------------------
+//
+// module-scope state, reused across all matches. we pay allocation cost once
+// and grow on demand when a rule has more than 128 backtrack frames deep or
+// more than 32 capture slots — neither has ever been observed in practice.
+//
+// bt_stack is a flat pair-packed Int32Array: each push writes (alt_pc, idx)
+// at [sp] and [sp+1]. BT_STRIDE = 2. sp counts ints, not pairs, so capacity
+// checks use `sp + 2 > length`.
+//
+// cap_starts / cap_ends are indexed by slot_id. cap_dirty_words is a
+// bitfield: word w = cap_dirty_words[slot >>> 5], bit = 1 << (slot & 31).
+// at rule entry we clear only the words covering that rule's max slots,
+// which is almost always a single `cap_dirty_words[0] = 0`.
+
+const BT_STRIDE = 2;
+let bt_stack = new Int32Array(128 * BT_STRIDE);
+
+let cap_starts = new Uint32Array(8);
+let cap_ends = new Uint32Array(8);
+let cap_dirty_words = new Uint32Array(1);
+
+function ensure_cap_capacity(slots: number): void {
+	if (slots > cap_starts.length) {
+		let next = cap_starts.length * 2;
+		while (next < slots) next *= 2;
+		const new_starts = new Uint32Array(next);
+		new_starts.set(cap_starts);
+		cap_starts = new_starts;
+		const new_ends = new Uint32Array(next);
+		new_ends.set(cap_ends);
+		cap_ends = new_ends;
+	}
+	const words_needed = slots > 0 ? (slots + 31) >>> 5 : 0;
+	if (words_needed > cap_dirty_words.length) {
+		const grown = new Uint32Array(words_needed);
+		grown.set(cap_dirty_words);
+		cap_dirty_words = grown;
+	}
+}
+
+// compare a token's source range against one of the packed value sets.
+// returns true if any value in the set equals the token's source text.
+// length mismatch is the fast reject; only on length-match do we compare
+// code units. no `input.slice()` — saves a string alloc per check.
+function value_set_matches(
+	pool: Uint16Array,
+	offsets: Int32Array,
+	id: number,
+	input: string,
+	s: number,
+	e: number,
+): boolean {
+	const token_len = e - s;
+	const base = id * 2;
+	const start = offsets[base];
+	const n = offsets[base + 1];
+	let p = start;
+	for (let i = 0; i < n; i++) {
+		const len = pool[p++];
+		if (len === token_len) {
+			let ok = true;
+			for (let j = 0; j < len; j++) {
+				if (pool[p + j] !== input.charCodeAt(s + j)) {
+					ok = false;
+					break;
+				}
+			}
+			if (ok) return true;
+		}
+		p += len;
+	}
+	return false;
+}
+
+// balanced-paren scanner lifted out of the old match_balanced — identical
+// logic, just called from the OP_BALANCED handler. reads the open paren
+// from the token at `idx`, then walks subsequent punctuation tokens until
+// depth returns to zero. returns the idx after the closing token or
+// NO_MATCH on failure / overflow.
+function run_balanced(
+	tokens: Uint32Array,
+	idx: number,
+	count: number,
+	input: string,
+	punct_id: number,
+	open_code: number,
+	close_code: number,
+	max_tokens: number,
+): number {
+	if (idx >= count) return NO_MATCH;
+	const base = idx * 3;
+	if (tokens[base] !== punct_id) return NO_MATCH;
+	let depth = 0;
+	const start = tokens[base + 1];
+	const end = tokens[base + 2];
+	if (input.charCodeAt(start) !== open_code) return NO_MATCH;
+	for (let p = start; p < end; p++) {
+		const c = input.charCodeAt(p);
+		if (c === open_code) depth++;
+		else if (c === close_code) {
+			depth--;
+			if (depth === 0) return idx + 1;
+		}
+	}
+	const limit = Math.min(count, idx + 1 + max_tokens);
+	for (let i = idx + 1; i < limit; i++) {
+		const b = i * 3;
+		if (tokens[b] === punct_id) {
+			const s = tokens[b + 1];
+			const e = tokens[b + 2];
+			for (let p = s; p < e; p++) {
+				const c = input.charCodeAt(p);
+				if (c === open_code) depth++;
+				else if (c === close_code) {
+					depth--;
+					if (depth === 0) return i + 1;
+				}
+			}
+		}
+	}
+	return NO_MATCH;
+}
+
+// iterative bytecode VM for the forward matcher. returns the token idx
+// after the last matched token on success, or NO_MATCH on full failure.
+// clears the capture dirty bitfield at entry so the caller can read only
+// slots that were written during this match.
+//
+// trivia skipping is done inside OP_TYPE, OP_BALANCED, and OP_CAP_BEGIN —
+// matching the semantics of the tree matcher where `skip_trivia` was
+// called at the top of each match_pattern invocation but not for
+// non-advancing constructs (ALT/COMMIT/JUMP/CAP_END).
+//
+// backtrack semantics intentionally do NOT roll back captures (preserving
+// reclassifier.ts semantics where failed branches within any_of leave
+// stale captures that later successful branches overwrite, and on full
+// rule failure the caller discards everything).
+function match_bytecode(
+	program: Int32Array,
+	start_pc: number,
+	tokens: Uint32Array,
+	idx: number,
+	count: number,
+	input: string,
+	trivia: Uint8Array,
+	value_pool: Uint16Array,
+	value_offsets: Int32Array,
+	max_capture_slots: number,
+): number {
+	if (max_capture_slots > 0) {
+		ensure_cap_capacity(max_capture_slots);
+		const n_words = (max_capture_slots + 31) >>> 5;
+		for (let w = 0; w < n_words; w++) cap_dirty_words[w] = 0;
+	}
+
+	let pc = start_pc;
+	let bt_sp = 0;
+	let bt = bt_stack;
+	let failed = false;
+
+	while (true) {
+		const op = program[pc];
+		switch (op) {
+			case OP_TYPE: {
+				while (idx < count && trivia[tokens[idx * 3]]) idx++;
+				if (idx >= count) {
+					failed = true;
+					break;
+				}
+				const type_id = program[pc + 1];
+				const base = idx * 3;
+				if (tokens[base] !== type_id) {
+					failed = true;
+					break;
+				}
+				const values_id = program[pc + 2];
+				if (values_id >= 0) {
+					if (
+						!value_set_matches(
+							value_pool,
+							value_offsets,
+							values_id,
+							input,
+							tokens[base + 1],
+							tokens[base + 2],
+						)
+					) {
+						failed = true;
+						break;
+					}
+				}
+				idx++;
+				pc += 3;
+				break;
+			}
+			case OP_ALT: {
+				if (bt_sp + BT_STRIDE > bt.length) {
+					const grown = new Int32Array(bt.length * 2);
+					grown.set(bt);
+					bt = grown;
+					bt_stack = grown;
+				}
+				bt[bt_sp++] = program[pc + 1];
+				bt[bt_sp++] = idx;
+				pc += 2;
+				break;
+			}
+			case OP_JUMP: {
+				pc = program[pc + 1];
+				break;
+			}
+			case OP_COMMIT: {
+				bt_sp -= BT_STRIDE;
+				pc += 1;
+				break;
+			}
+			case OP_CAP_BEGIN: {
+				while (idx < count && trivia[tokens[idx * 3]]) idx++;
+				const slot = program[pc + 1];
+				cap_starts[slot] = idx;
+				pc += 2;
+				break;
+			}
+			case OP_CAP_END: {
+				const slot = program[pc + 1];
+				cap_ends[slot] = idx;
+				cap_dirty_words[slot >>> 5] |= 1 << (slot & 31);
+				pc += 2;
+				break;
+			}
+			case OP_BALANCED: {
+				while (idx < count && trivia[tokens[idx * 3]]) idx++;
+				const punct_id = program[pc + 1];
+				const open_code = program[pc + 2];
+				const close_code = program[pc + 3];
+				const max_tokens = program[pc + 4];
+				const new_idx = run_balanced(
+					tokens,
+					idx,
+					count,
+					input,
+					punct_id,
+					open_code,
+					close_code,
+					max_tokens,
+				);
+				if (new_idx === NO_MATCH) {
+					failed = true;
+					break;
+				}
+				idx = new_idx;
+				pc += 5;
+				break;
+			}
+			case OP_MATCH: {
+				return idx;
+			}
+			default: {
+				// unreachable — defensive. treat as failure.
+				failed = true;
+				break;
+			}
+		}
+		if (failed) {
+			if (bt_sp === 0) return NO_MATCH;
+			bt_sp -= BT_STRIDE;
+			pc = bt[bt_sp];
+			idx = bt[bt_sp + 1];
+			failed = false;
+		}
+	}
+}
+
+// silence "declared but not used" for the dev-only disassembler until we
+// choose to export it. referenced here so Biome doesn't strip it.
+void disassemble_program;
+
+// ---------------------------------------------------------------------------
 // rewrite_types
 // ---------------------------------------------------------------------------
 
@@ -502,12 +875,16 @@ interface CompiledRule {
 	// anchor rewrite target (phase 1 form). -1 means no anchor rewrite.
 	anchor_target_id: number;
 	// capture rewrite targets (phase 3 form). null if no capture rewrites.
-	capture_targets: { name: string; target_id: number }[] | null;
+	// slot_id is the dense slot index assigned by the bytecode compiler
+	// and used to read cap_starts / cap_ends / cap_dirty_words after a
+	// successful match.
+	capture_targets: { slot_id: number; target_id: number }[] | null;
 	before: CompiledPattern | null;
-	when: CompiledPattern;
-	// does `when` (or any nested branch) contain a capture()? if false we
-	// can skip allocating a captures Map in the hot loop.
-	needs_captures: boolean;
+	// bytecode-compiled forward matcher: `when_pc` is the entry into the
+	// shared program buffer; `max_capture_slots` is how many slots this
+	// rule reserves so the interpreter clears only those dirty bits.
+	when_pc: number;
+	max_capture_slots: number;
 }
 
 /**
@@ -533,9 +910,14 @@ export function rewrite_types(
 	// token_types clone consistently.
 	let cached_input_types: string[] | null = null;
 	let cached_compiled: CompiledRule[] | null = null;
-	let cached_by_anchor: Map<number, CompiledRule[]> | null = null;
+	let cached_anchor_offset: Int32Array | null = null;
+	let cached_anchor_count: Uint8Array | null = null;
+	let cached_rule_table: CompiledRule[] | null = null;
 	let cached_trivia: Uint8Array | null = null;
 	let cached_appended_types: string[] | null = null;
+	let cached_program: Int32Array | null = null;
+	let cached_value_pool: Uint16Array | null = null;
+	let cached_value_offsets: Int32Array | null = null;
 
 	return (input: string, result: TokenizeResult): TokenizeResult => {
 		// clone both arrays so the transform is pure -- the caller's raw
@@ -550,9 +932,14 @@ export function rewrite_types(
 		if (
 			cached_input_types === result.token_types &&
 			cached_compiled !== null &&
-			cached_by_anchor !== null &&
+			cached_anchor_offset !== null &&
+			cached_anchor_count !== null &&
+			cached_rule_table !== null &&
 			cached_trivia !== null &&
-			cached_appended_types !== null
+			cached_appended_types !== null &&
+			cached_program !== null &&
+			cached_value_pool !== null &&
+			cached_value_offsets !== null
 		) {
 			for (let i = 0; i < cached_appended_types.length; i++) {
 				token_types.push(cached_appended_types[i]);
@@ -562,8 +949,13 @@ export function rewrite_types(
 				input,
 				tokens,
 				token_types,
-				cached_by_anchor,
+				cached_anchor_offset,
+				cached_anchor_count,
+				cached_rule_table,
 				cached_trivia,
+				cached_program,
+				cached_value_pool,
+				cached_value_offsets,
 			);
 		}
 
@@ -582,20 +974,35 @@ export function rewrite_types(
 			return id;
 		};
 
+		const ctx = make_compile_ctx();
 		const compiled: CompiledRule[] = [];
 		for (const rule of rules) {
 			const anchor_id = name_to_id.get(rule.anchor);
 			if (anchor_id === undefined) continue;
 
+			// compile the forward pattern first so capture slot IDs are
+			// assigned before we translate rewrite targets that reference
+			// them by name.
+			const slots = make_capture_slots();
+			const when_pc = ctx.program_len;
+			compile_pattern_bytecode(rule.when, name_to_id, ctx, slots);
+			emit(ctx, OP_MATCH);
+
 			let anchor_target_id = -1;
-			let capture_targets: { name: string; target_id: number }[] | null = null;
+			let capture_targets: { slot_id: number; target_id: number }[] | null =
+				null;
 			if (typeof rule.rewrite === "string") {
 				anchor_target_id = ensure_id(rule.rewrite);
 			} else {
 				capture_targets = [];
 				for (const name of Object.keys(rule.rewrite)) {
+					const slot_id = slots.name_to_slot.get(name);
+					// capture name referenced in rewrite that doesn't appear
+					// in the when pattern — silently skip, same as the old
+					// Map.get() returning undefined.
+					if (slot_id === undefined) continue;
 					capture_targets.push({
-						name,
+						slot_id,
 						target_id: ensure_id(rule.rewrite[name]),
 					});
 				}
@@ -616,19 +1023,33 @@ export function rewrite_types(
 				anchor_target_id,
 				capture_targets,
 				before: rule.before ? compile_pattern(rule.before, name_to_id) : null,
-				when: compile_pattern(rule.when, name_to_id),
-				needs_captures: capture_targets !== null && has_capture(rule.when),
+				when_pc,
+				max_capture_slots: slots.max_slots,
 			});
 		}
 
-		const by_anchor = new Map<number, CompiledRule[]>();
+		// dense anchor dispatch table: for each token type_id, store the
+		// offset into rule_table and the number of rules that anchor on it.
+		// replaces a Map<type_id, CompiledRule[]> lookup with two typed
+		// array reads per token in the hot loop.
+		const type_count = Math.max(256, token_types.length);
+		const anchor_offset = new Int32Array(type_count);
+		anchor_offset.fill(-1);
+		const anchor_count = new Uint8Array(type_count);
+		const rule_table: CompiledRule[] = [];
+		const buckets = new Map<number, CompiledRule[]>();
 		for (const r of compiled) {
-			let list = by_anchor.get(r.anchor_id);
+			let list = buckets.get(r.anchor_id);
 			if (!list) {
 				list = [];
-				by_anchor.set(r.anchor_id, list);
+				buckets.set(r.anchor_id, list);
 			}
 			list.push(r);
+		}
+		for (const [anchor_id, list] of buckets) {
+			anchor_offset[anchor_id] = rule_table.length;
+			anchor_count[anchor_id] = list.length;
+			for (const r of list) rule_table.push(r);
 		}
 
 		const trivia = new Uint8Array(Math.max(256, token_types.length));
@@ -639,38 +1060,68 @@ export function rewrite_types(
 			}
 		}
 
+		// trim shared bytecode buffers to the exact size used. the growable
+		// buffers in CompileCtx are sized for growth; the cached frozen
+		// copies are tight so the interpreter reads only valid words.
+		const program = ctx.program.slice(0, ctx.program_len);
+		const value_pool = ctx.value_pool.slice(0, ctx.value_pool_len);
+		const value_offsets = ctx.value_offsets.slice(0, ctx.value_offsets_len * 2);
+
 		// snapshot any types that ensure_id appended past the original input
 		// vocab so the fast path can re-extend cleanly on subsequent calls.
 		cached_input_types = result.token_types;
 		cached_compiled = compiled;
-		cached_by_anchor = by_anchor;
+		cached_anchor_offset = anchor_offset;
+		cached_anchor_count = anchor_count;
+		cached_rule_table = rule_table;
 		cached_trivia = trivia;
 		cached_appended_types = token_types.slice(original_len);
+		cached_program = program;
+		cached_value_pool = value_pool;
+		cached_value_offsets = value_offsets;
 
 		if (compiled.length === 0) return { tokens, token_types };
-		return run_rewrite_loop(input, tokens, token_types, by_anchor, trivia);
+		return run_rewrite_loop(
+			input,
+			tokens,
+			token_types,
+			anchor_offset,
+			anchor_count,
+			rule_table,
+			trivia,
+			program,
+			value_pool,
+			value_offsets,
+		);
 	};
 }
 
 // hot loop extracted so the fast and slow paths share it. closes over
 // nothing mutable; pure walk over `tokens` applying matched rule rewrites
-// in place.
+// in place via the bytecode matcher. anchor dispatch is a direct array
+// index into anchor_offset/anchor_count rather than a Map.get per token.
 function run_rewrite_loop(
 	input: string,
 	tokens: Uint32Array,
 	token_types: string[],
-	by_anchor: Map<number, CompiledRule[]>,
+	anchor_offset: Int32Array,
+	anchor_count: Uint8Array,
+	rule_table: CompiledRule[],
 	trivia: Uint8Array,
+	program: Int32Array,
+	value_pool: Uint16Array,
+	value_offsets: Int32Array,
 ): TokenizeResult {
 	const count = tokens.length / 3;
 	for (let i = 0; i < count; i++) {
 		const type = tokens[i * 3];
 		if (trivia[type]) continue;
-		const rules_for_anchor = by_anchor.get(type);
-		if (!rules_for_anchor) continue;
+		const offset = anchor_offset[type];
+		if (offset < 0) continue;
+		const rcount = anchor_count[type];
 
-		for (let r = 0; r < rules_for_anchor.length; r++) {
-			const rule = rules_for_anchor[r];
+		for (let r = 0; r < rcount; r++) {
+			const rule = rule_table[offset + r];
 			if (rule.anchor_value_set !== null) {
 				const s = tokens[i * 3 + 1];
 				const e = tokens[i * 3 + 2];
@@ -686,30 +1137,38 @@ function run_rewrite_loop(
 				);
 				if (behind === NO_MATCH) continue;
 			}
-			const captures: Captures | null = rule.needs_captures ? new Map() : null;
-			const end = match_pattern(
-				rule.when,
+			const end = match_bytecode(
+				program,
+				rule.when_pc,
 				tokens,
 				i + 1,
 				count,
 				input,
 				trivia,
-				captures,
+				value_pool,
+				value_offsets,
+				rule.max_capture_slots,
 			);
 			if (end === NO_MATCH) continue;
 
 			// apply rewrites. anchor-target form simply flips the anchor's
-			// type; capture-target form walks each named span and rewrites
-			// every token in the range.
+			// type; capture-target form reads each slot's (start, end) pair
+			// from cap_starts/cap_ends and rewrites every token in the range
+			// but only if the slot's dirty bit is set (indicating the
+			// capture actually fired — optional captures may not).
 			if (rule.anchor_target_id !== -1) {
 				tokens[i * 3] = rule.anchor_target_id;
 			}
-			if (rule.capture_targets !== null && captures !== null) {
+			if (rule.capture_targets !== null) {
 				for (let c = 0; c < rule.capture_targets.length; c++) {
 					const target = rule.capture_targets[c];
-					const span = captures.get(target.name);
-					if (span === undefined) continue;
-					for (let t = span[0]; t < span[1]; t++) {
+					const slot = target.slot_id;
+					if ((cap_dirty_words[slot >>> 5] & (1 << (slot & 31))) === 0) {
+						continue;
+					}
+					const s = cap_starts[slot];
+					const e = cap_ends[slot];
+					for (let t = s; t < e; t++) {
 						tokens[t * 3] = target.target_id;
 					}
 				}

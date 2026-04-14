@@ -7,6 +7,7 @@
 
 export {
 	function_variable_rules,
+	interface_member_promoter,
 	reclassifiers,
 	scan_tagged_template,
 } from "@twinkleplop/javascript";
