@@ -1,0 +1,12 @@
+export { test as basic } from "./basic.output.js";
+export { test as comments } from "./comments.output.js";
+export { test as complex } from "./complex.output.js";
+export { test as ddl } from "./ddl.output.js";
+export { test as identifiers } from "./identifiers.output.js";
+export { test as mysql } from "./mysql.output.js";
+export { test as numbers } from "./numbers.output.js";
+export { test as operators } from "./operators.output.js";
+export { test as parameters } from "./parameters.output.js";
+export { test as postgresql } from "./postgresql.output.js";
+export { test as strings } from "./strings.output.js";
+export { test as tsql } from "./tsql.output.js";

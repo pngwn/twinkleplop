@@ -6,7 +6,8 @@ const DEFAULTS: Record<string, string> = {
 	whitespace: 'whitespace_css',
 	html: 'embedded',
 	svelte: 'counter',
-	rust: 'complex'
+	rust: 'complex',
+	sql: 'complex'
 };
 
 export const load = async ({ params }) => {

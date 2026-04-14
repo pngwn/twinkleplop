@@ -12,9 +12,10 @@ const SHIKI_LANG_MAP: Record<string, string> = {
 	svelte: 'svelte',
 	rust: 'rust',
 	typescript: 'typescript',
+	sql: 'sql',
 };
 
-const SHIKI_LANGS = ['css', 'javascript', 'html', 'svelte', 'rust', 'typescript', 'c'] as const;
+const SHIKI_LANGS = ['css', 'javascript', 'html', 'svelte', 'rust', 'typescript', 'sql', 'c'] as const;
 
 let highlighter_promise: Promise<Highlighter> | null = null;
 

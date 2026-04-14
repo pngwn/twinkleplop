@@ -66,6 +66,13 @@
 				grammar: () => import('@twinkleplop/typescript'),
 				test: () => import('@twinkleplop/typescript/test')
 			}
+		],
+		[
+			'sql',
+			{
+				grammar: () => import('@twinkleplop/sql'),
+				test: () => import('@twinkleplop/sql/test')
+			}
 		]
 ]);
 

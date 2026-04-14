@@ -32,6 +32,7 @@
 		"@twinkleplop/html": "workspace:*",
 		"@twinkleplop/javascript": "workspace:*",
 		"@twinkleplop/rust": "workspace:*",
+		"@twinkleplop/sql": "workspace:*",
 		"@twinkleplop/svelte": "workspace:*",
 		"@twinkleplop/twoslash": "workspace:*",
 		"@twinkleplop/twoslash-svelte": "workspace:*",

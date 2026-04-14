@@ -9,7 +9,7 @@
 - [ ] Bash/Shell
 - [ ] Markdown
 - [ ] YAML
-- [ ] SQL
+- [x] SQL
 - [x] Rust
 - [ ] Go
 - [x] Svelte
