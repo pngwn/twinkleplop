@@ -1,0 +1,36 @@
+- [x] JavaScript
+- [x] TypeScript
+- [ ] JSX
+- [ ] TSX
+- [x] HTML
+- [x] CSS
+- [x] JSON
+- [ ] Python
+- [ ] Bash/Shell
+- [ ] Markdown
+- [ ] YAML
+- [ ] SQL
+- [x] Rust
+- [ ] Go
+- [x] Svelte
+- [ ] Java
+- [ ] C
+- [ ] C++
+- [ ] C#
+- [ ] Ruby
+- [ ] PHP
+- [ ] TOML
+- [ ] Diff
+- [ ] Dockerfile
+- [ ] GraphQL
+- [ ] Plaintext
+- [ ] Kotlin
+- [ ] Swift
+- [ ] Zig
+- [ ] Elixir
+- [ ] Lua
+- [ ] HCL/Terraform
+- [ ] Nix
+- [ ] PowerShell
+- [ ] Vue
+- [ ] Astro

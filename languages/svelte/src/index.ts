@@ -1,5 +1,5 @@
-import { compile } from "@twinkleplop/core/compile";
 import { create_language } from "@twinkleplop/core";
+import { compile } from "@twinkleplop/core/compile";
 import { default as raw_grammar } from "./grammar.js";
 import { reclassifiers } from "./reclassifiers.js";
 

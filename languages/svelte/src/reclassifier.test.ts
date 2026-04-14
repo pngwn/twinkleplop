@@ -2,7 +2,7 @@
 // including JS/CSS embedding for script/style blocks AND JS embedding for
 // `{expression}` interpolations and block expression bodies.
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { language } from "./index.js";
 
 function enrich(src: string) {
@@ -60,9 +60,9 @@ describe("Svelte language — `{expression}` interpolations", () => {
 		const src = "{count === 1 ? 'one' : 'many'}";
 		const tokens = enrich(src);
 		expect(type_of(tokens, "count")).toBe("identifier");
-		expect(
-			tokens.some((t) => t.type === "operator" && t.value === "==="),
-		).toBe(true);
+		expect(tokens.some((t) => t.type === "operator" && t.value === "===")).toBe(
+			true,
+		);
 		// Strings inside the ternary are tokenized.
 		expect(tokens.some((t) => t.type === "string")).toBe(true);
 	});
@@ -100,7 +100,7 @@ describe("Svelte language — block expressions", () => {
 		const tokens = enrich(src);
 		// The block keyword is preserved.
 		expect(
-			tokens.some((t) => t.type === "svelte-block" && t.value === "{#if"),
+			tokens.some((t) => t.type === "svelte-block" && t.value === "#if"),
 		).toBe(true);
 		// The expression is tokenized as JS.
 		expect(type_of(tokens, "count")).toBe("identifier");
@@ -123,7 +123,7 @@ describe("Svelte language — block expressions", () => {
 		const src = "{@const doubled = count * 2}";
 		const tokens = enrich(src);
 		expect(
-			tokens.some((t) => t.type === "svelte-directive" && t.value === "{@const"),
+			tokens.some((t) => t.type === "svelte-directive" && t.value === "@const"),
 		).toBe(true);
 		expect(type_of(tokens, "doubled")).toBe("identifier");
 		expect(type_of(tokens, "count")).toBe("identifier");

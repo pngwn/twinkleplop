@@ -1,0 +1,3 @@
+{#key version}
+	<Component />
+{/key}

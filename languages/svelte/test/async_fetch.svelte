@@ -1,19 +1,19 @@
 <script>
-	let url = $state('/api/users');
+const url = $state("/api/users");
 
-	async function fetchUsers() {
-		const response = await fetch(url);
-		if (!response.ok) {
-			throw new Error(`Request failed: ${response.status}`);
-		}
-		return response.json();
+async function fetchUsers() {
+	const response = await fetch(url);
+	if (!response.ok) {
+		throw new Error(`Request failed: ${response.status}`);
 	}
+	return response.json();
+}
 
-	let promise = $state(fetchUsers());
+let promise = $state(fetchUsers());
 
-	function refresh() {
-		promise = fetchUsers();
-	}
+function refresh() {
+	promise = fetchUsers();
+}
 </script>
 
 <style>

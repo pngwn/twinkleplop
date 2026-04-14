@@ -1,9 +1,9 @@
 <script>
-	let count = $state(0);
-	const double = $derived(count * 2);
+let count = $state(0);
+const double = $derived(count * 2);
 
-	const increment = () => count++;
-	const reset = () => (count = 0);
+const increment = () => count++;
+const reset = () => (count = 0);
 </script>
 
 <style>

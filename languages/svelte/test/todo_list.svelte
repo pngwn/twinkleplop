@@ -1,36 +1,36 @@
 <script>
-	let items = $state([
-		{ id: 1, text: 'Ship Phase 3.5', done: true },
-		{ id: 2, text: 'Write architecture docs', done: true },
-		{ id: 3, text: 'Build a Svelte grammar', done: true },
-		{ id: 4, text: 'Drink coffee', done: false },
-	]);
-	let newItem = $state('');
-	let filter = $state('all');
+let items = $state([
+	{ id: 1, text: "Ship Phase 3.5", done: true },
+	{ id: 2, text: "Write architecture docs", done: true },
+	{ id: 3, text: "Build a Svelte grammar", done: true },
+	{ id: 4, text: "Drink coffee", done: false },
+]);
+let newItem = $state("");
+const filter = $state("all");
 
-	const visible = $derived(
-		filter === 'all'
-			? items
-			: items.filter((item) => (filter === 'done' ? item.done : !item.done)),
+const visible = $derived(
+	filter === "all"
+		? items
+		: items.filter((item) => (filter === "done" ? item.done : !item.done)),
+);
+
+const remaining = $derived(items.filter((item) => !item.done).length);
+
+function addItem() {
+	if (!newItem.trim()) return;
+	items = [...items, { id: Date.now(), text: newItem.trim(), done: false }];
+	newItem = "";
+}
+
+function toggle(id) {
+	items = items.map((item) =>
+		item.id === id ? { ...item, done: !item.done } : item,
 	);
+}
 
-	const remaining = $derived(items.filter((item) => !item.done).length);
-
-	function addItem() {
-		if (!newItem.trim()) return;
-		items = [...items, { id: Date.now(), text: newItem.trim(), done: false }];
-		newItem = '';
-	}
-
-	function toggle(id) {
-		items = items.map((item) =>
-			item.id === id ? { ...item, done: !item.done } : item,
-		);
-	}
-
-	function remove(id) {
-		items = items.filter((item) => item.id !== id);
-	}
+function remove(id) {
+	items = items.filter((item) => item.id !== id);
+}
 </script>
 
 <style>

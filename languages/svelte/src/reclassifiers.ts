@@ -13,8 +13,8 @@
 // module-load time (same pattern as the HTML package).
 
 import { embed_grammars } from "@twinkleplop/core";
-import { language as js_language } from "@twinkleplop/javascript";
 import { language as css_language } from "@twinkleplop/css";
+import { language as js_language } from "@twinkleplop/javascript";
 
 export const reclassifiers = [
 	embed_grammars({
