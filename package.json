@@ -11,9 +11,7 @@
 		"build:lib": "pnpm --filter=@twinkleplop/core -r build",
 		"build": "pnpm build:lib && pnpm build:languages"
 	},
-	"keywords": [
-
-	],
+	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"devDependencies": {
@@ -24,6 +22,7 @@
 		"dts-buddy": "^0.6.2",
 		"prismjs": "^1.30.0",
 		"typescript": "^5.8.3",
+		"vite": "^7.3.2",
 		"vitest": "^3.1.2"
 	},
 	"pnpm": {

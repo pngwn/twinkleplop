@@ -9,7 +9,6 @@
 	const lang_map: Record<string, string> = {
 		css: 'css',
 		javascript: 'javascript',
-		clike: 'clike',
 		rust: 'rust',
 		typescript: "typescript"
 	};

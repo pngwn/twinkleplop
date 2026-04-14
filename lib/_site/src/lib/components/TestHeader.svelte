@@ -13,7 +13,7 @@
 		lang,
 		test,
 		css_files,
-		all_languages = ['css', 'javascript', 'clike', 'whitespace']
+		all_languages = ['css', 'javascript', 'whitespace']
 	}: Props = $props();
 
 	let show_lang_menu = $state(false);
