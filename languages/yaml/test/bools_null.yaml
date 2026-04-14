@@ -1,0 +1,13 @@
+strict_true: true
+strict_false: False
+legacy_yes: yes
+legacy_no: NO
+legacy_on: on
+legacy_off: Off
+short_y: y
+short_n: N
+null_word: null
+null_upper: NULL
+null_tilde: ~
+not_bool: tRuE
+not_null: null-ish

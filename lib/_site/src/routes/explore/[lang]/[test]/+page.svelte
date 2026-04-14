@@ -73,6 +73,13 @@
 				grammar: () => import('@twinkleplop/sql'),
 				test: () => import('@twinkleplop/sql/test')
 			}
+		],
+		[
+			'yaml',
+			{
+				grammar: () => import('@twinkleplop/yaml'),
+				test: () => import('@twinkleplop/yaml/test')
+			}
 		]
 ]);
 

@@ -1,0 +1,8 @@
+server: &default
+  host: localhost
+  port: 8080
+backup: *default
+tagged: !!str "hello"
+custom_tag: !myapp/widget 42
+verbatim_tag: !<tag:example.com,2024:foo> value
+named_handle: !e!special data

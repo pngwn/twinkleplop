@@ -1,0 +1,13 @@
+literal: |
+  line one
+  line two
+folded: >
+  words wrap
+  into one line
+stripped: |-
+  no trailing newline
+kept: |+
+  keep trailing
+explicit: |2
+  indented
+next: value

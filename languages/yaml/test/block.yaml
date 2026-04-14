@@ -1,0 +1,12 @@
+sequence:
+  - apple
+  - banana
+  - cherry
+mapping:
+  key1: value1
+  key2: value2
+mixed:
+  - name: first
+    value: 1
+  - name: second
+    value: 2

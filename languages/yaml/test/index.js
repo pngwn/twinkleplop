@@ -1,0 +1,10 @@
+export { test as anchors } from "./anchors.output.js";
+export { test as basic } from "./basic.output.js";
+export { test as block } from "./block.output.js";
+export { test as block_scalars } from "./block_scalars.output.js";
+export { test as bools_null } from "./bools_null.output.js";
+export { test as comments } from "./comments.output.js";
+export { test as directives } from "./directives.output.js";
+export { test as flow } from "./flow.output.js";
+export { test as numbers } from "./numbers.output.js";
+export { test as scalars } from "./scalars.output.js";

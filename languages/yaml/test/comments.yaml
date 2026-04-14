@@ -1,0 +1,5 @@
+# top level comment
+key: value  # trailing comment
+# another comment
+other: 42
+no_space: foo#bar

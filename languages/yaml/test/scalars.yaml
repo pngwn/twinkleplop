@@ -1,0 +1,10 @@
+plain: hello world
+double: "escaped \"quote\" and \n newline"
+single: 'it''s fine'
+empty_dq: ""
+empty_sq: ''
+url: https://example.com/path
+path: /usr/local/bin
+regex: '\d+\.\d+'
+embedded_colon: foo:bar
+hash_interior: foo#bar

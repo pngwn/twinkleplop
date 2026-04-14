@@ -1,0 +1,14 @@
+decimal: 42
+negative: -17
+positive: +3
+float: 3.14
+exponent: 1.5e-3
+leading_dot: .5
+trailing_dot: 5.
+hex: 0xFF
+octal: 0o755
+infinity: .inf
+neg_inf: -.Inf
+nan: .NaN
+not_number: 0b1010
+timestamp: 2024-01-02

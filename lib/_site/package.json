@@ -38,6 +38,7 @@
 		"@twinkleplop/twoslash-svelte": "workspace:*",
 		"@twinkleplop/typescript": "workspace:*",
 		"@twinkleplop/whitespace": "workspace:*",
+		"@twinkleplop/yaml": "workspace:*",
 		"prismjs": "^1.30.0",
 		"shiki": "^4.0.2"
 	}

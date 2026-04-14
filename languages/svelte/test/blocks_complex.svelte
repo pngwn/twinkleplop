@@ -56,3 +56,14 @@
 {#if x /* > }? */ > 0}
 	<p>positive</p>
 {/if}
+
+
+{#each arr.filter(b => ({
+  a: 1,
+  /* > }? */  c: "}"
+})) as A<B> as C as D, i (html`<h1>hi</h1>` + "}")}
+	<li>{id}</li>
+{/each}
+
+
+

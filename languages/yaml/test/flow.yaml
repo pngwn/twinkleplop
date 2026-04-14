@@ -1,0 +1,6 @@
+seq: [1, 2, 3]
+map: { host: localhost, port: 8080 }
+nested: [[1, 2], { a: 1, b: 2 }]
+mixed: [true, null, "string", 1.5]
+tagged: [!!str 3, !custom value]
+trailing_comma: [1, 2, 3,]
