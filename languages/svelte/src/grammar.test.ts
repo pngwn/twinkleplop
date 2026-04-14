@@ -62,13 +62,36 @@ describe("Svelte grammar — HTML structure", () => {
 		).toEqual(["Button", "Button"]);
 	});
 
-	it("recognizes svelte:* special elements", () => {
+	it("splits `<svelte:component>` into svelte-element + : + tag-name", () => {
 		const tokens = tokens_of("<svelte:component this={X}/>");
 		expect(
-			tokens.some(
-				(t) => t.type === "tag-name" && t.value === "svelte:component",
-			),
+			tokens.some((t) => t.type === "svelte-element" && t.value === "svelte"),
 		).toBe(true);
+		expect(
+			tokens.some((t) => t.type === "tag-name" && t.value === "component"),
+		).toBe(true);
+		expect(
+			tokens.some((t) => t.type === "punctuation" && t.value === ":"),
+		).toBe(true);
+	});
+
+	it("leaves `<notsvelte:foo>` alone", () => {
+		const tokens = tokens_of("<notsvelte:foo/>");
+		expect(
+			tokens.some((t) => t.type === "tag-name" && t.value === "notsvelte:foo"),
+		).toBe(true);
+		expect(tokens.some((t) => t.type === "svelte-element")).toBe(false);
+	});
+
+	it("does not split `<noscript>` as a script block", () => {
+		const tokens = tokens_of("<noscript>hi</noscript>");
+		// The `script` keyword should NOT fire mid-name.
+		expect(
+			tokens.some((t) => t.type === "raw_script"),
+		).toBe(false);
+		expect(
+			tokens.filter((t) => t.type === "tag-name").map((t) => t.value),
+		).toEqual(["noscript", "noscript"]);
 	});
 
 	it("tokenizes attributes with string values", () => {
@@ -100,10 +123,10 @@ describe("Svelte grammar — HTML structure", () => {
 });
 
 describe("Svelte grammar — `{expression}` interpolations", () => {
-	it("splits `{name}` into punctuation + expression + punctuation", () => {
+	it("splits `{name}` into expression + body + expression", () => {
 		const tokens = tokens_of("<p>Hello {name}!</p>");
 		const braces = tokens.filter(
-			(t) => t.type === "punctuation" && (t.value === "{" || t.value === "}"),
+			(t) => t.type === "expression" && (t.value === "{" || t.value === "}"),
 		);
 		expect(braces.map((t) => t.value)).toEqual(["{", "}"]);
 		const raw = tokens.filter((t) => t.type === "raw_svelte_expression");
@@ -113,12 +136,12 @@ describe("Svelte grammar — `{expression}` interpolations", () => {
 	it("handles nested braces via state stack", () => {
 		const src = "{fn({a: 1, b: 2})}";
 		const tokens = tokens_of(src);
-		// Only the outer `{` and `}` are punctuation; inner braces are part
+		// Only the outer `{` and `}` are `expression`; inner braces are part
 		// of the raw_svelte_expression span.
-		const punct = tokens.filter(
-			(t) => t.type === "punctuation" && (t.value === "{" || t.value === "}"),
+		const expr = tokens.filter(
+			(t) => t.type === "expression" && (t.value === "{" || t.value === "}"),
 		);
-		expect(punct.map((t) => t.value)).toEqual(["{", "}"]);
+		expect(expr.map((t) => t.value)).toEqual(["{", "}"]);
 		const raw = tokens.filter((t) => t.type === "raw_svelte_expression");
 		expect(raw.map((t) => t.value).join("")).toBe("fn({a: 1, b: 2})");
 	});
@@ -232,10 +255,20 @@ describe("Svelte grammar — element directives", () => {
 });
 
 describe("Svelte grammar — block syntax", () => {
-	it("splits `{#if expr}` into `{` + `#if` + body + `}`", () => {
+	it("splits `{#if expr}` into `{` + `#` + `if` + body + `}`", () => {
 		const tokens = tokens_of("{#if ready}<p>yes</p>{/if}");
-		const blocks = tokens.filter((t) => t.type === "svelte-block");
-		expect(blocks.map((t) => t.value)).toEqual(["#if", "/if"]);
+		const blocks = tokens
+			.filter((t) => t.type === "svelte-block")
+			.map((t) => t.value);
+		expect(blocks).toEqual(["if", "if"]);
+		// The `#` and `/` sigils are emitted as punctuation before the
+		// block keyword.
+		const sigils = tokens
+			.filter(
+				(t) => t.type === "punctuation" && (t.value === "#" || t.value === "/"),
+			)
+			.map((t) => t.value);
+		expect(sigils).toEqual(["#", "/"]);
 		const raw = tokens.filter((t) => t.type === "raw_svelte_expression");
 		expect(
 			raw
@@ -243,31 +276,36 @@ describe("Svelte grammar — block syntax", () => {
 				.join("")
 				.trim(),
 		).toBe("ready");
-		// Every `{` and `}` is punctuation (adjacent-to-other-punctuation
+		// Every `{` and `}` is `expression` (adjacent-to-other-expression
 		// tokens coalesce, so count characters not tokens).
-		const punct = tokens
-			.filter((t) => t.type === "punctuation")
+		const expr = tokens
+			.filter((t) => t.type === "expression")
 			.map((t) => t.value)
 			.join("");
-		expect([...punct].filter((c) => c === "{").length).toBe(2);
-		expect([...punct].filter((c) => c === "}").length).toBe(2);
+		expect([...expr].filter((c) => c === "{").length).toBe(2);
+		expect([...expr].filter((c) => c === "}").length).toBe(2);
 	});
 
 	it("recognizes `{#each}` with as-binding and key", () => {
 		const tokens = tokens_of("{#each items as item, i (item.id)}{/each}");
-		const blocks = tokens.filter((t) => t.type === "svelte-block");
-		expect(blocks.map((t) => t.value)).toEqual(["#each", "/each"]);
+		const blocks = tokens
+			.filter((t) => t.type === "svelte-block")
+			.map((t) => t.value);
+		expect(blocks).toEqual(["each", "each"]);
 	});
 
 	it("recognizes `{:else}` and `{:else if expr}`", () => {
 		const tokens1 = tokens_of("{:else}");
 		expect(
-			tokens1.some((t) => t.type === "svelte-block" && t.value === ":else"),
+			tokens1.some((t) => t.type === "svelte-block" && t.value === "else"),
+		).toBe(true);
+		expect(
+			tokens1.some((t) => t.type === "punctuation" && t.value === ":"),
 		).toBe(true);
 
 		const tokens2 = tokens_of("{:else if ready}");
 		expect(
-			tokens2.some((t) => t.type === "svelte-block" && t.value === ":else if"),
+			tokens2.some((t) => t.type === "svelte-block" && t.value === "else if"),
 		).toBe(true);
 	});
 
@@ -278,33 +316,33 @@ describe("Svelte grammar — block syntax", () => {
 		const blocks = tokens
 			.filter((t) => t.type === "svelte-block")
 			.map((t) => t.value);
-		expect(blocks).toEqual(["#await", ":then", ":catch", "/await"]);
+		expect(blocks).toEqual(["await", "then", "catch", "await"]);
 	});
 
 	it("recognizes `{#key}` and `{#snippet}`", () => {
 		const t1 = tokens_of("{#key x}<div/>{/key}");
 		expect(
-			t1.some((t) => t.type === "svelte-block" && t.value === "#key"),
-		).toBe(true);
-		expect(
-			t1.some((t) => t.type === "svelte-block" && t.value === "/key"),
-		).toBe(true);
+			t1.filter((t) => t.type === "svelte-block").map((t) => t.value),
+		).toEqual(["key", "key"]);
 
 		const t2 = tokens_of("{#snippet foo(x)}<p>{x}</p>{/snippet}");
 		expect(
-			t2.some((t) => t.type === "svelte-block" && t.value === "#snippet"),
-		).toBe(true);
-		expect(
-			t2.some((t) => t.type === "svelte-block" && t.value === "/snippet"),
-		).toBe(true);
+			t2.filter((t) => t.type === "svelte-block").map((t) => t.value),
+		).toEqual(["snippet", "snippet"]);
 	});
 
-	it("recognizes `{@html}`, `{@const}`, `{@debug}`, `{@render}`", () => {
-		for (const d of ["@html", "@const", "@debug", "@render"]) {
-			const t = tokens_of(`{${d} x}`);
-			expect(
-				t.some((u) => u.type === "svelte-directive" && u.value === d),
-			).toBe(true);
+	it("emits `{@html}`, `{@const}`, `{@debug}`, `{@render}` as svelte-block", () => {
+		for (const d of ["html", "const", "debug", "render"]) {
+			const t = tokens_of(`{@${d} x}`);
+			expect(t.some((u) => u.type === "svelte-block" && u.value === d)).toBe(
+				true,
+			);
+			// `@` is punctuation and sits between `{` and the keyword.
+			expect(t.some((u) => u.type === "punctuation" && u.value === "@")).toBe(
+				true,
+			);
+			// No `svelte-directive` tokens leak for at-directive forms.
+			expect(t.some((u) => u.type === "svelte-directive")).toBe(false);
 		}
 	});
 });

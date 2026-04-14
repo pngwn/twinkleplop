@@ -2,6 +2,25 @@
 // `{#if}` / `{#each}` / `{#await}` / `{#key}` / `{#snippet}` block syntax,
 // and Svelte element directives (`bind:`, `on:`, `use:`, etc.).
 //
+// Token model:
+//   - `{` and `}` that delimit a Svelte expression, block, or directive
+//     emit the `expression` token type (distinct from `punctuation` used
+//     for `<`, `>`, `=`, `|`, etc.).
+//   - The sigil that introduces a block or at-directive (`#`, `:`, `/`,
+//     `@`) emits as `punctuation`; the keyword that follows emits as
+//     `svelte-block` — one token type covers every `{#if}`, `{:else}`,
+//     `{/each}`, `{@html}`, `{@const}`, etc.
+//   - The name `svelte-directive` is reserved for element directive
+//     prefixes (`bind:`, `on:`, …); it never applies to `{@…}` forms.
+//   - Element directive prefixes (`bind:`, `on:`, `use:`, `transition:`,
+//     `in:`, `out:`, `animate:`, `class:`, `style:`, `let:`) emit the full
+//     `prefix:` run as a single `svelte-directive` token; the property
+//     name follows as a regular `attr-name` and `|` modifier separators
+//     are `punctuation`.
+//   - Attribute string values support interpolation: `class="foo {bar}"`
+//     emits string / expression / expression-body / expression / string,
+//     so the `{bar}` is surfaced for JS sub-tokenization.
+//
 // Scope:
 //   - All of HTML's structural tokenization: tags, attrs, comments, doctype.
 //   - `<script>` and `<style>` blocks → raw_script / raw_style, routed to
@@ -9,36 +28,24 @@
 //   - Generic `{expression}` interpolation in both text content and
 //     attribute values. Body captured as `raw_svelte_expression` (coalesced)
 //     and handed to the JS sub-language.
-//   - Svelte block syntax: the opening `{` is always `punctuation`, then a
-//     `svelte-block` token captures the keyword (`#if`, `:else if`, `/each`,
-//     …), then an expression body (if any), then the closing `}` as
-//     `punctuation`. Every `{` and `}` in the grammar is `punctuation` for
-//     symmetry.
-//   - `{@html}`, `{@const}`, `{@debug}`, `{@render}` emit the keyword as
-//     `svelte-directive`; same `{` / body / `}` shape as blocks.
-//   - Element directive prefixes (`bind:`, `on:`, `use:`, `transition:`,
-//     `in:`, `out:`, `animate:`, `class:`, `style:`, `let:`) emit the whole
-//     `prefix:` run as a single `svelte-directive` token; the property name
-//     after follows as a regular `attr-name`, and `|` modifier separators
-//     are `punctuation`.
-//   - Attribute string values support interpolation: `class="foo {bar}"`
-//     emits string / punctuation / expression / punctuation / string, so
-//     the `{bar}` is surfaced for JS sub-tokenization.
+//   - Svelte special elements (`<svelte:component>`, etc.) are emitted as
+//     a single `tag-name` span here; a reclassifier splits the `svelte:`
+//     namespace in the post-pass.
 //
 // Known limitations:
-//   - `<svelte:component>` / `<svelte:element>` / etc. are emitted as a
-//     single `tag-name` token (the `:` is baked into the tag name run);
-//     the grammar does not split the `svelte:` namespace.
 //   - Inside a `raw_svelte_expression` body, `{` / `}` nesting is tracked
-//     via the `expression_brace` state and string skipping (`"` / `'`),
-//     but template literals (`` ` ``) with `${…}` interpolation are NOT
-//     escape-aware here — the JS sub-language handles them correctly once
-//     the outer `}` is located, which only works because template literals
-//     in real Svelte expressions do not contain unescaped `}` at the outer
-//     nesting level in practice.
-//   - `@attach`/runes references (`$state`, `$derived`, `$effect`, `$props`,
-//     `$bindable`) are JS-level constructs tokenized by the embedded JS
-//     grammar, not here.
+//     via the `expression_brace` state with string skipping (`"` / `'`)
+//     and comment skipping (`//…\n`, `/*…*/`), but template literals
+//     (`` ` ``) with `${…}` interpolation are not escape-aware here — the
+//     JS sub-language handles them correctly once the outer `}` is located,
+//     which only works because template literals in real Svelte expressions
+//     do not contain unescaped `}` at the outer nesting level in practice.
+//   - Regex literals are not recognized — a regex containing `}` closes the
+//     expression early, and a regex whose first `/` sits immediately after
+//     `{` is read as the close-block sigil shared with `{/if}` / `{/each}`.
+//   - Dangling sigils (e.g. `{#notARealBlock}`) emit `#` as punctuation
+//     and treat the remainder as a JS expression — the grammar does not
+//     validate that the keyword after the sigil is a known block.
 
 import {
 	enter,
@@ -52,11 +59,12 @@ import {
 	within,
 } from "@twinkleplop/core";
 
-import { define_grammar } from "@twinkleplop/core/compile";
 import * as TOKENS from "@twinkleplop/core/tokens";
+import { define_grammar } from "@twinkleplop/core/compile";
 
 // Token type names. Most match the HTML grammar so styles carry over.
 const TAG_NAME = "tag-name";
+const TAG_BOUNDARY = "tag-boundary";
 const ATTR_NAME = "attr-name";
 const DOCTYPE = "doctype";
 const RAW_SCRIPT = "raw_script";
@@ -65,8 +73,11 @@ const RAW_STYLE = "raw_style";
 const SVELTE_BLOCK = "svelte-block";
 const SVELTE_DIRECTIVE = "svelte-directive";
 const RAW_SVELTE_EXPRESSION = "raw_svelte_expression";
+// Distinct type for `{` / `}` that bound a Svelte expression or block.
+const EXPRESSION = "expression";
 
-// Tag name chars include `:` so `<svelte:component>` is a single token.
+// Tag name chars include `:` so `<svelte:component>` is a single token at
+// this layer. A reclassifier splits `svelte:X` in the post-pass.
 const TAG_NAME_CHARS = range([
 	["a", "z"],
 	["A", "Z"],
@@ -86,31 +97,26 @@ const ATTR_NAME_CHARS = range([
 	["_", "_"],
 ]);
 
-// Block keywords emitted after the opening `{`. Longest-first ordering is
-// handled by the compiler within a single match() call, so `:else if`
-// beats `:else` automatically.
+// Block keyword bodies (no sigil). Within a single match() the compiler
+// sorts descending-length per first-char bucket, so `else if` beats `else`.
 const BLOCK_KEYWORDS = [
-	"#if",
-	"#each",
-	"#await",
-	"#key",
-	"#snippet",
-	":else if",
-	":else",
-	":then",
-	":catch",
-	"/if",
-	"/each",
-	"/await",
-	"/key",
-	"/snippet",
+	"if",
+	"each",
+	"await",
+	"key",
+	"snippet",
+	"else if",
+	"else",
+	"then",
+	"catch",
 ];
 
-// At-directives emitted after the opening `{`.
-const AT_DIRECTIVES = ["@html", "@const", "@debug", "@render"];
+// At-directive keyword bodies (no sigil).
+const AT_DIRECTIVES = ["html", "const", "debug", "render"];
 
-// Element directive prefixes. Each includes the trailing `:` so the whole
-// run is one token; the property name after is a regular attr-name.
+// Element directive prefixes (attribute-level). Each includes the trailing
+// `:` so the whole run is one token; the property name after is a regular
+// attr-name.
 const DIRECTIVE_PREFIXES = [
 	"bind:",
 	"on:",
@@ -130,7 +136,7 @@ const DIRECTIVE_PREFIXES = [
 const insideTagRules = [
 	on([" ", "\t", "\n", "\r"]),
 	match("=", TOKENS.operator),
-	match("{", TOKENS.punctuation, enter("expression_body")),
+	match("{", EXPRESSION, enter("expression_body")),
 	match('"', TOKENS.string, enter("attr_string_double")),
 	match("'", TOKENS.string, enter("attr_string_single")),
 	match(DIRECTIVE_PREFIXES, SVELTE_DIRECTIVE),
@@ -145,6 +151,8 @@ const insideTagRules = [
 const expressionBodyRules = [
 	within('"', '"', RAW_SVELTE_EXPRESSION, { escape: "\\", multiline: true }),
 	within("'", "'", RAW_SVELTE_EXPRESSION, { escape: "\\", multiline: true }),
+	within("/*", "*/", RAW_SVELTE_EXPRESSION, { multiline: true }),
+	within("//", "\n", RAW_SVELTE_EXPRESSION),
 	match("{", RAW_SVELTE_EXPRESSION, enter("expression_brace")),
 	fallback({ token: RAW_SVELTE_EXPRESSION }),
 ];
@@ -160,40 +168,104 @@ export default define_grammar({
 			rules: [
 				within("<!--", "-->", TOKENS.comment),
 				match(["<!DOCTYPE", "<!doctype"], DOCTYPE, enter("doctype")),
-				match("</", TOKENS.punctuation, enter("close_tag")),
-				match("<", TOKENS.punctuation, enter("tag_open")),
-				// `{` is always punctuation; brace_start dispatches to the
-				// right expression state based on what follows.
-				match("{", TOKENS.punctuation, enter("brace_start")),
+				match("</", TAG_BOUNDARY, enter("close_tag")),
+				match("<", TAG_BOUNDARY, enter("tag_start")),
+				// `{` always emits `expression`; brace_start dispatches on
+				// the sigil that follows.
+				match("{", EXPRESSION, enter("brace_start")),
 				fallback({}),
 			],
 		},
 
 		// -------------------------------------------------------------------
-		// brace_start — just consumed `{`, decide block vs directive vs expr
+		// brace_start — just consumed `{`, route on sigil
 		// -------------------------------------------------------------------
 		//
-		// goto() here (not enter) because we're replacing brace_start on the
-		// stack with expression_body — the `{` already pushed content onto
-		// the stack, and we want expression_body's `}`→leave() to pop back
-		// to content.
+		// The sigil (`#`, `:`, `/`, `@`) emits as `punctuation`; the
+		// keyword that follows emits as `svelte-block` (both block and
+		// at-directive families share the same token type). goto() here
+		// (not enter) because we're replacing brace_start on the stack —
+		// the `{` already pushed the parent state.
 		brace_start: {
 			rules: [
-				match(BLOCK_KEYWORDS, SVELTE_BLOCK, goto("expression_body")),
-				match(AT_DIRECTIVES, SVELTE_DIRECTIVE, goto("expression_body")),
+				match(["#", "/", ":"], TOKENS.punctuation, goto("block_keyword")),
+				match("@", TOKENS.punctuation, goto("at_directive_keyword")),
 				fallback(goto("expression_body")),
 			],
 		},
 
 		// -------------------------------------------------------------------
-		// tag_open — just consumed `<`, now reading the tag name
+		// block_keyword — just consumed `#`, `/`, or `:`; match a known
+		// block keyword or fall through to expression body.
 		// -------------------------------------------------------------------
-		tag_open: {
+		block_keyword: {
+			rules: [
+				match(BLOCK_KEYWORDS, SVELTE_BLOCK, goto("expression_body")),
+				fallback(goto("expression_body")),
+			],
+		},
+
+		// -------------------------------------------------------------------
+		// at_directive_keyword — just consumed `@`; the keyword emits as
+		// `svelte-block` (same token type as block keywords — `svelte-
+		// directive` is reserved for element directive prefixes like
+		// `bind:`, `on:`).
+		// -------------------------------------------------------------------
+		at_directive_keyword: {
+			rules: [
+				match(AT_DIRECTIVES, SVELTE_BLOCK, goto("expression_body")),
+				fallback(goto("expression_body")),
+			],
+		},
+
+		// -------------------------------------------------------------------
+		// tag_start — fires ONCE, just consumed `<`
+		// -------------------------------------------------------------------
+		//
+		// Special-name rules (script, style, svelte:) live here so they
+		// only match at the true start of a tag name. `boundary: true`
+		// alone wouldn't be safe — it only checks the char AFTER the
+		// pattern, so `<notsvelte:foo>` would match the `svelte` run at
+		// position 3 and split the tag name incorrectly. After one name
+		// char is consumed we `goto("tag_open")`, which has no keyword
+		// rules and just extends the tag-name run.
+		tag_start: {
 			rules: [
 				keyword(["script"], goto("script_attrs"), TAG_NAME),
 				keyword(["style"], goto("style_attrs"), TAG_NAME),
-				match("/>", TOKENS.punctuation, leave()),
-				match(">", TOKENS.punctuation, leave()),
+				match("svelte", "svelte-element", {
+					boundary: true,
+					...goto("tag_svelte_ns"),
+				}),
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, leave()),
+				on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
+				match(TAG_NAME_CHARS, TAG_NAME, goto("tag_open")),
+			],
+		},
+
+		// -------------------------------------------------------------------
+		// tag_svelte_ns — just emitted `svelte` as svelte-element; expect
+		// the namespace separator `:`. If something else follows (e.g.
+		// `<svelte-foo>`) the fallback routes to tag_open which extends
+		// the tag-name run gracefully.
+		// -------------------------------------------------------------------
+		tag_svelte_ns: {
+			rules: [
+				match(":", TOKENS.punctuation, goto("tag_open")),
+				fallback(goto("tag_open")),
+			],
+		},
+
+		// -------------------------------------------------------------------
+		// tag_open — continuation of a tag name after the first char has
+		// been consumed. No keyword rules here so mid-name runs like
+		// `<noscript>` don't spuriously match `script` at position 3.
+		// -------------------------------------------------------------------
+		tag_open: {
+			rules: [
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, leave()),
 				on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
 				match(TAG_NAME_CHARS, TAG_NAME),
 			],
@@ -204,8 +276,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		tag_attrs: {
 			rules: [
-				match("/>", TOKENS.punctuation, leave()),
-				match(">", TOKENS.punctuation, leave()),
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, leave()),
 				...insideTagRules,
 			],
 		},
@@ -215,7 +287,7 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		close_tag: {
 			rules: [
-				match(">", TOKENS.punctuation, leave()),
+				match(">", TAG_BOUNDARY, leave()),
 				on([" ", "\t", "\n", "\r"]),
 				match(TAG_NAME_CHARS, TAG_NAME),
 			],
@@ -226,7 +298,7 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		doctype: {
 			rules: [
-				match(">", TOKENS.punctuation, leave()),
+				match(">", TAG_BOUNDARY, leave()),
 				fallback({ token: DOCTYPE }),
 			],
 		},
@@ -236,17 +308,43 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		script_attrs: {
 			rules: [
-				match("/>", TOKENS.punctuation, leave()),
-				match(">", TOKENS.punctuation, goto("script_content")),
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, goto("script_content")),
 				...insideTagRules,
 			],
 		},
 
+		// See the comment on script_content in the HTML grammar — the
+		// closer is split via a probe chain so `</script>` emits three
+		// tokens (`</` tag-boundary · `script` tag-name · `>` tag-
+		// boundary) instead of one atomic tag-name span.
 		script_content: {
 			rules: [
-				match("</script>", TAG_NAME, leave()),
+				on("</", enter("script_close_probe")),
 				fallback({ token: RAW_SCRIPT }),
 			],
+		},
+
+		script_close_probe: {
+			mode: "probe",
+			fallback: "script_close_fail",
+			rules: [on("script>", goto("script_close_emit"))],
+		},
+
+		script_close_fail: {
+			rules: [match("<", RAW_SCRIPT, leave())],
+		},
+
+		script_close_emit: {
+			rules: [match("</", TAG_BOUNDARY, goto("script_close_name"))],
+		},
+
+		script_close_name: {
+			rules: [match("script", TAG_NAME, goto("script_close_gt"))],
+		},
+
+		script_close_gt: {
+			rules: [match(">", TAG_BOUNDARY, leave())],
 		},
 
 		// -------------------------------------------------------------------
@@ -254,17 +352,39 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		style_attrs: {
 			rules: [
-				match("/>", TOKENS.punctuation, leave()),
-				match(">", TOKENS.punctuation, goto("style_content")),
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, goto("style_content")),
 				...insideTagRules,
 			],
 		},
 
 		style_content: {
 			rules: [
-				match("</style>", TAG_NAME, leave()),
+				on("</", enter("style_close_probe")),
 				fallback({ token: RAW_STYLE }),
 			],
+		},
+
+		style_close_probe: {
+			mode: "probe",
+			fallback: "style_close_fail",
+			rules: [on("style>", goto("style_close_emit"))],
+		},
+
+		style_close_fail: {
+			rules: [match("<", RAW_STYLE, leave())],
+		},
+
+		style_close_emit: {
+			rules: [match("</", TAG_BOUNDARY, goto("style_close_name"))],
+		},
+
+		style_close_name: {
+			rules: [match("style", TAG_NAME, goto("style_close_gt"))],
+		},
+
+		style_close_gt: {
+			rules: [match(">", TAG_BOUNDARY, leave())],
 		},
 
 		// -------------------------------------------------------------------
@@ -278,7 +398,7 @@ export default define_grammar({
 		attr_string_double: {
 			rules: [
 				match('"', TOKENS.string, leave()),
-				match("{", TOKENS.punctuation, enter("expression_body")),
+				match("{", EXPRESSION, enter("expression_body")),
 				fallback({ token: TOKENS.string }),
 			],
 		},
@@ -286,7 +406,7 @@ export default define_grammar({
 		attr_string_single: {
 			rules: [
 				match("'", TOKENS.string, leave()),
-				match("{", TOKENS.punctuation, enter("expression_body")),
+				match("{", EXPRESSION, enter("expression_body")),
 				fallback({ token: TOKENS.string }),
 			],
 		},
@@ -300,7 +420,10 @@ export default define_grammar({
 		// Nested `{…}` pushes an expression_brace which only pops one
 		// level on its `}`.
 		expression_body: {
-			rules: [match("}", TOKENS.punctuation, leave()), ...expressionBodyRules],
+			rules: [
+				match("}", EXPRESSION, leave()),
+				...expressionBodyRules,
+			],
 		},
 
 		// -------------------------------------------------------------------

@@ -977,15 +977,26 @@ export function rewrite_types(
 		const ctx = make_compile_ctx();
 		const compiled: CompiledRule[] = [];
 		for (const rule of rules) {
-			const anchor_id = name_to_id.get(rule.anchor);
+			// anchor can be a bare type name or a `type(name, value)` spec —
+			// normalize to (name, optional value constraint) up front.
+			const anchor_spec =
+				typeof rule.anchor === "string"
+					? { type_name: rule.anchor, value: undefined as string | string[] | undefined }
+					: { type_name: rule.anchor.type_name, value: rule.anchor.value };
+			const anchor_id = name_to_id.get(anchor_spec.type_name);
 			if (anchor_id === undefined) continue;
 
 			// compile the forward pattern first so capture slot IDs are
 			// assigned before we translate rewrite targets that reference
-			// them by name.
+			// them by name. an absent `when` compiles to a bare OP_MATCH —
+			// the forward scan succeeds immediately without consuming any
+			// tokens, leaving `before` (and the anchor's value constraint,
+			// if any) as the only filters.
 			const slots = make_capture_slots();
 			const when_pc = ctx.program_len;
-			compile_pattern_bytecode(rule.when, name_to_id, ctx, slots);
+			if (rule.when !== undefined) {
+				compile_pattern_bytecode(rule.when, name_to_id, ctx, slots);
+			}
 			emit(ctx, OP_MATCH);
 
 			let anchor_target_id = -1;
@@ -1009,11 +1020,11 @@ export function rewrite_types(
 			}
 
 			let anchor_value_set: Set<string> | null = null;
-			if (rule.anchor_value !== undefined) {
+			if (anchor_spec.value !== undefined) {
 				anchor_value_set = new Set(
-					Array.isArray(rule.anchor_value)
-						? rule.anchor_value
-						: [rule.anchor_value],
+					Array.isArray(anchor_spec.value)
+						? anchor_spec.value
+						: [anchor_spec.value],
 				);
 			}
 

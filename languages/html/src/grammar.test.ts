@@ -31,25 +31,25 @@ describe("HTML grammar — basic elements", () => {
 	it("tokenizes a self-closing tag", () => {
 		const tokens = tokens_of("<br/>");
 		expect(tokens).toEqual([
-			{ type: "punctuation", value: "<", start: 0, end: 1 },
+			{ type: "tag-boundary", value: "<", start: 0, end: 1 },
 			{ type: "tag-name", value: "br", start: 1, end: 3 },
-			{ type: "punctuation", value: "/>", start: 3, end: 5 },
+			{ type: "tag-boundary", value: "/>", start: 3, end: 5 },
 		]);
 	});
 
 	it("tokenizes an open/close tag pair", () => {
 		const tokens = tokens_of("<p></p>");
-		// Note: adjacent same-type punctuation tokens are coalesced by the
+		// Note: adjacent same-type tag-boundary tokens are coalesced by the
 		// tokenizer (performance optimization — rendering is byte-identical).
 		// So the `>` of the open tag and the `</` of the close tag fuse into
-		// a single `></` punctuation token. We verify the structure via the
-		// type sequence and the accumulated values.
+		// a single `></` tag-boundary token. We verify the structure via
+		// the type sequence and the accumulated values.
 		expect(types_of(tokens)).toEqual([
-			"punctuation", // <
-			"tag-name",    // p
-			"punctuation", // ></
-			"tag-name",    // p
-			"punctuation", // >
+			"tag-boundary", // <
+			"tag-name",     // p
+			"tag-boundary", // ></
+			"tag-name",     // p
+			"tag-boundary", // >
 		]);
 		expect(tokens.map((t) => t.value).join("")).toBe("<p></p>");
 	});
@@ -86,7 +86,7 @@ describe("HTML grammar — basic elements", () => {
 		const doctype = tokens.filter((t) => t.type === "doctype");
 		expect(doctype.length).toBeGreaterThan(0);
 		const last_tok = tokens[tokens.length - 1];
-		expect(last_tok).toMatchObject({ type: "punctuation", value: ">" });
+		expect(last_tok).toMatchObject({ type: "tag-boundary", value: ">" });
 	});
 
 	it("leaves plain text content untokenized", () => {

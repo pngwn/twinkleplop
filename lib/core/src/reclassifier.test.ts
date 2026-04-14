@@ -163,8 +163,7 @@ describe("reclassifier — rewrite_types", () => {
 describe("reclassifier — matcher primitives", () => {
 	test("seq matches a sequence in order", () => {
 		const rule: RewriteRule = {
-			anchor: "keyword",
-			anchor_value: "let",
+			anchor: type("keyword", "let"),
 			when: seq(type("identifier"), type("operator", "=")),
 			rewrite: "boolean", // abuse an unrelated name so we can detect the rewrite
 		};
@@ -224,10 +223,9 @@ describe("reclassifier — matcher primitives", () => {
 		);
 	});
 
-	test("anchor_value constrains the anchor token's source text", () => {
+	test("anchor as type() constrains the anchor token's source text", () => {
 		const rule: RewriteRule = {
-			anchor: "identifier",
-			anchor_value: ["bar"],
+			anchor: type("identifier", ["bar"]),
 			when: type("operator", "="),
 			rewrite: "function",
 		};
@@ -235,6 +233,17 @@ describe("reclassifier — matcher primitives", () => {
 		const tokens = types_only(result, "foo = 1 bar = 2");
 		expect(tokens.find((t) => t.value === "foo")?.type).toBe("identifier");
 		expect(tokens.find((t) => t.value === "bar")?.type).toBe("function");
+	});
+
+	test("rule with only `before` succeeds when `when` is omitted", () => {
+		const rule: RewriteRule = {
+			anchor: "identifier",
+			before: type("keyword", "const"),
+			rewrite: "function",
+		};
+		const result = run("const foo = 1", [rule]);
+		const tokens = types_only(result, "const foo = 1");
+		expect(tokens.find((t) => t.value === "foo")?.type).toBe("function");
 	});
 });
 
@@ -442,8 +451,7 @@ describe("reclassifier — embedGrammars", () => {
 describe("reclassifier — capture-based rewrites", () => {
 	test("rewrites a single captured token to a new type", () => {
 		const rule: RewriteRule = {
-			anchor: "keyword",
-			anchor_value: "const",
+			anchor: type("keyword", "const"),
 			when: seq(
 				capture("name", type("identifier")),
 				type("operator", "="),
@@ -461,8 +469,7 @@ describe("reclassifier — capture-based rewrites", () => {
 
 	test("rewrites multiple captures in one rule", () => {
 		const rule: RewriteRule = {
-			anchor: "keyword",
-			anchor_value: "const",
+			anchor: type("keyword", "const"),
 			when: seq(
 				capture("name", type("identifier")),
 				type("operator", "="),
@@ -480,8 +487,7 @@ describe("reclassifier — capture-based rewrites", () => {
 
 	test("missing capture target is silently ignored", () => {
 		const rule: RewriteRule = {
-			anchor: "keyword",
-			anchor_value: "const",
+			anchor: type("keyword", "const"),
 			when: seq(capture("name", type("identifier"))),
 			rewrite: { name: "function", missing: "ghost" },
 		};
@@ -494,8 +500,7 @@ describe("reclassifier — capture-based rewrites", () => {
 
 	test("capture spanning multiple tokens rewrites every token in the span", () => {
 		const rule: RewriteRule = {
-			anchor: "keyword",
-			anchor_value: "let",
+			anchor: type("keyword", "let"),
 			when: seq(
 				capture(
 					"group",
@@ -515,8 +520,7 @@ describe("reclassifier — capture-based rewrites", () => {
 
 	test("capture inside optional only triggers on the taken branch", () => {
 		const rule: RewriteRule = {
-			anchor: "keyword",
-			anchor_value: "const",
+			anchor: type("keyword", "const"),
 			when: seq(
 				capture("name", type("identifier")),
 				optional(

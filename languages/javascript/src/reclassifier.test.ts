@@ -216,13 +216,13 @@ describe("JavaScript reclassifier — tagged template literals", () => {
 		const tokens = enrich(src);
 		// The `<p>` should be at its real offsets in the source.
 		const lt = tokens.find(
-			(t) => t.type === "punctuation" && t.value === "<",
+			(t) => t.type === "tag-boundary" && t.value === "<",
 		);
 		expect(lt?.start).toBe(15); // Position right after the opening backtick
 		// The `</p>` should be at the right offset too — find the closing
-		// punctuation token that starts with `</`.
+		// tag-boundary token that starts with `</`.
 		const close_p = tokens.find(
-			(t) => t.type === "punctuation" && t.value === "</",
+			(t) => t.type === "tag-boundary" && t.value === "</",
 		);
 		expect(close_p).toBeDefined();
 	});
@@ -293,19 +293,19 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		// `hi` is plain text after the attribute value — no specific token
 		// type; just verify `</p>` is tokenized as HTML.
 		expect(
-			tokens.some((t) => t.type === "punctuation" && t.value === "</"),
+			tokens.some((t) => t.type === "tag-boundary" && t.value === "</"),
 		).toBe(true);
 	});
 
 	it("tag-name-position interpolation: html`<${Tag}>hi</${Tag}>`", () => {
 		const src = "const x = html`<${Tag}>hi</${Tag}>`";
 		const tokens = enrich(src);
-		// Opening and closing HTML `<` and `>` punctuation preserved.
+		// Opening and closing HTML `<` and `>` boundary tokens preserved.
 		expect(
-			tokens.some((t) => t.type === "punctuation" && t.value === "<"),
+			tokens.some((t) => t.type === "tag-boundary" && t.value === "<"),
 		).toBe(true);
 		expect(
-			tokens.some((t) => t.type === "punctuation" && t.value === "</"),
+			tokens.some((t) => t.type === "tag-boundary" && t.value === "</"),
 		).toBe(true);
 		// Interpolations passed through as JS.
 		const identifiers = tokens.filter(

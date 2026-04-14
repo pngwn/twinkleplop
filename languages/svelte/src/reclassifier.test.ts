@@ -98,10 +98,14 @@ describe("Svelte language — block expressions", () => {
 	it("tokenizes `{#if expr}` body as JS", () => {
 		const src = "{#if count > 0}yes{/if}";
 		const tokens = enrich(src);
-		// The block keyword is preserved.
+		// The block keyword (without sigil) is a svelte-block token.
 		expect(
-			tokens.some((t) => t.type === "svelte-block" && t.value === "#if"),
+			tokens.some((t) => t.type === "svelte-block" && t.value === "if"),
 		).toBe(true);
+		// `#` is a punctuation token.
+		expect(tokens.some((t) => t.type === "punctuation" && t.value === "#")).toBe(
+			true,
+		);
 		// The expression is tokenized as JS.
 		expect(type_of(tokens, "count")).toBe("identifier");
 		expect(type_of(tokens, "0")).toBe("number");
@@ -122,12 +126,50 @@ describe("Svelte language — block expressions", () => {
 	it("tokenizes `{@const}` directive body as JS", () => {
 		const src = "{@const doubled = count * 2}";
 		const tokens = enrich(src);
+		// `@const` tokenizes as `@` (punctuation) + `const` (svelte-block).
 		expect(
-			tokens.some((t) => t.type === "svelte-directive" && t.value === "@const"),
+			tokens.some((t) => t.type === "svelte-block" && t.value === "const"),
 		).toBe(true);
+		expect(tokens.some((t) => t.type === "punctuation" && t.value === "@")).toBe(
+			true,
+		);
 		expect(type_of(tokens, "doubled")).toBe("identifier");
 		expect(type_of(tokens, "count")).toBe("identifier");
 		expect(type_of(tokens, "2")).toBe("number");
+	});
+});
+
+describe("Svelte language — `svelte:*` elements", () => {
+	it("splits `svelte:component` into svelte-element + : + tag-name", () => {
+		const src = "<svelte:component this={X}/>";
+		const tokens = enrich(src);
+		expect(
+			tokens.some((t) => t.type === "svelte-element" && t.value === "svelte"),
+		).toBe(true);
+		expect(
+			tokens.some((t) => t.type === "tag-name" && t.value === "component"),
+		).toBe(true);
+		// The `:` between them is punctuation.
+		expect(tokens.some((t) => t.type === "punctuation" && t.value === ":")).toBe(
+			true,
+		);
+		// And no lingering combined `svelte:component` tag-name.
+		expect(
+			tokens.some(
+				(t) => t.type === "tag-name" && t.value === "svelte:component",
+			),
+		).toBe(false);
+	});
+
+	it("leaves `notsvelte:options` alone", () => {
+		const src = "<notsvelte:options foo={x}/>";
+		const tokens = enrich(src);
+		expect(
+			tokens.some(
+				(t) => t.type === "tag-name" && t.value === "notsvelte:options",
+			),
+		).toBe(true);
+		expect(tokens.some((t) => t.type === "svelte-element")).toBe(false);
 	});
 });
 

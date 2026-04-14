@@ -1,6 +1,6 @@
 export const test = [
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 0,
 		"end": 1,
 		"match": "<"
@@ -12,7 +12,7 @@ export const test = [
 		"match": "script"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 7,
 		"end": 8,
 		"match": ">"
@@ -24,13 +24,25 @@ export const test = [
 		"match": "\nlet items = $state([\n\t{ id: 1, text: \"Ship Phase 3.5\", done: true },\n\t{ id: 2, text: \"Write architecture docs\", done: true },\n\t{ id: 3, text: \"Build a Svelte grammar\", done: true },\n\t{ id: 4, text: \"Drink coffee\", done: false },\n]);\nlet newItem = $state(\"\");\nconst filter = $state(\"all\");\n\nconst visible = $derived(\n\tfilter === \"all\"\n\t\t? items\n\t\t: items.filter((item) => (filter === \"done\" ? item.done : !item.done)),\n);\n\nconst remaining = $derived(items.filter((item) => !item.done).length);\n\nfunction addItem() {\n\tif (!newItem.trim()) return;\n\titems = [...items, { id: Date.now(), text: newItem.trim(), done: false }];\n\tnewItem = \"\";\n}\n\nfunction toggle(id) {\n\titems = items.map((item) =>\n\t\titem.id === id ? { ...item, done: !item.done } : item,\n\t);\n}\n\nfunction remove(id) {\n\titems = items.filter((item) => item.id !== id);\n}\n"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag-boundary",
 		"start": 836,
-		"end": 845,
-		"match": "</script>"
+		"end": 838,
+		"match": "</"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-name",
+		"start": 838,
+		"end": 844,
+		"match": "script"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 844,
+		"end": 845,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 847,
 		"end": 848,
 		"match": "<"
@@ -42,7 +54,7 @@ export const test = [
 		"match": "style"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 853,
 		"end": 854,
 		"match": ">"
@@ -54,13 +66,25 @@ export const test = [
 		"match": "\n\t.todo {\n\t\tmax-width: 28rem;\n\t\tmargin: 2rem auto;\n\t\tfont-family: system-ui, sans-serif;\n\t\tbackground: #111;\n\t\tborder-radius: 12px;\n\t\tpadding: 1.5rem;\n\t\tbox-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);\n\t}\n\n\t.todo h1 {\n\t\tmargin: 0 0 1rem;\n\t\tcolor: #fff;\n\t}\n\n\t.todo__form {\n\t\tdisplay: flex;\n\t\tgap: 0.5rem;\n\t\tmargin-bottom: 1rem;\n\t}\n\n\t.todo__input {\n\t\tflex: 1;\n\t\tpadding: 0.5rem;\n\t\tbackground: #1a1a1a;\n\t\tborder: 1px solid #333;\n\t\tcolor: #eaeaea;\n\t\tborder-radius: 4px;\n\t}\n\n\t.todo__list {\n\t\tlist-style: none;\n\t\tpadding: 0;\n\t\tmargin: 0;\n\t}\n\n\t.todo__item {\n\t\tdisplay: flex;\n\t\talign-items: center;\n\t\tgap: 0.5rem;\n\t\tpadding: 0.5rem 0;\n\t\tborder-bottom: 1px solid #222;\n\t}\n\n\t.todo__item--done .todo__text {\n\t\ttext-decoration: line-through;\n\t\tcolor: #666;\n\t}\n\n\t.todo__text {\n\t\tflex: 1;\n\t\tcolor: #eaeaea;\n\t}\n\n\t.todo__filters {\n\t\tdisplay: flex;\n\t\tgap: 0.5rem;\n\t\tmargin-top: 1rem;\n\t}\n\n\t.todo__filter {\n\t\tpadding: 0.25rem 0.75rem;\n\t\tbackground: transparent;\n\t\tborder: 1px solid #333;\n\t\tcolor: #aaa;\n\t\tborder-radius: 4px;\n\t\tcursor: pointer;\n\t}\n\n\t.todo__filter--active {\n\t\tbackground: #0070f3;\n\t\tcolor: white;\n\t\tborder-color: #0070f3;\n\t}\n\n\t.todo__remaining {\n\t\tmargin-top: 1rem;\n\t\tcolor: #888;\n\t\tfont-size: 0.875rem;\n\t}\n"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag-boundary",
 		"start": 2051,
-		"end": 2059,
-		"match": "</style>"
+		"end": 2053,
+		"match": "</"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-name",
+		"start": 2053,
+		"end": 2058,
+		"match": "style"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 2058,
+		"end": 2059,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 2061,
 		"end": 2062,
 		"match": "<"
@@ -90,13 +114,13 @@ export const test = [
 		"match": "\"todo\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2078,
 		"end": 2079,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2081,
 		"end": 2082,
 		"match": "<"
@@ -108,13 +132,13 @@ export const test = [
 		"match": "h1"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2084,
 		"end": 2085,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2091,
 		"end": 2092,
 		"match": "{"
@@ -126,13 +150,13 @@ export const test = [
 		"match": "remaining"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2101,
 		"end": 2102,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2113,
 		"end": 2115,
 		"match": "</"
@@ -144,13 +168,13 @@ export const test = [
 		"match": "h1"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2117,
 		"end": 2118,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2121,
 		"end": 2122,
 		"match": "<"
@@ -192,7 +216,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2155,
 		"end": 2156,
 		"match": "{"
@@ -204,13 +228,19 @@ export const test = [
 		"match": "addItem"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2163,
-		"end": 2165,
-		"match": "}>"
+		"end": 2164,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 2164,
+		"end": 2165,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 2168,
 		"end": 2169,
 		"match": "<"
@@ -276,7 +306,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2227,
 		"end": 2228,
 		"match": "{"
@@ -288,7 +318,7 @@ export const test = [
 		"match": "newItem"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2235,
 		"end": 2236,
 		"match": "}"
@@ -312,13 +342,13 @@ export const test = [
 		"match": "\"What needs doing?\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2274,
 		"end": 2276,
 		"match": "/>"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2279,
 		"end": 2280,
 		"match": "<"
@@ -348,13 +378,13 @@ export const test = [
 		"match": "\"submit\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2300,
 		"end": 2301,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2304,
 		"end": 2306,
 		"match": "</"
@@ -366,13 +396,13 @@ export const test = [
 		"match": "button"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2312,
 		"end": 2313,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2315,
 		"end": 2317,
 		"match": "</"
@@ -384,22 +414,28 @@ export const test = [
 		"match": "form"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2321,
 		"end": 2322,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2325,
 		"end": 2326,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 2326,
+		"end": 2327,
+		"match": "#"
+	},
+	{
+		"type": "svelte-block",
+		"start": 2327,
 		"end": 2329,
-		"match": "#if"
+		"match": "if"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -408,13 +444,13 @@ export const test = [
 		"match": " visible.length === 0"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2350,
 		"end": 2351,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2354,
 		"end": 2355,
 		"match": "<"
@@ -426,13 +462,13 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2356,
 		"end": 2357,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2408,
 		"end": 2410,
 		"match": "</"
@@ -444,31 +480,37 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2411,
 		"end": 2412,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2414,
 		"end": 2415,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 2415,
-		"end": 2420,
-		"match": ":else"
+		"end": 2416,
+		"match": ":"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 2416,
+		"end": 2420,
+		"match": "else"
+	},
+	{
+		"type": "expression",
 		"start": 2420,
 		"end": 2421,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2424,
 		"end": 2425,
 		"match": "<"
@@ -498,22 +540,28 @@ export const test = [
 		"match": "\"todo__list\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2446,
 		"end": 2447,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2451,
 		"end": 2452,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 2452,
+		"end": 2453,
+		"match": "#"
+	},
+	{
+		"type": "svelte-block",
+		"start": 2453,
 		"end": 2457,
-		"match": "#each"
+		"match": "each"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -522,13 +570,13 @@ export const test = [
 		"match": " visible as item (item.id)"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2483,
 		"end": 2484,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2489,
 		"end": 2490,
 		"match": "<"
@@ -576,7 +624,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2545,
 		"end": 2546,
 		"match": "{"
@@ -588,19 +636,19 @@ export const test = [
 		"match": "item.done"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2555,
 		"end": 2556,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2561,
 		"end": 2562,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2568,
 		"end": 2569,
 		"match": "<"
@@ -642,7 +690,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2611,
 		"end": 2612,
 		"match": "{"
@@ -654,7 +702,7 @@ export const test = [
 		"match": "item.done"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2621,
 		"end": 2622,
 		"match": "}"
@@ -672,7 +720,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2638,
 		"end": 2639,
 		"match": "{"
@@ -684,19 +732,19 @@ export const test = [
 		"match": "() => toggle(item.id)"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2660,
 		"end": 2661,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2667,
 		"end": 2669,
 		"match": "/>"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2675,
 		"end": 2676,
 		"match": "<"
@@ -726,10 +774,16 @@ export const test = [
 		"match": "\"todo__text\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2699,
+		"end": 2700,
+		"match": ">"
+	},
+	{
+		"type": "expression",
+		"start": 2700,
 		"end": 2701,
-		"match": ">{"
+		"match": "{"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -738,10 +792,16 @@ export const test = [
 		"match": "item.text"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2710,
+		"end": 2711,
+		"match": "}"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 2711,
 		"end": 2713,
-		"match": "}</"
+		"match": "</"
 	},
 	{
 		"type": "tag-name",
@@ -750,13 +810,13 @@ export const test = [
 		"match": "span"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2717,
 		"end": 2718,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2724,
 		"end": 2725,
 		"match": "<"
@@ -780,7 +840,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2740,
 		"end": 2741,
 		"match": "{"
@@ -792,13 +852,19 @@ export const test = [
 		"match": "() => remove(item.id)"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2762,
-		"end": 2764,
-		"match": "}>"
+		"end": 2763,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 2763,
+		"end": 2764,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 2765,
 		"end": 2767,
 		"match": "</"
@@ -810,13 +876,13 @@ export const test = [
 		"match": "button"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2773,
 		"end": 2774,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2779,
 		"end": 2781,
 		"match": "</"
@@ -828,31 +894,37 @@ export const test = [
 		"match": "li"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2783,
 		"end": 2784,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2788,
 		"end": 2789,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 2789,
-		"end": 2794,
-		"match": "/each"
+		"end": 2790,
+		"match": "/"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 2790,
+		"end": 2794,
+		"match": "each"
+	},
+	{
+		"type": "expression",
 		"start": 2794,
 		"end": 2795,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2798,
 		"end": 2800,
 		"match": "</"
@@ -864,31 +936,37 @@ export const test = [
 		"match": "ul"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2802,
 		"end": 2803,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2805,
 		"end": 2806,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 2806,
-		"end": 2809,
-		"match": "/if"
+		"end": 2807,
+		"match": "/"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 2807,
+		"end": 2809,
+		"match": "if"
+	},
+	{
+		"type": "expression",
 		"start": 2809,
 		"end": 2810,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2813,
 		"end": 2814,
 		"match": "<"
@@ -918,22 +996,28 @@ export const test = [
 		"match": "\"todo__filters\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2839,
 		"end": 2840,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2843,
 		"end": 2844,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 2844,
+		"end": 2845,
+		"match": "#"
+	},
+	{
+		"type": "svelte-block",
+		"start": 2845,
 		"end": 2849,
-		"match": "#each"
+		"match": "each"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -942,13 +1026,13 @@ export const test = [
 		"match": " ['all', 'active', 'done'] as f"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2880,
 		"end": 2881,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 2885,
 		"end": 2886,
 		"match": "<"
@@ -996,7 +1080,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2949,
 		"end": 2950,
 		"match": "{"
@@ -1008,7 +1092,7 @@ export const test = [
 		"match": "filter === f"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2962,
 		"end": 2963,
 		"match": "}"
@@ -1026,7 +1110,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2976,
 		"end": 2977,
 		"match": "{"
@@ -1038,19 +1122,19 @@ export const test = [
 		"match": "() => (filter = f)"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 2995,
 		"end": 2996,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3000,
 		"end": 3001,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3006,
 		"end": 3007,
 		"match": "{"
@@ -1062,13 +1146,13 @@ export const test = [
 		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3008,
 		"end": 3009,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3013,
 		"end": 3015,
 		"match": "</"
@@ -1080,31 +1164,37 @@ export const test = [
 		"match": "button"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3021,
 		"end": 3022,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3025,
 		"end": 3026,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 3026,
-		"end": 3031,
-		"match": "/each"
+		"end": 3027,
+		"match": "/"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 3027,
+		"end": 3031,
+		"match": "each"
+	},
+	{
+		"type": "expression",
 		"start": 3031,
 		"end": 3032,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3034,
 		"end": 3036,
 		"match": "</"
@@ -1116,13 +1206,13 @@ export const test = [
 		"match": "div"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3039,
 		"end": 3040,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3043,
 		"end": 3044,
 		"match": "<"
@@ -1152,22 +1242,28 @@ export const test = [
 		"match": "\"todo__remaining\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3069,
 		"end": 3070,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3073,
 		"end": 3074,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 3074,
+		"end": 3075,
+		"match": "#"
+	},
+	{
+		"type": "svelte-block",
+		"start": 3075,
 		"end": 3077,
-		"match": "#if"
+		"match": "if"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -1176,22 +1272,28 @@ export const test = [
 		"match": " remaining === 0"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3093,
 		"end": 3094,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3117,
 		"end": 3118,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 3118,
+		"end": 3119,
+		"match": ":"
+	},
+	{
+		"type": "svelte-block",
+		"start": 3119,
 		"end": 3126,
-		"match": ":else if"
+		"match": "else if"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -1200,31 +1302,37 @@ export const test = [
 		"match": " remaining === 1"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3142,
 		"end": 3143,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3161,
 		"end": 3162,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 3162,
-		"end": 3167,
-		"match": ":else"
+		"end": 3163,
+		"match": ":"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 3163,
+		"end": 3167,
+		"match": "else"
+	},
+	{
+		"type": "expression",
 		"start": 3167,
 		"end": 3168,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3172,
 		"end": 3173,
 		"match": "{"
@@ -1236,31 +1344,37 @@ export const test = [
 		"match": "remaining"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3182,
 		"end": 3183,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 3197,
 		"end": 3198,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 3198,
-		"end": 3201,
-		"match": "/if"
+		"end": 3199,
+		"match": "/"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 3199,
+		"end": 3201,
+		"match": "if"
+	},
+	{
+		"type": "expression",
 		"start": 3201,
 		"end": 3202,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3204,
 		"end": 3206,
 		"match": "</"
@@ -1272,13 +1386,13 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3207,
 		"end": 3208,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3209,
 		"end": 3211,
 		"match": "</"
@@ -1290,7 +1404,7 @@ export const test = [
 		"match": "div"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 3214,
 		"end": 3215,
 		"match": ">"

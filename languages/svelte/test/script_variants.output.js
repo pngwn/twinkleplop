@@ -1,6 +1,6 @@
 export const test = [
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 0,
 		"end": 1,
 		"match": "<"
@@ -12,7 +12,7 @@ export const test = [
 		"match": "script"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 7,
 		"end": 8,
 		"match": ">"
@@ -24,13 +24,25 @@ export const test = [
 		"match": "let a = 1;"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag-boundary",
 		"start": 18,
-		"end": 27,
-		"match": "</script>"
+		"end": 20,
+		"match": "</"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-name",
+		"start": 20,
+		"end": 26,
+		"match": "script"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 26,
+		"end": 27,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 28,
 		"end": 29,
 		"match": "<"
@@ -60,7 +72,7 @@ export const test = [
 		"match": "\"ts\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 45,
 		"end": 46,
 		"match": ">"
@@ -72,13 +84,25 @@ export const test = [
 		"match": "let b: number = 2;"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag-boundary",
 		"start": 64,
-		"end": 73,
-		"match": "</script>"
+		"end": 66,
+		"match": "</"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-name",
+		"start": 66,
+		"end": 72,
+		"match": "script"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 72,
+		"end": 73,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 74,
 		"end": 75,
 		"match": "<"
@@ -96,7 +120,7 @@ export const test = [
 		"match": "module"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 88,
 		"end": 89,
 		"match": ">"
@@ -108,9 +132,21 @@ export const test = [
 		"match": "export const c = 3;"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag-boundary",
 		"start": 108,
+		"end": 110,
+		"match": "</"
+	},
+	{
+		"type": "tag-name",
+		"start": 110,
+		"end": 116,
+		"match": "script"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 116,
 		"end": 117,
-		"match": "</script>"
+		"match": ">"
 	}
 ];

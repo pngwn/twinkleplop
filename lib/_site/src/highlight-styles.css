@@ -75,7 +75,9 @@ pre[class*='language-'] {
 ::highlight(keyword) {
 	color: #ff7733;
 }
-::highlight(operator) {
+::highlight(operator),
+::highlight(expression),
+::highlight(svelte-block) {
 	color: #f29668;
 }
 
@@ -100,7 +102,12 @@ pre[class*='language-'] {
 	color: #38bdf8;
 }
 
-::highlight(doctype) {
+::highlight(tag-boundary) {
+	color: #39bae680;
+}
+
+::highlight(doctype),
+::highlight(svelte-element) {
 	color: #ff7733;
 	font-style: italic;
 }
@@ -133,14 +140,15 @@ pre[class*='language-'] {
 
 /* Svelte block tokens (`{#if`, `{:else}`, `{/each}`, etc.) — distinct
    "control flow" color so blocks stand out from expressions. */
-::highlight(svelte-block) {
+/*::highlight(svelte-block) {
 	color: #c084fc;
 	font-weight: 600;
-}
+}*/
 
 /* Svelte @-directives (`{@html`, `{@const`, `{@render`, `{@debug`). */
 ::highlight(svelte-directive) {
-	color: #ffb454;
+	/*color: #ffb454;*/
+	color: #60a5fa;
 	font-weight: 600;
 }
 

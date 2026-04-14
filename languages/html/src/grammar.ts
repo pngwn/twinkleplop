@@ -39,6 +39,7 @@ import { define_grammar } from "@twinkleplop/core/compile";
 // Custom token type names. These flow through to CSS classes in the
 // rendered output and to the reclassifier's embed mapping.
 const TAG_NAME = "tag-name";
+const TAG_BOUNDARY = "tag-boundary";
 const ATTR_NAME = "attr-name";
 const DOCTYPE = "doctype";
 const RAW_SCRIPT = "raw_script";
@@ -75,27 +76,42 @@ export default define_grammar({
 			rules: [
 				within("<!--", "-->", TOKENS.comment),
 				match(["<!DOCTYPE", "<!doctype"], DOCTYPE, enter("doctype")),
-				match("</", TOKENS.punctuation, enter("close_tag")),
-				match("<", TOKENS.punctuation, enter("tag_open")),
+				match("</", TAG_BOUNDARY, enter("close_tag")),
+				match("<", TAG_BOUNDARY, enter("tag_start")),
 				fallback({}),
 			],
 		},
 
 		// -------------------------------------------------------------------
-		// tag_open — just consumed `<`, now reading the tag name
+		// tag_start — fires ONCE, just consumed `<`
 		// -------------------------------------------------------------------
 		//
 		// `script` and `style` with a word boundary route to language-
-		// specific attrs states so the body can be tokenized as raw content.
-		// Other names stay in this state consuming NAME_CHARS one at a time
-		// (coalesced into a single tag-name token by the tokenizer) until
-		// a non-name char — whitespace, `>`, or `/>` — triggers the exit.
-		tag_open: {
+		// specific attrs states so the body can be tokenized as raw
+		// content. These rules live here (not in tag_open) so they only
+		// match at the true start of a tag name — otherwise `<noscript>`
+		// would match `script` at position 3 and swallow the rest of the
+		// document as raw_script.
+		tag_start: {
 			rules: [
 				keyword(["script"], goto("script_attrs"), TAG_NAME),
 				keyword(["style"], goto("style_attrs"), TAG_NAME),
-				match("/>", TOKENS.punctuation, leave()),
-				match(">", TOKENS.punctuation, leave()),
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, leave()),
+				on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
+				match(NAME_CHARS, TAG_NAME, goto("tag_open")),
+			],
+		},
+
+		// -------------------------------------------------------------------
+		// tag_open — continuation of a tag name after the first char has
+		// been consumed. No keyword rules here so mid-name runs don't
+		// spuriously match special names.
+		// -------------------------------------------------------------------
+		tag_open: {
+			rules: [
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, leave()),
 				on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
 				match(NAME_CHARS, TAG_NAME),
 			],
@@ -106,8 +122,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		tag_attrs: {
 			rules: [
-				match("/>", TOKENS.punctuation, leave()),
-				match(">", TOKENS.punctuation, leave()),
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, leave()),
 				...insideTagRules,
 			],
 		},
@@ -117,7 +133,7 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		close_tag: {
 			rules: [
-				match(">", TOKENS.punctuation, leave()),
+				match(">", TAG_BOUNDARY, leave()),
 				on([" ", "\t", "\n", "\r"]),
 				match(NAME_CHARS, TAG_NAME),
 			],
@@ -128,7 +144,7 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		doctype: {
 			rules: [
-				match(">", TOKENS.punctuation, leave()),
+				match(">", TAG_BOUNDARY, leave()),
 				fallback({ token: DOCTYPE }),
 			],
 		},
@@ -138,8 +154,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		script_attrs: {
 			rules: [
-				match("/>", TOKENS.punctuation, leave()),
-				match(">", TOKENS.punctuation, goto("script_content")),
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, goto("script_content")),
 				...insideTagRules,
 			],
 		},
@@ -148,16 +164,46 @@ export default define_grammar({
 		// script_content — raw text until `</script>`
 		// -------------------------------------------------------------------
 		//
-		// The `</script>` rule fires first because the compiler sorts the
-		// per-character bucket by descending pattern length. The fallback
-		// below it matches any single character and emits RAW_SCRIPT —
-		// adjacent same-type tokens are coalesced by the tokenizer so the
+		// We can't atomically match `</script>` and emit three tokens
+		// (`</` tag-boundary · `script` tag-name · `>` tag-boundary) in a
+		// single rule, so the closer is split via a probe chain:
+		//   1. on `</`, enter a probe that looks ahead for `script>`
+		//   2. if found, goto() the emitter chain (no stack push) — which
+		//      rewinds to `<` and emits the three tokens, then leave()s
+		//      all the way back to the content state.
+		//   3. if not found, fallback pushes script_content back on the
+		//      stack, emits `<` as raw_script, and leave()s — the `/` and
+		//      following chars continue to coalesce as raw_script.
+		//
+		// Adjacent same-type tokens are coalesced by the tokenizer so the
 		// entire script body ends up as one raw_script token span.
 		script_content: {
 			rules: [
-				match("</script>", TAG_NAME, leave()),
+				on("</", enter("script_close_probe")),
 				fallback({ token: RAW_SCRIPT }),
 			],
+		},
+
+		script_close_probe: {
+			mode: "probe",
+			fallback: "script_close_fail",
+			rules: [on("script>", goto("script_close_emit"))],
+		},
+
+		script_close_fail: {
+			rules: [match("<", RAW_SCRIPT, leave())],
+		},
+
+		script_close_emit: {
+			rules: [match("</", TAG_BOUNDARY, goto("script_close_name"))],
+		},
+
+		script_close_name: {
+			rules: [match("script", TAG_NAME, goto("script_close_gt"))],
+		},
+
+		script_close_gt: {
+			rules: [match(">", TAG_BOUNDARY, leave())],
 		},
 
 		// -------------------------------------------------------------------
@@ -165,20 +211,43 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		style_attrs: {
 			rules: [
-				match("/>", TOKENS.punctuation, leave()),
-				match(">", TOKENS.punctuation, goto("style_content")),
+				match("/>", TAG_BOUNDARY, leave()),
+				match(">", TAG_BOUNDARY, goto("style_content")),
 				...insideTagRules,
 			],
 		},
 
 		// -------------------------------------------------------------------
-		// style_content — raw text until `</style>`
+		// style_content — raw text until `</style>` (same probe-chain shape
+		// as script_content; see the comment on script_content above).
 		// -------------------------------------------------------------------
 		style_content: {
 			rules: [
-				match("</style>", TAG_NAME, leave()),
+				on("</", enter("style_close_probe")),
 				fallback({ token: RAW_STYLE }),
 			],
+		},
+
+		style_close_probe: {
+			mode: "probe",
+			fallback: "style_close_fail",
+			rules: [on("style>", goto("style_close_emit"))],
+		},
+
+		style_close_fail: {
+			rules: [match("<", RAW_STYLE, leave())],
+		},
+
+		style_close_emit: {
+			rules: [match("</", TAG_BOUNDARY, goto("style_close_name"))],
+		},
+
+		style_close_name: {
+			rules: [match("style", TAG_NAME, goto("style_close_gt"))],
+		},
+
+		style_close_gt: {
+			rules: [match(">", TAG_BOUNDARY, leave())],
 		},
 	},
 });

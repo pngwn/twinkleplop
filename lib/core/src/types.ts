@@ -144,20 +144,26 @@ export type TokenPatternSpec =
 	| CapturePatternSpec
 	| BalancedPatternSpec;
 
-// A rewrite rule says: starting at a token of type `anchor` (optionally
-// matching `anchor_value`), if the token stream after the anchor matches
-// `when` (and optionally the token stream before the anchor matches
-// `before`), apply `rewrite`:
+// A rewrite rule says: starting at a token matching `anchor` (a bare type
+// name, or `type(name, value)` to also constrain source text), if the
+// token stream after the anchor matches `when` (and optionally the token
+// stream before the anchor matches `before`), apply `rewrite`:
 //   - `string`   → rewrite the anchor token's type to this name (Phase 1).
 //   - object map → for each `{ capture_name: type_name }` entry, find the
 //                  capture() with that name in `when` and rewrite every
 //                  token inside the captured range to the target type
 //                  (Phase 3). Missing captures silently skip.
 export interface RewriteRule {
-	anchor: string;
-	anchor_value?: string | string[];
+	// The anchor identifies the token to rewrite. A bare type name is
+	// sugar for `type(name)` with no value constraint; `type(name, value)`
+	// also filters on the anchor token's source text.
+	anchor: string | TypePatternSpec;
 	before?: TokenPatternSpec;
-	when: TokenPatternSpec;
+	// when is optional: a rule with only `before` (and optionally an
+	// anchor value constraint) runs a no-op forward scan that always
+	// succeeds, so the anchor is rewritten whenever the preceding window
+	// matches.
+	when?: TokenPatternSpec;
 	rewrite: string | Record<string, string>;
 }
 

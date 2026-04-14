@@ -10,3 +10,4 @@
 <svelte:fragment slot="named">content</svelte:fragment>
 <svelte:boundary>hi</svelte:boundary>
 <svelte:options customElement="my-el" />
+<notsvelte:options customElement="my-el" />

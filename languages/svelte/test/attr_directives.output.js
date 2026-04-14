@@ -1,6 +1,6 @@
 export const test = [
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 0,
 		"end": 1,
 		"match": "<"
@@ -30,7 +30,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 18,
 		"end": 19,
 		"match": "{"
@@ -42,7 +42,7 @@ export const test = [
 		"match": "name"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 23,
 		"end": 24,
 		"match": "}"
@@ -66,7 +66,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 35,
 		"end": 36,
 		"match": "{"
@@ -78,19 +78,19 @@ export const test = [
 		"match": "el"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 38,
 		"end": 39,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 40,
 		"end": 42,
 		"match": "/>"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 43,
 		"end": 44,
 		"match": "<"
@@ -120,7 +120,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 60,
 		"end": 61,
 		"match": "{"
@@ -132,13 +132,19 @@ export const test = [
 		"match": "handler"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 68,
-		"end": 70,
-		"match": "}>"
+		"end": 69,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 69,
+		"end": 70,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 72,
 		"end": 74,
 		"match": "</"
@@ -150,13 +156,13 @@ export const test = [
 		"match": "button"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 80,
 		"end": 81,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 82,
 		"end": 83,
 		"match": "<"
@@ -210,7 +216,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 130,
 		"end": 131,
 		"match": "{"
@@ -222,13 +228,19 @@ export const test = [
 		"match": "handler"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 138,
-		"end": 140,
-		"match": "}>"
+		"end": 139,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 139,
+		"end": 140,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 144,
 		"end": 146,
 		"match": "</"
@@ -240,13 +252,13 @@ export const test = [
 		"match": "button"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 152,
 		"end": 153,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 154,
 		"end": 155,
 		"match": "<"
@@ -276,7 +288,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 170,
 		"end": 171,
 		"match": "{"
@@ -288,13 +300,19 @@ export const test = [
 		"match": "params"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 177,
-		"end": 179,
-		"match": "}>"
+		"end": 178,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 178,
+		"end": 179,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 181,
 		"end": 183,
 		"match": "</"
@@ -306,13 +324,13 @@ export const test = [
 		"match": "div"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 186,
 		"end": 187,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 188,
 		"end": 189,
 		"match": "<"
@@ -342,7 +360,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 209,
 		"end": 210,
 		"match": "{"
@@ -354,13 +372,19 @@ export const test = [
 		"match": "{duration: 200}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 225,
-		"end": 227,
-		"match": "}>"
+		"end": 226,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 226,
+		"end": 227,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 229,
 		"end": 231,
 		"match": "</"
@@ -372,13 +396,13 @@ export const test = [
 		"match": "div"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 234,
 		"end": 235,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 236,
 		"end": 237,
 		"match": "<"
@@ -414,13 +438,13 @@ export const test = [
 		"match": "local"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 262,
 		"end": 263,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 265,
 		"end": 267,
 		"match": "</"
@@ -432,13 +456,13 @@ export const test = [
 		"match": "div"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 270,
 		"end": 271,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 272,
 		"end": 273,
 		"match": "<"
@@ -486,13 +510,13 @@ export const test = [
 		"match": "flip"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 304,
 		"end": 305,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 307,
 		"end": 309,
 		"match": "</"
@@ -504,13 +528,13 @@ export const test = [
 		"match": "div"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 312,
 		"end": 313,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 314,
 		"end": 315,
 		"match": "<"
@@ -540,7 +564,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 331,
 		"end": 332,
 		"match": "{"
@@ -552,7 +576,7 @@ export const test = [
 		"match": "isActive"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 340,
 		"end": 341,
 		"match": "}"
@@ -570,13 +594,13 @@ export const test = [
 		"match": "done"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 352,
 		"end": 353,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 357,
 		"end": 359,
 		"match": "</"
@@ -588,13 +612,13 @@ export const test = [
 		"match": "li"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 361,
 		"end": 362,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 363,
 		"end": 364,
 		"match": "<"
@@ -624,7 +648,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 381,
 		"end": 382,
 		"match": "{"
@@ -636,7 +660,7 @@ export const test = [
 		"match": "c"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 383,
 		"end": 384,
 		"match": "}"
@@ -672,7 +696,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 413,
 		"end": 414,
 		"match": "{"
@@ -684,13 +708,19 @@ export const test = [
 		"match": "w"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 415,
-		"end": 417,
-		"match": "}>"
+		"end": 416,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 416,
+		"end": 417,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 419,
 		"end": 421,
 		"match": "</"
@@ -702,13 +732,13 @@ export const test = [
 		"match": "span"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 425,
 		"end": 426,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 427,
 		"end": 428,
 		"match": "<"
@@ -750,7 +780,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 451,
 		"end": 452,
 		"match": "{"
@@ -762,13 +792,19 @@ export const test = [
 		"match": "i"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 453,
-		"end": 455,
-		"match": "}>"
+		"end": 454,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 454,
+		"end": 455,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 457,
 		"end": 459,
 		"match": "</"
@@ -780,7 +816,7 @@ export const test = [
 		"match": "div"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 462,
 		"end": 463,
 		"match": ">"

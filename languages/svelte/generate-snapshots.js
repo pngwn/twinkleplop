@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { tokenize } from "@twinkleplop/core";
-import { grammar } from "./src/index.js";
+import { grammar } from "./dist/index.js";
 
 const test_dir = path.join(import.meta.dirname, "test");
 const files = fs.readdirSync(test_dir);

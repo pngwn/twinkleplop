@@ -1,15 +1,21 @@
 export const test = [
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 0,
 		"end": 1,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 1,
+		"end": 2,
+		"match": "#"
+	},
+	{
+		"type": "svelte-block",
+		"start": 2,
 		"end": 7,
-		"match": "#await"
+		"match": "await"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -18,13 +24,13 @@ export const test = [
 		"match": " promise"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 15,
 		"end": 16,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 18,
 		"end": 19,
 		"match": "<"
@@ -36,13 +42,13 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 20,
 		"end": 21,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 28,
 		"end": 30,
 		"match": "</"
@@ -54,22 +60,28 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 31,
 		"end": 32,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 33,
 		"end": 34,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 34,
+		"end": 35,
+		"match": ":"
+	},
+	{
+		"type": "svelte-block",
+		"start": 35,
 		"end": 39,
-		"match": ":then"
+		"match": "then"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -78,13 +90,13 @@ export const test = [
 		"match": " value"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 45,
 		"end": 46,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 48,
 		"end": 49,
 		"match": "<"
@@ -96,10 +108,16 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 50,
+		"end": 51,
+		"match": ">"
+	},
+	{
+		"type": "expression",
+		"start": 51,
 		"end": 52,
-		"match": ">{"
+		"match": "{"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -108,10 +126,16 @@ export const test = [
 		"match": "value"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 57,
+		"end": 58,
+		"match": "}"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 58,
 		"end": 60,
-		"match": "}</"
+		"match": "</"
 	},
 	{
 		"type": "tag-name",
@@ -120,22 +144,28 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 61,
 		"end": 62,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 63,
 		"end": 64,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 64,
+		"end": 65,
+		"match": ":"
+	},
+	{
+		"type": "svelte-block",
+		"start": 65,
 		"end": 70,
-		"match": ":catch"
+		"match": "catch"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -144,13 +174,13 @@ export const test = [
 		"match": " err"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 74,
 		"end": 75,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 77,
 		"end": 78,
 		"match": "<"
@@ -162,10 +192,16 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 79,
+		"end": 80,
+		"match": ">"
+	},
+	{
+		"type": "expression",
+		"start": 80,
 		"end": 81,
-		"match": ">{"
+		"match": "{"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -174,10 +210,16 @@ export const test = [
 		"match": "err.message"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 92,
+		"end": 93,
+		"match": "}"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 93,
 		"end": 95,
-		"match": "}</"
+		"match": "</"
 	},
 	{
 		"type": "tag-name",
@@ -186,40 +228,52 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 96,
 		"end": 97,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 98,
 		"end": 99,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 99,
-		"end": 105,
-		"match": "/await"
+		"end": 100,
+		"match": "/"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 100,
+		"end": 105,
+		"match": "await"
+	},
+	{
+		"type": "expression",
 		"start": 105,
 		"end": 106,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 108,
 		"end": 109,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 109,
+		"end": 110,
+		"match": "#"
+	},
+	{
+		"type": "svelte-block",
+		"start": 110,
 		"end": 115,
-		"match": "#await"
+		"match": "await"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -228,13 +282,13 @@ export const test = [
 		"match": " fetchInline() then v"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 136,
 		"end": 137,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 139,
 		"end": 140,
 		"match": "<"
@@ -246,10 +300,16 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 141,
+		"end": 142,
+		"match": ">"
+	},
+	{
+		"type": "expression",
+		"start": 142,
 		"end": 143,
-		"match": ">{"
+		"match": "{"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -258,10 +318,16 @@ export const test = [
 		"match": "v"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 144,
+		"end": 145,
+		"match": "}"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 145,
 		"end": 147,
-		"match": "}</"
+		"match": "</"
 	},
 	{
 		"type": "tag-name",
@@ -270,25 +336,31 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 148,
 		"end": 149,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 150,
 		"end": 151,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 151,
-		"end": 157,
-		"match": "/await"
+		"end": 152,
+		"match": "/"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 152,
+		"end": 157,
+		"match": "await"
+	},
+	{
+		"type": "expression",
 		"start": 157,
 		"end": 158,
 		"match": "}"

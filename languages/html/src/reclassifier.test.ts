@@ -53,14 +53,24 @@ describe("HTML language — script embedding", () => {
 	it("preserves HTML tokens around the embedded script", () => {
 		const src = "<script>var a = 1;</script>";
 		const tokens = tokens_of(src);
-		// First few tokens are HTML open tag punctuation/name.
-		expect(tokens[0]).toMatchObject({ type: "punctuation", value: "<" });
+		// First few tokens are HTML open tag boundary/name.
+		expect(tokens[0]).toMatchObject({ type: "tag-boundary", value: "<" });
 		expect(tokens[1]).toMatchObject({ type: "tag-name", value: "script" });
-		expect(tokens[2]).toMatchObject({ type: "punctuation", value: ">" });
-		// Last token is the closing tag.
-		expect(tokens[tokens.length - 1]).toMatchObject({
+		expect(tokens[2]).toMatchObject({ type: "tag-boundary", value: ">" });
+		// Last three tokens are the closing tag, split into
+		// `</` · `script` · `>`.
+		const last = tokens.length - 1;
+		expect(tokens[last - 2]).toMatchObject({
+			type: "tag-boundary",
+			value: "</",
+		});
+		expect(tokens[last - 1]).toMatchObject({
 			type: "tag-name",
-			value: "</script>",
+			value: "script",
+		});
+		expect(tokens[last]).toMatchObject({
+			type: "tag-boundary",
+			value: ">",
 		});
 	});
 

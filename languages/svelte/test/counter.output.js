@@ -1,6 +1,6 @@
 export const test = [
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 0,
 		"end": 1,
 		"match": "<"
@@ -12,7 +12,7 @@ export const test = [
 		"match": "script"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 7,
 		"end": 8,
 		"match": ">"
@@ -24,13 +24,25 @@ export const test = [
 		"match": "\nlet count = $state(0);\nconst double = $derived(count * 2);\n\nconst increment = () => count++;\nconst reset = () => (count = 0);\n"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag-boundary",
 		"start": 135,
-		"end": 144,
-		"match": "</script>"
+		"end": 137,
+		"match": "</"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-name",
+		"start": 137,
+		"end": 143,
+		"match": "script"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 143,
+		"end": 144,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 146,
 		"end": 147,
 		"match": "<"
@@ -42,7 +54,7 @@ export const test = [
 		"match": "style"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 152,
 		"end": 153,
 		"match": ">"
@@ -54,13 +66,25 @@ export const test = [
 		"match": "\n\t.counter {\n\t\tdisplay: flex;\n\t\talign-items: center;\n\t\tgap: 1rem;\n\t\tpadding: 1rem;\n\t\tbackground: #111;\n\t\tborder-radius: 8px;\n\t}\n\n\t.counter__value {\n\t\tfont-size: 2rem;\n\t\tfont-weight: 700;\n\t\tcolor: var(--primary, #0070f3);\n\t\tmin-width: 3rem;\n\t\ttext-align: center;\n\t}\n\n\t.counter__button {\n\t\tpadding: 0.5rem 1rem;\n\t\tbackground: var(--primary, #0070f3);\n\t\tcolor: white;\n\t\tborder: none;\n\t\tborder-radius: 4px;\n\t\tcursor: pointer;\n\t}\n\n\t.counter__button:hover {\n\t\tfilter: brightness(1.1);\n\t}\n"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag-boundary",
 		"start": 635,
-		"end": 643,
-		"match": "</style>"
+		"end": 637,
+		"match": "</"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-name",
+		"start": 637,
+		"end": 642,
+		"match": "style"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 642,
+		"end": 643,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 645,
 		"end": 646,
 		"match": "<"
@@ -90,13 +114,13 @@ export const test = [
 		"match": "\"counter\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 665,
 		"end": 666,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 668,
 		"end": 669,
 		"match": "<"
@@ -138,7 +162,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 708,
 		"end": 709,
 		"match": "{"
@@ -150,13 +174,19 @@ export const test = [
 		"match": "reset"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 714,
-		"end": 716,
-		"match": "}>"
+		"end": 715,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 715,
+		"end": 716,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 721,
 		"end": 723,
 		"match": "</"
@@ -168,13 +198,13 @@ export const test = [
 		"match": "button"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 729,
 		"end": 730,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 732,
 		"end": 733,
 		"match": "<"
@@ -204,10 +234,16 @@ export const test = [
 		"match": "\"counter__value\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 760,
+		"end": 761,
+		"match": ">"
+	},
+	{
+		"type": "expression",
+		"start": 761,
 		"end": 762,
-		"match": ">{"
+		"match": "{"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -216,10 +252,16 @@ export const test = [
 		"match": "count"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 767,
+		"end": 768,
+		"match": "}"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 768,
 		"end": 770,
-		"match": "}</"
+		"match": "</"
 	},
 	{
 		"type": "tag-name",
@@ -228,13 +270,13 @@ export const test = [
 		"match": "span"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 774,
 		"end": 775,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 777,
 		"end": 778,
 		"match": "<"
@@ -276,7 +318,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 817,
 		"end": 818,
 		"match": "{"
@@ -288,13 +330,19 @@ export const test = [
 		"match": "increment"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 827,
-		"end": 829,
-		"match": "}>"
+		"end": 828,
+		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
+		"start": 828,
+		"end": 829,
+		"match": ">"
+	},
+	{
+		"type": "tag-boundary",
 		"start": 831,
 		"end": 833,
 		"match": "</"
@@ -306,13 +354,13 @@ export const test = [
 		"match": "button"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 839,
 		"end": 840,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 841,
 		"end": 843,
 		"match": "</"
@@ -324,13 +372,13 @@ export const test = [
 		"match": "div"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 846,
 		"end": 847,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 849,
 		"end": 850,
 		"match": "<"
@@ -342,13 +390,13 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 851,
 		"end": 852,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 860,
 		"end": 861,
 		"match": "{"
@@ -360,10 +408,16 @@ export const test = [
 		"match": "double"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 867,
+		"end": 868,
+		"match": "}"
+	},
+	{
+		"type": "tag-boundary",
+		"start": 868,
 		"end": 870,
-		"match": "}</"
+		"match": "</"
 	},
 	{
 		"type": "tag-name",
@@ -372,22 +426,28 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 871,
 		"end": 872,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 874,
 		"end": 875,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 875,
+		"end": 876,
+		"match": "#"
+	},
+	{
+		"type": "svelte-block",
+		"start": 876,
 		"end": 878,
-		"match": "#if"
+		"match": "if"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -396,13 +456,13 @@ export const test = [
 		"match": " count > 10"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 889,
 		"end": 890,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 892,
 		"end": 893,
 		"match": "<"
@@ -432,13 +492,13 @@ export const test = [
 		"match": "\"warning\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 910,
 		"end": 911,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 934,
 		"end": 936,
 		"match": "</"
@@ -450,22 +510,28 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 937,
 		"end": 938,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 939,
 		"end": 940,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 940,
+		"end": 941,
+		"match": ":"
+	},
+	{
+		"type": "svelte-block",
+		"start": 941,
 		"end": 948,
-		"match": ":else if"
+		"match": "else if"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -474,13 +540,13 @@ export const test = [
 		"match": " count > 0"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 958,
 		"end": 959,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 961,
 		"end": 962,
 		"match": "<"
@@ -492,13 +558,13 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 963,
 		"end": 964,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 979,
 		"end": 980,
 		"match": "{"
@@ -510,13 +576,13 @@ export const test = [
 		"match": "count"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 985,
 		"end": 986,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 991,
 		"end": 992,
 		"match": "{"
@@ -528,13 +594,13 @@ export const test = [
 		"match": "count === 1 ? '' : 's'"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 1014,
 		"end": 1015,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 1016,
 		"end": 1018,
 		"match": "</"
@@ -546,31 +612,37 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 1019,
 		"end": 1020,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 1021,
 		"end": 1022,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 1022,
-		"end": 1027,
-		"match": ":else"
+		"end": 1023,
+		"match": ":"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 1023,
+		"end": 1027,
+		"match": "else"
+	},
+	{
+		"type": "expression",
 		"start": 1027,
 		"end": 1028,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 1030,
 		"end": 1031,
 		"match": "<"
@@ -582,13 +654,13 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 1032,
 		"end": 1033,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 1057,
 		"end": 1059,
 		"match": "</"
@@ -600,25 +672,31 @@ export const test = [
 		"match": "p"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 1060,
 		"end": 1061,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 1062,
 		"end": 1063,
 		"match": "{"
 	},
 	{
-		"type": "svelte-block",
+		"type": "punctuation",
 		"start": 1063,
-		"end": 1066,
-		"match": "/if"
+		"end": 1064,
+		"match": "/"
 	},
 	{
-		"type": "punctuation",
+		"type": "svelte-block",
+		"start": 1064,
+		"end": 1066,
+		"match": "if"
+	},
+	{
+		"type": "expression",
 		"start": 1066,
 		"end": 1067,
 		"match": "}"

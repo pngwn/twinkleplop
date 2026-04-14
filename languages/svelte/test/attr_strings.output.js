@@ -1,6 +1,6 @@
 export const test = [
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 0,
 		"end": 1,
 		"match": "<"
@@ -30,7 +30,7 @@ export const test = [
 		"match": "\"foo "
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 16,
 		"end": 17,
 		"match": "{"
@@ -42,7 +42,7 @@ export const test = [
 		"match": "bar"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 20,
 		"end": 21,
 		"match": "}"
@@ -54,13 +54,13 @@ export const test = [
 		"match": " baz\""
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 26,
 		"end": 27,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 29,
 		"end": 31,
 		"match": "</"
@@ -72,13 +72,13 @@ export const test = [
 		"match": "div"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 34,
 		"end": 35,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 36,
 		"end": 37,
 		"match": "<"
@@ -108,7 +108,7 @@ export const test = [
 		"match": "\"/img/"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 51,
 		"end": 52,
 		"match": "{"
@@ -120,7 +120,7 @@ export const test = [
 		"match": "id"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 54,
 		"end": 55,
 		"match": "}"
@@ -150,7 +150,7 @@ export const test = [
 		"match": "'icon-"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 71,
 		"end": 72,
 		"match": "{"
@@ -162,7 +162,7 @@ export const test = [
 		"match": "id"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 74,
 		"end": 75,
 		"match": "}"
@@ -174,13 +174,13 @@ export const test = [
 		"match": "'"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 77,
 		"end": 79,
 		"match": "/>"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 80,
 		"end": 81,
 		"match": "<"
@@ -228,7 +228,7 @@ export const test = [
 		"match": "'/"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 104,
 		"end": 105,
 		"match": "{"
@@ -240,7 +240,7 @@ export const test = [
 		"match": "path"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 109,
 		"end": 110,
 		"match": "}"
@@ -252,13 +252,13 @@ export const test = [
 		"match": "/end'"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 115,
 		"end": 116,
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 120,
 		"end": 122,
 		"match": "</"
@@ -270,7 +270,7 @@ export const test = [
 		"match": "a"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 123,
 		"end": 124,
 		"match": ">"

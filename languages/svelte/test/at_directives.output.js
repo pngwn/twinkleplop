@@ -1,15 +1,21 @@
 export const test = [
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 0,
 		"end": 1,
 		"match": "{"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "punctuation",
 		"start": 1,
+		"end": 2,
+		"match": "@"
+	},
+	{
+		"type": "svelte-block",
+		"start": 2,
 		"end": 6,
-		"match": "@html"
+		"match": "html"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -18,22 +24,28 @@ export const test = [
 		"match": " rawMarkup"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 16,
 		"end": 17,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 18,
 		"end": 19,
 		"match": "{"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "punctuation",
 		"start": 19,
+		"end": 20,
+		"match": "@"
+	},
+	{
+		"type": "svelte-block",
+		"start": 20,
 		"end": 25,
-		"match": "@const"
+		"match": "const"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -42,22 +54,28 @@ export const test = [
 		"match": " doubled = count * 2"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 45,
 		"end": 46,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 47,
 		"end": 48,
 		"match": "{"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "punctuation",
 		"start": 48,
+		"end": 49,
+		"match": "@"
+	},
+	{
+		"type": "svelte-block",
+		"start": 49,
 		"end": 54,
-		"match": "@debug"
+		"match": "debug"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -66,22 +84,28 @@ export const test = [
 		"match": " user, profile"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 68,
 		"end": 69,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 70,
 		"end": 71,
 		"match": "{"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "punctuation",
 		"start": 71,
+		"end": 72,
+		"match": "@"
+	},
+	{
+		"type": "svelte-block",
+		"start": 72,
 		"end": 78,
-		"match": "@render"
+		"match": "render"
 	},
 	{
 		"type": "raw_svelte_expression",
@@ -90,7 +114,7 @@ export const test = [
 		"match": " row(item, 0)"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 91,
 		"end": 92,
 		"match": "}"

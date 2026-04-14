@@ -1,6 +1,6 @@
 export const test = [
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 0,
 		"end": 1,
 		"match": "<"
@@ -12,7 +12,7 @@ export const test = [
 		"match": "Component"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 11,
 		"end": 12,
 		"match": "{"
@@ -24,13 +24,13 @@ export const test = [
 		"match": "value"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 17,
 		"end": 18,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 19,
 		"end": 20,
 		"match": "{"
@@ -42,19 +42,19 @@ export const test = [
 		"match": "title"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 25,
 		"end": 26,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 27,
 		"end": 29,
 		"match": "/>"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 30,
 		"end": 31,
 		"match": "<"
@@ -66,7 +66,7 @@ export const test = [
 		"match": "input"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 37,
 		"end": 38,
 		"match": "{"
@@ -78,13 +78,13 @@ export const test = [
 		"match": "disabled"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 46,
 		"end": 47,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 48,
 		"end": 49,
 		"match": "{"
@@ -96,13 +96,13 @@ export const test = [
 		"match": "placeholder"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 60,
 		"end": 61,
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "tag-boundary",
 		"start": 62,
 		"end": 64,
 		"match": "/>"
