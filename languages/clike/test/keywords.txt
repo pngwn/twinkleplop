@@ -1,4 +1,0 @@
-if; else; while; do; for;
-return; in; instanceof; function; new;
-try; throw; catch; finally; null;
-break; continue;

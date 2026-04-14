@@ -9,6 +9,7 @@
 	import TokensPanel from '$lib/components/TokensPanel.svelte';
 	import RoutePanel from '$lib/components/RoutePanel.svelte';
 	import PrismPanel from '$lib/components/PrismPanel.svelte';
+	import ShikiPanel from '$lib/components/ShikiPanel.svelte';
 	import InspectorPanel from '$lib/components/InspectorPanel.svelte';
 
 	let { data } = $props();
@@ -28,13 +29,7 @@
 				test: () => import('@twinkleplop/whitespace/test')
 			}
 		],
-		[
-			'clike',
-			{
-				grammar: () => import('@twinkleplop/clike'),
-				test: () => import('@twinkleplop/clike/test')
-			}
-		],
+
 		[
 			'javascript',
 			{
@@ -119,6 +114,7 @@
 	let position = $state(0);
 	let selected_token = $state(0);
 	let right_panel_view = $state<'tokens' | 'route' | 'compare'>('tokens');
+	let compare_view = $state<'prism' | 'shiki'>('prism');
 
 	// component references
 	let code_panel_ref = $state<CodePanel>();
@@ -279,7 +275,25 @@
 			{:else if right_panel_view === 'route'}
 				<RoutePanel {active_route} {position} raw_grammar={data.raw_grammar} />
 			{:else}
-				<PrismPanel {source} lang={data.lang} />
+				<div class="compare-wrapper">
+					<div class="compare-tabs">
+						<button
+							class="compare-tab"
+							class:active={compare_view === 'prism'}
+							onclick={() => (compare_view = 'prism')}
+						>Prism</button>
+						<button
+							class="compare-tab"
+							class:active={compare_view === 'shiki'}
+							onclick={() => (compare_view = 'shiki')}
+						>Shiki</button>
+					</div>
+					{#if compare_view === 'prism'}
+						<PrismPanel {source} lang={data.lang} />
+					{:else}
+						<ShikiPanel shiki_html={data.shiki_html} lang={data.lang} />
+					{/if}
+				</div>
 			{/if}
 		</div>
 	</div>
@@ -349,5 +363,52 @@
 		right: 0;
 		height: 2px;
 		background: var(--accent);
+	}
+
+	.compare-wrapper {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		min-height: 0;
+	}
+
+	.compare-tabs {
+		display: flex;
+		gap: 0.25rem;
+		margin-bottom: 0.75rem;
+		padding: 0.25rem;
+		background: var(--bg-tertiary);
+		border-radius: 6px;
+		flex-shrink: 0;
+	}
+
+	.compare-tab {
+		flex: 1;
+		background: transparent;
+		color: var(--text-secondary);
+		border: none;
+		padding: 0.25rem 0.75rem;
+		font-size: 0.75rem;
+		font-weight: 500;
+		cursor: pointer;
+		border-radius: 4px;
+		transition: all 0.15s ease;
+	}
+
+	.compare-tab:hover {
+		color: var(--text-primary);
+	}
+
+	.compare-tab.active {
+		background: var(--bg-primary, var(--bg-code));
+		color: var(--text-primary);
+	}
+
+	.compare-wrapper :global(.prism-panel),
+	.compare-wrapper :global(.shiki-panel) {
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
 	}
 </style>
