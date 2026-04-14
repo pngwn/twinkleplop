@@ -10,131 +10,9 @@ interface ProbeEntry {
 	probe_state?: number;
 	resolved_state?: number;
 	resolved_pos?: number;
-	// stage 6: slot_saves_len at probe entry, used to truncate stale saves
-	// on probe success or fallback. the slot_values snapshot is held
-	// separately in the tokenize closure (single non-nested probe).
-	slot_saves_len_at_entry?: number;
 }
 
 declare const INTROSPECTION: boolean;
-
-// module-level slot helpers. defined here (not as inner closures inside
-// tokenize) so V8 can keep tokenize itself small and inline-friendly. they
-// return the new slot_saves_len because mutating an outer let from a module
-// function would require boxing.
-
-function slot_save_and_init_at(
-	decls_for_state: Map<number, Uint8Array>,
-	target_state: number,
-	slot_values: Uint8Array,
-	slot_saves: Uint16Array,
-	saves_len: number,
-): number {
-	const decls = decls_for_state.get(target_state);
-	if (!decls) return saves_len;
-	const len = decls.length;
-	for (let i = 0; i < len; i += 2) {
-		const slot_id = decls[i];
-		slot_saves[saves_len++] = (slot_id << 8) | slot_values[slot_id];
-		slot_values[slot_id] = decls[i + 1];
-	}
-	return saves_len;
-}
-
-function slot_count_for_state(
-	decls_for_state: Map<number, Uint8Array>,
-	target_state: number,
-): number {
-	const decls = decls_for_state.get(target_state);
-	return decls ? decls.length >> 1 : 0;
-}
-
-function slot_restore_n(
-	count: number,
-	slot_values: Uint8Array,
-	slot_saves: Uint16Array,
-	saves_len: number,
-): number {
-	for (let i = 0; i < count; i++) {
-		const entry = slot_saves[--saves_len];
-		slot_values[entry >> 8] = entry & 0xff;
-	}
-	return saves_len;
-}
-
-function check_slot_predicates_at(
-	predicate_offsets: Uint32Array,
-	predicates_flat: Uint8Array,
-	state_id: number,
-	rule_idx: number,
-	slot_values: Uint8Array,
-): boolean {
-	const offset = predicate_offsets[(state_id << 8) | rule_idx];
-	if (offset === 0xffffffff) return true;
-	const count = predicates_flat[offset];
-	for (let i = 0; i < count; i++) {
-		const base = offset + 1 + i * 3;
-		const slot_id = predicates_flat[base];
-		const op = predicates_flat[base + 1];
-		const value = predicates_flat[base + 2];
-		const actual = slot_values[slot_id];
-		let pass: boolean;
-		switch (op) {
-			case 0:
-				pass = actual === value;
-				break;
-			case 1:
-				pass = actual !== value;
-				break;
-			case 2:
-				pass = actual > value;
-				break;
-			case 3:
-				pass = actual < value;
-				break;
-			case 4:
-				pass = actual >= value;
-				break;
-			default:
-				pass = actual <= value;
-				break;
-		}
-		if (!pass) return false;
-	}
-	return true;
-}
-
-function apply_slot_updates_at(
-	update_offsets: Uint32Array,
-	updates_flat: Uint8Array,
-	state_id: number,
-	rule_idx: number,
-	slot_values: Uint8Array,
-): void {
-	const offset = update_offsets[(state_id << 8) | rule_idx];
-	if (offset === 0xffffffff) return;
-	const count = updates_flat[offset];
-	for (let i = 0; i < count; i++) {
-		const base = offset + 1 + i * 3;
-		const slot_id = updates_flat[base];
-		const op = updates_flat[base + 1];
-		const value = updates_flat[base + 2];
-		switch (op) {
-			case 0:
-				slot_values[slot_id] = value;
-				break;
-			case 1:
-				slot_values[slot_id] = (slot_values[slot_id] + value) & 0xff;
-				break;
-			case 2:
-				slot_values[slot_id] = (slot_values[slot_id] - value) & 0xff;
-				break;
-			case 3:
-				slot_values[slot_id] = slot_values[slot_id] === 0 ? 1 : 0;
-				break;
-		}
-	}
-}
 
 // helper function to check if a character is an identifier continuation character
 function is_identifier_char(char_code: number): boolean {
@@ -163,8 +41,6 @@ export function tokenize(
 		probe_mask,
 		probe_fallbacks,
 		boundary_rules,
-		slot_predicate_mask,
-		predicate_rules,
 	} = compiled_grammar;
 
 	const len = input.length;
@@ -213,23 +89,6 @@ export function tokenize(
 		state_stack[probe_entry.stack_ptr] = probe_entry.state;
 		stack_ptr = probe_entry.stack_ptr + 1;
 
-		// stage 6: probe failed → fallback. restore slot values from the
-		// probe-entry snapshot and rewind the saves stack, then save+init
-		// for the fallback state at the new top frame.
-		if (has_slots) {
-			slot_values.set(slot_probe_snapshot);
-			slot_saves_len = probe_entry.slot_saves_len_at_entry ?? 0;
-			const before = slot_saves_len;
-			slot_saves_len = slot_save_and_init_at(
-				slot_decls_for_state_local,
-				fallback_state,
-				slot_values,
-				slot_saves,
-				slot_saves_len,
-			);
-			slot_save_counts[stack_ptr] = slot_saves_len - before;
-		}
-
 		// INTROSPECTION_START
 		if (INTROSPECTION && introspector) {
 			// record the transition to fallback state
@@ -238,7 +97,6 @@ export function tokenize(
 				from_state: probe_entry.state,
 				to_state: fallback_state,
 				stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 				pos: probe_entry.entry_pos,
 			});
 		}
@@ -267,15 +125,6 @@ export function tokenize(
 		current_state = probe_entry.state;
 		stack_ptr = probe_entry.stack_ptr;
 
-		// stage 6: probe failed with no fallback → rewind to pre-probe slot
-		// state. probe_entry.state was the active frame before the probe and
-		// remains so afterwards, so its slots are already correct on the
-		// stack — we only restore the live values + truncate the saves stack.
-		if (has_slots) {
-			slot_values.set(slot_probe_snapshot);
-			slot_saves_len = probe_entry.slot_saves_len_at_entry ?? 0;
-		}
-
 		probe_entry = null;
 
 		// refresh caches
@@ -284,67 +133,6 @@ export function tokenize(
 		trans_base3 = current_state * 256 * 3;
 		non_ascii_state =
 			non_ascii_chars && (non_ascii_chars as any).get(current_state);
-	}
-
-	// slot machinery
-	//
-	// gated entirely by has_slots so slot-free grammars take exactly one
-	// predictable branch per push/pop/sideways and never enter the helpers.
-	// the helpers themselves assume has_slots === true (callers must check).
-	//
-	// invariants:
-	//   - slot_values[s] holds the current value of slot s. zero-initialized.
-	//     slots not owned by any active stack frame have meaningless values
-	//     (compile-time visibility analysis guarantees no rule reads them).
-	//   - slot_saves stores save records as packed (slot_id << 8) | prev_value
-	//     so each save is one Uint16 entry. slot_saves_len is the live length.
-	//   - slot_save_counts[k] is the number of slot saves contributed by the
-	//     frame at conceptual position k (= stack_ptr value when the frame
-	//     became active). pop reads counts[stack_ptr] before decrementing.
-	const has_slots = compiled_grammar.slot_count > 0;
-	const slot_values = new Uint8Array(
-		has_slots ? compiled_grammar.slot_count : 0,
-	);
-	// upper bound: every slot saved at every stack frame.
-	const slot_saves = new Uint16Array(
-		has_slots ? compiled_grammar.slot_count * 256 : 0,
-	);
-	let slot_saves_len = 0;
-	// 257 = max stack depth (256) + the root frame (position 0).
-	const slot_save_counts = new Uint16Array(has_slots ? 257 : 0);
-	// stage 6: probe snapshot. the existing tokenizer doesn't nest probes
-	// (probe_entry is a single optional, not a stack), so one snapshot
-	// buffer is sufficient. on probe entry the buffer captures every
-	// slot's value; on fallback the buffer is restored. on probe success
-	// the snapshot is discarded (writes persist per SLOTS_PROPOSAL.md §3.3).
-	// cross-probe slot communication is intentionally NOT supported via
-	// this buffer — slots written inside a probe that fails are reverted.
-	// to share state across probes, declare the slot on a state that
-	// encloses both probes.
-	const slot_probe_snapshot = new Uint8Array(
-		has_slots ? compiled_grammar.slot_count : 0,
-	);
-	const slot_decls_for_state_local = compiled_grammar.slot_decls_for_state;
-	const rule_slot_predicate_offsets =
-		compiled_grammar.rule_slot_predicate_offsets;
-	const rule_slot_predicates_flat = compiled_grammar.rule_slot_predicates_flat;
-	const rule_slot_update_offsets = compiled_grammar.rule_slot_update_offsets;
-	const rule_slot_updates_flat = compiled_grammar.rule_slot_updates_flat;
-
-	// initialize slot defaults for the initial state by treating it like a
-	// regular push. with zero-initialized slot_values, the saved "previous"
-	// values are all 0, so a sideways transition out of the root would
-	// restore correctly.
-	if (has_slots) {
-		const before_len = slot_saves_len;
-		slot_saves_len = slot_save_and_init_at(
-			slot_decls_for_state_local,
-			current_state,
-			slot_values,
-			slot_saves,
-			slot_saves_len,
-		);
-		slot_save_counts[0] = slot_saves_len - before_len;
 	}
 
 	// INTROSPECTION_START
@@ -382,7 +170,6 @@ export function tokenize(
 				char_str: String.fromCharCode(char),
 				current_state: current_state,
 				stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 				state_stack: state_stack.slice(0, stack_ptr),
 				probe_mode: is_in_probe_state,
 			});
@@ -397,67 +184,6 @@ export function tokenize(
 			// check bucketed multi-character patterns first
 			let matched_length: number = 0;
 			let matched_rule_idx: number = 65535;
-
-			// stage 5: try slot-gated rules (predicate_rules) first, in
-			// declaration order. these were diverted from char_maps /
-			// state_buckets / fallback_transitions at compile time. the
-			// `has_slots &&` short-circuits to a single cached-bool check on
-			// slot-free grammars; mask check + Map.get only happen when slots
-			// exist and the current state owns predicate rules.
-			if (has_slots && slot_predicate_mask[current_state]) {
-				const predicate_list = predicate_rules.get(current_state);
-				if (predicate_list) {
-					for (let p = 0; p < predicate_list.length; p++) {
-						const pat = predicate_list[p];
-						const p_len = pat.length;
-						// p_len === 0 marks an `any: true` slot-gated rule;
-						// otherwise check the specific char pattern.
-						if (p_len > 0) {
-							if (pos + p_len > len) continue;
-							if (pat.codes[0] !== char) continue;
-							let pat_matched = true;
-							for (let i = 1; i < p_len; i++) {
-								if (input.charCodeAt(pos + i) !== pat.codes[i]) {
-									pat_matched = false;
-									break;
-								}
-							}
-							if (!pat_matched) continue;
-							if (pat.boundary && pos + p_len < len) {
-								const next_char = input.charCodeAt(pos + p_len);
-								if (
-									(next_char >= 97 && next_char <= 122) ||
-									(next_char >= 65 && next_char <= 90) ||
-									(next_char >= 48 && next_char <= 57) ||
-									next_char === 95 ||
-									next_char === 36
-								) {
-									continue;
-								}
-							}
-						}
-						if (has_failed_probes) {
-							const test_key =
-								(pos << 16) | (current_state << 8) | pat.rule_idx;
-							if (failed_probes.has(test_key)) continue;
-						}
-						if (
-							!check_slot_predicates_at(
-								rule_slot_predicate_offsets,
-								rule_slot_predicates_flat,
-								current_state,
-								pat.rule_idx,
-								slot_values,
-							)
-						) {
-							continue;
-						}
-						matched_length = p_len === 0 ? 1 : p_len;
-						matched_rule_idx = pat.rule_idx;
-						break;
-					}
-				}
-			}
 
 			// early bail if no patterns for this state
 			// inline bucket check for hot path
@@ -510,10 +236,6 @@ export function tokenize(
 									continue; // skip this pattern and try next one
 								}
 							}
-							// note: no slot_when check here. slot-gated rules are not
-							// added to state_buckets (see compiler.ts) — they live
-							// in predicate_rules and are tried first by the
-							// predicate loop above this bucket check.
 							matched_length = p_len;
 							matched_rule_idx = pat.rule_idx;
 							break; // buckets sorted by length desc → first fit is longest
@@ -564,9 +286,6 @@ export function tokenize(
 						char_class = 65535;
 					}
 				}
-				// note: no slot_when check here. slot-gated rules are diverted
-				// to predicate_rules at compile time and matched in the dedicated
-				// predicate loop above the bucket check.
 			}
 
 			if (char_class !== 65535) {
@@ -626,20 +345,13 @@ export function tokenize(
 						stack_ptr: stack_ptr,
 						rule_idx: char_class,
 						probe_state: target_state, // save the probe state we're entering
-						slot_saves_len_at_entry: has_slots ? slot_saves_len : 0,
 					};
-					// stage 6: snapshot all slot values before the probe runs.
-					// restored on fallback; discarded on success.
-					if (has_slots) {
-						slot_probe_snapshot.set(slot_values);
-					}
 					// INTROSPECTION_START
 					if (INTROSPECTION && introspector) {
 						introspector.enter_probe_mode({
 							pos,
 							current_state: current_state,
 							stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 							charClass: char_class,
 						});
 					}
@@ -708,30 +420,10 @@ export function tokenize(
 					// otherwise: exit without transition (pop), or sideways with no pattern match - don't advance
 				}
 
-				// when slots are in play, capture the rule's match-time state
-				// before any transition for the post-stack-op apply_slot_updates
-				// call. for the slot-free path this is dead code.
-				let matched_state = 0;
-				if (has_slots) matched_state = current_state;
-
 				if (stack_op === 1) {
 					state_stack[stack_ptr++] = current_state;
 					const prev_state = current_state;
 					current_state = transition;
-
-					// slot push: save current values and init defaults for the new
-					// current_state's owned slots.
-					if (has_slots) {
-						const __push_before = slot_saves_len;
-						slot_saves_len = slot_save_and_init_at(
-							slot_decls_for_state_local,
-							current_state,
-							slot_values,
-							slot_saves,
-							slot_saves_len,
-						);
-						slot_save_counts[stack_ptr] = slot_saves_len - __push_before;
-					}
 
 					if (is_in_probe_state && probe_entry) {
 						probe_entry.resolved_state = current_state;
@@ -749,7 +441,6 @@ export function tokenize(
 								from_state: prev_state,
 								to_state: current_state,
 								stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 								pos: pos, // this is already the position after the matched character
 							});
 						}
@@ -770,26 +461,6 @@ export function tokenize(
 						// the stack depth remains the same
 						current_state = transition;
 
-						// slot sideways: restore old state's slots, then save+init
-						// for the new current_state at the same stack position.
-						if (has_slots) {
-							slot_saves_len = slot_restore_n(
-								slot_save_counts[stack_ptr],
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-							const __side_before = slot_saves_len;
-							slot_saves_len = slot_save_and_init_at(
-								slot_decls_for_state_local,
-								current_state,
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-							slot_save_counts[stack_ptr] = slot_saves_len - __side_before;
-						}
-
 						const transition_pos =
 							is_in_probe_state && probe_entry?.resolved_pos !== undefined
 								? probe_entry.resolved_pos
@@ -807,16 +478,6 @@ export function tokenize(
 						// INTROSPECTION_END
 					} else if (stack_ptr > 0) {
 						// regular exit: pop from stack to parent state.
-						// slot pop: restore the leaving frame's saved slots before
-						// decrementing stack_ptr.
-						if (has_slots) {
-							slot_saves_len = slot_restore_n(
-								slot_save_counts[stack_ptr],
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-						}
 						current_state = state_stack[--stack_ptr];
 
 						// INTROSPECTION_START
@@ -825,7 +486,6 @@ export function tokenize(
 								from_state: prev_state,
 								to_state: current_state,
 								stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 								pos,
 							});
 						}
@@ -865,33 +525,6 @@ export function tokenize(
 						non_ascii_chars && (non_ascii_chars as any).get(current_state);
 				}
 
-				// apply slot_set updates from the rule that just fired. uses the
-				// rule's match-time state (captured before any transition).
-				if (has_slots) {
-					apply_slot_updates_at(
-						rule_slot_update_offsets,
-						rule_slot_updates_flat,
-						matched_state,
-						char_class,
-						slot_values,
-					);
-					// INTROSPECTION_START
-					if (
-						INTROSPECTION &&
-						introspector &&
-						rule_slot_update_offsets[(matched_state << 8) | char_class] !==
-							0xffffffff
-					) {
-						introspector.slot_write({
-							state: matched_state,
-							rule_idx: char_class,
-							pos,
-							slot_snapshot: slot_values,
-						});
-					}
-					// INTROSPECTION_END
-				}
-
 				// check if exiting probe state
 				if (is_in_probe_state && !is_target_probe_state && probe_entry) {
 					// probe succeeded - reset to entry point and continue in new state
@@ -904,26 +537,6 @@ export function tokenize(
 					if (stack_op === 1) {
 						// push the saved entry state onto stack
 						state_stack[stack_ptr++] = probe_entry.state;
-					}
-
-					// stage 6: probe succeeded → keep slot writes (per §3.3),
-					// but the slot saves done during the probe are now stale
-					// (their stack positions have been rewound). truncate the
-					// saves stack and re-do save+init for the new top frame
-					// so future pops have a correct slot_save_counts entry.
-					if (has_slots) {
-						slot_saves_len = probe_entry.slot_saves_len_at_entry ?? 0;
-						if (stack_op === 1) {
-							const before = slot_saves_len;
-							slot_saves_len = slot_save_and_init_at(
-								slot_decls_for_state_local,
-								current_state,
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-							slot_save_counts[stack_ptr] = slot_saves_len - before;
-						}
 					}
 
 					// INTROSPECTION_START
@@ -940,7 +553,6 @@ export function tokenize(
 								from_state: probe_entry.probe_state ?? probe_entry.state,
 								to_state: probe_entry.resolved_state,
 								stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 								pos: probe_entry.resolved_pos ?? probe_entry.pos,
 							});
 						}
@@ -1040,10 +652,6 @@ export function tokenize(
 				if (v !== undefined) matched_rule_idx = v as number;
 			}
 
-			// note: slot-gated non-ASCII rules are diverted to predicate_rules
-			// at compile time (v1 of slots only supports ASCII matchers in the
-			// predicate path; non-ASCII slot-gated rules are a compile error).
-
 			if (matched_rule_idx !== 65535) {
 				// found a specific match for this non-ASCII character
 				const t_base = trans_base3 + matched_rule_idx * 3;
@@ -1092,12 +700,7 @@ export function tokenize(
 						stack_ptr: stack_ptr,
 						rule_idx: matched_rule_idx,
 						probe_state: target_state,
-						slot_saves_len_at_entry: has_slots ? slot_saves_len : 0,
 					};
-					// stage 6: snapshot slot values at probe entry (non-ASCII path).
-					if (has_slots) {
-						slot_probe_snapshot.set(slot_values);
-					}
 					// INTROSPECTION_START
 					if (INTROSPECTION && introspector) {
 						introspector.enter_probe_mode({
@@ -1105,7 +708,6 @@ export function tokenize(
 							pos,
 							current_state: current_state,
 							stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 						});
 					}
 					// INTROSPECTION_END
@@ -1162,26 +764,12 @@ export function tokenize(
 					// otherwise: regular exit (pop) - don't advance
 				}
 
-				// capture rule's match-time state for slot_set lookup.
-				const matched_state = current_state;
-
 				// handle state transitions (same as ASCII path)
 				if (stack_op === 1) {
 					state_stack[stack_ptr++] = current_state;
 					const prev_state = current_state;
 					current_state = transition;
 
-					if (has_slots) {
-						const __push_before = slot_saves_len;
-						slot_saves_len = slot_save_and_init_at(
-							slot_decls_for_state_local,
-							current_state,
-							slot_values,
-							slot_saves,
-							slot_saves_len,
-						);
-						slot_save_counts[stack_ptr] = slot_saves_len - __push_before;
-					}
 
 					if (is_in_probe_state && probe_entry) {
 						probe_entry.resolved_state = current_state;
@@ -1195,7 +783,6 @@ export function tokenize(
 								from_state: prev_state,
 								to_state: current_state,
 								stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 								pos,
 							});
 						}
@@ -1214,23 +801,6 @@ export function tokenize(
 						// the stack depth remains the same
 						current_state = transition;
 
-						if (has_slots) {
-							slot_saves_len = slot_restore_n(
-								slot_save_counts[stack_ptr],
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-							const __side_before = slot_saves_len;
-							slot_saves_len = slot_save_and_init_at(
-								slot_decls_for_state_local,
-								current_state,
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-							slot_save_counts[stack_ptr] = slot_saves_len - __side_before;
-						}
 
 						const transition_pos =
 							is_in_probe_state && probe_entry?.resolved_pos !== undefined
@@ -1249,14 +819,6 @@ export function tokenize(
 						// INTROSPECTION_END
 					} else if (stack_ptr > 0) {
 						// regular exit: pop from stack to parent state
-						if (has_slots) {
-							slot_saves_len = slot_restore_n(
-								slot_save_counts[stack_ptr],
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-						}
 						current_state = state_stack[--stack_ptr];
 
 						// INTROSPECTION_START
@@ -1265,7 +827,6 @@ export function tokenize(
 								from_state: prev_state,
 								to_state: current_state,
 								stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 								pos,
 							});
 						}
@@ -1301,57 +862,12 @@ export function tokenize(
 					trans_base3 = current_state * 256 * 3;
 				}
 
-				// apply slot_set updates for the rule (non-ASCII match path).
-				if (has_slots) {
-					apply_slot_updates_at(
-						rule_slot_update_offsets,
-						rule_slot_updates_flat,
-						matched_state,
-						matched_rule_idx,
-						slot_values,
-					);
-					// INTROSPECTION_START
-					if (
-						INTROSPECTION &&
-						introspector &&
-						rule_slot_update_offsets[
-							(matched_state << 8) | matched_rule_idx
-						] !== 0xffffffff
-					) {
-						introspector.slot_write({
-							state: matched_state,
-							rule_idx: matched_rule_idx,
-							pos,
-							slot_snapshot: slot_values,
-						});
-					}
-					// INTROSPECTION_END
-				}
-
 				// check if exiting probe state
 				if (is_in_probe_state && !is_target_probe_state && probe_entry) {
 					pos = probe_entry.pos;
 					stack_ptr = probe_entry.stack_ptr;
 					if (stack_op === 1) {
 						state_stack[stack_ptr++] = probe_entry.state;
-					}
-
-					// stage 6: same as the ASCII probe-success path —
-					// truncate stale slot saves and re-establish the new
-					// top frame's slot_save_counts entry.
-					if (has_slots) {
-						slot_saves_len = probe_entry.slot_saves_len_at_entry ?? 0;
-						if (stack_op === 1) {
-							const before = slot_saves_len;
-							slot_saves_len = slot_save_and_init_at(
-								slot_decls_for_state_local,
-								current_state,
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-							slot_save_counts[stack_ptr] = slot_saves_len - before;
-						}
 					}
 
 					// INTROSPECTION_START
@@ -1367,7 +883,6 @@ export function tokenize(
 								from_state: probe_entry.probe_state ?? probe_entry.state,
 								to_state: probe_entry.resolved_state,
 								stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 								pos: probe_entry.resolved_pos ?? probe_entry.pos,
 							});
 						}
@@ -1438,26 +953,11 @@ export function tokenize(
 				}
 
 				// handle state transitions (same as ASCII path).
-				// note: the non-ASCII fallback path uses a precomputed transition
-				// without a rule_idx, so slot_when/slot_set on the underlying
-				// fallback rule are not evaluated here. push/pop/sideways still
-				// run the slot save/restore so frame state is consistent.
 				if (stack_op === 1) {
 					state_stack[stack_ptr++] = current_state;
 					const prev_state = current_state;
 					current_state = transition;
 
-					if (has_slots) {
-						const __push_before = slot_saves_len;
-						slot_saves_len = slot_save_and_init_at(
-							slot_decls_for_state_local,
-							current_state,
-							slot_values,
-							slot_saves,
-							slot_saves_len,
-						);
-						slot_save_counts[stack_ptr] = slot_saves_len - __push_before;
-					}
 
 					// INTROSPECTION_START
 					if (INTROSPECTION && introspector) {
@@ -1465,7 +965,6 @@ export function tokenize(
 							from_state: prev_state,
 							to_state: current_state,
 							stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 							pos,
 						});
 					}
@@ -1483,23 +982,6 @@ export function tokenize(
 						// the stack depth remains the same
 						current_state = transition;
 
-						if (has_slots) {
-							slot_saves_len = slot_restore_n(
-								slot_save_counts[stack_ptr],
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-							const __side_before = slot_saves_len;
-							slot_saves_len = slot_save_and_init_at(
-								slot_decls_for_state_local,
-								current_state,
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-							slot_save_counts[stack_ptr] = slot_saves_len - __side_before;
-						}
 
 						// INTROSPECTION_START
 						if (INTROSPECTION && introspector) {
@@ -1513,14 +995,6 @@ export function tokenize(
 						// INTROSPECTION_END
 					} else if (stack_ptr > 0) {
 						// regular exit: pop from stack to parent state
-						if (has_slots) {
-							slot_saves_len = slot_restore_n(
-								slot_save_counts[stack_ptr],
-								slot_values,
-								slot_saves,
-								slot_saves_len,
-							);
-						}
 						current_state = state_stack[--stack_ptr];
 
 						// INTROSPECTION_START
@@ -1529,7 +1003,6 @@ export function tokenize(
 								from_state: prev_state,
 								to_state: current_state,
 								stackPtr: stack_ptr,
-								slot_snapshot: slot_values,
 								pos,
 							});
 						}

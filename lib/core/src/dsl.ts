@@ -2,7 +2,7 @@
 // All helpers are pure factories producing GrammarRule objects (or arrays/partial
 // rules) that the compiler already understands — no compiler changes required.
 
-import type { GrammarRule, SlotComparator, SlotUpdate } from "./types";
+import type { GrammarRule } from "./types";
 
 // ---------------------------------------------------------------------------
 // Range tag — lets a single `match(...)` call mix exact strings with char ranges
@@ -157,26 +157,3 @@ export const fallback = (
 	any: true,
 	...opts,
 });
-
-// ---------------------------------------------------------------------------
-// Slot helpers — read/write the bounded sidecar variables declared on states
-// ---------------------------------------------------------------------------
-
-/**
- * Slot predicate block. Spread into a rule's transition object alongside
- * `enter`/`goto`/`leave`. The rule fires only if every entry's comparator
- * passes (logical AND). Keys are bare slot names when the rule lives in the
- * owning state, or qualified `"owner_state.slot_name"` otherwise.
- */
-export const when_slots = (
-	conditions: Record<string, SlotComparator>,
-): Partial<GrammarRule> => ({ slot_when: conditions });
-
-/**
- * Slot update block. Spread into a rule's transition object. Updates apply
- * after token emission and state transition. Keys follow the same
- * qualification rule as `when_slots`.
- */
-export const set_slots = (
-	updates: Record<string, SlotUpdate>,
-): Partial<GrammarRule> => ({ slot_set: updates });

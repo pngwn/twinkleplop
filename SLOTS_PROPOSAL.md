@@ -1,5 +1,7 @@
 # Slots: feature proposal
 
+> **Status: feature removed 2026-04-14.** Implemented through stages 0–8 of the original plan, then removed after an experimental restructure (`languages/typescript_experiment/`) showed the motivating case (class/interface disambiguation) was solvable without slots via a brace-depth refactor plus distinct token types. No in-tree grammar used slots, and the infrastructure cost ~10% tokenize-only perf on slot-free grammars. Document kept as a record of the design exploration; see git log for implementation + removal history.
+
 ## 0. Summary
 
 `slots` are typed, bounded, named variables attached to a state. They initialize when the state is pushed, vanish when it's popped, can be read as rule predicates, and can be written as rule actions. They are the declarative equivalent of tree-sitter's external-scanner state, expressed so the compiler can bake them into the transition machinery and the runtime can touch them in a handful of integer ops per transition.
