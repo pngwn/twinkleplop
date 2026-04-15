@@ -1,0 +1,11 @@
+export { test as basic } from "./basic.output.js";
+export { test as classes } from "./classes.output.js";
+export { test as comments } from "./comments.output.js";
+export { test as edge_cases } from "./edge_cases.output.js";
+export { test as fstrings } from "./fstrings.output.js";
+export { test as keywords } from "./keywords.output.js";
+export { test as numbers } from "./numbers.output.js";
+export { test as operators } from "./operators.output.js";
+export { test as patterns } from "./patterns.output.js";
+export { test as strings } from "./strings.output.js";
+export { test as unicode } from "./unicode.output.js";

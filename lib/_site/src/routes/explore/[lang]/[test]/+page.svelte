@@ -94,6 +94,13 @@
 				grammar: () => import('@twinkleplop/toml'),
 				test: () => import('@twinkleplop/toml/test')
 			}
+		],
+		[
+			'python',
+			{
+				grammar: () => import('@twinkleplop/python'),
+				test: () => import('@twinkleplop/python/test')
+			}
 		]
 	]);
 

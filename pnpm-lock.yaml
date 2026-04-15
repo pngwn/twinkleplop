@@ -73,6 +73,12 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/python:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/rust:
     dependencies:
       '@twinkleplop/core':
@@ -141,6 +147,9 @@ importers:
       '@twinkleplop/markdown':
         specifier: workspace:*
         version: link:../../languages/markdown
+      '@twinkleplop/python':
+        specifier: workspace:*
+        version: link:../../languages/python
       '@twinkleplop/rust':
         specifier: workspace:*
         version: link:../../languages/rust

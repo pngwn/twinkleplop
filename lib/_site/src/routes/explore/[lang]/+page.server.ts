@@ -7,7 +7,8 @@ const DEFAULTS: Record<string, string> = {
 	html: 'embedded',
 	svelte: 'counter',
 	rust: 'complex',
-	sql: 'complex'
+	sql: 'complex',
+	python: 'classes'
 };
 
 export const load = async ({ params }) => {
