@@ -72,6 +72,15 @@ pre[class*='language-'] {
 	color: #bfbdb6;
 }
 
+::highlight(variable_special) {
+	color: #d2a6ff;
+	font-weight: 600;
+}
+
+::highlight(string_escape) {
+	color: #f29668;
+}
+
 ::highlight(keyword) {
 	color: #ff7733;
 }

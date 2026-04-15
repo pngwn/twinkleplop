@@ -5,10 +5,10 @@
 - [x] HTML
 - [x] CSS
 - [x] JSON
-- [ ] Python
-- [ ] Bash/Shell
-- [ ] Markdown
-- [ ] YAML
+- [x] Python
+- [x] Bash/Shell
+- [x] Markdown
+- [x] YAML
 - [x] SQL
 - [x] Rust
 - [ ] Go
@@ -19,7 +19,7 @@
 - [ ] C#
 - [ ] Ruby
 - [ ] PHP
-- [ ] TOML
+- [x] TOML
 - [ ] Diff
 - [ ] Dockerfile
 - [ ] GraphQL

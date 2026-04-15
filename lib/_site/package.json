@@ -27,6 +27,7 @@
 		"vite": "^7.0.4"
 	},
 	"dependencies": {
+		"@twinkleplop/bash": "workspace:*",
 		"@twinkleplop/core": "workspace:*",
 		"@twinkleplop/css": "workspace:*",
 		"@twinkleplop/html": "workspace:*",

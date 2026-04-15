@@ -101,6 +101,13 @@
 				grammar: () => import('@twinkleplop/python'),
 				test: () => import('@twinkleplop/python/test')
 			}
+		],
+		[
+			'bash',
+			{
+				grammar: () => import('@twinkleplop/bash'),
+				test: () => import('@twinkleplop/bash/test')
+			}
 		]
 	]);
 

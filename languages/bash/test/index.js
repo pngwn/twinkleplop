@@ -1,0 +1,11 @@
+export { test as arithmetic } from "./arithmetic.output.js";
+export { test as arrays } from "./arrays.output.js";
+export { test as basic } from "./basic.output.js";
+export { test as complex } from "./complex.output.js";
+export { test as conditionals } from "./conditionals.output.js";
+export { test as expansions } from "./expansions.output.js";
+export { test as keywords } from "./keywords.output.js";
+export { test as pipelines } from "./pipelines.output.js";
+export { test as redirections } from "./redirections.output.js";
+export { test as strings } from "./strings.output.js";
+export { test as variables } from "./variables.output.js";

@@ -31,6 +31,12 @@ importers:
         specifier: ^3.3.0
         version: 3.3.0
 
+  languages/bash:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/css:
     dependencies:
       '@twinkleplop/core':
@@ -132,6 +138,9 @@ importers:
 
   lib/_site:
     dependencies:
+      '@twinkleplop/bash':
+        specifier: workspace:*
+        version: link:../../languages/bash
       '@twinkleplop/core':
         specifier: workspace:*
         version: link:../core
