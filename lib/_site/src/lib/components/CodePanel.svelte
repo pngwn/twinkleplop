@@ -52,24 +52,38 @@
 		const text_node = html_container.firstChild;
 		if (!text_node) return;
 
-		let highlights: Record<string, Highlight> = {};
-		for (let i = 0; i < tokens.token_types.length; i++) {
-			const token_type = tokens.token_types[i];
-			highlights[token_type] = new Highlight();
-			CSS.highlights.set(token_type, highlights[token_type]);
-		}
+		// markdown emits compound token types like `"bold italic"` that
+		// carry multiple active-style classes in one string. split on
+		// whitespace and register the range with each individual highlight
+		// so `::highlight(bold)` and `::highlight(italic)` both target it.
+		// non-compound types (the common case for every other language)
+		// split into a single-element array — unchanged behaviour.
+		const highlights: Record<string, Highlight> = {};
+		const ensure_highlight = (name: string): Highlight => {
+			let h = highlights[name];
+			if (!h) {
+				h = new Highlight();
+				highlights[name] = h;
+				CSS.highlights.set(name, h);
+			}
+			return h;
+		};
 
 		for (let i = 0; i < tokens.tokens.length; i += 3) {
 			const token_code = tokens.tokens[i];
 			const token_type = tokens.token_types[token_code];
+			console.log({token_type})
 			const start = tokens.tokens[i + 1];
 			const end = tokens.tokens[i + 2];
 
 			const r = new Range();
 			r.setStart(text_node, start);
 			r.setEnd(text_node, end);
-			highlights[token_type].add(r);
 			token_ranges.push(r);
+
+			for (const name of token_type.split(/\s+/)) {
+				if (name) ensure_highlight(name).add(r);
+			}
 		}
 	}
 

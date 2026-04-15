@@ -80,6 +80,13 @@
 				grammar: () => import('@twinkleplop/yaml'),
 				test: () => import('@twinkleplop/yaml/test')
 			}
+		],
+		[
+			'markdown',
+			{
+				grammar: () => import('@twinkleplop/markdown'),
+				test: () => import('@twinkleplop/markdown/test')
+			}
 		]
 ]);
 

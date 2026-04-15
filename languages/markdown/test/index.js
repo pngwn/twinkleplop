@@ -1,0 +1,12 @@
+export { test as blockquote } from "./blockquote.output.js";
+export { test as code_span } from "./code_span.output.js";
+export { test as emphasis } from "./emphasis.output.js";
+export { test as escape_entity } from "./escape_entity.output.js";
+export { test as fenced_code } from "./fenced_code.output.js";
+export { test as front_matter } from "./front_matter.output.js";
+export { test as headings } from "./headings.output.js";
+export { test as indented_code } from "./indented_code.output.js";
+export { test as links } from "./links.output.js";
+export { test as lists } from "./lists.output.js";
+export { test as mixed } from "./mixed.output.js";
+export { test as thematic_break } from "./thematic_break.output.js";

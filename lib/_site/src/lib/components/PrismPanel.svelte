@@ -12,7 +12,8 @@
 		rust: 'rust',
 		typescript: "typescript",
 		sql: 'sql',
-		yaml: 'yaml'
+		yaml: 'yaml',
+		markdown: 'markdown'
 	};
 
 	function escape_html(s: string): string {
@@ -41,6 +42,7 @@
 			await import('prismjs/components/prism-typescript');
 			await import('prismjs/components/prism-sql');
 			await import('prismjs/components/prism-yaml');
+			await import('prismjs/components/prism-markdown');
 			if (cancelled) return;
 			const grammar = Prism.languages[current_lang];
 			if (!grammar) {

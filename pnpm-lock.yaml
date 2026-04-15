@@ -67,7 +67,19 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/markdown:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/rust:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
+  languages/sql:
     dependencies:
       '@twinkleplop/core':
         specifier: workspace:*
@@ -94,20 +106,13 @@ importers:
         specifier: workspace:*
         version: link:../javascript
 
-  languages/typescript_experiment:
+  languages/whitespace:
     dependencies:
       '@twinkleplop/core':
         specifier: workspace:*
         version: link:../../lib/core
-      '@twinkleplop/javascript':
-        specifier: workspace:*
-        version: link:../javascript
-    devDependencies:
-      '@twinkleplop/typescript':
-        specifier: workspace:*
-        version: link:../typescript
 
-  languages/whitespace:
+  languages/yaml:
     dependencies:
       '@twinkleplop/core':
         specifier: workspace:*
@@ -127,9 +132,15 @@ importers:
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript
+      '@twinkleplop/markdown':
+        specifier: workspace:*
+        version: link:../../languages/markdown
       '@twinkleplop/rust':
         specifier: workspace:*
         version: link:../../languages/rust
+      '@twinkleplop/sql':
+        specifier: workspace:*
+        version: link:../../languages/sql
       '@twinkleplop/svelte':
         specifier: workspace:*
         version: link:../../languages/svelte
@@ -145,6 +156,9 @@ importers:
       '@twinkleplop/whitespace':
         specifier: workspace:*
         version: link:../../languages/whitespace
+      '@twinkleplop/yaml':
+        specifier: workspace:*
+        version: link:../../languages/yaml
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0
@@ -194,9 +208,6 @@ importers:
       '@twinkleplop/typescript':
         specifier: workspace:*
         version: link:../../languages/typescript
-      '@twinkleplop/typescript_experiment':
-        specifier: workspace:*
-        version: link:../../languages/typescript_experiment
       '@wooorm/starry-night':
         specifier: ^3.8.0
         version: 3.9.0
@@ -216,6 +227,9 @@ importers:
       '@twinkleplop/html':
         specifier: workspace:*
         version: link:../../languages/html
+      '@twinkleplop/markdown':
+        specifier: workspace:*
+        version: link:../../languages/markdown
       '@vitest/ui':
         specifier: ^2.1.8
         version: 2.1.9(vitest@2.1.9)
