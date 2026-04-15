@@ -97,6 +97,12 @@ importers:
         specifier: workspace:*
         version: link:../javascript
 
+  languages/toml:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/typescript:
     dependencies:
       '@twinkleplop/core':
@@ -144,6 +150,9 @@ importers:
       '@twinkleplop/svelte':
         specifier: workspace:*
         version: link:../../languages/svelte
+      '@twinkleplop/toml':
+        specifier: workspace:*
+        version: link:../../languages/toml
       '@twinkleplop/twoslash':
         specifier: workspace:*
         version: link:../twoslash

@@ -1,0 +1,152 @@
+# ============================================================
+# EDGE CASE FILE 1: Strings and Numerics
+# Sources: toml-test spec-1.0.0 generated tests + manual tests
+# ============================================================
+
+# --- (1) Multi-line basic strings with escape sequences ---
+
+# From spec-1.0.0/string-0: basic string with all escape types
+basic_esc = "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."
+
+# From spec-1.0.0/string-1: simple multiline basic string
+str1 = """
+Roses are red
+Violets are blue"""
+
+# From spec-1.0.0/string-3: line-ending backslash trims whitespace
+# These three are byte-for-byte equivalent:
+str2 = """
+The quick brown \
+
+  fox jumps over \
+    the lazy dog."""
+
+str3 = """\
+    The quick brown \
+  fox jumps over \
+    the lazy dog.\
+  """
+
+# From tests/valid/string/multiline.toml: whitespace after backslash at EOL
+whitespace_after_bs = """\
+    The quick brown \
+  fox jumps over \
+    the lazy dog.\
+  """
+
+# From tests/valid/string/multiline.toml: backslash escape edge cases
+# a followed by escaped backslash, then newline, then b
+escape_bs_1 = """a \\
+b"""
+
+# a followed by escaped backslash + line-continuation backslash, then b
+escape_bs_2 = """a \\\\
+b"""
+
+# a followed by two escaped backslashes, then whitespace+newline, then b
+escape_bs_3 = """a \\\\\
+  b"""
+
+# From spec-1.0.0/string-4: embedded quotes in multiline basic strings
+str4 = """Here are two quotation marks: "". Simple enough."""
+str5 = """Here are three quotation marks: """\"."""
+str6 = """Here are fifteen quotation marks: ""\"""\"""\"""\"""\"."""
+
+# "This," she said, "is just a pointless statement."
+str7 = """"This," she said, "is just a pointless statement." """
+
+# From tests/valid/string/multiline-quotes.toml: quote-edge-case
+one = """\"one quote"""
+two = """\"\"two quotes"""
+one_space = """ "one quote" """
+two_space = """ ""two quotes"" """
+
+# Three opening """, then one escaped ", then two "" (allowed), then closing """
+escaped = """lol\""" """
+
+mismatch1 = """aaa'''bbb"""
+
+# --- (2) Multi-line literal strings ---
+
+# From spec-1.0.0/string-5: literal strings (no escaping)
+winpath = 'C:\Users\nodejs\templates'
+winpath2 = '\\ServerX\admin$\system32\'
+quoted = 'Tom "Dubs" Preston-Werner'
+regex = '<\i\c*\s*>'
+
+# From spec-1.0.0/string-6: multi-line literal strings
+regex2 = '''I [dw]on't need \d{2} apples'''
+lines  = '''
+The first newline is
+trimmed in raw strings.
+   All other whitespace
+   is preserved.
+'''
+
+# From spec-1.0.0/string-7: quotes inside multi-line literal strings
+quot15 = '''Here are fifteen quotation marks: """""""""""""""'''
+
+# 'That,' she said, 'is still pointless.'
+str_lit = ''''That,' she said, 'is still pointless.''''
+
+# From tests/valid/string/multiline-quotes.toml: apostrophe-edge-cases
+lit_one = ''''one quote''''
+lit_two = '''''two quotes'''''
+lit_one_space = ''' 'one quote' '''
+lit_two_space = ''' ''two quotes'' '''
+
+mismatch2 = '''aaa"""bbb'''
+
+# --- (7) Various numeric forms ---
+
+# From spec-1.0.0/integer-0: basic integers
+int1 = +99
+int2 = 42
+int3 = 0
+int4 = -17
+
+# From spec-1.0.0/integer-1: underscores in integers
+int5 = 1_000
+int6 = 5_349_221
+int7 = 53_49_221  # Indian number system grouping
+int8 = 1_2_3_4_5  # VALID but discouraged
+
+# From spec-1.0.0/integer-2: hex, oct, binary
+# hexadecimal with prefix 0x
+hex1 = 0xDEADBEEF
+hex2 = 0xdeadbeef
+hex3 = 0xdead_beef
+
+# octal with prefix 0o
+oct1 = 0o01234567
+oct2 = 0o755  # useful for Unix file permissions
+
+# binary with prefix 0b
+bin1 = 0b11010110
+
+# From spec-1.0.0/float-0: fractional, exponent, both
+flt1 = +1.0
+flt2 = 3.1415
+flt3 = -0.01
+flt4 = 5e+22
+flt5 = 1e06
+flt6 = -2E-2
+flt7 = 6.626e-34
+
+# From spec-1.0.0/float-1: underscores in float
+flt8 = 224_617.445_991_228
+
+# From spec-1.0.0/float-2: infinity and NaN
+# infinity
+sf1 = inf   # positive infinity
+sf2 = +inf  # positive infinity
+sf3 = -inf  # negative infinity
+
+# not a number
+sf4 = nan   # actual sNaN/qNaN encoding is implementation-specific
+sf5 = +nan  # same as nan
+sf6 = -nan  # valid, actual encoding is implementation-specific
+
+# From tests/valid/float/float.toml: zero integer part
+zero_intpart = 0.123
+leading_zero_fractional = 0.0123

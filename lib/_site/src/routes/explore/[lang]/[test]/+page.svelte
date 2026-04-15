@@ -87,8 +87,15 @@
 				grammar: () => import('@twinkleplop/markdown'),
 				test: () => import('@twinkleplop/markdown/test')
 			}
+		],
+		[
+			'toml',
+			{
+				grammar: () => import('@twinkleplop/toml'),
+				test: () => import('@twinkleplop/toml/test')
+			}
 		]
-]);
+	]);
 
 	if (!lang_map.get(data.lang)) {
 		throw new Error(`Language ${data.lang} not found`);

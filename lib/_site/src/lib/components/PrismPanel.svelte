@@ -13,7 +13,8 @@
 		typescript: "typescript",
 		sql: 'sql',
 		yaml: 'yaml',
-		markdown: 'markdown'
+		markdown: 'markdown',
+		toml: 'toml'
 	};
 
 	function escape_html(s: string): string {
@@ -43,6 +44,7 @@
 			await import('prismjs/components/prism-sql');
 			await import('prismjs/components/prism-yaml');
 			await import('prismjs/components/prism-markdown');
+			await import('prismjs/components/prism-toml');
 			if (cancelled) return;
 			const grammar = Prism.languages[current_lang];
 			if (!grammar) {

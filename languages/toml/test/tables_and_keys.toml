@@ -1,0 +1,134 @@
+# ============================================================
+# EDGE CASE FILE 2: Tables and Keys
+# Sources: toml-test spec-1.0.0 generated tests + manual tests
+# ============================================================
+
+# --- (3) Dotted keys ---
+
+# From spec-1.0.0/keys-3: dotted keys creating nested tables
+name = "Orange"
+physical.color = "orange"
+physical.shape = "round"
+site."google.com" = true
+
+# From tests/valid/key/dotted.toml: mixed quoting in dotted keys, whitespace around dots
+name.first = "Arthur"
+"name".'last' = "Dent"
+
+many.dots.here.dot.dot.dot = 42
+
+# Spaces are ignored, and key parts can be quoted
+count.a = 1
+count . b = 2
+"count"."c" = 3
+"count" . "d" = 4
+'count'.'e' = 5
+'count' . 'f' = 6
+"count".'g' = 7
+"count" . 'h' = 8
+count.'i' = 9
+count . 'j' = 10
+"count".k = 11
+"count" . l = 12
+
+# From spec-1.0.0/keys-1: quoted keys (non-ASCII, special chars)
+"127.0.0.1" = "value"
+"character encoding" = "value"
+"ʎǝʞ" = "value"
+'key2' = "value"
+'quoted "value"' = "value"
+
+# --- (6) Nested tables ---
+
+# From spec-1.0.0/table-2: dotted keys in table headers + nested table values
+[dog."tater.man"]
+type.name = "pug"
+
+# From spec-1.0.0/table-3: whitespace in table headers
+[a.b.c]            # this is best practice
+[ d.e.f ]          # same as [d.e.f]
+[ g . h . i ]      # same as [g.h.i]
+[ j . "ʞ" . 'l' ]  # same as [j."ʞ".'l']
+
+# From spec-1.0.0/table-4: super-tables defined after sub-tables
+# [x] you
+# [x.y] don't
+# [x.y.z] need these
+[x.y.z.w]  # for this to work
+
+[x]  # defining a super-table afterward is ok
+
+# From spec-1.0.0/table-8: dotted keys defining tables implicitly
+fruit.apple.color = "red"
+# Defines a table named fruit
+# Defines a table named fruit.apple
+
+fruit.apple.taste.sweet = true
+# Defines a table named fruit.apple.taste
+# fruit and fruit.apple were already created
+
+# From tests/valid/key/dotted.toml: dotted keys inside a table
+[tbl]
+a.b.c = 42.666
+
+[a.few.dots]
+polka.dot = "again?"
+polka.dance-with = "Dot"
+
+# --- (4) Inline tables ---
+
+# From spec-1.0.0/inline-table-0: basic inline tables
+name_inline = { first = "Tom", last = "Preston-Werner" }
+point = { x = 1, y = 2 }
+animal = { type.name = "pug" }  # dotted key inside inline table
+
+# From tests/valid/inline-table/inline-table.toml: more inline table variants
+simple = { a = 1 }
+str-key = { "a" = 1 }
+table-array = [{ "a" = 1 }, { "b" = 2 }]  # array of inline tables
+
+# From spec-1.0.0/array-0: inline table inside an array
+contributors = [
+  "Foo Bar ",
+  { name = "Baz Qux", email = "bazqux@example.com", url = "https://example.com/bazqux" }
+]
+
+# --- (5) Array-of-tables [[...]] ---
+
+# From tests/valid/array/array-subtables.toml: array-of-tables with subtables
+[[arr]]
+[arr.subtab]
+val = 1
+
+[[arr]]
+[arr.subtab]
+val = 2
+
+# From tests/valid/key/dotted.toml: dotted keys inside array-of-tables
+[[arr2]]
+a.b.c = 1
+a.b.d = 2
+
+[[arr2]]
+a.b.c = 3
+a.b.d = 4
+
+# TOML spec example: nested array-of-tables
+[[fruits]]
+name = "apple"
+
+[fruits.physical]
+color = "red"
+shape = "round"
+
+[[fruits.varieties]]
+name = "red delicious"
+
+[[fruits.varieties]]
+name = "granny smith"
+
+[[fruits]]
+name = "banana"
+
+[[fruits.varieties]]
+name = "plantain"

@@ -123,6 +123,18 @@ pre[class*='language-'] {
 	color: #d2a6ff;
 }
 
+/* TOML-specific tokens */
+::highlight(datetime) {
+	color: #22d3ee;
+	font-style: italic;
+}
+
+::highlight(table_header),
+::highlight(array_table_header) {
+	color: #ff7733;
+	font-weight: 600;
+}
+
 ::highlight(template) {
 	color: #b8cc52;
 }
@@ -394,6 +406,9 @@ pre[class*='language-'] {
 ::highlight(important),
 ::highlight(bold),
 ::highlight(italic),
-::highlight(pseudo-selector) {
+::highlight(pseudo-selector),
+::highlight(datetime),
+::highlight(table_header),
+::highlight(array_table_header) {
 	transition: color 0.5s ease;
 }

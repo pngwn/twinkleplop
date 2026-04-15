@@ -1,0 +1,113 @@
+# ============================================================
+# EDGE CASE FILE 3: Datetimes and Complex Multi-type Document
+# Sources: toml-test spec-1.0.0 + manual test cases
+# ============================================================
+
+# --- (8) Local date/time/datetime values ---
+
+# Offset datetimes (RFC 3339)
+odt1 = 1979-05-27T07:32:00Z
+odt2 = 1979-05-27T00:32:00-07:00
+odt3 = 1979-05-27T00:32:00.999999-07:00
+
+# From tests/valid/datetime/datetime.toml: space separator, lowercase
+space_dt = 1987-07-05 17:45:00Z
+
+# ABNF is case-insensitive, both "Z" and "z" must be supported
+lower_dt = 1987-07-05t17:45:00z
+
+# From tests/valid/datetime/milliseconds.toml: millisecond precision
+utc1 = 1987-07-05T17:45:56.123Z
+utc2 = 1987-07-05T17:45:56.6Z
+wita1 = 1987-07-05T17:45:56.123+08:00
+wita2 = 1987-07-05T17:45:56.6+08:00
+
+# Local datetime (no timezone)
+ldt1 = 1979-05-27T07:32:00
+ldt2 = 1979-05-27T00:32:00.999999
+
+# From tests/valid/datetime/local.toml
+local = 1987-07-05T17:45:00
+milli_ldt = 1977-12-21T10:32:00.555
+space_ldt = 1987-07-05 17:45:00
+
+# Local date
+ld1 = 1979-05-27
+
+# From tests/valid/datetime/local-date.toml
+bestdayever = 1987-07-05
+
+# Local time
+lt1 = 07:32:00
+lt2 = 00:32:00.999999
+
+# From tests/valid/datetime/local-time.toml
+besttimeever = 17:45:00
+milliseconds_lt = 10:32:00.555
+
+# From tests/valid/datetime/edge.toml: boundary dates
+first_offset = 0001-01-01 00:00:00Z
+first_local = 0001-01-01 00:00:00
+first_date = 0001-01-01
+
+last_offset = 9999-12-31 23:59:59Z
+last_local = 9999-12-31 23:59:59
+last_date = 9999-12-31
+
+# From tests/valid/datetime/leap-year.toml: leap year dates
+leap_2000_dt = 2000-02-29 15:15:15Z
+leap_2000_local = 2000-02-29 15:15:15
+leap_2000_date = 2000-02-29
+
+leap_2024_dt = 2024-02-29 15:15:15Z
+leap_2024_local = 2024-02-29 15:15:15
+
+# --- Complex multi-type document (real-world config) ---
+# Based on toml-test spec-example-1 + array.toml + tricky.toml
+
+# This is a TOML document. Boom.
+title = "TOML Example"
+
+[owner]
+name = "Lance Uppercut"
+dob = 1979-05-27T07:32:00-08:00  # First class dates? Why not?
+
+[database]
+server = "192.168.1.1"
+ports = [ 8001, 8001, 8002 ]
+connection_max = 5000
+enabled = true
+
+[servers]
+
+  # You can indent as you please. Tabs or spaces. TOML don't care.
+  [servers.alpha]
+  ip = "10.0.0.1"
+  dc = "eqdc10"
+
+  [servers.beta]
+  ip = "10.0.0.2"
+  dc = "eqdc10"
+
+[clients]
+data = [ ["gamma", "delta"], [1, 2] ]
+
+# Line breaks are OK when inside arrays
+hosts = [
+  "alpha",
+  "omega"
+]
+
+# From tests/valid/array/array.toml: mixed-type arrays with datetime values
+mixed_dates = [
+  1987-07-05T17:45:00Z,
+  1979-05-27T07:32:00,
+  2006-06-01,
+  11:00:00,
+]
+
+# From tests/valid/comment/tricky.toml: hash characters in strings and keys
+["hash#tag"]
+"#!" = "hash bang"
+arr3 = [ "#", '#', """###""" ]
+tbl1 = { "#" = '}#' }
