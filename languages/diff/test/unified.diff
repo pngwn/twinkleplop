@@ -1,0 +1,9 @@
+diff --git a/src/old_name.js b/src/new_name.js
+index abc1234..def5678 100644
+--- a/src/old_name.js
++++ b/src/new_name.js
+@@ -1,4 +1,4 @@
+ const foo = 1;
+-const bar = 2;
++const bar = 3;
+ const baz = foo + bar;

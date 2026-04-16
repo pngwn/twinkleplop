@@ -1,0 +1,6 @@
+++i;
+--i;
+++counter;
+--counter;
++valid inserted line
+-valid deleted line

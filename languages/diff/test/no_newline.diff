@@ -1,0 +1,8 @@
+--- a/file.txt
++++ b/file.txt
+@@ -1,2 +1,2 @@
+ line one
+-line two
+\ No newline at end of file
++line two modified
+\ No newline at end of file

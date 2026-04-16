@@ -1,0 +1,6 @@
+def hello():
+    print("world")
+    return 42
+
+class Foo:
+    pass

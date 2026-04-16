@@ -1,0 +1,11 @@
+*** old_file.txt	2024-01-15 10:00:00.000000000 +0000
+--- new_file.txt	2024-01-15 10:30:00.000000000 +0000
+***************
+*** 1,5 ****
+  line one
+! line two old
+  line three
+--- 1,5 ----
+  line one
+! line two new
+  line three

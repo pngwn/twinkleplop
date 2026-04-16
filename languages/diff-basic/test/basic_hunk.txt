@@ -1,0 +1,9 @@
+@@ -10,7 +10,8 @@ function process(input) {
+   const result = [];
+-  for (let i = 0; i < input.length; i++) {
+-    result.push(input[i] * 2);
++  for (const item of input) {
++    result.push(item * 2);
++    console.log(item);
+   }
+   return result;

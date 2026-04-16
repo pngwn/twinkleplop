@@ -9,7 +9,9 @@ const DEFAULTS: Record<string, string> = {
 	rust: 'complex',
 	sql: 'complex',
 	python: 'classes',
-	go: 'basics'
+	go: 'basics',
+	diff: 'unified',
+	'diff-basic': 'basic_hunk'
 };
 
 export const load = async ({ params }) => {

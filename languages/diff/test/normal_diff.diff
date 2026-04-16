@@ -1,0 +1,10 @@
+1,3c1,3
+< old line one
+< old line two
+< old line three
+---
+> new line one
+> new line two
+> new line three
+5a6
+> added line

@@ -17,7 +17,8 @@
 		toml: 'toml',
 		python: 'python',
 		bash: 'bash',
-		go: 'go'
+		go: 'go',
+		diff: 'diff'
 	};
 
 	function escape_html(s: string): string {
@@ -51,6 +52,7 @@
 			await import('prismjs/components/prism-python');
 			await import('prismjs/components/prism-bash');
 			await import('prismjs/components/prism-go');
+			await import('prismjs/components/prism-diff');
 			if (cancelled) return;
 			const grammar = Prism.languages[current_lang];
 			if (!grammar) {

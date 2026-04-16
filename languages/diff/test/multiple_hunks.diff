@@ -1,0 +1,18 @@
+diff --git a/main.py b/main.py
+index aaa1111..bbb2222 100644
+--- a/main.py
++++ b/main.py
+@@ -1,5 +1,5 @@
+ import os
+-import sys
++import pathlib
+
+ def main():
+     pass
+@@ -10,4 +10,6 @@
+
+ if __name__ == "__main__":
+-    main()
++    result = main()
++    print(result)
++    sys.exit(0)

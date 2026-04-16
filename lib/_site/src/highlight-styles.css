@@ -173,19 +173,33 @@ pre[class*='language-'] {
 	font-weight: 600;
 }
 
-::highlight(inserted) {
-	color: #4ade80;
-	background: #4ade8011;
+::highlight(inserted),
+::highlight(inserted_marker) {
+	/*color: #4ade80;*/
+	background: #4ade8044;
 }
 
-::highlight(changed) {
-	color: #60a5fa;
-	background: #60a5fa11;
+::highlight(changed),
+::highlight(changed_marker) {
+	/*color: #60a5fa;*/
+	background: #60a5fa44;
 }
 
-::highlight(deleted) {
+::highlight(deleted),
+::highlight(deleted_marker) {
+	/*color: #f87171;*/
+	background: #f8717144;
+}
+::highlight(deleted_marker) {
 	color: #f87171;
-	background: #f8717111;
+}
+
+::highlight(changed_marker) {
+	color: #60a5fa;
+}
+
+::highlight(inserted_marker) {
+	color: #4ade80;
 }
 
 /*::highlight(important),*/

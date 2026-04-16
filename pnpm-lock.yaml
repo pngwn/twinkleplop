@@ -43,6 +43,18 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/diff:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
+  languages/diff-basic:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/go:
     dependencies:
       '@twinkleplop/core':
@@ -153,6 +165,12 @@ importers:
       '@twinkleplop/css':
         specifier: workspace:*
         version: link:../../languages/css
+      '@twinkleplop/diff':
+        specifier: workspace:*
+        version: link:../../languages/diff
+      '@twinkleplop/diff-basic':
+        specifier: workspace:*
+        version: link:../../languages/diff-basic
       '@twinkleplop/go':
         specifier: workspace:*
         version: link:../../languages/go

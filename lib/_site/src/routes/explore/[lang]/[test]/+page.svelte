@@ -115,6 +115,20 @@
 				grammar: () => import('@twinkleplop/go'),
 				test: () => import('@twinkleplop/go/test')
 			}
+		],
+		[
+			'diff',
+			{
+				grammar: () => import('@twinkleplop/diff'),
+				test: () => import('@twinkleplop/diff/test')
+			}
+		],
+		[
+			'diff-basic',
+			{
+				grammar: () => import('@twinkleplop/diff-basic'),
+				test: () => import('@twinkleplop/diff-basic/test')
+			}
 		]
 	]);
 
