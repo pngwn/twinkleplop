@@ -30,6 +30,7 @@
 		"@twinkleplop/bash": "workspace:*",
 		"@twinkleplop/core": "workspace:*",
 		"@twinkleplop/css": "workspace:*",
+		"@twinkleplop/go": "workspace:*",
 		"@twinkleplop/html": "workspace:*",
 		"@twinkleplop/javascript": "workspace:*",
 		"@twinkleplop/markdown": "workspace:*",

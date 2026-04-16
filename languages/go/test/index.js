@@ -1,0 +1,9 @@
+export { test as basics } from "./basics.output.js";
+export { test as builtins } from "./builtins.output.js";
+export { test as comments } from "./comments.output.js";
+export { test as edge_cases } from "./edge_cases.output.js";
+export { test as identifiers } from "./identifiers.output.js";
+export { test as keywords } from "./keywords.output.js";
+export { test as numbers } from "./numbers.output.js";
+export { test as operators } from "./operators.output.js";
+export { test as strings } from "./strings.output.js";

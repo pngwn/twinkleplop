@@ -18,9 +18,10 @@ const SHIKI_LANG_MAP: Record<string, string> = {
 	toml: 'toml',
 	python: 'python',
 	bash: 'bash',
+	go: 'go',
 };
 
-const SHIKI_LANGS = ['css', 'javascript', 'html', 'svelte', 'rust', 'typescript', 'sql', 'c', 'yaml', 'markdown', 'toml', 'python', 'bash'] as const;
+const SHIKI_LANGS = ['css', 'javascript', 'html', 'svelte', 'rust', 'typescript', 'sql', 'c', 'yaml', 'markdown', 'toml', 'python', 'bash', 'go'] as const;
 
 let highlighter_promise: Promise<Highlighter> | null = null;
 

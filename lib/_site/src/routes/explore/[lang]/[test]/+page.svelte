@@ -108,6 +108,13 @@
 				grammar: () => import('@twinkleplop/bash'),
 				test: () => import('@twinkleplop/bash/test')
 			}
+		],
+		[
+			'go',
+			{
+				grammar: () => import('@twinkleplop/go'),
+				test: () => import('@twinkleplop/go/test')
+			}
 		]
 	]);
 

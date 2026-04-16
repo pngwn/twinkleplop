@@ -43,6 +43,12 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/go:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/html:
     dependencies:
       '@twinkleplop/core':
@@ -147,6 +153,9 @@ importers:
       '@twinkleplop/css':
         specifier: workspace:*
         version: link:../../languages/css
+      '@twinkleplop/go':
+        specifier: workspace:*
+        version: link:../../languages/go
       '@twinkleplop/html':
         specifier: workspace:*
         version: link:../../languages/html
