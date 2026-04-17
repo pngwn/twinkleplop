@@ -141,6 +141,53 @@ describe("JavaScript reclassifier — property detection", () => {
 	});
 });
 
+describe("JavaScript reclassifier — class_name promoter", () => {
+	it("class Foo { } — Foo becomes class_name", () => {
+		const tokens = enrich("class Foo { }");
+		expect(type_of(tokens, "Foo")).toBe("class_name");
+	});
+
+	it("class Foo extends Bar — both become class_name", () => {
+		const tokens = enrich("class Foo extends Bar { }");
+		expect(type_of(tokens, "Foo")).toBe("class_name");
+		expect(type_of(tokens, "Bar")).toBe("class_name");
+	});
+
+	it("new Foo() — Foo becomes class_name (not function)", () => {
+		const tokens = enrich("const e = new Foo();");
+		expect(type_of(tokens, "Foo")).toBe("class_name");
+	});
+
+	it("new pkg.util.Foo() — only last segment promotes", () => {
+		const tokens = enrich("const d = new pkg.util.Foo();");
+		expect(type_of(tokens, "pkg")).toBe("identifier");
+		expect(type_of(tokens, "util")).toBe("identifier");
+		expect(type_of(tokens, "Foo")).toBe("class_name");
+	});
+
+	it("instanceof Foo — Foo becomes class_name", () => {
+		const tokens = enrich("if (x instanceof Foo) { }");
+		expect(type_of(tokens, "Foo")).toBe("class_name");
+	});
+
+	it("extends SuperClass works even with dotted path", () => {
+		const tokens = enrich("class Foo extends pkg.Bar { }");
+		expect(type_of(tokens, "pkg")).toBe("identifier");
+		expect(type_of(tokens, "Bar")).toBe("class_name");
+	});
+
+	it("plain identifier in value position is NOT class_name", () => {
+		const tokens = enrich("const x = Foo + 1;");
+		// Foo here is just a value reference, not a class anchor
+		expect(type_of(tokens, "Foo")).not.toBe("class_name");
+	});
+
+	it("function call does not get class_name", () => {
+		const tokens = enrich("const x = fn();");
+		expect(type_of(tokens, "fn")).toBe("function");
+	});
+});
+
 describe("JavaScript reclassifier — known limitations (documented misses)", () => {
 	// These cases are where the Prism-style lookahead heuristic is known to
 	// miss. They're documented here so regressions show up if the rule ever

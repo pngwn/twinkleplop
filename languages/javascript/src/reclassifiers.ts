@@ -489,8 +489,182 @@ export const interface_member_promoter: Reclassifier = (input, result) => {
 	return result;
 };
 
+// ---------------------------------------------------------------------------
+// class_name_promoter
+// ---------------------------------------------------------------------------
+//
+// Promotes identifiers to `class_name` when they appear in positions that
+// syntactically denote a class/interface name:
+//
+//   class Foo { }                     Foo
+//   class Foo extends Bar { }         Foo, Bar
+//   class Foo extends pkg.Bar { }     Foo, Bar   (only the last in a chain)
+//   class Foo<T> extends Bar<U> { }   Foo, Bar   (generics skipped)
+//   class Foo implements A, B { }     Foo, A, B
+//   interface Foo { }                 Foo
+//   interface Foo extends A, B { }    Foo, A, B
+//   new Foo()                         Foo
+//   new pkg.util.Foo()                Foo       (last-in-chain)
+//   x instanceof Foo                  Foo
+//
+// This pass runs AFTER function_variable_rules and (in TypeScript) AFTER
+// type_position_promoter, so it can upgrade either `identifier` or `type`
+// tokens that sit in these positions.
+
+export const class_name_promoter: Reclassifier = (input, result) => {
+	const { tokens, token_types } = result;
+	const n = tokens.length / 3;
+	if (n === 0) return result;
+
+	const identifier_id = token_types.indexOf("identifier");
+	const keyword_id = token_types.indexOf("keyword");
+	const punctuation_id = token_types.indexOf("punctuation");
+	const operator_id = token_types.indexOf("operator");
+	const comment_id = token_types.indexOf("comment");
+	const type_id = token_types.indexOf("type");
+	const function_id = token_types.indexOf("function");
+
+	if (identifier_id < 0 || keyword_id < 0) return result;
+
+	let class_name_id = token_types.indexOf("class_name");
+	if (class_name_id < 0) {
+		class_name_id = token_types.length;
+		token_types.push("class_name");
+	}
+
+	const kind_of = (i: number) => tokens[i * 3];
+	const text_of = (i: number): string =>
+		input.slice(tokens[i * 3 + 1], tokens[i * 3 + 2]);
+	const is_trivia = (i: number) =>
+		i >= 0 && i < n && kind_of(i) === comment_id;
+	const skip_trivia = (from: number): number => {
+		let j = from;
+		while (j < n && is_trivia(j)) j++;
+		return j;
+	};
+
+	// a name-shaped token: identifier, TS `type` (our own pass may have
+	// already promoted it), or `function` (the JS probe mis-classifies
+	// `new Foo(`, `instanceof Foo` as `function` because of the trailing
+	// `(`). all three are eligible for re-promotion to `class_name`.
+	const is_name_token = (i: number): boolean => {
+		if (i < 0 || i >= n) return false;
+		const k = kind_of(i);
+		return k === identifier_id || k === type_id || k === function_id;
+	};
+
+	// skip a balanced `<...>` angle group starting at `from` (which points at
+	// the opening `<`). returns the index after the closing `>`.
+	const skip_angles = (from: number): number => {
+		if (from >= n) return from;
+		if (kind_of(from) !== operator_id || text_of(from) !== "<") return from;
+		let depth = 1;
+		let j = from + 1;
+		while (j < n && depth > 0) {
+			if (!is_trivia(j) && kind_of(j) === operator_id) {
+				const t = text_of(j);
+				if (t === "<") depth++;
+				else if (t === ">") depth--;
+			}
+			j++;
+		}
+		return j;
+	};
+
+	// walk a dotted identifier chain (`foo.bar.Baz`), promote the LAST
+	// identifier to `class_name`. returns index after the chain.
+	const promote_chain_last = (from: number): number => {
+		let j = skip_trivia(from);
+		let last = -1;
+		while (j < n) {
+			if (!is_name_token(j)) break;
+			last = j;
+			j = skip_trivia(j + 1);
+			if (
+				j < n &&
+				kind_of(j) === punctuation_id &&
+				text_of(j) === "."
+			) {
+				j = skip_trivia(j + 1);
+				continue;
+			}
+			break;
+		}
+		if (last >= 0) tokens[last * 3] = class_name_id;
+		return j;
+	};
+
+	// walk a comma-separated list of (chain [<generics>]) entries. returns
+	// index after the list.
+	const promote_list = (from: number): number => {
+		let j = skip_trivia(from);
+		while (j < n) {
+			if (!is_name_token(j)) break;
+			j = promote_chain_last(j);
+			j = skip_trivia(j);
+			if (j < n && kind_of(j) === operator_id && text_of(j) === "<") {
+				j = skip_angles(j);
+				j = skip_trivia(j);
+			}
+			if (
+				j < n &&
+				kind_of(j) === punctuation_id &&
+				text_of(j) === ","
+			) {
+				j = skip_trivia(j + 1);
+				continue;
+			}
+			break;
+		}
+		return j;
+	};
+
+	for (let i = 0; i < n; i++) {
+		if (is_trivia(i)) continue;
+		if (kind_of(i) !== keyword_id) continue;
+		const kw = text_of(i);
+
+		if (kw === "class" || kw === "interface") {
+			// head: [name] [<...>] [extends LIST]* [implements LIST]?  {
+			let j = skip_trivia(i + 1);
+			if (is_name_token(j)) {
+				tokens[j * 3] = class_name_id;
+				j = skip_trivia(j + 1);
+			}
+			if (j < n && kind_of(j) === operator_id && text_of(j) === "<") {
+				j = skip_angles(j);
+				j = skip_trivia(j);
+			}
+			// extends / implements can appear in either order syntactically,
+			// but typescript only accepts extends-before-implements. allow
+			// both and iterate up to twice.
+			for (let iter = 0; iter < 2; iter++) {
+				j = skip_trivia(j);
+				if (
+					j < n &&
+					kind_of(j) === keyword_id &&
+					(text_of(j) === "extends" || text_of(j) === "implements")
+				) {
+					j = promote_list(j + 1);
+					continue;
+				}
+				break;
+			}
+			continue;
+		}
+
+		if (kw === "new" || kw === "instanceof") {
+			promote_chain_last(i + 1);
+			continue;
+		}
+	}
+
+	return result;
+};
+
 export const reclassifiers = [
 	rewrite_types(function_variable_rules, { trivia: ["comment"] }),
 	interface_member_promoter,
+	class_name_promoter,
 	embed_interleaved({ scan: scan_tagged_template }),
 ];

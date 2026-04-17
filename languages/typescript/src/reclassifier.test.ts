@@ -138,3 +138,225 @@ describe("TypeScript reclassifier — object literal / destructure unaffected", 
 		expect(type_of(tokens, "a")).toBe("property");
 	});
 });
+
+describe("TypeScript reclassifier — type-position promotion", () => {
+	it("custom type in parameter position promotes", () => {
+		const tokens = enrich("function foo(x: User) { return x; }");
+		expect(type_of(tokens, "User")).toBe("type");
+		expect(type_of(tokens, "x")).toBe("identifier");
+	});
+
+	it("custom type in return position promotes", () => {
+		const tokens = enrich("function foo(): Baz { return null; }");
+		expect(type_of(tokens, "Baz")).toBe("type");
+	});
+
+	it("custom type in variable annotation promotes", () => {
+		const tokens = enrich("let x: MyType = 1;");
+		expect(type_of(tokens, "MyType")).toBe("type");
+		expect(type_of(tokens, "x")).toBe("identifier");
+	});
+
+	it("generic arguments promote: Promise<Bar>", () => {
+		const tokens = enrich("let p: Promise<Bar> = fetch();");
+		expect(type_of(tokens, "Promise")).toBe("type");
+		expect(type_of(tokens, "Bar")).toBe("type");
+	});
+
+	it("union types promote: A | B", () => {
+		const tokens = enrich("type X = A | B;");
+		expect(type_of(tokens, "A")).toBe("type");
+		expect(type_of(tokens, "B")).toBe("type");
+	});
+
+	it("intersection types promote: A & B", () => {
+		const tokens = enrich("type X = A & B;");
+		expect(type_of(tokens, "A")).toBe("type");
+		expect(type_of(tokens, "B")).toBe("type");
+	});
+
+	it("`as` cast target promotes", () => {
+		const tokens = enrich("const y = x as MyType;");
+		expect(type_of(tokens, "MyType")).toBe("type");
+		expect(type_of(tokens, "x")).toBe("identifier");
+	});
+
+	it("`satisfies` target promotes", () => {
+		const tokens = enrich("const y = x satisfies Shape;");
+		expect(type_of(tokens, "Shape")).toBe("type");
+	});
+
+	it("`as` terminates at value operator", () => {
+		const tokens = enrich("const y = x as MyType + 1;");
+		expect(type_of(tokens, "MyType")).toBe("type");
+	});
+
+	it("interface extends list: `N` inside body promotes to type", () => {
+		const tokens = enrich("interface J extends K, L { m(): N; }");
+		// K and L are promoted to class_name by the class_name_promoter
+		// (which runs after this pass). the return type `N` inside the
+		// body is owned by type_position_promoter.
+		expect(type_of(tokens, "K")).toBe("class_name");
+		expect(type_of(tokens, "L")).toBe("class_name");
+		expect(type_of(tokens, "N")).toBe("type");
+	});
+
+	it("class implements list: members become class_name", () => {
+		const tokens = enrich("class C implements Foo, Bar {}");
+		expect(type_of(tokens, "Foo")).toBe("class_name");
+		expect(type_of(tokens, "Bar")).toBe("class_name");
+	});
+
+	it("class extends (super class): super becomes class_name", () => {
+		const tokens = enrich("class C extends D {}");
+		// the class_name_promoter promotes the super-class position (even
+		// though `class extends D` references a value, the convention in
+		// most highlighters is to style it as a class).
+		expect(type_of(tokens, "D")).toBe("class_name");
+	});
+
+	it("type alias RHS promotes all type refs", () => {
+		const tokens = enrich("type Response = Success | Failure;");
+		expect(type_of(tokens, "Success")).toBe("type");
+		expect(type_of(tokens, "Failure")).toBe("type");
+	});
+
+	it("type alias with generics promotes parameters", () => {
+		const tokens = enrich("type Box<T> = { value: T };");
+		// first T is the parameter declaration, second is a reference
+		const t_tokens = tokens.filter((x) => x.value === "T");
+		expect(t_tokens.every((x) => x.type === "type")).toBe(true);
+	});
+
+	it("generic type param constraint promotes", () => {
+		const tokens = enrich("function f<T extends Base>(x: T) {}");
+		expect(type_of(tokens, "Base")).toBe("type");
+	});
+
+	it("function type annotation keeps param names as identifier", () => {
+		// regression: (a: T) => U inside a type annotation must keep `a` as
+		// identifier (it's a param name, not a type).
+		const tokens = enrich("const f: (a: T) => U = null as any;");
+		expect(type_of(tokens, "a")).toBe("identifier");
+		expect(type_of(tokens, "T")).toBe("type");
+		expect(type_of(tokens, "U")).toBe("type");
+	});
+
+	it("object type annotation keys are property, values are type", () => {
+		// `key` gets property classification (same rule that fires for object
+		// literal keys preceded by `{`). the important invariant is that
+		// `Val` promotes to `type`, not the key's exact classification.
+		const tokens = enrich("let o: { key: Val } = x;");
+		expect(type_of(tokens, "key")).toBe("property");
+		expect(type_of(tokens, "Val")).toBe("type");
+	});
+
+	it("nested function-type inside return type promotes", () => {
+		const tokens = enrich(
+			"function g(): (x: T) => U { return null; }",
+		);
+		expect(type_of(tokens, "T")).toBe("type");
+		expect(type_of(tokens, "U")).toBe("type");
+		expect(type_of(tokens, "x")).toBe("identifier");
+	});
+
+	it("conditional type arms promote both branches", () => {
+		const tokens = enrich("type C<T> = T extends string ? A : B;");
+		expect(type_of(tokens, "A")).toBe("type");
+		expect(type_of(tokens, "B")).toBe("type");
+	});
+
+	it("ternary `a ? b : c` does NOT promote (not a type)", () => {
+		const tokens = enrich("const r = a ? b : c;");
+		expect(type_of(tokens, "a")).toBe("identifier");
+		expect(type_of(tokens, "b")).toBe("identifier");
+		expect(type_of(tokens, "c")).toBe("identifier");
+	});
+
+	it("object literal values are NOT promoted", () => {
+		const tokens = enrich("const o = { key: valueRef, other: thing };");
+		expect(type_of(tokens, "valueRef")).toBe("identifier");
+		expect(type_of(tokens, "thing")).toBe("identifier");
+	});
+
+	it("arrow body values are NOT promoted", () => {
+		const tokens = enrich("const f = (): User => someValue;");
+		expect(type_of(tokens, "User")).toBe("type");
+		expect(type_of(tokens, "someValue")).toBe("identifier");
+	});
+
+	it("multi-declarator var respects type annotations", () => {
+		const tokens = enrich("let a = 1, b: Foo = 2;");
+		expect(type_of(tokens, "Foo")).toBe("type");
+		expect(type_of(tokens, "a")).toBe("identifier");
+	});
+
+	it("class field with function-type demotes anchor to identifier", () => {
+		// regression: without context, `handler: () => void` matches the JS
+		// function-variable arrow pattern and classifies `handler` as
+		// `function`. the type-position pass should demote it.
+		const tokens = enrich("class C { handler: () => void; }");
+		expect(type_of(tokens, "handler")).toBe("identifier");
+	});
+
+	it("function param with function-type demotes anchor to identifier", () => {
+		const tokens = enrich("function f(cb: (x: T) => U) {}");
+		expect(type_of(tokens, "cb")).toBe("identifier");
+		expect(type_of(tokens, "T")).toBe("type");
+		expect(type_of(tokens, "U")).toBe("type");
+	});
+
+	it("interface member with function-type classifies as property", () => {
+		const tokens = enrich("interface I { cb: () => X; }");
+		expect(type_of(tokens, "cb")).toBe("property");
+		expect(type_of(tokens, "X")).toBe("type");
+	});
+
+	it("class head gets class_name, type annotations still promote", () => {
+		const tokens = enrich(
+			"class Repo<T> extends Base<T> implements IFace { x: User; }",
+		);
+		expect(type_of(tokens, "Repo")).toBe("class_name");
+		expect(type_of(tokens, "Base")).toBe("class_name");
+		expect(type_of(tokens, "IFace")).toBe("class_name");
+		// `User` in field type annotation stays as `type`
+		expect(type_of(tokens, "User")).toBe("type");
+	});
+
+	it("interface head gets class_name for name and extends list", () => {
+		const tokens = enrich("interface Repo extends Base { x: User; }");
+		expect(type_of(tokens, "Repo")).toBe("class_name");
+		expect(type_of(tokens, "Base")).toBe("class_name");
+		expect(type_of(tokens, "User")).toBe("type");
+	});
+
+	it("new inside a function body promotes the class", () => {
+		const tokens = enrich(
+			"function make(): Foo { return new FooImpl(); }",
+		);
+		expect(type_of(tokens, "Foo")).toBe("type");
+		expect(type_of(tokens, "FooImpl")).toBe("class_name");
+	});
+
+	it("instanceof with TypeScript-typed context", () => {
+		const tokens = enrich(
+			"function is_user(x: unknown): x is User { return x instanceof User; }",
+		);
+		// first `User` is the type-predicate type, second is an instanceof
+		// reference. The class_name pass runs after the type-position pass,
+		// so the instanceof position wins.
+		const user_types = tokens.filter((t) => t.value === "User").map((t) => t.type);
+		expect(user_types).toContain("type");
+		expect(user_types).toContain("class_name");
+	});
+
+	it("plain JS file is unaffected (no `type` token emitted)", () => {
+		// the pass is guarded by the presence of a `type` token type, so JS
+		// (which has no `type` token) sees the pass as a no-op. this test
+		// runs against the TS pipeline but input uses no TS features — we
+		// just confirm identifiers in value position stay identifiers.
+		const tokens = enrich("const x = fn(a, b); const y = a + b;");
+		expect(type_of(tokens, "a")).toBe("identifier");
+		expect(type_of(tokens, "b")).toBe("identifier");
+	});
+});
