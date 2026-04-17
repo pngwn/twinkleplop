@@ -133,6 +133,18 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/tsx:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+      '@twinkleplop/javascript':
+        specifier: workspace:*
+        version: link:../javascript
+      '@twinkleplop/typescript':
+        specifier: workspace:*
+        version: link:../typescript
+
   languages/typescript:
     dependencies:
       '@twinkleplop/core':
@@ -198,6 +210,9 @@ importers:
       '@twinkleplop/toml':
         specifier: workspace:*
         version: link:../../languages/toml
+      '@twinkleplop/tsx':
+        specifier: workspace:*
+        version: link:../../languages/tsx
       '@twinkleplop/twoslash':
         specifier: workspace:*
         version: link:../twoslash

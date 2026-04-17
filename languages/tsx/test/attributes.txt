@@ -1,0 +1,9 @@
+const el = <input
+  value="hello"
+  placeholder='search'
+  disabled
+  data-testid="input-1"
+  aria-label="search field"
+  {...rest}
+  onChange={handler}
+/>;

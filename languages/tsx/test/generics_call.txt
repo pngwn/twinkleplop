@@ -1,0 +1,7 @@
+const state = useState<string>("");
+const arr = new Array<number>(5);
+const result = fn<A, B>(a, b);
+type Alias<T> = Promise<T>;
+interface Box<T extends object> {
+  value: T;
+}

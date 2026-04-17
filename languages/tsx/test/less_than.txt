@@ -1,0 +1,5 @@
+const a = 1 < 2;
+const b = x < y && y > z;
+const c = compare<string>(a, b);
+const d = Array<number>();
+const e = arr.length < 10 ? "short" : "long";

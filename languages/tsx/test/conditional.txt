@@ -1,0 +1,17 @@
+const view = (show: boolean, items: string[]) => {
+  return (
+    <div>
+      {show && <Badge count={items.length} />}
+      {items.length > 0 ? (
+        <ul>
+          {items.map((x) => (
+            <li key={x}>{x}</li>
+          ))}
+        </ul>
+      ) : (
+        <em>empty</em>
+      )}
+      {/* fallback block */}
+    </div>
+  );
+};

@@ -1,0 +1,23 @@
+interface User {
+  id: number;
+  name: string;
+}
+
+enum Color {
+  Red = "red",
+  Green = "green",
+  Blue = "blue",
+}
+
+class Service {
+  private readonly client: string;
+  constructor(client: string) {
+    this.client = client;
+  }
+  async fetch(): Promise<User[]> {
+    return [];
+  }
+}
+
+const x = 1 < 2 && 3 > 2;
+const y: number = 5;

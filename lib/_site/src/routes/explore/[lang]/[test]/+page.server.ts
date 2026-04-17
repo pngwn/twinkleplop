@@ -12,6 +12,7 @@ const SHIKI_LANG_MAP: Record<string, string> = {
 	svelte: 'svelte',
 	rust: 'rust',
 	typescript: 'typescript',
+	tsx: 'tsx',
 	sql: 'sql',
 	yaml: 'yaml',
 	markdown: 'markdown',
@@ -22,7 +23,7 @@ const SHIKI_LANG_MAP: Record<string, string> = {
 	diff: 'diff',
 };
 
-const SHIKI_LANGS = ['css', 'javascript', 'html', 'svelte', 'rust', 'typescript', 'sql', 'c', 'yaml', 'markdown', 'toml', 'python', 'bash', 'go', 'diff'] as const;
+const SHIKI_LANGS = ['css', 'javascript', 'html', 'svelte', 'rust', 'typescript', 'tsx', 'sql', 'c', 'yaml', 'markdown', 'toml', 'python', 'bash', 'go', 'diff'] as const;
 
 let highlighter_promise: Promise<Highlighter> | null = null;
 

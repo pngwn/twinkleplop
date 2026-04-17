@@ -41,6 +41,7 @@
 		"@twinkleplop/sql": "workspace:*",
 		"@twinkleplop/svelte": "workspace:*",
 		"@twinkleplop/toml": "workspace:*",
+		"@twinkleplop/tsx": "workspace:*",
 		"@twinkleplop/twoslash": "workspace:*",
 		"@twinkleplop/twoslash-svelte": "workspace:*",
 		"@twinkleplop/typescript": "workspace:*",

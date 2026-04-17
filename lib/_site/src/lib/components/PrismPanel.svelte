@@ -11,6 +11,7 @@
 		javascript: 'javascript',
 		rust: 'rust',
 		typescript: "typescript",
+		tsx: 'tsx',
 		sql: 'sql',
 		yaml: 'yaml',
 		markdown: 'markdown',
@@ -45,6 +46,8 @@
 			const Prism = (await import('prismjs')).default;
 			await import('prismjs/components/prism-rust');
 			await import('prismjs/components/prism-typescript');
+			await import('prismjs/components/prism-jsx');
+			await import('prismjs/components/prism-tsx');
 			await import('prismjs/components/prism-sql');
 			await import('prismjs/components/prism-yaml');
 			await import('prismjs/components/prism-markdown');

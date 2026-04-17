@@ -1,0 +1,12 @@
+type Props = { count: number; label: string };
+
+const Panel: React.FC<Props> = ({ count, label }) => {
+  const [q, setQ] = useState<string>("");
+  return (
+    <section>
+      <h2>{label}</h2>
+      <p>Count: {count as number}</p>
+      <input value={q} onChange={(e) => setQ(e.target.value)} />
+    </section>
+  );
+};

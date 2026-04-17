@@ -68,6 +68,13 @@
 			}
 		],
 		[
+			'tsx',
+			{
+				grammar: () => import('@twinkleplop/tsx'),
+				test: () => import('@twinkleplop/tsx/test')
+			}
+		],
+		[
 			'sql',
 			{
 				grammar: () => import('@twinkleplop/sql'),

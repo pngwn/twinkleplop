@@ -1,0 +1,2 @@
+const msg = <p>Hello &amp; Goodbye &mdash; &#9733; &#x2605;</p>;
+const q = <p>Smart &ldquo;quotes&rdquo;</p>;

@@ -1,0 +1,8 @@
+const page = <div>
+  <header>
+    <h1>Title</h1>
+  </header>
+  <main>
+    <p>paragraph</p>
+  </main>
+</div>;

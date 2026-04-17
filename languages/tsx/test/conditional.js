@@ -1,0 +1,447 @@
+export default [
+	{
+		"type": "keyword",
+		"start": 0,
+		"end": 5
+	},
+	{
+		"type": "identifier",
+		"start": 6,
+		"end": 10
+	},
+	{
+		"type": "operator",
+		"start": 11,
+		"end": 12
+	},
+	{
+		"type": "punctuation",
+		"start": 13,
+		"end": 14
+	},
+	{
+		"type": "identifier",
+		"start": 14,
+		"end": 18
+	},
+	{
+		"type": "operator",
+		"start": 18,
+		"end": 19
+	},
+	{
+		"type": "type",
+		"start": 20,
+		"end": 27
+	},
+	{
+		"type": "punctuation",
+		"start": 27,
+		"end": 28
+	},
+	{
+		"type": "identifier",
+		"start": 29,
+		"end": 34
+	},
+	{
+		"type": "operator",
+		"start": 34,
+		"end": 35
+	},
+	{
+		"type": "type",
+		"start": 36,
+		"end": 42
+	},
+	{
+		"type": "punctuation",
+		"start": 42,
+		"end": 45
+	},
+	{
+		"type": "operator",
+		"start": 46,
+		"end": 48
+	},
+	{
+		"type": "punctuation",
+		"start": 49,
+		"end": 50
+	},
+	{
+		"type": "keyword",
+		"start": 53,
+		"end": 59
+	},
+	{
+		"type": "punctuation",
+		"start": 60,
+		"end": 61
+	},
+	{
+		"type": "tag-boundary",
+		"start": 66,
+		"end": 67
+	},
+	{
+		"type": "tag-name",
+		"start": 67,
+		"end": 70
+	},
+	{
+		"type": "tag-boundary",
+		"start": 70,
+		"end": 71
+	},
+	{
+		"type": "punctuation",
+		"start": 78,
+		"end": 79
+	},
+	{
+		"type": "identifier",
+		"start": 79,
+		"end": 83
+	},
+	{
+		"type": "operator",
+		"start": 84,
+		"end": 86
+	},
+	{
+		"type": "tag-boundary",
+		"start": 87,
+		"end": 88
+	},
+	{
+		"type": "tag-name",
+		"start": 88,
+		"end": 93
+	},
+	{
+		"type": "attr-name",
+		"start": 94,
+		"end": 99
+	},
+	{
+		"type": "operator",
+		"start": 99,
+		"end": 100
+	},
+	{
+		"type": "punctuation",
+		"start": 100,
+		"end": 101
+	},
+	{
+		"type": "identifier",
+		"start": 101,
+		"end": 106
+	},
+	{
+		"type": "punctuation",
+		"start": 106,
+		"end": 107
+	},
+	{
+		"type": "identifier",
+		"start": 107,
+		"end": 113
+	},
+	{
+		"type": "punctuation",
+		"start": 113,
+		"end": 114
+	},
+	{
+		"type": "tag-boundary",
+		"start": 115,
+		"end": 117
+	},
+	{
+		"type": "punctuation",
+		"start": 117,
+		"end": 118
+	},
+	{
+		"type": "punctuation",
+		"start": 125,
+		"end": 126
+	},
+	{
+		"type": "identifier",
+		"start": 126,
+		"end": 131
+	},
+	{
+		"type": "punctuation",
+		"start": 131,
+		"end": 132
+	},
+	{
+		"type": "identifier",
+		"start": 132,
+		"end": 138
+	},
+	{
+		"type": "operator",
+		"start": 139,
+		"end": 140
+	},
+	{
+		"type": "number",
+		"start": 141,
+		"end": 142
+	},
+	{
+		"type": "operator",
+		"start": 143,
+		"end": 144
+	},
+	{
+		"type": "punctuation",
+		"start": 145,
+		"end": 146
+	},
+	{
+		"type": "tag-boundary",
+		"start": 155,
+		"end": 156
+	},
+	{
+		"type": "tag-name",
+		"start": 156,
+		"end": 158
+	},
+	{
+		"type": "tag-boundary",
+		"start": 158,
+		"end": 159
+	},
+	{
+		"type": "punctuation",
+		"start": 170,
+		"end": 171
+	},
+	{
+		"type": "identifier",
+		"start": 171,
+		"end": 176
+	},
+	{
+		"type": "punctuation",
+		"start": 176,
+		"end": 177
+	},
+	{
+		"type": "function",
+		"start": 177,
+		"end": 180
+	},
+	{
+		"type": "punctuation",
+		"start": 180,
+		"end": 182
+	},
+	{
+		"type": "identifier",
+		"start": 182,
+		"end": 183
+	},
+	{
+		"type": "punctuation",
+		"start": 183,
+		"end": 184
+	},
+	{
+		"type": "operator",
+		"start": 185,
+		"end": 187
+	},
+	{
+		"type": "punctuation",
+		"start": 188,
+		"end": 189
+	},
+	{
+		"type": "operator",
+		"start": 202,
+		"end": 203
+	},
+	{
+		"type": "identifier",
+		"start": 203,
+		"end": 205
+	},
+	{
+		"type": "identifier",
+		"start": 206,
+		"end": 209
+	},
+	{
+		"type": "operator",
+		"start": 209,
+		"end": 210
+	},
+	{
+		"type": "punctuation",
+		"start": 210,
+		"end": 211
+	},
+	{
+		"type": "identifier",
+		"start": 211,
+		"end": 212
+	},
+	{
+		"type": "punctuation",
+		"start": 212,
+		"end": 213
+	},
+	{
+		"type": "operator",
+		"start": 213,
+		"end": 214
+	},
+	{
+		"type": "punctuation",
+		"start": 214,
+		"end": 215
+	},
+	{
+		"type": "identifier",
+		"start": 215,
+		"end": 216
+	},
+	{
+		"type": "punctuation",
+		"start": 216,
+		"end": 217
+	},
+	{
+		"type": "operator",
+		"start": 217,
+		"end": 219
+	},
+	{
+		"type": "identifier",
+		"start": 219,
+		"end": 221
+	},
+	{
+		"type": "operator",
+		"start": 221,
+		"end": 222
+	},
+	{
+		"type": "punctuation",
+		"start": 233,
+		"end": 236
+	},
+	{
+		"type": "tag-boundary",
+		"start": 245,
+		"end": 247
+	},
+	{
+		"type": "tag-name",
+		"start": 247,
+		"end": 249
+	},
+	{
+		"type": "tag-boundary",
+		"start": 249,
+		"end": 250
+	},
+	{
+		"type": "punctuation",
+		"start": 257,
+		"end": 258
+	},
+	{
+		"type": "operator",
+		"start": 259,
+		"end": 260
+	},
+	{
+		"type": "punctuation",
+		"start": 261,
+		"end": 262
+	},
+	{
+		"type": "tag-boundary",
+		"start": 271,
+		"end": 272
+	},
+	{
+		"type": "tag-name",
+		"start": 272,
+		"end": 274
+	},
+	{
+		"type": "tag-boundary",
+		"start": 274,
+		"end": 275
+	},
+	{
+		"type": "tag-boundary",
+		"start": 280,
+		"end": 282
+	},
+	{
+		"type": "tag-name",
+		"start": 282,
+		"end": 284
+	},
+	{
+		"type": "tag-boundary",
+		"start": 284,
+		"end": 285
+	},
+	{
+		"type": "punctuation",
+		"start": 292,
+		"end": 294
+	},
+	{
+		"type": "punctuation",
+		"start": 301,
+		"end": 302
+	},
+	{
+		"type": "comment",
+		"start": 302,
+		"end": 322
+	},
+	{
+		"type": "punctuation",
+		"start": 322,
+		"end": 323
+	},
+	{
+		"type": "tag-boundary",
+		"start": 328,
+		"end": 330
+	},
+	{
+		"type": "tag-name",
+		"start": 330,
+		"end": 333
+	},
+	{
+		"type": "tag-boundary",
+		"start": 333,
+		"end": 334
+	},
+	{
+		"type": "punctuation",
+		"start": 337,
+		"end": 339
+	},
+	{
+		"type": "punctuation",
+		"start": 340,
+		"end": 342
+	}
+];

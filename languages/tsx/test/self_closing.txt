@@ -1,0 +1,2 @@
+const br = <br />;
+const img = <img src="logo.png" alt="Logo" />;

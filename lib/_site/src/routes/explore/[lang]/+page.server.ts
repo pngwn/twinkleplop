@@ -11,7 +11,9 @@ const DEFAULTS: Record<string, string> = {
 	python: 'classes',
 	go: 'basics',
 	diff: 'unified',
-	'diff-basic': 'basic_hunk'
+	'diff-basic': 'basic_hunk',
+	tsx: 'ts_in_jsx',
+	typescript: 'classes'
 };
 
 export const load = async ({ params }) => {
