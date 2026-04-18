@@ -31,7 +31,7 @@
 </script>
 
 <svelte:window onscroll={handle_scroll} />
-
+<main class="main-content">
 <div class="home-page">
 	<div class="hero">
 		<!-- <h1 class="hero-title" class:min_header>
@@ -63,13 +63,21 @@
 			<a href="#css-highlight-1" class="hero-footer-link"
 				>↓ <span class="twinkle">twinkle</span> some code ↓</a
 			>
+			<p><a href="/explore/svelte">explore</a></p>
 		</div>
 	</div>
 </div>
 <CssHighlight language="css" code={css} id="css-highlight-1" />
 <CssHighlight language="css" code={css} id="css-highlight-2" />
-
+</main>
 <style>
+    .main-content {
+		flex: 1;
+		/* padding: 2rem; */
+		max-width: 1200px;
+		margin: 0 auto;
+		width: 100%;
+	}
 	.home-page {
 		height: 100vh;
 		display: flex;

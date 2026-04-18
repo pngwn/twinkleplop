@@ -138,4 +138,4 @@ export const load: PageServerLoad = () => {
 
 // This page does server-side work (twoslash) and should not be prerendered
 // as a static asset — render on demand.
-export const prerender = false;
+// export const prerender = true;

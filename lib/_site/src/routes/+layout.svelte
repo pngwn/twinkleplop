@@ -24,9 +24,8 @@
 		</div>
 	</nav> -->
 
-	<main class="main-content">
 		<slot />
-	</main>
+
 </div>
 
 <style>
@@ -211,11 +210,5 @@
 		box-shadow: var(--shadow-sm);
 	}
 
-	.main-content {
-		flex: 1;
-		/* padding: 2rem; */
-		max-width: 1200px;
-		margin: 0 auto;
-		width: 100%;
-	}
+
 </style>
