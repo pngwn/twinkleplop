@@ -1,18 +1,18 @@
 export const test = [
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 0,
 		"end": 1,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 1,
 		"end": 4,
 		"match": "div"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 5,
 		"end": 10,
 		"match": "class"
@@ -54,43 +54,43 @@ export const test = [
 		"match": " baz\""
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 26,
 		"end": 27,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 29,
 		"end": 31,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 31,
 		"end": 34,
 		"match": "div"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 34,
 		"end": 35,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 36,
 		"end": 37,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 37,
 		"end": 40,
 		"match": "img"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 41,
 		"end": 44,
 		"match": "src"
@@ -132,7 +132,7 @@ export const test = [
 		"match": ".png\""
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 61,
 		"end": 64,
 		"match": "alt"
@@ -174,25 +174,25 @@ export const test = [
 		"match": "'"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 77,
 		"end": 79,
 		"match": "/>"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 80,
 		"end": 81,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 81,
 		"end": 82,
 		"match": "a"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 83,
 		"end": 88,
 		"match": "title"
@@ -210,7 +210,7 @@ export const test = [
 		"match": "\"plain\""
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 97,
 		"end": 101,
 		"match": "href"
@@ -252,25 +252,25 @@ export const test = [
 		"match": "/end'"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 115,
 		"end": 116,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 120,
 		"end": 122,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 122,
 		"end": 123,
 		"match": "a"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 123,
 		"end": 124,
 		"match": ">"

@@ -19,7 +19,7 @@ const function_call_rules = [
 		anchor: "identifier",
     when: any_of(
       seq(type("punctuation", ["(", "()"])),
-        seq(type("macro", ["!"]),type("punctuation", ["(", "()"]) )
+        seq(type("builtin", ["!"]),type("punctuation", ["(", "()"]) )
     ),
 		rewrite: "function",
 	},

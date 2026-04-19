@@ -84,7 +84,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 28,
 		"end": 37,
 		"match": "localhost"
@@ -300,10 +300,16 @@ export const test = [
 		"match": "["
 	},
 	{
-		"type": "tag",
+		"type": "operator",
 		"start": 129,
+		"end": 131,
+		"match": "!!"
+	},
+	{
+		"type": "keyword",
+		"start": 131,
 		"end": 134,
-		"match": "!!str"
+		"match": "str"
 	},
 	{
 		"type": "number",
@@ -318,13 +324,19 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "tag",
+		"type": "operator",
 		"start": 138,
-		"end": 145,
-		"match": "!custom"
+		"end": 139,
+		"match": "!"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "keyword",
+		"start": 139,
+		"end": 145,
+		"match": "custom"
+	},
+	{
+		"type": "identifier",
 		"start": 146,
 		"end": 151,
 		"match": "value"

@@ -209,7 +209,7 @@ describe("JavaScript reclassifier — tagged template literals", () => {
 		const template_toks = tokens.filter((t) => t.type === "template");
 		expect(template_toks.map((t) => t.value)).toEqual(["`", "`"]);
 		// The content is tokenized as HTML — we see HTML-specific token types.
-		expect(tokens.some((t) => t.type === "tag-name" && t.value === "div")).toBe(
+		expect(tokens.some((t) => t.type === "tag_name" && t.value === "div")).toBe(
 			true,
 		);
 		// raw_template_html should NOT appear — embed_grammars replaced it.
@@ -230,7 +230,7 @@ describe("JavaScript reclassifier — tagged template literals", () => {
 			(t) =>
 				t.type === "selector" ||
 				t.type === "property" ||
-				t.type === "pseudo-selector",
+				t.type === "selector_pseudo",
 		);
 		expect(css_tokens.length).toBeGreaterThan(0);
 		// raw_template_css should NOT appear.
@@ -263,13 +263,13 @@ describe("JavaScript reclassifier — tagged template literals", () => {
 		const tokens = enrich(src);
 		// The `<p>` should be at its real offsets in the source.
 		const lt = tokens.find(
-			(t) => t.type === "tag-boundary" && t.value === "<",
+			(t) => t.type === "punctuation" && t.value === "<",
 		);
 		expect(lt?.start).toBe(15); // Position right after the opening backtick
 		// The `</p>` should be at the right offset too — find the closing
 		// tag-boundary token that starts with `</`.
 		const close_p = tokens.find(
-			(t) => t.type === "tag-boundary" && t.value === "</",
+			(t) => t.type === "punctuation" && t.value === "</",
 		);
 		expect(close_p).toBeDefined();
 	});
@@ -280,7 +280,7 @@ describe("JavaScript reclassifier — tagged template literals", () => {
 		const src = "const render = () => html`<p></p>`";
 		const tokens = enrich(src);
 		expect(type_of(tokens, "render")).toBe("function");
-		expect(tokens.some((t) => t.type === "tag-name" && t.value === "p")).toBe(
+		expect(tokens.some((t) => t.type === "tag_name" && t.value === "p")).toBe(
 			true,
 		);
 	});
@@ -294,11 +294,11 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		const templates = tokens.filter((t) => t.type === "template");
 		expect(templates.map((t) => t.value)).toEqual(["`", "`"]);
 		// Both `<p>` and `</p>` tokenized as HTML.
-		expect(tokens.some((t) => t.type === "tag-name" && t.value === "p")).toBe(
+		expect(tokens.some((t) => t.type === "tag_name" && t.value === "p")).toBe(
 			true,
 		);
 		expect(
-			tokens.filter((t) => t.type === "tag-name" && t.value === "p"),
+			tokens.filter((t) => t.type === "tag_name" && t.value === "p"),
 		).toHaveLength(2);
 		// JS interpolation tokens preserved between chunks.
 		expect(
@@ -319,7 +319,7 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		const templates = tokens.filter((t) => t.type === "template");
 		expect(templates.map((t) => t.value)).toEqual(["`", "`"]);
 		// The attribute name `class` is tokenized as HTML attr-name.
-		expect(type_of(tokens, "class")).toBe("attr-name");
+		expect(type_of(tokens, "class")).toBe("attr_name");
 		// The attribute value's opening and closing quotes are BOTH tokenized
 		// as string — the sub-tokenizer saw a well-formed attribute value
 		// thanks to virtual-source state continuity, and the resulting string
@@ -340,7 +340,7 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		// `hi` is plain text after the attribute value — no specific token
 		// type; just verify `</p>` is tokenized as HTML.
 		expect(
-			tokens.some((t) => t.type === "tag-boundary" && t.value === "</"),
+			tokens.some((t) => t.type === "punctuation" && t.value === "</"),
 		).toBe(true);
 	});
 
@@ -349,10 +349,10 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		const tokens = enrich(src);
 		// Opening and closing HTML `<` and `>` boundary tokens preserved.
 		expect(
-			tokens.some((t) => t.type === "tag-boundary" && t.value === "<"),
+			tokens.some((t) => t.type === "punctuation" && t.value === "<"),
 		).toBe(true);
 		expect(
-			tokens.some((t) => t.type === "tag-boundary" && t.value === "</"),
+			tokens.some((t) => t.type === "punctuation" && t.value === "</"),
 		).toBe(true);
 		// Interpolations passed through as JS.
 		const identifiers = tokens.filter(
@@ -372,7 +372,7 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		);
 		expect(interpolation_ends).toHaveLength(2);
 		// All three HTML tags tokenized: <p>, <br>, </p>.
-		const tag_names = tokens.filter((t) => t.type === "tag-name");
+		const tag_names = tokens.filter((t) => t.type === "tag_name");
 		const tag_name_values = tag_names.map((t) => t.value);
 		expect(tag_name_values).toContain("p");
 		expect(tag_name_values).toContain("br");
@@ -387,7 +387,7 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		const tokens = enrich(src);
 		expect(tokens.filter((t) => t.type === "template")).toHaveLength(2);
 		expect(
-			tokens.filter((t) => t.type === "tag-name" && t.value === "p"),
+			tokens.filter((t) => t.type === "tag_name" && t.value === "p"),
 		).toHaveLength(2);
 		expect(type_of(tokens, "fn")).toBe("function");
 		expect(type_of(tokens, "a")).toBe("property");
@@ -429,7 +429,7 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		const src = "const x = html`<p>";
 		const tokens = enrich(src);
 		// No HTML tag-name tokens — the scan bailed out.
-		expect(tokens.some((t) => t.type === "tag-name")).toBe(false);
+		expect(tokens.some((t) => t.type === "tag_name")).toBe(false);
 	});
 
 	// THE NESTED TAGGED TEMPLATE REGRESSION GUARD.
@@ -446,7 +446,7 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		const tokens = enrich(src);
 		// Outer HTML tag-name for style is present.
 		expect(
-			tokens.some((t) => t.type === "tag-name" && t.value === "style"),
+			tokens.some((t) => t.type === "tag_name" && t.value === "style"),
 		).toBe(true);
 		// The inner CSS is tokenized — `body` as selector, `color` as property.
 		expect(type_of(tokens, "body")).toBe("selector");

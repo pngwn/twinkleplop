@@ -12,7 +12,7 @@ export const test = [
 		"match": "@"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 2,
 		"end": 6,
 		"match": "html"
@@ -42,7 +42,7 @@ export const test = [
 		"match": "@"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 20,
 		"end": 25,
 		"match": "const"
@@ -72,7 +72,7 @@ export const test = [
 		"match": "@"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 49,
 		"end": 54,
 		"match": "debug"
@@ -102,7 +102,7 @@ export const test = [
 		"match": "@"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 72,
 		"end": 78,
 		"match": "render"

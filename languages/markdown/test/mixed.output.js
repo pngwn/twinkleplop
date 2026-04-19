@@ -1,6 +1,6 @@
 export const test = [
 	{
-		"type": "heading-marker",
+		"type": "heading_marker",
 		"start": 0,
 		"end": 1,
 		"match": "#"
@@ -30,25 +30,25 @@ export const test = [
 		"match": "**"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 53,
 		"end": 54,
 		"match": "["
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 54,
 		"end": 58,
 		"match": "link"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 58,
 		"end": 59,
 		"match": "]"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 59,
 		"end": 60,
 		"match": "("
@@ -60,7 +60,7 @@ export const test = [
 		"match": "https://example.com"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 79,
 		"end": 80,
 		"match": ")"
@@ -84,7 +84,7 @@ export const test = [
 		"match": "`"
 	},
 	{
-		"type": "heading-marker",
+		"type": "heading_marker",
 		"start": 101,
 		"end": 103,
 		"match": "##"
@@ -96,13 +96,13 @@ export const test = [
 		"match": " Install"
 	},
 	{
-		"type": "code-fence",
+		"type": "code_fence",
 		"start": 113,
 		"end": 116,
 		"match": "```"
 	},
 	{
-		"type": "code-language",
+		"type": "code_language",
 		"start": 116,
 		"end": 120,
 		"match": "bash"
@@ -114,13 +114,13 @@ export const test = [
 		"match": "\npnpm install\n"
 	},
 	{
-		"type": "code-fence",
+		"type": "code_fence",
 		"start": 134,
 		"end": 138,
 		"match": "```\n"
 	},
 	{
-		"type": "heading-marker",
+		"type": "heading_marker",
 		"start": 139,
 		"end": 141,
 		"match": "##"
@@ -132,13 +132,13 @@ export const test = [
 		"match": " Features"
 	},
 	{
-		"type": "list-marker",
+		"type": "list_marker",
 		"start": 152,
 		"end": 154,
 		"match": "- "
 	},
 	{
-		"type": "list-marker",
+		"type": "list_marker",
 		"start": 159,
 		"end": 161,
 		"match": "- "
@@ -162,19 +162,19 @@ export const test = [
 		"match": "**"
 	},
 	{
-		"type": "list-marker",
+		"type": "list_marker",
 		"start": 178,
 		"end": 180,
 		"match": "- "
 	},
 	{
-		"type": "task-marker",
+		"type": "task_marker",
 		"start": 180,
 		"end": 184,
 		"match": "[ ] "
 	},
 	{
-		"type": "blockquote-marker",
+		"type": "blockquote_marker",
 		"start": 198,
 		"end": 199,
 		"match": ">"

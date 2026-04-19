@@ -50,11 +50,6 @@ import { define_grammar } from "@twinkleplop/core/compile";
 // custom token types
 // ---------------------------------------------------------------------------
 
-const LIFETIME = "lifetime";
-const ATTRIBUTE = "attribute";
-const ATTR_SIGIL = "attr-sigil";
-const MACRO = "macro";
-
 // ---------------------------------------------------------------------------
 // keyword lists
 // ---------------------------------------------------------------------------
@@ -239,8 +234,8 @@ export default define_grammar({
 				on("'", enter("quote_probe")),
 
 				// attributes: #![...] and #[...]
-				match("#!", ATTR_SIGIL, enter("attribute_open")),
-				match("#", ATTR_SIGIL, enter("attribute_open")),
+				match("#!", TOKENS.attr_sigil, enter("attribute_open")),
+				match("#", TOKENS.attr_sigil, enter("attribute_open")),
 
 				// punctuation (structural delimiters)
 				match(["{", "}", "(", ")", "[", "]", ";", ","], TOKENS.punctuation),
@@ -274,7 +269,7 @@ export default define_grammar({
 		identifier: {
 			rules: [
 				match(["_", ALNUM], TOKENS.identifier),
-				match("!", MACRO, leave()),
+				match("!", TOKENS.builtin, leave()),
 				fallback(leave()),
 			],
 		},
@@ -286,7 +281,7 @@ export default define_grammar({
 		type_identifier: {
 			rules: [
 				match(["_", ALNUM], TOKENS.class_name),
-				match("!", MACRO, leave()),
+				match("!", TOKENS.builtin, leave()),
 				fallback(leave()),
 			],
 		},
@@ -479,14 +474,14 @@ export default define_grammar({
 		lifetime_token: {
 			rules: [
 				// opening quote as part of the lifetime
-				match("'", LIFETIME, goto("lifetime_body")),
+				match("'", TOKENS.lifetime, goto("lifetime_body")),
 				fallback(goto("main")),
 			],
 		},
 
 		lifetime_body: {
 			rules: [
-				match(["_", ALNUM], LIFETIME),
+				match(["_", ALNUM], TOKENS.lifetime),
 				fallback(leave()),
 			],
 		},
@@ -523,8 +518,8 @@ export default define_grammar({
 				match([",", "="], TOKENS.punctuation),
 				within('"', '"', TOKENS.string, { escape: "\\" }),
 				on([" ", "\t", "\n", "\r"]),
-				match(["_", ALNUM], ATTRIBUTE),
-				match(["-", ":"], ATTRIBUTE),
+				match(["_", ALNUM], TOKENS.attribute),
+				match(["-", ":"], TOKENS.attribute),
 			],
 		},
 
@@ -535,8 +530,8 @@ export default define_grammar({
 				match([",", "="], TOKENS.punctuation),
 				within('"', '"', TOKENS.string, { escape: "\\" }),
 				on([" ", "\t", "\n", "\r"]),
-				match(["_", ALNUM], ATTRIBUTE),
-				match(["-", ":"], ATTRIBUTE),
+				match(["_", ALNUM], TOKENS.attribute),
+				match(["-", ":"], TOKENS.attribute),
 			],
 		},
 
@@ -547,8 +542,8 @@ export default define_grammar({
 				match([",", "="], TOKENS.punctuation),
 				within('"', '"', TOKENS.string, { escape: "\\" }),
 				on([" ", "\t", "\n", "\r"]),
-				match(["_", ALNUM], ATTRIBUTE),
-				match(["-", ":"], ATTRIBUTE),
+				match(["_", ALNUM], TOKENS.attribute),
+				match(["-", ":"], TOKENS.attribute),
 			],
 		},
 

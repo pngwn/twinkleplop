@@ -42,7 +42,7 @@ export const test = [
 		"match": "&#x2a;"
 	},
 	{
-		"type": "hard-break",
+		"type": "hard_break",
 		"start": 91,
 		"end": 93,
 		"match": "\\\n"

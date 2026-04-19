@@ -45,17 +45,17 @@ export default [
 		"end": 42
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 43,
 		"end": 44
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 44,
 		"end": 46
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 46,
 		"end": 47
 	},
@@ -75,23 +75,18 @@ export default [
 		"end": 60
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 61,
 		"end": 63
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 63,
 		"end": 65
 	},
 	{
-		"type": "tag-boundary",
-		"start": 65,
-		"end": 66
-	},
-	{
 		"type": "punctuation",
-		"start": 66,
+		"start": 65,
 		"end": 67
 	},
 	{
@@ -145,23 +140,18 @@ export default [
 		"end": 102
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 103,
 		"end": 104
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 104,
 		"end": 105
 	},
 	{
-		"type": "tag-boundary",
-		"start": 105,
-		"end": 106
-	},
-	{
 		"type": "punctuation",
-		"start": 106,
+		"start": 105,
 		"end": 107
 	},
 	{
@@ -172,26 +162,16 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 111,
-		"end": 112
-	},
-	{
-		"type": "tag-boundary",
-		"start": 112,
 		"end": 114
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 114,
 		"end": 115
 	},
 	{
-		"type": "tag-boundary",
-		"start": 115,
-		"end": 116
-	},
-	{
 		"type": "punctuation",
-		"start": 116,
+		"start": 115,
 		"end": 117
 	},
 	{
@@ -250,32 +230,32 @@ export default [
 		"end": 164
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 165,
 		"end": 166
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 166,
 		"end": 169
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 169,
 		"end": 170
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 177,
 		"end": 179
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 179,
 		"end": 182
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 182,
 		"end": 183
 	},

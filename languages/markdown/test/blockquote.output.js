@@ -1,12 +1,12 @@
 export const test = [
 	{
-		"type": "blockquote-marker",
+		"type": "blockquote_marker",
 		"start": 0,
 		"end": 1,
 		"match": ">"
 	},
 	{
-		"type": "blockquote-marker",
+		"type": "blockquote_marker",
 		"start": 18,
 		"end": 19,
 		"match": ">"
@@ -30,25 +30,25 @@ export const test = [
 		"match": "**"
 	},
 	{
-		"type": "blockquote-marker",
+		"type": "blockquote_marker",
 		"start": 48,
 		"end": 49,
 		"match": ">"
 	},
 	{
-		"type": "blockquote-marker",
+		"type": "blockquote_marker",
 		"start": 50,
 		"end": 51,
 		"match": ">"
 	},
 	{
-		"type": "blockquote-marker",
+		"type": "blockquote_marker",
 		"start": 66,
 		"end": 67,
 		"match": ">"
 	},
 	{
-		"type": "heading-marker",
+		"type": "heading_marker",
 		"start": 68,
 		"end": 69,
 		"match": "#"

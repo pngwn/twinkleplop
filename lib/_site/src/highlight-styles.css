@@ -52,7 +52,7 @@ pre[class*='language-'] {
 	color: #22d3ee;
 }
 
-::highlight(class-name),
+::highlight(selector_class),
 ::highlight(constant) {
 	color: #22d3ee;
 }
@@ -86,7 +86,7 @@ pre[class*='language-'] {
 }
 ::highlight(operator),
 ::highlight(expression),
-::highlight(svelte-block) {
+::highlight(svelte_block) {
 	color: #f29668;
 }
 
@@ -98,7 +98,7 @@ pre[class*='language-'] {
 	color: #ffb454;
 }
 
-::highlight(attr-name) {
+::highlight(attr_name) {
 	color: #fbbf24;
 }
 
@@ -107,11 +107,11 @@ pre[class*='language-'] {
 }
 
 ::highlight(tag),
-::highlight(tag-name) {
+::highlight(tag_name) {
 	color: #38bdf8;
 }
 
-::highlight(tag-boundary) {
+::highlight(tag_boundary) {
 	color: #39bae680;
 }
 
@@ -128,7 +128,7 @@ pre[class*='language-'] {
 }
 
 ::highlight(boolean),
-::highlight(attr-sigil) {
+::highlight(attr_sigil) {
 	color: #d2a6ff;
 }
 
@@ -161,13 +161,13 @@ pre[class*='language-'] {
 
 /* Svelte block tokens (`{#if`, `{:else}`, `{/each}`, etc.) — distinct
    "control flow" color so blocks stand out from expressions. */
-/*::highlight(svelte-block) {
+/*::highlight(svelte_block) {
 	color: #c084fc;
 	font-weight: 600;
 }*/
 
 /* Svelte @-directives (`{@html`, `{@const`, `{@render`, `{@debug`). */
-::highlight(svelte-directive) {
+::highlight(svelte_directive) {
 	/*color: #ffb454;*/
 	color: #60a5fa;
 	font-weight: 600;
@@ -257,7 +257,7 @@ pre[class*='language-'] {
 	background: #b8cc5211;
 }
 
-::highlight(link-text) {
+::highlight(link_text) {
 	color: #38bdf8;
 	text-decoration: underline;
 	text-decoration-color: #38bdf844;
@@ -273,16 +273,16 @@ pre[class*='language-'] {
 	color: #b8cc52;
 }
 
-::highlight(url-link) {
+::highlight(url_link) {
 	color: #9ca3af;
 }
 
-::highlight(url-reference) {
+::highlight(url_reference) {
 	color: #22d3ee;
 	font-style: italic;
 }
 
-::highlight(url-title) {
+::highlight(url_title) {
 	color: #b8cc52;
 	font-style: italic;
 }
@@ -292,22 +292,22 @@ pre[class*='language-'] {
 	font-weight: 600;
 }
 
-::highlight(heading-marker) {
+::highlight(heading_marker) {
 	color: #ff7733;
 	font-weight: 600;
 }
 
-::highlight(blockquote-marker) {
+::highlight(blockquote_marker) {
 	color: #c084fc;
 	font-weight: 600;
 }
 
-::highlight(list-marker) {
+::highlight(list_marker) {
 	color: #ff7733;
 	font-weight: 600;
 }
 
-::highlight(task-marker) {
+::highlight(task_marker) {
 	color: #38bdf8;
 	font-weight: 600;
 }
@@ -317,16 +317,16 @@ pre[class*='language-'] {
 	font-weight: 600;
 }
 
-::highlight(code-fence) {
+::highlight(code_fence) {
 	color: #5c6773;
 }
 
-::highlight(code-language) {
+::highlight(code_language) {
 	color: #ff7733;
 	font-style: italic;
 }
 
-::highlight(code-block),
+::highlight(code_block),
 ::highlight(raw_code_block) {
 	color: #b8cc52;
 	background: #b8cc5208;
@@ -340,11 +340,11 @@ pre[class*='language-'] {
 	color: #f29668;
 }
 
-::highlight(hard-break) {
+::highlight(hard_break) {
 	color: #c084fc;
 }
 
-::highlight(front-matter-marker) {
+::highlight(front_matter_marker) {
 	color: #5c6773;
 	font-weight: 600;
 }
@@ -402,7 +402,7 @@ pre[class*='language-'] {
 ::highlight(symbol),
 ::highlight(regex),
 ::highlight(char),
-::highlight(class-name),
+::highlight(selector_class),
 ::highlight(constant),
 ::highlight(number),
 ::highlight(builtin),
@@ -413,23 +413,23 @@ pre[class*='language-'] {
 ::highlight(operator),
 ::highlight(punctuation),
 ::highlight(function),
-::highlight(attr-name),
+::highlight(attr_name),
 ::highlight(selector),
 ::highlight(tag),
-::highlight(tag-name),
+::highlight(tag_name),
 ::highlight(doctype),
 ::highlight(property),
 ::highlight(boolean),
 ::highlight(template),
-::highlight(svelte-block),
-::highlight(svelte-directive),
+::highlight(svelte_block),
+::highlight(svelte_directive),
 ::highlight(inserted),
 ::highlight(changed),
 ::highlight(deleted),
 ::highlight(important),
 ::highlight(bold),
 ::highlight(italic),
-::highlight(pseudo-selector),
+::highlight(selector_pseudo),
 ::highlight(datetime),
 ::highlight(table_header),
 ::highlight(array_table_header) {

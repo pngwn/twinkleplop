@@ -33,18 +33,6 @@ import {
 import * as TOKENS from "@twinkleplop/core/tokens";
 import { define_grammar } from "@twinkleplop/core/compile";
 
-const INSERTED = "inserted";
-const INSERTED_MARKER = "inserted_marker";
-const DELETED = "deleted";
-const DELETED_MARKER = "deleted_marker";
-const CHANGED = "changed";
-const CHANGED_MARKER = "changed_marker";
-const CONTEXT = "context";
-const HEADING = "heading";
-const LABEL = "label";
-const META = "meta";
-const HASH = "hash";
-
 const NEWLINE = on("\n");
 
 export default define_grammar({
@@ -61,36 +49,36 @@ export default define_grammar({
 
 				// "--- " could be a unified file header or a context range.
 				// compiler tries longer "--- " before shorter "-".
-				match("--- ", HEADING, enter("dash_line")),
-				match("+++ ", HEADING, enter("file_header_path")),
+				match("--- ", TOKENS.heading, enter("dash_line")),
+				match("+++ ", TOKENS.heading, enter("file_header_path")),
 
 				// "*** " for context file header/range, "***" (no space) for
 				// separator line. compiler tries 4-char "*** " before 3-char "***".
-				match("*** ", HEADING, enter("context_star_line")),
-				match("***", LABEL, enter("star_separator")),
+				match("*** ", TOKENS.heading, enter("context_star_line")),
+				match("***", TOKENS.label, enter("star_separator")),
 
-				match("@@@ ", LABEL, enter("hunk_range")),
-				match("@@ ", LABEL, enter("hunk_range")),
+				match("@@@ ", TOKENS.label, enter("hunk_range")),
+				match("@@ ", TOKENS.label, enter("hunk_range")),
 
-				match("index ", META, enter("index_line")),
-				match("old mode ", META, enter("mode_line")),
-				match("new mode ", META, enter("mode_line")),
-				match("new file mode ", META, enter("mode_line")),
-				match("deleted file mode ", META, enter("mode_line")),
-				match("similarity index ", META, enter("similarity_line")),
-				match("dissimilarity index ", META, enter("similarity_line")),
-				match("rename from ", META, enter("meta_path")),
-				match("rename to ", META, enter("meta_path")),
-				match("copy from ", META, enter("meta_path")),
-				match("copy to ", META, enter("meta_path")),
-				match("Binary files ", META, enter("binary_line")),
-				match("GIT binary patch", META, enter("consume_rest")),
+				on("index ", enter("index_line")),
+				on("old mode ", enter("mode_line")),
+				on("new mode ", enter("mode_line")),
+				on("new file mode ", enter("mode_line")),
+				on("deleted file mode ", enter("mode_line")),
+				on("similarity index ", enter("similarity_line")),
+				on("dissimilarity index ", enter("similarity_line")),
+				on("rename from ", enter("meta_path")),
+				on("rename to ", enter("meta_path")),
+				on("copy from ", enter("meta_path")),
+				on("copy to ", enter("meta_path")),
+				on("Binary files ", enter("binary_line")),
+				on("GIT binary patch", enter("consume_rest")),
 
-				match("+", INSERTED_MARKER, enter("inserted_line")),
-				match("-", DELETED_MARKER, enter("deleted_line")),
-				match("!", CHANGED_MARKER, enter("changed_line")),
-				match("> ", INSERTED_MARKER, enter("inserted_line")),
-				match("< ", DELETED_MARKER, enter("deleted_line")),
+				match("+", TOKENS.inserted_marker, enter("inserted_line")),
+				match("-", TOKENS.deleted_marker, enter("deleted_line")),
+				match("!", TOKENS.changed_marker, enter("changed_line")),
+				match("> ", TOKENS.inserted_marker, enter("inserted_line")),
+				match("< ", TOKENS.deleted_marker, enter("deleted_line")),
 
 				match("\\ ", TOKENS.comment, enter("consume_rest_comment")),
 				match("#", TOKENS.comment, enter("consume_rest_comment")),
@@ -148,7 +136,7 @@ export default define_grammar({
 		// after "***" with no space: separator line (***************).
 		// consume remaining asterisks and newline.
 		star_separator: {
-			rules: [on("\n", leave()), match("*", LABEL), fallback(leave())],
+			rules: [on("\n", leave()), match("*", TOKENS.label), fallback(leave())],
 		},
 
 		// numbers, commas, then trailing stars/dashes in context ranges
@@ -157,23 +145,23 @@ export default define_grammar({
 				on("\n", goto("main")),
 				match(DIGIT, TOKENS.number),
 				match(",", TOKENS.punctuation),
-				match(" ", LABEL),
-				match(["*", "-"], LABEL),
-				fallback({ token: LABEL }),
+				match(" ", TOKENS.label),
+				match(["*", "-"], TOKENS.label),
+				fallback({ token: TOKENS.label }),
 			],
 		},
 
 		hunk_range: {
 			rules: [
-				match("@@@ ", LABEL, goto("hunk_context")),
-				match("@@@", LABEL, goto("hunk_context")),
-				match("@@ ", LABEL, goto("hunk_context")),
-				match("@@", LABEL, goto("hunk_context")),
+				match("@@@ ", TOKENS.label, goto("hunk_context")),
+				match("@@@", TOKENS.label, goto("hunk_context")),
+				match("@@ ", TOKENS.label, goto("hunk_context")),
+				match("@@", TOKENS.label, goto("hunk_context")),
 				match(DIGIT, TOKENS.number),
 				match([",", "+", "-"], TOKENS.punctuation),
 				on(" "),
 				on("\n", goto("hunk")),
-				fallback({ token: LABEL }),
+				fallback({ token: TOKENS.label }),
 			],
 		},
 
@@ -187,26 +175,26 @@ export default define_grammar({
 				NEWLINE,
 				on(" ", enter("context_line")),
 
-				match("@@@ ", LABEL, enter("hunk_range")),
-				match("@@ ", LABEL, enter("hunk_range")),
+				match("@@@ ", TOKENS.label, enter("hunk_range")),
+				match("@@ ", TOKENS.label, enter("hunk_range")),
 
 				match("diff ", TOKENS.keyword, goto("diff_command_from_hunk")),
-				match("--- ", HEADING, goto("hunk_dash_line")),
-				match("+++ ", HEADING, goto("file_header_path")),
-				match("*** ", HEADING, goto("context_star_line")),
-				match("***", LABEL, enter("star_separator")),
+				match("--- ", TOKENS.heading, goto("hunk_dash_line")),
+				match("+++ ", TOKENS.heading, goto("file_header_path")),
+				match("*** ", TOKENS.heading, goto("context_star_line")),
+				match("***", TOKENS.label, enter("star_separator")),
 
-				match("+", INSERTED_MARKER, enter("inserted_line")),
-				match("-", DELETED_MARKER, enter("deleted_line")),
-				match("!", CHANGED_MARKER, enter("changed_line")),
-				match("> ", INSERTED_MARKER, enter("inserted_line")),
-				match("< ", DELETED_MARKER, enter("deleted_line")),
+				match("+", TOKENS.inserted_marker, enter("inserted_line")),
+				match("-", TOKENS.deleted_marker, enter("deleted_line")),
+				match("!", TOKENS.changed_marker, enter("changed_line")),
+				match("> ", TOKENS.inserted_marker, enter("inserted_line")),
+				match("< ", TOKENS.deleted_marker, enter("deleted_line")),
 
 				match("\\ ", TOKENS.comment, enter("consume_rest_comment")),
 				match("#", TOKENS.comment, enter("consume_rest_comment")),
 
 				// normal diff separator inside hunk
-				match("---\n", LABEL),
+				match("---\n", TOKENS.label),
 
 				fallback(),
 			],
@@ -228,9 +216,9 @@ export default define_grammar({
 				on("\n", goto("hunk")),
 				match(DIGIT, TOKENS.number),
 				match(",", TOKENS.punctuation),
-				match(" ", LABEL),
-				match(["*", "-"], LABEL),
-				fallback({ token: LABEL }),
+				match(" ", TOKENS.label),
+				match(["*", "-"], TOKENS.label),
+				fallback({ token: TOKENS.label }),
 			],
 		},
 
@@ -243,7 +231,7 @@ export default define_grammar({
 			],
 		},
 
-		// index HASH..HASH [MODE]
+		// index TOKENS.hash..TOKENS.hash [MODE]
 		// HEX includes digits, so all hash chars (0-9, a-f) match as hash.
 		// after a space, enter index_mode for the file mode number.
 		index_line: {
@@ -251,8 +239,8 @@ export default define_grammar({
 				on("\n", leave()),
 				match("..", TOKENS.punctuation),
 				on(" ", enter("index_mode")),
-				match(HEX, HASH),
-				fallback({ token: META }),
+				match(HEX, TOKENS.hash),
+				fallback({}),
 			],
 		},
 
@@ -269,7 +257,7 @@ export default define_grammar({
 			rules: [
 				on("\n", leave()),
 				match(DIGIT, TOKENS.number),
-				fallback({ token: META }),
+				fallback({}),
 			],
 		},
 
@@ -278,7 +266,7 @@ export default define_grammar({
 				on("\n", leave()),
 				match(DIGIT, TOKENS.number),
 				match("%", TOKENS.punctuation),
-				fallback({ token: META }),
+				fallback({}),
 			],
 		},
 
@@ -289,8 +277,8 @@ export default define_grammar({
 		binary_line: {
 			rules: [
 				on("\n", leave()),
-				match(" and ", META),
-				match(" differ", META),
+				on(" and "),
+				on(" differ"),
 				fallback({ token: TOKENS.string }),
 			],
 		},
@@ -301,24 +289,24 @@ export default define_grammar({
 				match(DIGIT, TOKENS.number),
 				match(",", TOKENS.punctuation),
 				match(["a", "c", "d"], TOKENS.keyword),
-				fallback({ token: LABEL }),
+				fallback({ token: TOKENS.label }),
 			],
 		},
 
 		inserted_line: {
-			rules: [on("\n", leave()), fallback({ token: INSERTED })],
+			rules: [on("\n", leave()), fallback({ token: TOKENS.inserted })],
 		},
 
 		deleted_line: {
-			rules: [on("\n", leave()), fallback({ token: DELETED })],
+			rules: [on("\n", leave()), fallback({ token: TOKENS.deleted })],
 		},
 
 		changed_line: {
-			rules: [on("\n", leave()), fallback({ token: CHANGED })],
+			rules: [on("\n", leave()), fallback({ token: TOKENS.changed })],
 		},
 
 		context_line: {
-			rules: [on("\n", leave()), fallback({ token: CONTEXT })],
+			rules: [on("\n", leave()), fallback({})],
 		},
 
 		consume_rest_comment: {
@@ -326,7 +314,7 @@ export default define_grammar({
 		},
 
 		consume_rest: {
-			rules: [on("\n", leave()), fallback({ token: META })],
+			rules: [on("\n", leave()), fallback({})],
 		},
 	},
 });

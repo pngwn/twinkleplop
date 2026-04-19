@@ -62,7 +62,7 @@ wins. noted conflicts:
   they want; prism-compatibility is achieved by aliasing to `punctuation`.
 - prism does not tokenize `&anchor` and `*alias` distinctly from tags; its
   grammar lumps them under `important`. the spec treats them as separate node
-  properties. emit `anchor` / `alias` tokens; this is also what tree-sitter
+  properties. emit `variable` / `variable` tokens; this is also what tree-sitter
   does.
 - prism's `boolean` pattern is `/false|true/i`. yaml 1.2 core schema is
   case-restricted to six forms (`true`, `True`, `TRUE`, `false`, `False`,

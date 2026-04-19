@@ -54,22 +54,22 @@ describe("HTML language — script embedding", () => {
 		const src = "<script>var a = 1;</script>";
 		const tokens = tokens_of(src);
 		// First few tokens are HTML open tag boundary/name.
-		expect(tokens[0]).toMatchObject({ type: "tag-boundary", value: "<" });
-		expect(tokens[1]).toMatchObject({ type: "tag-name", value: "script" });
-		expect(tokens[2]).toMatchObject({ type: "tag-boundary", value: ">" });
+		expect(tokens[0]).toMatchObject({ type: "punctuation", value: "<" });
+		expect(tokens[1]).toMatchObject({ type: "tag_name", value: "script" });
+		expect(tokens[2]).toMatchObject({ type: "punctuation", value: ">" });
 		// Last three tokens are the closing tag, split into
 		// `</` · `script` · `>`.
 		const last = tokens.length - 1;
 		expect(tokens[last - 2]).toMatchObject({
-			type: "tag-boundary",
+			type: "punctuation",
 			value: "</",
 		});
 		expect(tokens[last - 1]).toMatchObject({
-			type: "tag-name",
+			type: "tag_name",
 			value: "script",
 		});
 		expect(tokens[last]).toMatchObject({
-			type: "tag-boundary",
+			type: "punctuation",
 			value: ">",
 		});
 	});
@@ -91,7 +91,7 @@ describe("HTML language — style embedding", () => {
 		const tokens = tokens_of(src);
 		expect(tokens.some((t) => t.type === "raw_style")).toBe(false);
 		// `.btn` is a CSS class selector.
-		expect(type_of(tokens, ".btn")).toBe("class-name");
+		expect(type_of(tokens, ".btn")).toBe("selector_class");
 		// `color` is a CSS property.
 		expect(type_of(tokens, "color")).toBe("property");
 	});
@@ -127,8 +127,8 @@ describe("HTML language — combined document", () => {
 		// JS tokens are present and JS reclassifiers ran.
 		expect(type_of(tokens, "greet")).toBe("function");
 		// HTML tokens are also present.
-		expect(tokens.some((t) => t.type === "tag-name" && t.value === "p")).toBe(true);
-		expect(tokens.some((t) => t.type === "attr-name" && t.value === "class")).toBe(true);
+		expect(tokens.some((t) => t.type === "tag_name" && t.value === "p")).toBe(true);
+		expect(tokens.some((t) => t.type === "attr_name" && t.value === "class")).toBe(true);
 	});
 
 	it("token offsets form a non-overlapping, monotonically increasing sequence", () => {

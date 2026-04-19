@@ -12,7 +12,7 @@ export const test = [
 		"match": "#"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 2,
 		"end": 9,
 		"match": "snippet"
@@ -30,31 +30,31 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 29,
 		"end": 30,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 30,
 		"end": 32,
 		"match": "tr"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 32,
 		"end": 34,
 		"match": "><"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 34,
 		"end": 36,
 		"match": "td"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 36,
 		"end": 37,
 		"match": ">"
@@ -78,31 +78,31 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 44,
 		"end": 46,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 46,
 		"end": 48,
 		"match": "td"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 48,
 		"end": 50,
 		"match": "><"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 50,
 		"end": 52,
 		"match": "td"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 52,
 		"end": 53,
 		"match": ">"
@@ -126,31 +126,31 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 64,
 		"end": 66,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 66,
 		"end": 68,
 		"match": "td"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 68,
 		"end": 71,
 		"match": "></"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 71,
 		"end": 73,
 		"match": "tr"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 73,
 		"end": 74,
 		"match": ">"
@@ -168,7 +168,7 @@ export const test = [
 		"match": "/"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 77,
 		"end": 84,
 		"match": "snippet"
@@ -192,7 +192,7 @@ export const test = [
 		"match": "@"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 89,
 		"end": 95,
 		"match": "render"

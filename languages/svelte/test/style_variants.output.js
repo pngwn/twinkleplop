@@ -1,18 +1,18 @@
 export const test = [
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 0,
 		"end": 1,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 1,
 		"end": 6,
 		"match": "style"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 6,
 		"end": 7,
 		"match": ">"
@@ -24,37 +24,37 @@ export const test = [
 		"match": "p { color: red; }"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 24,
 		"end": 26,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 26,
 		"end": 31,
 		"match": "style"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 31,
 		"end": 32,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 33,
 		"end": 34,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 34,
 		"end": 39,
 		"match": "style"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 40,
 		"end": 44,
 		"match": "lang"
@@ -72,7 +72,7 @@ export const test = [
 		"match": "\"scss\""
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 51,
 		"end": 52,
 		"match": ">"
@@ -84,19 +84,19 @@ export const test = [
 		"match": ".a { .b { color: blue; } }"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 78,
 		"end": 80,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 80,
 		"end": 85,
 		"match": "style"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 85,
 		"end": 86,
 		"match": ">"

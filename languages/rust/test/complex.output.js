@@ -80,7 +80,7 @@ export const test = [
 		"end": 57
 	},
 	{
-		"type": "attr-sigil",
+		"type": "attr_sigil",
 		"start": 59,
 		"end": 60
 	},
@@ -715,7 +715,7 @@ export const test = [
 		"end": 606
 	},
 	{
-		"type": "macro",
+		"type": "builtin",
 		"start": 606,
 		"end": 607
 	},
@@ -745,7 +745,7 @@ export const test = [
 		"end": 639
 	},
 	{
-		"type": "macro",
+		"type": "builtin",
 		"start": 639,
 		"end": 640
 	},

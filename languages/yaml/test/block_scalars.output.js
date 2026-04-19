@@ -12,7 +12,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "block-scalar-header",
+		"type": "operator",
 		"start": 9,
 		"end": 10,
 		"match": "|"
@@ -36,7 +36,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "block-scalar-header",
+		"type": "operator",
 		"start": 41,
 		"end": 42,
 		"match": ">"
@@ -60,7 +60,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "block-scalar-header",
+		"type": "operator",
 		"start": 82,
 		"end": 84,
 		"match": "|-"
@@ -84,7 +84,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "block-scalar-header",
+		"type": "operator",
 		"start": 113,
 		"end": 115,
 		"match": "|+"
@@ -108,10 +108,16 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "block-scalar-header",
+		"type": "operator",
 		"start": 142,
+		"end": 143,
+		"match": "|"
+	},
+	{
+		"type": "number",
+		"start": 143,
 		"end": 144,
-		"match": "|2"
+		"match": "2"
 	},
 	{
 		"type": "string",
@@ -132,7 +138,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 162,
 		"end": 167,
 		"match": "value"

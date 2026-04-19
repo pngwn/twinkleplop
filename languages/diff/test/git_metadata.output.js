@@ -18,12 +18,6 @@ export const test = [
 		"match": "b/src/new.js"
 	},
 	{
-		"type": "meta",
-		"start": 37,
-		"end": 54,
-		"match": "similarity index "
-	},
-	{
 		"type": "number",
 		"start": 54,
 		"end": 56,
@@ -36,34 +30,16 @@ export const test = [
 		"match": "%"
 	},
 	{
-		"type": "meta",
-		"start": 58,
-		"end": 70,
-		"match": "rename from "
-	},
-	{
 		"type": "string",
 		"start": 70,
 		"end": 80,
 		"match": "src/old.js"
 	},
 	{
-		"type": "meta",
-		"start": 81,
-		"end": 91,
-		"match": "rename to "
-	},
-	{
 		"type": "string",
 		"start": 91,
 		"end": 101,
 		"match": "src/new.js"
-	},
-	{
-		"type": "meta",
-		"start": 102,
-		"end": 108,
-		"match": "index "
 	},
 	{
 		"type": "hash",
@@ -172,12 +148,6 @@ export const test = [
 		"start": 179,
 		"end": 181,
 		"match": "@@"
-	},
-	{
-		"type": "context",
-		"start": 183,
-		"end": 193,
-		"match": "var x = 1;"
 	},
 	{
 		"type": "deleted_marker",

@@ -31,9 +31,9 @@ describe("HTML grammar — basic elements", () => {
 	it("tokenizes a self-closing tag", () => {
 		const tokens = tokens_of("<br/>");
 		expect(tokens).toEqual([
-			{ type: "tag-boundary", value: "<", start: 0, end: 1 },
-			{ type: "tag-name", value: "br", start: 1, end: 3 },
-			{ type: "tag-boundary", value: "/>", start: 3, end: 5 },
+			{ type: "punctuation", value: "<", start: 0, end: 1 },
+			{ type: "tag_name", value: "br", start: 1, end: 3 },
+			{ type: "punctuation", value: "/>", start: 3, end: 5 },
 		]);
 	});
 
@@ -45,18 +45,18 @@ describe("HTML grammar — basic elements", () => {
 		// a single `></` tag-boundary token. We verify the structure via
 		// the type sequence and the accumulated values.
 		expect(types_of(tokens)).toEqual([
-			"tag-boundary", // <
-			"tag-name",     // p
-			"tag-boundary", // ></
-			"tag-name",     // p
-			"tag-boundary", // >
+			"punctuation", // <
+			"tag_name",     // p
+			"punctuation", // ></
+			"tag_name",     // p
+			"punctuation", // >
 		]);
 		expect(tokens.map((t) => t.value).join("")).toBe("<p></p>");
 	});
 
 	it("tokenizes an attribute with a double-quoted value", () => {
 		const tokens = tokens_of('<a href="/home">');
-		const names = tokens.filter((t) => t.type === "attr-name");
+		const names = tokens.filter((t) => t.type === "attr_name");
 		const strings = tokens.filter((t) => t.type === "string");
 		expect(names[0].value).toBe("href");
 		expect(strings.map((s) => s.value).join("")).toBe('"/home"');
@@ -70,7 +70,7 @@ describe("HTML grammar — basic elements", () => {
 
 	it("tokenizes multiple attributes", () => {
 		const tokens = tokens_of('<input type="text" name="q" required>');
-		const names = tokens.filter((t) => t.type === "attr-name").map((t) => t.value);
+		const names = tokens.filter((t) => t.type === "attr_name").map((t) => t.value);
 		expect(names).toEqual(["type", "name", "required"]);
 	});
 
@@ -86,7 +86,7 @@ describe("HTML grammar — basic elements", () => {
 		const doctype = tokens.filter((t) => t.type === "doctype");
 		expect(doctype.length).toBeGreaterThan(0);
 		const last_tok = tokens[tokens.length - 1];
-		expect(last_tok).toMatchObject({ type: "tag-boundary", value: ">" });
+		expect(last_tok).toMatchObject({ type: "punctuation", value: ">" });
 	});
 
 	it("leaves plain text content untokenized", () => {

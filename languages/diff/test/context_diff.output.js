@@ -84,12 +84,6 @@ export const test = [
 		"match": " ****"
 	},
 	{
-		"type": "context",
-		"start": 136,
-		"end": 145,
-		"match": " line one"
-	},
-	{
 		"type": "changed_marker",
 		"start": 146,
 		"end": 147,
@@ -100,12 +94,6 @@ export const test = [
 		"start": 147,
 		"end": 160,
 		"match": " line two old"
-	},
-	{
-		"type": "context",
-		"start": 162,
-		"end": 173,
-		"match": " line three"
 	},
 	{
 		"type": "heading",
@@ -138,12 +126,6 @@ export const test = [
 		"match": " ----"
 	},
 	{
-		"type": "context",
-		"start": 188,
-		"end": 197,
-		"match": " line one"
-	},
-	{
 		"type": "changed_marker",
 		"start": 198,
 		"end": 199,
@@ -154,11 +136,5 @@ export const test = [
 		"start": 199,
 		"end": 212,
 		"match": " line two new"
-	},
-	{
-		"type": "context",
-		"start": 214,
-		"end": 225,
-		"match": " line three"
 	}
 ];

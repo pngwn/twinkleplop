@@ -52,14 +52,6 @@ import {
 import { define_grammar } from "@twinkleplop/core/compile";
 import * as TOKENS from "@twinkleplop/core/tokens";
 
-const ANCHOR = "anchor";
-const ALIAS = "alias";
-const TAG = "tag";
-const DIRECTIVE = "directive";
-const DOC_MARKER = "doc-marker";
-const PLAIN = "plain_scalar";
-const BLOCK_HEADER = "block-scalar-header";
-
 const ws_chars = [" ", "\t"];
 const eol_chars = ["\n", "\r"];
 const ws_eol_chars = [...ws_chars, ...eol_chars];
@@ -134,7 +126,7 @@ const RESERVED = match(["@", "`"], TOKENS.punctuation);
 
 // document markers. spec requires column 0 + whitespace; we accept more
 // leniency (see known-limitations above).
-const DOC_MARKERS = match(["---", "..."], DOC_MARKER);
+const DOC_MARKERS = match(["---", "..."], TOKENS.punctuation);
 
 // structural rules shared between block and flow contexts. the enter()
 // calls push the current state, so each nested context returns to its caller.
@@ -145,9 +137,12 @@ const shared_rules_head = [
 	DOUBLE_STRING,
 	SINGLE_STRING,
 	DOC_MARKERS,
-	match("&", ANCHOR, enter("anchor_body")),
-	match("*", ALIAS, enter("alias_body")),
-	match("!", TAG, enter("tag_body")),
+	match("&", TOKENS.variable, enter("anchor_body")),
+	match("*", TOKENS.variable, enter("alias_body")),
+	// `!!` (secondary handle, resolves to the standard YAML type registry) and
+	// `!` (primary/local handle) are both operator prefixes. maximal munch
+	// picks `!!` first, so `!!str` emits a two-char operator + keyword.
+	match(["!!", "!"], TOKENS.operator, enter("tag_body")),
 	match("[", TOKENS.punctuation, enter("flow_seq")),
 	match("{", TOKENS.punctuation, enter("flow_map")),
 ];
@@ -163,13 +158,13 @@ export default define_grammar({
 				...shared_rules_head,
 				// block scalar headers. only valid outside flow context; the
 				// flow states drop these rules so `|` `>` become plain text.
-				match("|", BLOCK_HEADER, enter("literal_header")),
-				match(">", BLOCK_HEADER, enter("folded_header")),
+				match("|", TOKENS.operator, enter("literal_header")),
+				match(">", TOKENS.operator, enter("folded_header")),
 				// directive: the `%` at col 0 starts a directive line. we do
 				// not enforce col 0; inside a scalar `%` would be consumed by
 				// plain_scalar's fallback first, so this only fires when the
 				// parser is genuinely at a top-level scan position.
-				match("%", DIRECTIVE, enter("directive")),
+				match("%", TOKENS.operator, enter("directive_name")),
 				// `:` and `,` are always punctuation at this position.
 				// `-` and `?` need lookahead: followed by whitespace they are
 				// structural indicators, followed by a non-whitespace char
@@ -179,11 +174,11 @@ export default define_grammar({
 				on("?", enter("question_probe")),
 				RESERVED,
 				// any remaining character starts (or continues) a plain
-				// scalar. emit it as PLAIN and push into plain_scalar so
+				// scalar. emit it as identifier and push into plain_scalar so
 				// subsequent chars reach the `:` / ws / eol handling there.
-				// adjacent PLAIN tokens coalesce, so the first char and the
-				// body end up as a single token.
-				fallback({ token: PLAIN, state: "plain_scalar" }),
+				// adjacent identifier tokens coalesce, so the first char and
+				// the body end up as a single token.
+				fallback({ token: TOKENS.identifier, state: "plain_scalar" }),
 			],
 		},
 
@@ -201,7 +196,7 @@ export default define_grammar({
 				on("-", enter("dash_probe_flow")),
 				on("?", enter("question_probe_flow")),
 				RESERVED,
-				fallback({ token: PLAIN, state: "plain_scalar_flow" }),
+				fallback({ token: TOKENS.identifier, state: "plain_scalar_flow" }),
 			],
 		},
 
@@ -214,7 +209,7 @@ export default define_grammar({
 				on("-", enter("dash_probe_flow")),
 				on("?", enter("question_probe_flow")),
 				RESERVED,
-				fallback({ token: PLAIN, state: "plain_scalar_flow" }),
+				fallback({ token: TOKENS.identifier, state: "plain_scalar_flow" }),
 			],
 		},
 
@@ -225,13 +220,13 @@ export default define_grammar({
 		// followed by whitespace/eol. see colon_probe for the lookahead
 		// logic. all interior chars (including `#` — # is only a comment
 		// start when preceded by whitespace, which the parent handles before
-		// re-entering us) emit as PLAIN and coalesce.
+		// re-entering us) emit as identifier and coalesce.
 		// ------------------------------------------------------------------
 		plain_scalar: {
 			rules: [
 				on(ws_eol_chars, leave()),
 				on(":", enter("colon_probe")),
-				fallback({ token: PLAIN }),
+				fallback({ token: TOKENS.identifier }),
 			],
 		},
 
@@ -246,7 +241,7 @@ export default define_grammar({
 				on(ws_eol_chars, leave()),
 				on(":", enter("colon_probe")),
 				on([",", "[", "]", "{", "}"], leave()),
-				fallback({ token: PLAIN }),
+				fallback({ token: TOKENS.identifier }),
 			],
 		},
 
@@ -274,12 +269,12 @@ export default define_grammar({
 			rules: [match(":", TOKENS.punctuation, leave())],
 		},
 
-		// `:x` — the `:` is interior to the plain scalar. emit it as PLAIN
-		// and goto plain_scalar to continue consuming. the stack is still
-		// `[parent]` because the probe-exit was a goto (no push); reusing
-		// plain_scalar here without pushing keeps the stack shallow.
+		// `:x` — the `:` is interior to the plain scalar. emit it as
+		// identifier and goto plain_scalar to continue consuming. the stack
+		// is still `[parent]` because the probe-exit was a goto (no push);
+		// reusing plain_scalar here without pushing keeps the stack shallow.
 		colon_scalar: {
-			rules: [match(":", PLAIN, goto("plain_scalar"))],
+			rules: [match(":", TOKENS.identifier, goto("plain_scalar"))],
 		},
 
 		// ------------------------------------------------------------------
@@ -304,7 +299,7 @@ export default define_grammar({
 		},
 
 		dash_as_scalar: {
-			rules: [match("-", PLAIN, goto("plain_scalar"))],
+			rules: [match("-", TOKENS.identifier, goto("plain_scalar"))],
 		},
 
 		question_probe: {
@@ -321,7 +316,7 @@ export default define_grammar({
 		},
 
 		question_as_scalar: {
-			rules: [match("?", PLAIN, goto("plain_scalar"))],
+			rules: [match("?", TOKENS.identifier, goto("plain_scalar"))],
 		},
 
 		// flow-context variants. the only difference is the scalar target:
@@ -337,7 +332,7 @@ export default define_grammar({
 		},
 
 		dash_as_scalar_flow: {
-			rules: [match("-", PLAIN, goto("plain_scalar_flow"))],
+			rules: [match("-", TOKENS.identifier, goto("plain_scalar_flow"))],
 		},
 
 		question_probe_flow: {
@@ -350,7 +345,7 @@ export default define_grammar({
 		},
 
 		question_as_scalar_flow: {
-			rules: [match("?", PLAIN, goto("plain_scalar_flow"))],
+			rules: [match("?", TOKENS.identifier, goto("plain_scalar_flow"))],
 		},
 
 		// ------------------------------------------------------------------
@@ -361,20 +356,22 @@ export default define_grammar({
 		// indicator terminators this is a known limitation.
 		// ------------------------------------------------------------------
 		anchor_body: {
-			rules: [match(anchor_chars, ANCHOR), fallback(leave())],
+			rules: [match(anchor_chars, TOKENS.variable), fallback(leave())],
 		},
 
 		alias_body: {
-			rules: [match(anchor_chars, ALIAS), fallback(leave())],
+			rules: [match(anchor_chars, TOKENS.variable), fallback(leave())],
 		},
 
 		// ------------------------------------------------------------------
 		// tag_body — after `!`. handles shorthand and verbatim forms.
+		// the `!` itself was emitted as operator by the parent rule; the tag
+		// name body is emitted as keyword (tag names act as type annotations).
 		// ------------------------------------------------------------------
 		tag_body: {
 			rules: [
-				match("<", TAG, goto("tag_verbatim")),
-				match(tag_chars, TAG),
+				match("<", TOKENS.operator, goto("tag_verbatim")),
+				match(tag_chars, TOKENS.keyword),
 				fallback(leave()),
 			],
 		},
@@ -383,30 +380,51 @@ export default define_grammar({
 		// so a missing `>` leaks to EOF; that is acceptable as it matches
 		// what most YAML parsers would reject.
 		tag_verbatim: {
-			rules: [match(">", TAG, leave()), fallback({ token: TAG })],
+			rules: [
+				match(">", TOKENS.operator, leave()),
+				fallback({ token: TOKENS.keyword }),
+			],
 		},
 
 		// ------------------------------------------------------------------
-		// directive — everything after `%` until end of line.
-		// we emit the argument span as a single DIRECTIVE token. splitting
-		// name vs args would complicate token coalescing without gain.
+		// directive — `%` + name + args, until end of line.
+		//
+		// `%` is emitted as operator by the parent. directive_name consumes
+		// the following word as keyword (`YAML`, `TAG`, …). on whitespace or
+		// eol, we transition to directive_body which emits the remaining
+		// line content as identifier tokens.
 		// ------------------------------------------------------------------
-		directive: {
-			rules: [on("\n", leave()), fallback({ token: DIRECTIVE })],
+		directive_name: {
+			rules: [
+				on(ws_chars, goto("directive_body")),
+				on(eol_chars, leave()),
+				match([LETTER, DIGIT, "_"], TOKENS.keyword),
+				fallback(goto("directive_body")),
+			],
+		},
+
+		directive_body: {
+			rules: [
+				WS,
+				on(eol_chars, leave()),
+				fallback({ token: TOKENS.identifier }),
+			],
 		},
 
 		// ------------------------------------------------------------------
 		// literal_header / folded_header — `|` and `>` block-scalar headers.
 		//
-		// the header line may contain `+` / `-` chomping, a digit indentation
-		// indicator, and an optional comment. the newline transitions to the
-		// corresponding body state via goto() — the header's parent is
-		// preserved so leaving the body returns to the right place.
+		// the `|` / `>` was emitted as operator by the parent. the header
+		// line may then contain `+` / `-` chomping (operator), a digit
+		// indentation indicator (number), and an optional comment. the
+		// newline transitions to the corresponding body state via goto() —
+		// the header's parent is preserved so leaving the body returns to
+		// the right place.
 		// ------------------------------------------------------------------
 		literal_header: {
 			rules: [
-				match(["-", "+"], BLOCK_HEADER),
-				match(DIGIT, BLOCK_HEADER),
+				match(["-", "+"], TOKENS.operator),
+				match(DIGIT, TOKENS.number),
 				WS,
 				COMMENT,
 				on("\n", goto("literal_body")),
@@ -416,8 +434,8 @@ export default define_grammar({
 
 		folded_header: {
 			rules: [
-				match(["-", "+"], BLOCK_HEADER),
-				match(DIGIT, BLOCK_HEADER),
+				match(["-", "+"], TOKENS.operator),
+				match(DIGIT, TOKENS.number),
 				WS,
 				COMMENT,
 				on("\n", goto("folded_body")),

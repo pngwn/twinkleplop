@@ -3,7 +3,7 @@
 // the typescript reclassifiers (which themselves reuse javascript's function-
 // variable detection, interface member promotion, and tagged-template
 // embedding) apply identically to tsx code. jsx-specific reclassification
-// (e.g. promoting uppercase tag names to `class-name`) can be added here
+// (e.g. promoting uppercase tag names to `selector_class`) can be added here
 // later, but is not required for the base grammar to tokenize correctly.
 
 export {

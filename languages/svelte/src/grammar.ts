@@ -8,14 +8,14 @@
 //     for `<`, `>`, `=`, `|`, etc.).
 //   - The sigil that introduces a block or at-directive (`#`, `:`, `/`,
 //     `@`) emits as `punctuation`; the keyword that follows emits as
-//     `svelte-block` — one token type covers every `{#if}`, `{:else}`,
+//     `svelte_block` — one token type covers every `{#if}`, `{:else}`,
 //     `{/each}`, `{@html}`, `{@const}`, etc.
-//   - The name `svelte-directive` is reserved for element directive
+//   - The name `svelte_directive` is reserved for element directive
 //     prefixes (`bind:`, `on:`, …); it never applies to `{@…}` forms.
 //   - Element directive prefixes (`bind:`, `on:`, `use:`, `transition:`,
 //     `in:`, `out:`, `animate:`, `class:`, `style:`, `let:`) emit the full
-//     `prefix:` run as a single `svelte-directive` token; the property
-//     name follows as a regular `attr-name` and `|` modifier separators
+//     `prefix:` run as a single `svelte_directive` token; the property
+//     name follows as a regular `attr_name` and `|` modifier separators
 //     are `punctuation`.
 //   - Attribute string values support interpolation: `class="foo {bar}"`
 //     emits string / expression / expression-body / expression / string,
@@ -29,7 +29,7 @@
 //     attribute values. Body captured as `raw_svelte_expression` (coalesced)
 //     and handed to the JS sub-language.
 //   - Svelte special elements (`<svelte:component>`, etc.) are emitted as
-//     a single `tag-name` span here; a reclassifier splits the `svelte:`
+//     a single `tag_name` span here; a reclassifier splits the `svelte:`
 //     namespace in the post-pass.
 //
 // Known limitations:
@@ -63,19 +63,8 @@ import * as TOKENS from "@twinkleplop/core/tokens";
 import { define_grammar } from "@twinkleplop/core/compile";
 
 // Token type names. Most match the HTML grammar so styles carry over.
-const TAG_NAME = "tag-name";
-const TAG_BOUNDARY = "tag-boundary";
-const ATTR_NAME = "attr-name";
-const DOCTYPE = "doctype";
-const RAW_SCRIPT = "raw_script";
-const RAW_STYLE = "raw_style";
 // Svelte-specific:
-const SVELTE_BLOCK = "svelte-block";
-const SVELTE_DIRECTIVE = "svelte-directive";
-const RAW_SVELTE_EXPRESSION = "raw_svelte_expression";
 // Distinct type for `{` / `}` that bound a Svelte expression or block.
-const EXPRESSION = "expression";
-
 // Tag name chars include `:` so `<svelte:component>` is a single token at
 // this layer. A reclassifier splits `svelte:X` in the post-pass.
 const TAG_NAME_CHARS = range([
@@ -136,12 +125,12 @@ const DIRECTIVE_PREFIXES = [
 const insideTagRules = [
 	on([" ", "\t", "\n", "\r"]),
 	match("=", TOKENS.operator),
-	match("{", EXPRESSION, enter("expression_body")),
+	match("{", TOKENS.expression, enter("expression_body")),
 	match('"', TOKENS.string, enter("attr_string_double")),
 	match("'", TOKENS.string, enter("attr_string_single")),
-	match(DIRECTIVE_PREFIXES, SVELTE_DIRECTIVE),
+	match(DIRECTIVE_PREFIXES, TOKENS.svelte_directive),
 	match("|", TOKENS.punctuation),
-	match(ATTR_NAME_CHARS, ATTR_NAME),
+	match(ATTR_NAME_CHARS, TOKENS.attr_name),
 ];
 
 // Rules shared by expression_body (outermost `{…}`) and expression_brace
@@ -149,12 +138,12 @@ const insideTagRules = [
 // inside a string does not close the expression, and both push
 // expression_brace on a nested `{`.
 const expressionBodyRules = [
-	within('"', '"', RAW_SVELTE_EXPRESSION, { escape: "\\", multiline: true }),
-	within("'", "'", RAW_SVELTE_EXPRESSION, { escape: "\\", multiline: true }),
-	within("/*", "*/", RAW_SVELTE_EXPRESSION, { multiline: true }),
-	within("//", "\n", RAW_SVELTE_EXPRESSION),
-	match("{", RAW_SVELTE_EXPRESSION, enter("expression_brace")),
-	fallback({ token: RAW_SVELTE_EXPRESSION }),
+	within('"', '"', TOKENS.raw_svelte_expression, { escape: "\\", multiline: true }),
+	within("'", "'", TOKENS.raw_svelte_expression, { escape: "\\", multiline: true }),
+	within("/*", "*/", TOKENS.raw_svelte_expression, { multiline: true }),
+	within("//", "\n", TOKENS.raw_svelte_expression),
+	match("{", TOKENS.raw_svelte_expression, enter("expression_brace")),
+	fallback({ token: TOKENS.raw_svelte_expression }),
 ];
 
 /** @type {import("@twinkleplop/core").Grammar} */
@@ -167,12 +156,12 @@ export default define_grammar({
 		content: {
 			rules: [
 				within("<!--", "-->", TOKENS.comment),
-				match(["<!DOCTYPE", "<!doctype"], DOCTYPE, enter("doctype")),
-				match("</", TAG_BOUNDARY, enter("close_tag")),
-				match("<", TAG_BOUNDARY, enter("tag_start")),
+				match(["<!DOCTYPE", "<!doctype"], TOKENS.doctype, enter("doctype")),
+				match("</", TOKENS.punctuation, enter("close_tag")),
+				match("<", TOKENS.punctuation, enter("tag_start")),
 				// `{` always emits `expression`; brace_start dispatches on
 				// the sigil that follows.
-				match("{", EXPRESSION, enter("brace_start")),
+				match("{", TOKENS.expression, enter("brace_start")),
 				fallback({}),
 			],
 		},
@@ -182,7 +171,7 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		//
 		// The sigil (`#`, `:`, `/`, `@`) emits as `punctuation`; the
-		// keyword that follows emits as `svelte-block` (both block and
+		// keyword that follows emits as `svelte_block` (both block and
 		// at-directive families share the same token type). goto() here
 		// (not enter) because we're replacing brace_start on the stack —
 		// the `{` already pushed the parent state.
@@ -200,20 +189,20 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		block_keyword: {
 			rules: [
-				match(BLOCK_KEYWORDS, SVELTE_BLOCK, goto("expression_body")),
+				match(BLOCK_KEYWORDS, TOKENS.svelte_block, goto("expression_body")),
 				fallback(goto("expression_body")),
 			],
 		},
 
 		// -------------------------------------------------------------------
 		// at_directive_keyword — just consumed `@`; the keyword emits as
-		// `svelte-block` (same token type as block keywords — `svelte-
+		// `svelte_block` (same token type as block keywords — `svelte-
 		// directive` is reserved for element directive prefixes like
 		// `bind:`, `on:`).
 		// -------------------------------------------------------------------
 		at_directive_keyword: {
 			rules: [
-				match(AT_DIRECTIVES, SVELTE_BLOCK, goto("expression_body")),
+				match(AT_DIRECTIVES, TOKENS.svelte_block, goto("expression_body")),
 				fallback(goto("expression_body")),
 			],
 		},
@@ -231,16 +220,16 @@ export default define_grammar({
 		// rules and just extends the tag-name run.
 		tag_start: {
 			rules: [
-				keyword(["script"], goto("script_attrs"), TAG_NAME),
-				keyword(["style"], goto("style_attrs"), TAG_NAME),
-				match("svelte", "svelte-element", {
+				keyword(["script"], goto("script_attrs"), TOKENS.tag_name),
+				keyword(["style"], goto("style_attrs"), TOKENS.tag_name),
+				match("svelte", "keyword", {
 					boundary: true,
 					...goto("tag_svelte_ns"),
 				}),
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, leave()),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, leave()),
 				on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
-				match(TAG_NAME_CHARS, TAG_NAME, goto("tag_open")),
+				match(TAG_NAME_CHARS, TOKENS.tag_name, goto("tag_open")),
 			],
 		},
 
@@ -264,10 +253,10 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		tag_open: {
 			rules: [
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, leave()),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, leave()),
 				on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
-				match(TAG_NAME_CHARS, TAG_NAME),
+				match(TAG_NAME_CHARS, TOKENS.tag_name),
 			],
 		},
 
@@ -276,8 +265,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		tag_attrs: {
 			rules: [
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, leave()),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, leave()),
 				...insideTagRules,
 			],
 		},
@@ -287,9 +276,9 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		close_tag: {
 			rules: [
-				match(">", TAG_BOUNDARY, leave()),
+				match(">", TOKENS.punctuation, leave()),
 				on([" ", "\t", "\n", "\r"]),
-				match(TAG_NAME_CHARS, TAG_NAME),
+				match(TAG_NAME_CHARS, TOKENS.tag_name),
 			],
 		},
 
@@ -298,8 +287,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		doctype: {
 			rules: [
-				match(">", TAG_BOUNDARY, leave()),
-				fallback({ token: DOCTYPE }),
+				match(">", TOKENS.punctuation, leave()),
+				fallback({ token: TOKENS.doctype }),
 			],
 		},
 
@@ -308,8 +297,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		script_attrs: {
 			rules: [
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, goto("script_content")),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, goto("script_content")),
 				...insideTagRules,
 			],
 		},
@@ -321,7 +310,7 @@ export default define_grammar({
 		script_content: {
 			rules: [
 				on("</", enter("script_close_probe")),
-				fallback({ token: RAW_SCRIPT }),
+				fallback({ token: TOKENS.raw_script }),
 			],
 		},
 
@@ -332,19 +321,19 @@ export default define_grammar({
 		},
 
 		script_close_fail: {
-			rules: [match("<", RAW_SCRIPT, leave())],
+			rules: [match("<", TOKENS.raw_script, leave())],
 		},
 
 		script_close_emit: {
-			rules: [match("</", TAG_BOUNDARY, goto("script_close_name"))],
+			rules: [match("</", TOKENS.punctuation, goto("script_close_name"))],
 		},
 
 		script_close_name: {
-			rules: [match("script", TAG_NAME, goto("script_close_gt"))],
+			rules: [match("script", TOKENS.tag_name, goto("script_close_gt"))],
 		},
 
 		script_close_gt: {
-			rules: [match(">", TAG_BOUNDARY, leave())],
+			rules: [match(">", TOKENS.punctuation, leave())],
 		},
 
 		// -------------------------------------------------------------------
@@ -352,8 +341,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		style_attrs: {
 			rules: [
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, goto("style_content")),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, goto("style_content")),
 				...insideTagRules,
 			],
 		},
@@ -361,7 +350,7 @@ export default define_grammar({
 		style_content: {
 			rules: [
 				on("</", enter("style_close_probe")),
-				fallback({ token: RAW_STYLE }),
+				fallback({ token: TOKENS.raw_style }),
 			],
 		},
 
@@ -372,19 +361,19 @@ export default define_grammar({
 		},
 
 		style_close_fail: {
-			rules: [match("<", RAW_STYLE, leave())],
+			rules: [match("<", TOKENS.raw_style, leave())],
 		},
 
 		style_close_emit: {
-			rules: [match("</", TAG_BOUNDARY, goto("style_close_name"))],
+			rules: [match("</", TOKENS.punctuation, goto("style_close_name"))],
 		},
 
 		style_close_name: {
-			rules: [match("style", TAG_NAME, goto("style_close_gt"))],
+			rules: [match("style", TOKENS.tag_name, goto("style_close_gt"))],
 		},
 
 		style_close_gt: {
-			rules: [match(">", TAG_BOUNDARY, leave())],
+			rules: [match(">", TOKENS.punctuation, leave())],
 		},
 
 		// -------------------------------------------------------------------
@@ -398,7 +387,7 @@ export default define_grammar({
 		attr_string_double: {
 			rules: [
 				match('"', TOKENS.string, leave()),
-				match("{", EXPRESSION, enter("expression_body")),
+				match("{", TOKENS.expression, enter("expression_body")),
 				fallback({ token: TOKENS.string }),
 			],
 		},
@@ -406,7 +395,7 @@ export default define_grammar({
 		attr_string_single: {
 			rules: [
 				match("'", TOKENS.string, leave()),
-				match("{", EXPRESSION, enter("expression_body")),
+				match("{", TOKENS.expression, enter("expression_body")),
 				fallback({ token: TOKENS.string }),
 			],
 		},
@@ -421,7 +410,7 @@ export default define_grammar({
 		// level on its `}`.
 		expression_body: {
 			rules: [
-				match("}", EXPRESSION, leave()),
+				match("}", TOKENS.expression, leave()),
 				...expressionBodyRules,
 			],
 		},
@@ -431,7 +420,7 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		expression_brace: {
 			rules: [
-				match("}", RAW_SVELTE_EXPRESSION, leave()),
+				match("}", TOKENS.raw_svelte_expression, leave()),
 				...expressionBodyRules,
 			],
 		},

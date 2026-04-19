@@ -20,11 +20,6 @@ import {
 import * as TOKENS from "@twinkleplop/core/tokens";
 import  {define_grammar} from '@twinkleplop/core/compile'
 
-// Custom CSS token names that don't match the TOKENS namespace exactly
-// (the standard exports use underscores, but existing snapshots use hyphens).
-const T_CLASS_NAME = "class-name";
-const T_CSS_VARIABLE = "css-variable";
-const T_PSEUDO = "pseudo-selector";
 
 // ---------------------------------------------------------------------------
 // Shared rule fragments
@@ -34,14 +29,14 @@ const COMMENT = within("/*", "*/", TOKENS.comment);
 const STRING_DOUBLE = within('"', '"', TOKENS.string, { escape: "\\" });
 const STRING_SINGLE = within("'", "'", TOKENS.string, { escape: "\\" });
 
-const ID_SELECTOR = match("#", TOKENS.id, enter("id_selector"));
-const CLASS_SELECTOR = match(".", T_CLASS_NAME, enter("class_selector"));
-const PSEUDO_ELEMENT = match("::", T_PSEUDO, enter("pseudo_class"));
-const PSEUDO_CLASS = match(":", T_PSEUDO, enter("pseudo"));
+const ID_SELECTOR = match("#", TOKENS.selector_id, enter("id_selector"));
+const CLASS_SELECTOR = match(".", TOKENS.selector_class, enter("class_selector"));
+const PSEUDO_ELEMENT = match("::", TOKENS.selector_pseudo, enter("pseudo_class"));
+const PSEUDO_CLASS = match(":", TOKENS.selector_pseudo, enter("pseudo"));
 const PARENT_SELECTOR = match("&", TOKENS.selector, enter("nested_selector"));
 
 const HEX_COLOR = match("#", TOKENS.number, enter("hex_color"));
-const CSS_VARIABLE = match("--", T_CSS_VARIABLE, enter("css_custom_property"));
+const CSS_VARIABLE = match("--", TOKENS.css_variable, enter("css_custom_property"));
 
 const ATTRIBUTE_OPERATORS = match(
 	["~=", "|=", "^=", "$=", "*=", "="],
@@ -134,7 +129,7 @@ export default define_grammar({
 
 				// CSS custom properties (variables) — treated as properties
 				// that go directly to value state.
-				match("--", T_CSS_VARIABLE, enter("css_custom_property_declaration")),
+				match("--", TOKENS.css_variable, enter("css_custom_property_declaration")),
 
 				// Colon could be property delimiter or pseudo-selector
 				match(":", TOKENS.punctuation, enter("value")),
@@ -281,7 +276,7 @@ export default define_grammar({
 				match(ALNUM, TOKENS.selector),
 				match(["-", "_"], TOKENS.selector),
 				// Handle pseudo-class
-				match(":", T_PSEUDO, enter("pseudo")),
+				match(":", TOKENS.selector_pseudo, enter("pseudo")),
 				match("{", TOKENS.punctuation, enter("declaration")),
 				fallback(leave()),
 			],
@@ -290,8 +285,8 @@ export default define_grammar({
 		// ID selector
 		id_selector: {
 			rules: [
-				match(ALNUM, TOKENS.id),
-				match(["-", "_"], TOKENS.id),
+				match(ALNUM, TOKENS.selector_id),
+				match(["-", "_"], TOKENS.selector_id),
 				fallback(leave()),
 			],
 		},
@@ -299,8 +294,8 @@ export default define_grammar({
 		// Class selector
 		class_selector: {
 			rules: [
-				match(ALNUM, T_CLASS_NAME),
-				match(["-", "_"], T_CLASS_NAME),
+				match(ALNUM, TOKENS.selector_class),
+				match(["-", "_"], TOKENS.selector_class),
 				fallback(leave()),
 			],
 		},
@@ -308,15 +303,15 @@ export default define_grammar({
 		// Pseudo-class / pseudo-element content
 		pseudo: {
 			rules: [
-				match(LETTER, T_PSEUDO),
-				match("-", T_PSEUDO),
+				match(LETTER, TOKENS.selector_pseudo),
+				match("-", TOKENS.selector_pseudo),
 				match("(", TOKENS.punctuation, enter("parentheses")),
 				fallback(leave()),
 			],
 		},
 
 		pseudo_class: {
-			rules: [match(LETTER, T_PSEUDO), match("-", T_PSEUDO), fallback(leave())],
+			rules: [match(LETTER, TOKENS.selector_pseudo), match("-", TOKENS.selector_pseudo), fallback(leave())],
 		},
 
 		// Parentheses content
@@ -370,7 +365,7 @@ export default define_grammar({
 				// Decimal follows minus
 				match(".", TOKENS.number, enter("decimal")),
 				// Another dash — CSS variable
-				match("-", T_CSS_VARIABLE, enter("css_custom_property")),
+				match("-", TOKENS.css_variable, enter("css_custom_property")),
 				// Letter — keyword starting with dash
 				match(LETTER, TOKENS.keyword, enter("value_keyword")),
 				// Anything else — just the minus operator
@@ -390,8 +385,8 @@ export default define_grammar({
 		// CSS custom properties
 		css_custom_property: {
 			rules: [
-				match(ALNUM, T_CSS_VARIABLE),
-				match(["-", "_"], T_CSS_VARIABLE),
+				match(ALNUM, TOKENS.css_variable),
+				match(["-", "_"], TOKENS.css_variable),
 				fallback(leave()),
 			],
 		},
@@ -399,8 +394,8 @@ export default define_grammar({
 		// CSS custom property in declaration context (expecting colon after)
 		css_custom_property_declaration: {
 			rules: [
-				match(ALNUM, T_CSS_VARIABLE),
-				match(["-", "_"], T_CSS_VARIABLE),
+				match(ALNUM, TOKENS.css_variable),
+				match(["-", "_"], TOKENS.css_variable),
 				match(":", TOKENS.punctuation, enter("value")),
 				fallback(leave()),
 			],
@@ -426,7 +421,7 @@ export default define_grammar({
 				match("(", TOKENS.punctuation, enter("function_args")),
 				match("#", TOKENS.number, enter("hex_color")),
 				// CSS variables must come before single dash
-				match("--", T_CSS_VARIABLE, enter("css_custom_property")),
+				match("--", TOKENS.css_variable, enter("css_custom_property")),
 				match(DIGIT, TOKENS.number, enter("number")),
 				match(".", TOKENS.keyword, enter("url_filename")),
 				match(LETTER, TOKENS.keyword, enter("keyword_in_function")),

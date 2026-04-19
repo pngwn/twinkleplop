@@ -1,25 +1,15 @@
 import { TokenizeResult } from "./types";
 
-// pre-escaped lookup table for common characters
 const ESCAPE_TABLE = new Array(128);
 for (let i = 0; i < 128; i++) {
 	ESCAPE_TABLE[i] = String.fromCharCode(i);
 }
-ESCAPE_TABLE[38] = "&amp;"; // &
-ESCAPE_TABLE[60] = "&lt;"; // <
-ESCAPE_TABLE[62] = "&gt;"; // >
-ESCAPE_TABLE[34] = "&quot;"; // "
-ESCAPE_TABLE[39] = "&#39;"; // '
+ESCAPE_TABLE[38] = "&amp;";
+ESCAPE_TABLE[60] = "&lt;";
+ESCAPE_TABLE[62] = "&gt;";
+ESCAPE_TABLE[34] = "&quot;";
+ESCAPE_TABLE[39] = "&#39;";
 
-// pre-create escape check lookup for faster checking (minor improvement)
-const NEEDS_ESCAPE = new Uint8Array(128);
-NEEDS_ESCAPE[38] = 1;
-NEEDS_ESCAPE[60] = 1;
-NEEDS_ESCAPE[62] = 1;
-NEEDS_ESCAPE[34] = 1;
-NEEDS_ESCAPE[39] = 1;
-
-// optimized html generator with selective improvements
 export function to_html(
 	input: string,
 	token_result: TokenizeResult,
@@ -28,190 +18,80 @@ export function to_html(
 	const { tokens, token_types } = token_result;
 	const { class_name = "highlight", line_numbers = false } = options;
 
-	// estimate output size and use chunked building for large inputs
-	const token_count = tokens.length / 3;
-	const use_chunking = input.length > 10000; // use chunking for files > 10KB
+	const out: string[] = [];
+	out.push(`<pre class="${class_name}"><code>`);
 
-	if (use_chunking) {
-		return to_html_chunked(input, token_result, options);
+	let line_no = 1;
+	let open_class: string | null = null;
+
+	out.push(open_line(line_no, line_numbers));
+
+	function close_span() {
+		if (open_class !== null) {
+			out.push("</span>");
+			open_class = null;
+		}
 	}
 
-	// for smaller files, use pre-sized array approach
-	// pre-size array based on rough estimation (4 elements per token + overhead)
-	const estimated_chunks = token_count * 4 + 10;
-	const chunks = new Array(estimated_chunks);
-	let chunk_count = 0;
+	function ensure_span(cls: string | null) {
+		if (cls === open_class) return;
+		close_span();
+		if (cls !== null) {
+			out.push(`<span class="${cls}">`);
+			open_class = cls;
+		}
+	}
 
-	chunks[chunk_count++] = `<pre class="${class_name}"><code>`;
+	function emit_range(start: number, end: number, cls: string | null) {
+		if (start >= end) return;
+		let chunk_start = start;
+		for (let i = start; i < end; i++) {
+			if (input.charCodeAt(i) !== 10) continue; // '\n'
+			if (i > chunk_start) {
+				ensure_span(cls);
+				out.push(escape_substring_optimized(input, chunk_start, i));
+			}
+			close_span();
+			out.push("</span>\n");
+			line_no++;
+			out.push(open_line(line_no, line_numbers));
+			chunk_start = i + 1;
+		}
+		if (end > chunk_start) {
+			ensure_span(cls);
+			out.push(escape_substring_optimized(input, chunk_start, end));
+		}
+	}
 
 	let last_end = 0;
-	let prev_token_type = null;
-	let span_open = false;
-
-	// process tokens with coalescing
 	for (let i = 0; i < tokens.length; i += 3) {
-		const token_type = token_types[tokens[i]];
+		const cls = token_types[tokens[i]];
 		const start = tokens[i + 1];
 		const end = tokens[i + 2];
 
-		// handle untokenized content
-		if (start > last_end) {
-			if (span_open) {
-				chunks[chunk_count++] = "</span>";
-				span_open = false;
-			}
-			chunks[chunk_count++] = escape_substring_optimized(input, last_end, start);
-			prev_token_type = null;
-		}
-
-		// coalesce adjacent tokens of the same type
-		if (token_type !== prev_token_type) {
-			if (span_open) {
-				chunks[chunk_count++] = "</span>";
-			}
-			chunks[chunk_count++] = `<span class="${token_type}">`;
-			span_open = true;
-			prev_token_type = token_type;
-		}
-
-		// add token content
-		chunks[chunk_count++] = escape_substring_optimized(input, start, end);
+		if (start > last_end) emit_range(last_end, start, null);
+		emit_range(start, end, cls);
 		last_end = end;
 	}
 
-	// close any open span
-	if (span_open) {
-		chunks[chunk_count++] = "</span>";
-	}
+	if (last_end < input.length) emit_range(last_end, input.length, null);
 
-	// handle remaining content
-	if (last_end < input.length) {
-		chunks[chunk_count++] = escape_substring_optimized(
-			input,
-			last_end,
-			input.length
-		);
-	}
+	close_span();
+	out.push("</span>");
+	out.push("</code></pre>");
 
-	chunks[chunk_count++] = "</code></pre>";
-
-	return chunks.slice(0, chunk_count).join("");
+	return out.join("");
 }
 
-// chunked version for very large files
-function to_html_chunked(
-	input: string,
-	token_result: TokenizeResult,
-	options: { class_name?: string } = {}
-) {
-	const { tokens, token_types } = token_result;
-	const { class_name = "highlight" } = options;
-
-	const chunks = [];
-	const max_chunk_size = 65536; // 64KB chunks
-	let current_chunk = [];
-	let chunk_size = 0;
-
-	current_chunk.push(`<pre class="${class_name}"><code>`);
-	chunk_size += current_chunk[0].length;
-
-	let last_end = 0;
-	let prev_token_type = null;
-	let span_open = false;
-
-	// process tokens with batching
-	for (let i = 0; i < tokens.length; i += 3) {
-		const token_type = token_types[tokens[i]];
-		const start = tokens[i + 1];
-		const end = tokens[i + 2];
-
-		// skip tiny tokens (like single spaces) if same type as previous
-		const token_length = end - start;
-		if (token_length === 1 && token_type === prev_token_type) {
-			const char = input[start];
-			const code = char.charCodeAt(0);
-			const escaped =
-				code < 128 && ESCAPE_TABLE[code] !== char ? ESCAPE_TABLE[code] : char;
-			current_chunk.push(escaped);
-			chunk_size += escaped.length;
-			last_end = end;
-
-			// flush chunk if too large
-			if (chunk_size > max_chunk_size) {
-				chunks.push(current_chunk.join(""));
-				current_chunk = [];
-				chunk_size = 0;
-			}
-			continue;
-		}
-
-		// handle untokenized content
-		if (start > last_end) {
-			if (span_open) {
-				current_chunk.push("</span>");
-				chunk_size += 7;
-				span_open = false;
-			}
-			const escaped = escape_substring_optimized(input, last_end, start);
-			current_chunk.push(escaped);
-			chunk_size += escaped.length;
-			prev_token_type = null;
-		}
-
-		// change token type if needed
-		if (token_type !== prev_token_type) {
-			if (span_open) {
-				current_chunk.push("</span>");
-				chunk_size += 7;
-			}
-			const open_tag = `<span class="${token_type}">`;
-			current_chunk.push(open_tag);
-			chunk_size += open_tag.length;
-			span_open = true;
-			prev_token_type = token_type;
-		}
-
-		// add token content
-		const escaped = escape_substring_optimized(input, start, end);
-		current_chunk.push(escaped);
-		chunk_size += escaped.length;
-		last_end = end;
-
-		// flush chunk if too large
-		if (chunk_size > max_chunk_size) {
-			chunks.push(current_chunk.join(""));
-			current_chunk = [];
-			chunk_size = 0;
-		}
-	}
-
-	// close any open span
-	if (span_open) {
-		current_chunk.push("</span>");
-	}
-
-	// handle remaining content
-	if (last_end < input.length) {
-		current_chunk.push(escape_substring_optimized(input, last_end, input.length));
-	}
-
-	current_chunk.push("</code></pre>");
-
-	// final flush
-	if (current_chunk.length > 0) {
-		chunks.push(current_chunk.join(""));
-	}
-
-	return chunks.join("");
+function open_line(n: number, line_numbers: boolean) {
+	if (line_numbers) return `<span class="l"><span class="ln">${n}</span>`;
+	return `<span class="l">`;
 }
 
-// optimized escape function with early exit for no-escape case
 function escape_substring_optimized(input: string, start: number, end: number) {
-	// fast path: scan for any characters that need escaping
 	let needs_escape = false;
 	for (let i = start; i < end; i++) {
 		const code = input.charCodeAt(i);
-		// keep original OR conditions as they're fastest
 		if (
 			code === 38 ||
 			code === 60 ||
@@ -224,19 +104,12 @@ function escape_substring_optimized(input: string, start: number, end: number) {
 		}
 	}
 
-	// if no escaping needed, return substring directly
-	if (!needs_escape) {
-		return input.substring(start, end);
-	}
+	if (!needs_escape) return input.substring(start, end);
 
-	// slow path: build escaped string
 	let result = "";
 	let chunk_start = start;
-
 	for (let i = start; i < end; i++) {
 		const code = input.charCodeAt(i);
-
-		// fast path: check if escaping needed
 		if (
 			code === 38 ||
 			code === 60 ||
@@ -244,28 +117,18 @@ function escape_substring_optimized(input: string, start: number, end: number) {
 			code === 34 ||
 			code === 39
 		) {
-			// need escaping: flush previous chunk
-			if (i > chunk_start) {
-				result += input.substring(chunk_start, i);
-			}
+			if (i > chunk_start) result += input.substring(chunk_start, i);
 			result += ESCAPE_TABLE[code];
 			chunk_start = i + 1;
 		}
 	}
-
-	// add remaining chunk
-	if (end > chunk_start) {
-		result += input.substring(chunk_start, end);
-	}
-
+	if (end > chunk_start) result += input.substring(chunk_start, end);
 	return result;
 }
 
-// optimized standalone escape_html with early exit
 export function escape_html(text: string) {
 	const len = text.length;
 
-	// fast path: check if escaping is needed
 	let needs_escape = false;
 	for (let i = 0; i < len; i++) {
 		const code = text.charCodeAt(i);
@@ -281,18 +144,12 @@ export function escape_html(text: string) {
 		}
 	}
 
-	// early exit if no escaping needed
-	if (!needs_escape) {
-		return text;
-	}
+	if (!needs_escape) return text;
 
-	// slow path: build escaped string
 	let result = "";
 	let chunk_start = 0;
-
 	for (let i = 0; i < len; i++) {
 		const code = text.charCodeAt(i);
-
 		if (
 			code === 38 ||
 			code === 60 ||
@@ -300,19 +157,11 @@ export function escape_html(text: string) {
 			code === 34 ||
 			code === 39
 		) {
-			// need escaping
-			if (i > chunk_start) {
-				result += text.substring(chunk_start, i);
-			}
+			if (i > chunk_start) result += text.substring(chunk_start, i);
 			result += ESCAPE_TABLE[code];
 			chunk_start = i + 1;
 		}
 	}
-
-	// add remaining
-	if (len > chunk_start) {
-		result += text.substring(chunk_start, len);
-	}
-
+	if (len > chunk_start) result += text.substring(chunk_start, len);
 	return result;
 }

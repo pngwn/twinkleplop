@@ -102,11 +102,6 @@ import { define_grammar } from "@twinkleplop/core/compile";
 // custom token names — flow through to css classes in rendered output
 // ---------------------------------------------------------------------------
 
-const STRING_ESCAPE = "string_escape";
-const VARIABLE = "variable";
-const VARIABLE_SPECIAL = "variable_special";
-const BUILTIN = "builtin";
-
 // ---------------------------------------------------------------------------
 // reserved-word / keyword / builtin lists
 // ---------------------------------------------------------------------------
@@ -339,9 +334,9 @@ const EXPANSION_ENTRIES = [
 	match("$(", TOKENS.punctuation, enter("cmd_sub")),
 	match("${", TOKENS.punctuation, enter("param_exp")),
 	// special parameters: $@, $*, etc. these are complete 2-char tokens.
-	match(SPECIAL_PARAMS, VARIABLE_SPECIAL),
+	match(SPECIAL_PARAMS, TOKENS.variable),
 	// $<letter|_>: 2-char variable token; continuation handled by reclassifier.
-	match(VAR_ENTRIES, VARIABLE),
+	match(VAR_ENTRIES, TOKENS.variable),
 	// bare $ (not followed by anything meaningful).
 	match("$", TOKENS.operator),
 ];
@@ -388,7 +383,7 @@ const CMD_CONTEXT_RULES = [
 	// `:` null-command builtin — the 1-char match doesn't conflict with
 	// identifiers because `:` is not an ident char, so unlike `in` / `if`
 	// etc. it can stay in the grammar as a direct builtin.
-	keyword([":"], {}, BUILTIN),
+	keyword([":"], {}, TOKENS.builtin),
 	// brackets and punctuation.
 	match(["{", "}", "[", "]"], TOKENS.punctuation),
 	match([",", ".", "~"], TOKENS.punctuation),
@@ -559,7 +554,7 @@ export default define_grammar({
 				match('"', TOKENS.string, leave()),
 				// recognized backslash escapes per the manual: \$ \` \" \\ \<newline>.
 				// other backslash sequences are literal per bash semantics.
-				match(["\\$", "\\`", '\\"', "\\\\", "\\\n"], STRING_ESCAPE),
+				match(["\\$", "\\`", '\\"', "\\\\", "\\\n"], TOKENS.string_escape),
 				// expansions inside the string.
 				...EXPANSION_ENTRIES,
 				// backtick command substitution (atomic — see limitation).
@@ -593,17 +588,17 @@ export default define_grammar({
 						'\\"',
 						"\\?",
 					],
-					STRING_ESCAPE,
+					TOKENS.string_escape,
 				),
 				// generic \X fallback for octal/hex/unicode/control forms.
 				// emits 2 chars as string_escape.
-				match("\\", STRING_ESCAPE, enter("ansi_escape_tail")),
+				match("\\", TOKENS.string_escape, enter("ansi_escape_tail")),
 				fallback({ token: TOKENS.string }),
 			],
 		},
 
 		ansi_escape_tail: {
-			rules: [fallback({ token: STRING_ESCAPE, exit: true })],
+			rules: [fallback({ token: TOKENS.string_escape, exit: true })],
 		},
 
 		// ===================================================================

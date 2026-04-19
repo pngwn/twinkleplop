@@ -1,12 +1,12 @@
 export const test = [
 	{
-		"type": "code-fence",
+		"type": "code_fence",
 		"start": 0,
 		"end": 3,
 		"match": "```"
 	},
 	{
-		"type": "code-language",
+		"type": "code_language",
 		"start": 3,
 		"end": 5,
 		"match": "js"
@@ -18,13 +18,13 @@ export const test = [
 		"match": "\nconst x = 1;\n"
 	},
 	{
-		"type": "code-fence",
+		"type": "code_fence",
 		"start": 19,
 		"end": 23,
 		"match": "```\n"
 	},
 	{
-		"type": "code-fence",
+		"type": "code_fence",
 		"start": 24,
 		"end": 27,
 		"match": "```"
@@ -36,19 +36,19 @@ export const test = [
 		"match": "\nno language\n"
 	},
 	{
-		"type": "code-fence",
+		"type": "code_fence",
 		"start": 40,
 		"end": 44,
 		"match": "```\n"
 	},
 	{
-		"type": "code-fence",
+		"type": "code_fence",
 		"start": 45,
 		"end": 48,
 		"match": "~~~"
 	},
 	{
-		"type": "code-language",
+		"type": "code_language",
 		"start": 48,
 		"end": 54,
 		"match": "python"
@@ -60,7 +60,7 @@ export const test = [
 		"match": "\nprint(\"tilde fence\")\n"
 	},
 	{
-		"type": "code-fence",
+		"type": "code_fence",
 		"start": 76,
 		"end": 80,
 		"match": "~~~\n"

@@ -115,7 +115,7 @@ export const test = [
 		"end": 77
 	},
 	{
-		"type": "macro",
+		"type": "builtin",
 		"start": 77,
 		"end": 78
 	},

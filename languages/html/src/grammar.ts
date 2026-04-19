@@ -38,13 +38,6 @@ import { define_grammar } from "@twinkleplop/core/compile";
 
 // Custom token type names. These flow through to CSS classes in the
 // rendered output and to the reclassifier's embed mapping.
-const TAG_NAME = "tag-name";
-const TAG_BOUNDARY = "tag-boundary";
-const ATTR_NAME = "attr-name";
-const DOCTYPE = "doctype";
-const RAW_SCRIPT = "raw_script";
-const RAW_STYLE = "raw_style";
-
 const NAME_CHARS = range([
 	["a", "z"],
 	["A", "Z"],
@@ -62,7 +55,7 @@ const insideTagRules = [
 	match("=", TOKENS.operator),
 	within('"', '"', TOKENS.string),
 	within("'", "'", TOKENS.string),
-	match(NAME_CHARS, ATTR_NAME),
+	match(NAME_CHARS, TOKENS.attr_name),
 ];
 
 /** @type {import("@twinkleplop/core").Grammar} */
@@ -75,9 +68,9 @@ export default define_grammar({
 		content: {
 			rules: [
 				within("<!--", "-->", TOKENS.comment),
-				match(["<!DOCTYPE", "<!doctype"], DOCTYPE, enter("doctype")),
-				match("</", TAG_BOUNDARY, enter("close_tag")),
-				match("<", TAG_BOUNDARY, enter("tag_start")),
+				match(["<!DOCTYPE", "<!doctype"], TOKENS.doctype, enter("doctype")),
+				match("</", TOKENS.punctuation, enter("close_tag")),
+				match("<", TOKENS.punctuation, enter("tag_start")),
 				fallback({}),
 			],
 		},
@@ -94,12 +87,12 @@ export default define_grammar({
 		// document as raw_script.
 		tag_start: {
 			rules: [
-				keyword(["script"], goto("script_attrs"), TAG_NAME),
-				keyword(["style"], goto("style_attrs"), TAG_NAME),
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, leave()),
+				keyword(["script"], goto("script_attrs"), TOKENS.tag_name),
+				keyword(["style"], goto("style_attrs"), TOKENS.tag_name),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, leave()),
 				on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
-				match(NAME_CHARS, TAG_NAME, goto("tag_open")),
+				match(NAME_CHARS, TOKENS.tag_name, goto("tag_open")),
 			],
 		},
 
@@ -110,10 +103,10 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		tag_open: {
 			rules: [
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, leave()),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, leave()),
 				on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
-				match(NAME_CHARS, TAG_NAME),
+				match(NAME_CHARS, TOKENS.tag_name),
 			],
 		},
 
@@ -122,8 +115,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		tag_attrs: {
 			rules: [
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, leave()),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, leave()),
 				...insideTagRules,
 			],
 		},
@@ -133,19 +126,19 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		close_tag: {
 			rules: [
-				match(">", TAG_BOUNDARY, leave()),
+				match(">", TOKENS.punctuation, leave()),
 				on([" ", "\t", "\n", "\r"]),
-				match(NAME_CHARS, TAG_NAME),
+				match(NAME_CHARS, TOKENS.tag_name),
 			],
 		},
 
 		// -------------------------------------------------------------------
-		// doctype — inside `<!DOCTYPE ...>`
+		// doctype — inside `<!TOKENS.doctype ...>`
 		// -------------------------------------------------------------------
 		doctype: {
 			rules: [
-				match(">", TAG_BOUNDARY, leave()),
-				fallback({ token: DOCTYPE }),
+				match(">", TOKENS.punctuation, leave()),
+				fallback({ token: TOKENS.doctype }),
 			],
 		},
 
@@ -154,8 +147,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		script_attrs: {
 			rules: [
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, goto("script_content")),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, goto("script_content")),
 				...insideTagRules,
 			],
 		},
@@ -180,7 +173,7 @@ export default define_grammar({
 		script_content: {
 			rules: [
 				on("</", enter("script_close_probe")),
-				fallback({ token: RAW_SCRIPT }),
+				fallback({ token: TOKENS.raw_script }),
 			],
 		},
 
@@ -191,19 +184,19 @@ export default define_grammar({
 		},
 
 		script_close_fail: {
-			rules: [match("<", RAW_SCRIPT, leave())],
+			rules: [match("<", TOKENS.raw_script, leave())],
 		},
 
 		script_close_emit: {
-			rules: [match("</", TAG_BOUNDARY, goto("script_close_name"))],
+			rules: [match("</", TOKENS.punctuation, goto("script_close_name"))],
 		},
 
 		script_close_name: {
-			rules: [match("script", TAG_NAME, goto("script_close_gt"))],
+			rules: [match("script", TOKENS.tag_name, goto("script_close_gt"))],
 		},
 
 		script_close_gt: {
-			rules: [match(">", TAG_BOUNDARY, leave())],
+			rules: [match(">", TOKENS.punctuation, leave())],
 		},
 
 		// -------------------------------------------------------------------
@@ -211,8 +204,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		style_attrs: {
 			rules: [
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, goto("style_content")),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, goto("style_content")),
 				...insideTagRules,
 			],
 		},
@@ -224,7 +217,7 @@ export default define_grammar({
 		style_content: {
 			rules: [
 				on("</", enter("style_close_probe")),
-				fallback({ token: RAW_STYLE }),
+				fallback({ token: TOKENS.raw_style }),
 			],
 		},
 
@@ -235,19 +228,19 @@ export default define_grammar({
 		},
 
 		style_close_fail: {
-			rules: [match("<", RAW_STYLE, leave())],
+			rules: [match("<", TOKENS.raw_style, leave())],
 		},
 
 		style_close_emit: {
-			rules: [match("</", TAG_BOUNDARY, goto("style_close_name"))],
+			rules: [match("</", TOKENS.punctuation, goto("style_close_name"))],
 		},
 
 		style_close_name: {
-			rules: [match("style", TAG_NAME, goto("style_close_gt"))],
+			rules: [match("style", TOKENS.tag_name, goto("style_close_gt"))],
 		},
 
 		style_close_gt: {
-			rules: [match(">", TAG_BOUNDARY, leave())],
+			rules: [match(">", TOKENS.punctuation, leave())],
 		},
 	},
 });

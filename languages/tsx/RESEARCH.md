@@ -33,7 +33,7 @@ gaps and calls:
 - the jsx spec explicitly punts on whitespace normalization in jsx children: implementations decide how to collapse runs of whitespace when emitting the tree. this is a transform concern, not a lexical one. the highlighter emits all jsx text as-is.
 - the jsx spec's html character reference list is the 252 html4 entity names (amp, lt, gt, quot, apos, nbsp, etc.), NOT the full html5 set. the highlighter does not need to validate the entity name; it can treat any `&name;` shape that appears in jsx text/string as an escape-like token, and any `&#123;` / `&#xFF;` shape likewise. the reclassifier/theme can decide whether to distinguish "known" from "unknown" entities.
 - jsx allows tags to span multiple lines (attributes separated by whitespace/newlines) and allows comments between attributes. the author needs to accept whitespace and js comments (`//` to eol, `/* ... */`) inside an opening tag, but NOT in tag-name position.
-- the jsx spec does NOT define a case-sensitivity rule for element names. the spec-level grammar treats all names as `JSXIdentifier`. the lowercase-vs-uppercase distinction (intrinsic html elements vs react components) is a react/typescript convention applied AFTER lexing. the highlighter may emit a sub-token for this distinction (theme convention: lowercase → `tag`, uppercase → `class-name` / `component`), but at the lex level they are the same `jsx.identifier`.
+- the jsx spec does NOT define a case-sensitivity rule for element names. the spec-level grammar treats all names as `JSXIdentifier`. the lowercase-vs-uppercase distinction (intrinsic html elements vs react components) is a react/typescript convention applied AFTER lexing. the highlighter may emit a sub-token for this distinction (theme convention: lowercase → `tag`, uppercase → `selector_class` / `component`), but at the lex level they are the same `jsx.identifier`.
 - tsx does not contain regex literals inside jsx expression containers any differently than typescript does. the regex/division disambiguation rules of the typescript grammar apply unchanged once we re-enter js expression mode.
 - `void` elements (html-style self-closing like `<br>`, `<img>` without `/>`) are NOT part of the jsx grammar. every jsx element MUST either self-close with `/>` or have a matching closing tag. this is a common source of confusion for people coming from html; the highlighter can still be lenient and recover after an unterminated element if needed, but the spec rejects such input.
 - html comments `<!-- ... -->` are NOT jsx comments. jsx comments live inside expression containers: `{/* ... */}`. a `<!--` in jsx source is a syntax error (interpreted as `<` + `!` + `-` + ...). a highlighter operating on partial/invalid input may want to swallow html comments for graceful degradation, but the spec says no.
@@ -328,7 +328,7 @@ the twinkleplop token set should include (on top of the typescript tokens):
 - `jsx.punctuation.fragment.open` — `<>` (or `<` + `>` in fragment context)
 - `jsx.punctuation.fragment.close` — `</>` (or `</` + `>`)
 - `jsx.tag` / `tag` — element name (lowercase intrinsic)
-- `jsx.tag.component` / `class-name` — element name (uppercase component)
+- `jsx.tag.component` / `selector_class` — element name (uppercase component)
 - `jsx.tag.namespace` — the namespace portion of `svg:path`
 - `jsx.tag.member` — the left side of `Lib.Component`
 - `jsx.attribute.name` — attribute name
@@ -646,7 +646,7 @@ element; `<Foo>` (uppercase) is a value-based / component element. this is
 NOT a lexical rule — it is a typescript/jsx semantic convention. the
 tokenizer emits the tag name with the same category regardless; a
 reclassifier or theme can use the first-character casing to emit different
-colors (common convention: intrinsic → `tag`, component → `class-name`).
+colors (common convention: intrinsic → `tag`, component → `selector_class`).
 
 ### 3.20 fragment `<>` inside expression
 
@@ -1321,7 +1321,7 @@ starting from the existing typescript grammar, tsx needs:
    named (`&name;` — 252-entry list, but can accept any sequence), decimal
    (`&#N;`), hex (`&#xH;`).
 7. tag-name reclassification (optional): after the tokenizer emits the tag
-   name, a reclassifier may promote to `class-name` if the first character
+   name, a reclassifier may promote to `selector_class` if the first character
    is uppercase (react component convention). this is NOT spec-required and
    can be an extension point.
 8. the `<T>value` type-assertion form that regular typescript accepts must

@@ -167,14 +167,14 @@
 	}
 
 	.prism-panel :global(.token.tag),
-	.prism-panel :global(.token.attr-name),
+	.prism-panel :global(.token.attr_name),
 	.prism-panel :global(.token.namespace),
 	.prism-panel :global(.token.builtin),
 	.prism-panel :global(.token.symbol) {
 		color: #38bdf8;
 	}
 
-	.prism-panel :global(.token.class-name) {
+	.prism-panel :global(.token.selector_class) {
 		color: #22d3ee;
 	}
 

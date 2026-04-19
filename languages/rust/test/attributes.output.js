@@ -1,6 +1,6 @@
 export const test = [
 	{
-		"type": "attr-sigil",
+		"type": "attr_sigil",
 		"start": 0,
 		"end": 1
 	},
@@ -40,7 +40,7 @@ export const test = [
 		"end": 23
 	},
 	{
-		"type": "attr-sigil",
+		"type": "attr_sigil",
 		"start": 24,
 		"end": 25
 	},
@@ -70,7 +70,7 @@ export const test = [
 		"end": 43
 	},
 	{
-		"type": "attr-sigil",
+		"type": "attr_sigil",
 		"start": 44,
 		"end": 45
 	},
@@ -100,7 +100,7 @@ export const test = [
 		"end": 56
 	},
 	{
-		"type": "attr-sigil",
+		"type": "attr_sigil",
 		"start": 57,
 		"end": 58
 	},
@@ -120,7 +120,7 @@ export const test = [
 		"end": 64
 	},
 	{
-		"type": "attr-sigil",
+		"type": "attr_sigil",
 		"start": 65,
 		"end": 66
 	},
@@ -150,7 +150,7 @@ export const test = [
 		"end": 82
 	},
 	{
-		"type": "attr-sigil",
+		"type": "attr_sigil",
 		"start": 83,
 		"end": 84
 	},
@@ -180,7 +180,7 @@ export const test = [
 		"end": 93
 	},
 	{
-		"type": "attr-sigil",
+		"type": "attr_sigil",
 		"start": 94,
 		"end": 96
 	},
@@ -210,7 +210,7 @@ export const test = [
 		"end": 111
 	},
 	{
-		"type": "attr-sigil",
+		"type": "attr_sigil",
 		"start": 112,
 		"end": 114
 	},

@@ -66,9 +66,6 @@ import { define_grammar } from "@twinkleplop/core/compile";
 // custom token types
 // ---------------------------------------------------------------------------
 
-const VARIABLE = "variable";
-const BIT = "bit";
-
 // ---------------------------------------------------------------------------
 // operator lists.
 //
@@ -185,7 +182,7 @@ export default define_grammar({
 
 				// parameter sigils. these must come after operators so that
 				// ?| and ?& are claimed first, and after the @ probes.
-				match(":", VARIABLE, enter("colon_var_body")),
+				match(":", TOKENS.variable, enter("colon_var_body")),
 				// `?` and `?nnn` tokenize as a single `identifier` token.
 				// everything coalesces because both the sigil and the body
 				// emit the same token type.
@@ -297,7 +294,7 @@ export default define_grammar({
 
 		bx_prefix_body: {
 			rules: [
-				match("'", BIT, goto("bit_string")),
+				match("'", TOKENS.bit, goto("bit_string")),
 				match(ID_CONT, TOKENS.identifier, goto("identifier_body")),
 				fallback(leave()),
 			],
@@ -310,8 +307,8 @@ export default define_grammar({
 		// -----------------------------------------------------------------
 		bit_string: {
 			rules: [
-				match("'", BIT, leave()),
-				fallback({ token: BIT }),
+				match("'", TOKENS.bit, leave()),
+				fallback({ token: TOKENS.bit }),
 			],
 		},
 
@@ -397,12 +394,12 @@ export default define_grammar({
 		},
 
 		pg_param_start: {
-			rules: [match("$", VARIABLE, goto("pg_param_body"))],
+			rules: [match("$", TOKENS.variable, goto("pg_param_body"))],
 		},
 
 		pg_param_body: {
 			rules: [
-				match(DIGIT, VARIABLE),
+				match(DIGIT, TOKENS.variable),
 				fallback(goto("main")),
 			],
 		},
@@ -433,7 +430,7 @@ export default define_grammar({
 		},
 
 		at_at_variable: {
-			rules: [match("@@", VARIABLE, goto("var_name_body"))],
+			rules: [match("@@", TOKENS.variable, goto("var_name_body"))],
 		},
 
 		// single @ probe: if followed by ident char, treat as user var.
@@ -462,14 +459,14 @@ export default define_grammar({
 		},
 
 		at_variable: {
-			rules: [match("@", VARIABLE, goto("var_name_body"))],
+			rules: [match("@", TOKENS.variable, goto("var_name_body"))],
 		},
 
 		// shared tail: consume identifier chars as the variable name so
 		// the sigil and the body coalesce into one `variable` token.
 		var_name_body: {
 			rules: [
-				match(ID_CONT, VARIABLE),
+				match(ID_CONT, TOKENS.variable),
 				fallback(goto("main")),
 			],
 		},
@@ -481,7 +478,7 @@ export default define_grammar({
 		// -----------------------------------------------------------------
 		colon_var_body: {
 			rules: [
-				match(ID_CONT, VARIABLE),
+				match(ID_CONT, TOKENS.variable),
 				fallback(goto("main")),
 			],
 		},

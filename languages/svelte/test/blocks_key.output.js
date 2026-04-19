@@ -12,7 +12,7 @@ export const test = [
 		"match": "#"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 2,
 		"end": 5,
 		"match": "key"
@@ -30,19 +30,19 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 16,
 		"end": 17,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 17,
 		"end": 26,
 		"match": "Component"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 27,
 		"end": 29,
 		"match": "/>"
@@ -60,7 +60,7 @@ export const test = [
 		"match": "/"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 32,
 		"end": 35,
 		"match": "key"

@@ -587,15 +587,12 @@
 	padding: 18px 0;
 }
 
-.explore-app .code__line {
+.explore-app .line-number {
 	display: flex;
 	padding: 0 16px 0 0;
 }
-.explore-app .code__line:hover {
-	background: color-mix(in oklab, var(--fg) 3%, transparent);
-}
 
-.explore-app .code__ln {
+.explore-app .ln {
 	display: inline-block;
 	width: 44px;
 	padding-right: 12px;
@@ -607,6 +604,15 @@
 	margin-right: 12px;
 	font-size: 11px;
 	opacity: 0.6;
+}
+
+.explore-app .l {
+	width: 100%;
+	display: inline-block;
+}
+
+.explore-app .l:hover {
+	background: color-mix(in oklab, var(--fg) 3%, transparent);
 }
 
 .explore-app .code__content {

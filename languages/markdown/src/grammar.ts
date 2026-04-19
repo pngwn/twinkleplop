@@ -82,44 +82,6 @@ import { define_grammar } from "@twinkleplop/core/compile";
 // rewrites most of these into compound class lists. names that start
 // with `open-` or `close-` are recognised by the reclassifier as style
 // markers (push/pop on the active-style stack).
-const HEADING_MARKER = "heading-marker";
-const HEADING = "heading";
-const BOLD_OPEN = "bold-open";
-const BOLD_CLOSE = "bold-close";
-const ITALIC_OPEN = "italic-open";
-const ITALIC_CLOSE = "italic-close";
-const STRIKE_OPEN = "strike-open";
-const STRIKE_CLOSE = "strike-close";
-const CODE_OPEN = "code-open";
-const CODE_CLOSE = "code-close";
-const LINK_TEXT_OPEN = "link-text-open";
-const LINK_TEXT_CLOSE = "link-text-close";
-const AUTOLINK_OPEN = "autolink-open";
-const AUTOLINK_CLOSE = "autolink-close";
-const BOLD = "bold";
-const ITALIC = "italic";
-const STRIKE = "strike";
-const CODE = "code";
-const LINK_TEXT = "link-text";
-const AUTOLINK = "autolink";
-const CODE_BLOCK = "code-block";
-const CODE_FENCE = "code-fence";
-const CODE_LANGUAGE = "code-language";
-const BLOCKQUOTE_MARKER = "blockquote-marker";
-const LIST_MARKER = "list-marker";
-const TASK_MARKER = "task-marker";
-const HR = "hr";
-const URL = "url";
-const URL_LINK = "url-link";
-const URL_REFERENCE = "url-reference";
-const URL_TITLE = "url-title";
-const ENTITY = "entity";
-const ESCAPE = "escape";
-const HARD_BREAK = "hard-break";
-const FRONT_MATTER_MARKER = "front-matter-marker";
-const RAW_FRONT_MATTER = "raw_front_matter";
-const RAW_CODE_BLOCK = "raw_code_block";
-
 // backslash-escapes of any ascii punctuation (31 characters per commonmark §6.1).
 // encoded as 2-char patterns so match() can pick them up atomically.
 const ESCAPE_CHARS = [
@@ -157,11 +119,11 @@ const ESCAPE_CHARS = [
 	"\\~",
 ];
 
-const ESCAPE_RULE = match(ESCAPE_CHARS, ESCAPE);
+const ESCAPE_RULE = match(ESCAPE_CHARS, TOKENS.escape);
 
 // hard line break via `\<newline>`. must come before the escape rule so
 // the `\` + `\n` pair wins over the literal escape patterns.
-const HARD_BREAK_BACKSLASH = match("\\\n", HARD_BREAK, goto("block_start"));
+const HARD_BREAK_BACKSLASH = match("\\\n", TOKENS.hard_break, goto("block_start"));
 
 // opener rules shared across every state that accepts arbitrary inline
 // content (inline_content, heading_body, link_text, every emphasis body
@@ -172,19 +134,19 @@ const HARD_BREAK_BACKSLASH = match("\\\n", HARD_BREAK, goto("block_start"));
 // string appears as both open and close, but they're in DIFFERENT rules
 // and DIFFERENT states, so they can carry different types.
 const LINK_OPENERS = [
-	match("![", LINK_TEXT_OPEN, enter("link_text")),
-	match("[", LINK_TEXT_OPEN, enter("link_text")),
-	match("<", AUTOLINK_OPEN, enter("autolink_body")),
-	match("&", ENTITY, enter("entity_body")),
-	match("`", CODE_OPEN, enter("code_body")),
+	match("![", TOKENS.link_text_open, enter("link_text")),
+	match("[", TOKENS.link_text_open, enter("link_text")),
+	match("<", TOKENS.autolink_open, enter("autolink_body")),
+	match("&", TOKENS.entity, enter("entity_body")),
+	match("`", TOKENS.code_open, enter("code_body")),
 ];
 
 const EMPH_OPENERS = [
-	match("**", BOLD_OPEN, enter("bold_star_body")),
-	match("__", BOLD_OPEN, enter("bold_under_body")),
-	match("~~", STRIKE_OPEN, enter("strike_body")),
-	match("*", ITALIC_OPEN, enter("italic_star_body")),
-	match("_", ITALIC_OPEN, enter("italic_under_body")),
+	match("**", TOKENS.bold_open, enter("bold_star_body")),
+	match("__", TOKENS.bold_open, enter("bold_under_body")),
+	match("~~", TOKENS.strike_open, enter("strike_body")),
+	match("*", TOKENS.italic_open, enter("italic_star_body")),
+	match("_", TOKENS.italic_open, enter("italic_under_body")),
 ];
 
 // rules shared by every emphasis / code / link body state.
@@ -202,7 +164,7 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		main: {
 			rules: [
-				match("---\n", FRONT_MATTER_MARKER, goto("front_matter_body")),
+				match("---\n", TOKENS.front_matter_marker, goto("front_matter_body")),
 				fallback(goto("block_start")),
 			],
 		},
@@ -215,11 +177,11 @@ export default define_grammar({
 			rules: [
 				match(
 					["\n---\n", "\n...\n"],
-					FRONT_MATTER_MARKER,
+					TOKENS.front_matter_marker,
 					goto("block_start"),
 				),
-				match(["\n---", "\n..."], FRONT_MATTER_MARKER, goto("block_start")),
-				fallback({ token: RAW_FRONT_MATTER }),
+				match(["\n---", "\n..."], TOKENS.front_matter_marker, goto("block_start")),
+				fallback({ token: TOKENS.raw_front_matter }),
 			],
 		},
 
@@ -235,38 +197,38 @@ export default define_grammar({
 				on(["\n", "\r"]),
 
 				// indented code block: exactly 4 leading spaces (or tab).
-				match(["    ", "\t"], CODE_BLOCK, enter("indented_code")),
+				match(["    ", "\t"], TOKENS.code_block, enter("indented_code")),
 
 				// fenced code blocks. backtick and tilde fences are separate
 				// states so the close must match the open character.
 				match(
 					["``````", "`````", "````", "```"],
-					CODE_FENCE,
+					TOKENS.code_fence,
 					enter("fence_info_btick"),
 				),
 				match(
 					["~~~~~~", "~~~~~", "~~~~", "~~~"],
-					CODE_FENCE,
+					TOKENS.code_fence,
 					enter("fence_info_tilde"),
 				),
 
 				// atx heading markers — 1 to 6 hashes followed by space/eol.
 				match(
 					["######", "#####", "####", "###", "##", "#"],
-					HEADING_MARKER,
+					TOKENS.heading_marker,
 					enter("heading_space"),
 				),
 
 				// thematic break: ---, ***, ___. three or more chars.
-				match(["---", "***", "___"], HR, enter("thematic_break_tail")),
+				match(["---", "***", "___"], TOKENS.hr, enter("thematic_break_tail")),
 
 				// blockquote marker. stays in block_start so `> > foo` dispatches
 				// recursively: two markers, then the inner content is block-start
 				// dispatched as a fresh line.
-				match(">", BLOCKQUOTE_MARKER),
+				match(">", TOKENS.blockquote_marker),
 
 				// bullet list marker. `- `, `* `, `+ ` (marker + space).
-				match(["- ", "* ", "+ "], LIST_MARKER, enter("list_body_probe")),
+				match(["- ", "* ", "+ "], TOKENS.list_marker, enter("list_body_probe")),
 
 				// leading whitespace (1-3 spaces or a tab) — consume without
 				// emitting so the block dispatch continues correctly for
@@ -300,7 +262,7 @@ export default define_grammar({
 				...INLINE_SUB_RULES,
 				...LINK_OPENERS,
 				...EMPH_OPENERS,
-				fallback({ token: HEADING }),
+				fallback({ token: TOKENS.heading }),
 			],
 		},
 
@@ -335,71 +297,71 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		bold_star_body: {
 			rules: [
-				match("**", BOLD_CLOSE, leave()),
+				match("**", TOKENS.bold_close, leave()),
 				on("\n", goto("block_start")),
 				...INLINE_SUB_RULES,
 				...LINK_OPENERS,
-				match("__", BOLD_OPEN, enter("bold_under_body")),
-				match("~~", STRIKE_OPEN, enter("strike_body")),
-				match("*", ITALIC_OPEN, enter("italic_star_body")),
-				match("_", ITALIC_OPEN, enter("italic_under_body")),
-				fallback({ token: BOLD }),
+				match("__", TOKENS.bold_open, enter("bold_under_body")),
+				match("~~", TOKENS.strike_open, enter("strike_body")),
+				match("*", TOKENS.italic_open, enter("italic_star_body")),
+				match("_", TOKENS.italic_open, enter("italic_under_body")),
+				fallback({ token: TOKENS.bold }),
 			],
 		},
 
 		bold_under_body: {
 			rules: [
-				match("__", BOLD_CLOSE, leave()),
+				match("__", TOKENS.bold_close, leave()),
 				on("\n", goto("block_start")),
 				...INLINE_SUB_RULES,
 				...LINK_OPENERS,
-				match("**", BOLD_OPEN, enter("bold_star_body")),
-				match("~~", STRIKE_OPEN, enter("strike_body")),
-				match("*", ITALIC_OPEN, enter("italic_star_body")),
-				match("_", ITALIC_OPEN, enter("italic_under_body")),
-				fallback({ token: BOLD }),
+				match("**", TOKENS.bold_open, enter("bold_star_body")),
+				match("~~", TOKENS.strike_open, enter("strike_body")),
+				match("*", TOKENS.italic_open, enter("italic_star_body")),
+				match("_", TOKENS.italic_open, enter("italic_under_body")),
+				fallback({ token: TOKENS.bold }),
 			],
 		},
 
 		italic_star_body: {
 			rules: [
-				match("*", ITALIC_CLOSE, leave()),
+				match("*", TOKENS.italic_close, leave()),
 				on("\n", goto("block_start")),
 				...INLINE_SUB_RULES,
 				...LINK_OPENERS,
-				match("**", BOLD_OPEN, enter("bold_star_body")),
-				match("__", BOLD_OPEN, enter("bold_under_body")),
-				match("~~", STRIKE_OPEN, enter("strike_body")),
-				match("_", ITALIC_OPEN, enter("italic_under_body")),
-				fallback({ token: ITALIC }),
+				match("**", TOKENS.bold_open, enter("bold_star_body")),
+				match("__", TOKENS.bold_open, enter("bold_under_body")),
+				match("~~", TOKENS.strike_open, enter("strike_body")),
+				match("_", TOKENS.italic_open, enter("italic_under_body")),
+				fallback({ token: TOKENS.italic }),
 			],
 		},
 
 		italic_under_body: {
 			rules: [
-				match("_", ITALIC_CLOSE, leave()),
+				match("_", TOKENS.italic_close, leave()),
 				on("\n", goto("block_start")),
 				...INLINE_SUB_RULES,
 				...LINK_OPENERS,
-				match("**", BOLD_OPEN, enter("bold_star_body")),
-				match("__", BOLD_OPEN, enter("bold_under_body")),
-				match("~~", STRIKE_OPEN, enter("strike_body")),
-				match("*", ITALIC_OPEN, enter("italic_star_body")),
-				fallback({ token: ITALIC }),
+				match("**", TOKENS.bold_open, enter("bold_star_body")),
+				match("__", TOKENS.bold_open, enter("bold_under_body")),
+				match("~~", TOKENS.strike_open, enter("strike_body")),
+				match("*", TOKENS.italic_open, enter("italic_star_body")),
+				fallback({ token: TOKENS.italic }),
 			],
 		},
 
 		strike_body: {
 			rules: [
-				match("~~", STRIKE_CLOSE, leave()),
+				match("~~", TOKENS.strike_close, leave()),
 				on("\n", goto("block_start")),
 				...INLINE_SUB_RULES,
 				...LINK_OPENERS,
-				match("**", BOLD_OPEN, enter("bold_star_body")),
-				match("__", BOLD_OPEN, enter("bold_under_body")),
-				match("*", ITALIC_OPEN, enter("italic_star_body")),
-				match("_", ITALIC_OPEN, enter("italic_under_body")),
-				fallback({ token: STRIKE }),
+				match("**", TOKENS.bold_open, enter("bold_star_body")),
+				match("__", TOKENS.bold_open, enter("bold_under_body")),
+				match("*", TOKENS.italic_open, enter("italic_star_body")),
+				match("_", TOKENS.italic_open, enter("italic_under_body")),
+				fallback({ token: TOKENS.strike }),
 			],
 		},
 
@@ -410,9 +372,9 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		code_body: {
 			rules: [
-				match("`", CODE_CLOSE, leave()),
+				match("`", TOKENS.code_close, leave()),
 				on("\n", goto("block_start")),
-				fallback({ token: CODE }),
+				fallback({ token: TOKENS.code }),
 			],
 		},
 
@@ -427,21 +389,21 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		link_text: {
 			rules: [
-				match("]", LINK_TEXT_CLOSE, goto("link_after_close")),
+				match("]", TOKENS.link_text_close, goto("link_after_close")),
 				on("\n", goto("block_start")),
 				...INLINE_SUB_RULES,
-				match("<", AUTOLINK_OPEN, enter("autolink_body")),
-				match("&", ENTITY, enter("entity_body")),
-				match("`", CODE_OPEN, enter("code_body")),
+				match("<", TOKENS.autolink_open, enter("autolink_body")),
+				match("&", TOKENS.entity, enter("entity_body")),
+				match("`", TOKENS.code_open, enter("code_body")),
 				...EMPH_OPENERS,
-				fallback({ token: LINK_TEXT }),
+				fallback({ token: TOKENS.link_text }),
 			],
 		},
 
 		link_after_close: {
 			rules: [
-				match("(", URL_LINK, goto("link_destination")),
-				match("[", URL_LINK, goto("link_reference_label")),
+				match("(", TOKENS.url_link, goto("link_destination")),
+				match("[", TOKENS.url_link, goto("link_reference_label")),
 				// no extra bracket — shortcut reference shape `[label]` or
 				// plain `[text]` not followed by a link tail. re-process
 				// the current char in inline_content (no-consume goto).
@@ -457,20 +419,20 @@ export default define_grammar({
 				// `*...*` / `**...**` / etc. using goto would replace the
 				// current frame and leak the intervening emphasis frames,
 				// breaking the reclassifier's style stack.
-				match(")", URL_LINK, leave()),
+				match(")", TOKENS.url_link, leave()),
 				on("\n", goto("block_start")),
-				within('"', '"', URL_TITLE, { escape: "\\", multiline: false }),
-				within("'", "'", URL_TITLE, { escape: "\\", multiline: false }),
-				fallback({ token: URL }),
+				within('"', '"', TOKENS.url_title, { escape: "\\", multiline: false }),
+				within("'", "'", TOKENS.url_title, { escape: "\\", multiline: false }),
+				fallback({ token: TOKENS.url }),
 			],
 		},
 
 		link_reference_label: {
 			rules: [
 				// leave() for the same reason as link_destination above.
-				match("]", URL_LINK, leave()),
+				match("]", TOKENS.url_link, leave()),
 				on("\n", goto("block_start")),
-				fallback({ token: URL_REFERENCE }),
+				fallback({ token: TOKENS.property }),
 			],
 		},
 
@@ -480,9 +442,9 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		autolink_body: {
 			rules: [
-				match(">", AUTOLINK_CLOSE, leave()),
+				match(">", TOKENS.autolink_close, leave()),
 				on("\n", goto("block_start")),
-				fallback({ token: AUTOLINK }),
+				fallback({ token: TOKENS.autolink }),
 			],
 		},
 
@@ -490,8 +452,8 @@ export default define_grammar({
 		// any other character bails out to inline_content (no-consume).
 		entity_body: {
 			rules: [
-				match(";", ENTITY, leave()),
-				match([LETTER, DIGIT, "#", "x"], ENTITY),
+				match(";", TOKENS.entity, leave()),
+				match([LETTER, DIGIT, "#", "x"], TOKENS.entity),
 				fallback(goto("inline_content")),
 			],
 		},
@@ -504,7 +466,7 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		list_body_probe: {
 			rules: [
-				match(["[ ] ", "[x] ", "[X] "], TASK_MARKER, goto("inline_content")),
+				match(["[ ] ", "[x] ", "[X] "], TOKENS.task_marker, goto("inline_content")),
 				fallback(goto("inline_content")),
 			],
 		},
@@ -515,15 +477,15 @@ export default define_grammar({
 		// previous line's content if another indented_code line follows
 		// (same token type = coalesced).
 		indented_code: {
-			rules: [match("\n", CODE_BLOCK, leave()), fallback({ token: CODE_BLOCK })],
+			rules: [match("\n", TOKENS.code_block, leave()), fallback({ token: TOKENS.code_block })],
 		},
 
 		// thematic_break_tail — consumes any trailing `-` / `*` / `_` / space
 		// characters on the same line, then returns to block_start.
 		thematic_break_tail: {
 			rules: [
-				match("\n", HR, leave()),
-				match(["-", "*", "_", " ", "\t"], HR),
+				match("\n", TOKENS.hr, leave()),
+				match(["-", "*", "_", " ", "\t"], TOKENS.hr),
 				fallback(goto("inline_content")),
 			],
 		},
@@ -540,14 +502,14 @@ export default define_grammar({
 		fence_info_btick: {
 			rules: [
 				on("\n", goto("fence_body_btick")),
-				fallback({ token: CODE_LANGUAGE }),
+				fallback({ token: TOKENS.code_language }),
 			],
 		},
 
 		fence_body_btick: {
 			rules: [
-				match("\n", RAW_CODE_BLOCK, goto("fence_maybe_close_btick")),
-				fallback({ token: RAW_CODE_BLOCK }),
+				match("\n", TOKENS.raw_code_block, goto("fence_maybe_close_btick")),
+				fallback({ token: TOKENS.raw_code_block }),
 			],
 		},
 
@@ -555,7 +517,7 @@ export default define_grammar({
 			rules: [
 				match(
 					["``````", "`````", "````", "```"],
-					CODE_FENCE,
+					TOKENS.code_fence,
 					goto("fence_close_tail"),
 				),
 				fallback(goto("fence_body_btick")),
@@ -565,14 +527,14 @@ export default define_grammar({
 		fence_info_tilde: {
 			rules: [
 				on("\n", goto("fence_body_tilde")),
-				fallback({ token: CODE_LANGUAGE }),
+				fallback({ token: TOKENS.code_language }),
 			],
 		},
 
 		fence_body_tilde: {
 			rules: [
-				match("\n", RAW_CODE_BLOCK, goto("fence_maybe_close_tilde")),
-				fallback({ token: RAW_CODE_BLOCK }),
+				match("\n", TOKENS.raw_code_block, goto("fence_maybe_close_tilde")),
+				fallback({ token: TOKENS.raw_code_block }),
 			],
 		},
 
@@ -580,7 +542,7 @@ export default define_grammar({
 			rules: [
 				match(
 					["~~~~~~", "~~~~~", "~~~~", "~~~"],
-					CODE_FENCE,
+					TOKENS.code_fence,
 					goto("fence_close_tail"),
 				),
 				fallback(goto("fence_body_tilde")),
@@ -589,8 +551,8 @@ export default define_grammar({
 
 		fence_close_tail: {
 			rules: [
-				match("\n", CODE_FENCE, goto("block_start")),
-				fallback({ token: CODE_FENCE }),
+				match("\n", TOKENS.code_fence, goto("block_start")),
+				fallback({ token: TOKENS.code_fence }),
 			],
 		},
 	},

@@ -18,22 +18,10 @@ export const test = [
 		"match": "b/image.png"
 	},
 	{
-		"type": "meta",
-		"start": 35,
-		"end": 49,
-		"match": "new file mode "
-	},
-	{
 		"type": "number",
 		"start": 49,
 		"end": 55,
 		"match": "100644"
-	},
-	{
-		"type": "meta",
-		"start": 56,
-		"end": 69,
-		"match": "Binary files "
 	},
 	{
 		"type": "string",
@@ -42,22 +30,10 @@ export const test = [
 		"match": "/dev/null"
 	},
 	{
-		"type": "meta",
-		"start": 78,
-		"end": 83,
-		"match": " and "
-	},
-	{
 		"type": "string",
 		"start": 83,
 		"end": 94,
 		"match": "b/image.png"
-	},
-	{
-		"type": "meta",
-		"start": 94,
-		"end": 101,
-		"match": " differ"
 	},
 	{
 		"type": "keyword",
@@ -76,12 +52,6 @@ export const test = [
 		"start": 127,
 		"end": 140,
 		"match": "b/config.json"
-	},
-	{
-		"type": "meta",
-		"start": 141,
-		"end": 147,
-		"match": "index "
 	},
 	{
 		"type": "hash",
@@ -192,12 +162,6 @@ export const test = [
 		"match": "@@"
 	},
 	{
-		"type": "context",
-		"start": 224,
-		"end": 225,
-		"match": "{"
-	},
-	{
 		"type": "deleted_marker",
 		"start": 226,
 		"end": 227,
@@ -220,11 +184,5 @@ export const test = [
 		"start": 243,
 		"end": 257,
 		"match": "  \"port\": 8080"
-	},
-	{
-		"type": "context",
-		"start": 259,
-		"end": 260,
-		"match": "}"
 	}
 ];

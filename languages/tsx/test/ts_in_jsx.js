@@ -225,38 +225,33 @@ export default [
 		"end": 155
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 160,
 		"end": 161
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 161,
 		"end": 168
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 168,
 		"end": 169
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 176,
 		"end": 177
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 177,
 		"end": 179
 	},
 	{
-		"type": "tag-boundary",
-		"start": 179,
-		"end": 180
-	},
-	{
 		"type": "punctuation",
-		"start": 180,
+		"start": 179,
 		"end": 181
 	},
 	{
@@ -267,35 +262,30 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 186,
-		"end": 187
-	},
-	{
-		"type": "tag-boundary",
-		"start": 187,
 		"end": 189
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 189,
 		"end": 191
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 191,
 		"end": 192
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 199,
 		"end": 200
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 200,
 		"end": 201
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 201,
 		"end": 202
 	},
@@ -322,35 +312,30 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 225,
-		"end": 226
-	},
-	{
-		"type": "tag-boundary",
-		"start": 226,
 		"end": 228
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 228,
 		"end": 229
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 229,
 		"end": 230
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 237,
 		"end": 238
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 238,
 		"end": 243
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 244,
 		"end": 249
 	},
@@ -375,7 +360,7 @@ export default [
 		"end": 253
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 254,
 		"end": 262
 	},
@@ -445,22 +430,22 @@ export default [
 		"end": 292
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 293,
 		"end": 295
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 300,
 		"end": 302
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 302,
 		"end": 309
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 309,
 		"end": 310
 	},

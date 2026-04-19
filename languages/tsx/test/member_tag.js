@@ -15,12 +15,12 @@ export default [
 		"end": 10
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 11,
 		"end": 12
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 12,
 		"end": 17
 	},
@@ -30,22 +30,22 @@ export default [
 		"end": 18
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 18,
 		"end": 26
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 26,
 		"end": 27
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 30,
 		"end": 31
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 31,
 		"end": 37
 	},
@@ -55,12 +55,12 @@ export default [
 		"end": 38
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 38,
 		"end": 41
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 42,
 		"end": 49
 	},
@@ -95,17 +95,17 @@ export default [
 		"end": 66
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 67,
 		"end": 69
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 70,
 		"end": 72
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 72,
 		"end": 77
 	},
@@ -115,18 +115,13 @@ export default [
 		"end": 78
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 78,
 		"end": 86
 	},
 	{
-		"type": "tag-boundary",
-		"start": 86,
-		"end": 87
-	},
-	{
 		"type": "punctuation",
-		"start": 87,
+		"start": 86,
 		"end": 88
 	}
 ];

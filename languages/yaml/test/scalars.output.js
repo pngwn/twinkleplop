@@ -12,13 +12,13 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 7,
 		"end": 12,
 		"match": "hello"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 13,
 		"end": 18,
 		"match": "world"
@@ -108,7 +108,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 114,
 		"end": 138,
 		"match": "https://example.com/path"
@@ -126,7 +126,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 145,
 		"end": 159,
 		"match": "/usr/local/bin"
@@ -162,7 +162,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 194,
 		"end": 201,
 		"match": "foo:bar"
@@ -180,7 +180,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 217,
 		"end": 224,
 		"match": "foo#bar"

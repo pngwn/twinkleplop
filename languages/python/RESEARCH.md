@@ -69,10 +69,10 @@ with the python language reference, the reference wins. documented conflicts:
 - highlight.js tokenizes f-string bodies with simple regex replacement; it
   does NOT handle arbitrary quote reuse or nested expressions. the spec
   (since 3.12) requires a nested tokenizer. follow the spec.
-- prism's `class-name` / `function` / `builtin` categories are semantic
+- prism's `selector_class` / `function` / `builtin` categories are semantic
   overlays on top of `NAME`, not lexical distinctions. the lexer emits
   `name`; a reclassifier (looking back at preceding `def` / `class` / `@`)
-  decides whether to promote to `function` / `class-name` / `decorator.name`.
+  decides whether to promote to `function` / `selector_class` / `decorator.name`.
 - pygments colors `self` and `cls` as a distinct `builtin.pseudo` token.
   the spec does not privilege them — they are ordinary identifiers. the
   highlighter may still emit them specially since every theme expects it,

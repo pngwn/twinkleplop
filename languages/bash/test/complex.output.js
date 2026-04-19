@@ -192,7 +192,7 @@ export const test = [
 		"match": "\""
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 183,
 		"end": 185,
 		"match": "$1"
@@ -384,7 +384,7 @@ export const test = [
 		"match": "\""
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 291,
 		"end": 293,
 		"match": "$1"
@@ -762,7 +762,7 @@ export const test = [
 		"match": "\""
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 605,
 		"end": 607,
 		"match": "$@"
@@ -1008,7 +1008,7 @@ export const test = [
 		"match": "\""
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 819,
 		"end": 821,
 		"match": "$@"

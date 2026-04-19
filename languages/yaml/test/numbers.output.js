@@ -228,7 +228,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 176,
 		"end": 182,
 		"match": "0b1010"
@@ -246,7 +246,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 194,
 		"end": 204,
 		"match": "2024-01-02"

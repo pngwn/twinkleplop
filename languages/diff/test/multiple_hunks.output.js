@@ -18,12 +18,6 @@ export const test = [
 		"match": "b/main.py"
 	},
 	{
-		"type": "meta",
-		"start": 31,
-		"end": 37,
-		"match": "index "
-	},
-	{
 		"type": "hash",
 		"start": 37,
 		"end": 44,
@@ -132,12 +126,6 @@ export const test = [
 		"match": "@@"
 	},
 	{
-		"type": "context",
-		"start": 106,
-		"end": 115,
-		"match": "import os"
-	},
-	{
 		"type": "deleted_marker",
 		"start": 116,
 		"end": 117,
@@ -160,18 +148,6 @@ export const test = [
 		"start": 129,
 		"end": 143,
 		"match": "import pathlib"
-	},
-	{
-		"type": "context",
-		"start": 146,
-		"end": 157,
-		"match": "def main():"
-	},
-	{
-		"type": "context",
-		"start": 159,
-		"end": 167,
-		"match": "    pass"
 	},
 	{
 		"type": "label",
@@ -232,12 +208,6 @@ export const test = [
 		"start": 183,
 		"end": 185,
 		"match": "@@"
-	},
-	{
-		"type": "context",
-		"start": 188,
-		"end": 214,
-		"match": "if __name__ == \"__main__\":"
 	},
 	{
 		"type": "deleted_marker",

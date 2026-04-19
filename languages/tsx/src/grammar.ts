@@ -47,8 +47,8 @@
 //     html4 table — any letter/digit/# sequence between `&` and `;` is
 //     emitted as an entity token.
 //   - Uppercase vs lowercase tag names (intrinsic vs component) are NOT
-//     distinguished by the grammar. both emit as `tag-name`. a future
-//     reclassifier could promote leading-uppercase to `class-name`.
+//     distinguished by the grammar. both emit as `tag_name`. a future
+//     reclassifier could promote leading-uppercase to `selector_class`.
 //   - Like typescript, generic type parameters still lex as operators
 //     (`<T>` inside a generic position is `<` op + `T` ident + `>` op),
 //     not as a dedicated generic-parameter context.
@@ -87,13 +87,6 @@ import { raw_grammar as ts_grammar } from "@twinkleplop/typescript";
 // ---------------------------------------------------------------------------
 // custom token types
 // ---------------------------------------------------------------------------
-
-const TYPE = "type";
-const DECORATOR = "decorator";
-const TAG_NAME = "tag-name";
-const TAG_BOUNDARY = "tag-boundary";
-const ATTR_NAME = "attr-name";
-const ENTITY = "entity";
 
 // ---------------------------------------------------------------------------
 // typescript keyword sets (duplicated because the ts grammar doesn't export
@@ -170,7 +163,7 @@ const tsx_keywords_literals = (
 	keyword(ALL_DIVISION_KEYWORDS, to(div_dest)),
 	keyword(BOOLEAN_LITERALS, to(div_dest), TOKENS.boolean),
 	keyword(SPECIAL_VALUES, to(div_dest)),
-	keyword(BUILTIN_TYPES, to(div_dest), TYPE),
+	keyword(BUILTIN_TYPES, to(div_dest), TOKENS.type),
 ];
 
 // characters that, seen as the first char AFTER `<`, mean `<` is a less-than
@@ -243,7 +236,7 @@ export default define_grammar({
 				tsx_operators(null),
 				...tsx_keywords_literals(null, "division"),
 
-				match("@", DECORATOR),
+				match("@", TOKENS.decorator),
 				match("/", TOKENS.regex, enter("regex_pattern")),
 
 				match(["(", "{", "["], TOKENS.punctuation),
@@ -268,7 +261,7 @@ export default define_grammar({
 				tsx_operators(null),
 				...tsx_keywords_literals(null, "tmpl_division"),
 
-				match("@", DECORATOR),
+				match("@", TOKENS.decorator),
 				match("}", TOKENS.punctuation, leave()),
 				match("/", TOKENS.regex, enter("regex_pattern")),
 				match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
@@ -350,12 +343,12 @@ export default define_grammar({
 
 		// emit `<` as tag-boundary and begin a jsx opening tag name.
 		jsx_tag_start: {
-			rules: [match("<", TAG_BOUNDARY, goto("jsx_tag_name"))],
+			rules: [match("<", TOKENS.punctuation, goto("jsx_tag_name"))],
 		},
 
 		// emit `<>` as tag-boundary and begin a jsx fragment children region.
 		jsx_fragment_start: {
-			rules: [match("<>", TAG_BOUNDARY, goto("jsx_children"))],
+			rules: [match("<>", TOKENS.punctuation, goto("jsx_children"))],
 		},
 
 		// -------------------------------------------------------------------
@@ -363,12 +356,12 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		jsx_tag_name: {
 			rules: [
-				match([LETTER, DIGIT, "_", "$", "-"], TAG_NAME),
+				match([LETTER, DIGIT, "_", "$", "-"], TOKENS.tag_name),
 				// `.` (member) and `:` (namespace) separators emit as punct so
 				// `Foo.Bar` shows up as tag + punct + tag visually.
 				match([".", ":"], TOKENS.punctuation),
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, goto("jsx_children")),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, goto("jsx_children")),
 				on([" ", "\t", "\n", "\r"], goto("jsx_tag_attrs")),
 			],
 		},
@@ -382,8 +375,8 @@ export default define_grammar({
 				SINGLE_LINE_COMMENT,
 				MULTI_LINE_COMMENT,
 
-				match("/>", TAG_BOUNDARY, leave()),
-				match(">", TAG_BOUNDARY, goto("jsx_children")),
+				match("/>", TOKENS.punctuation, leave()),
+				match(">", TOKENS.punctuation, goto("jsx_children")),
 
 				// `=` begins an attribute value (string | { expr } | < elem).
 				match("=", TOKENS.operator, enter("jsx_attr_value")),
@@ -393,7 +386,7 @@ export default define_grammar({
 				// leave() back to us.
 				match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
 
-				match([LETTER, DIGIT, "_", "$", "-"], ATTR_NAME),
+				match([LETTER, DIGIT, "_", "$", "-"], TOKENS.attr_name),
 				match([":", "."], TOKENS.punctuation),
 			],
 		},
@@ -408,7 +401,7 @@ export default define_grammar({
 				match("'", TOKENS.string, goto("jsx_attr_string_single")),
 				match("{", TOKENS.punctuation, goto("tmpl_regex_allow")),
 				// direct nested element as attr value (spec-legal, style-discouraged)
-				match("<", TAG_BOUNDARY, goto("jsx_tag_name")),
+				match("<", TOKENS.punctuation, goto("jsx_tag_name")),
 				// unexpected char: hand back to jsx_tag_attrs without consuming.
 				fallback(leave()),
 			],
@@ -420,7 +413,7 @@ export default define_grammar({
 		jsx_attr_string_double: {
 			rules: [
 				match('"', TOKENS.string, leave()),
-				match("&", ENTITY, enter("jsx_entity")),
+				match("&", TOKENS.entity, enter("jsx_entity")),
 				fallback({ token: TOKENS.string }),
 			],
 		},
@@ -431,7 +424,7 @@ export default define_grammar({
 		jsx_attr_string_single: {
 			rules: [
 				match("'", TOKENS.string, leave()),
-				match("&", ENTITY, enter("jsx_entity")),
+				match("&", TOKENS.entity, enter("jsx_entity")),
 				fallback({ token: TOKENS.string }),
 			],
 		},
@@ -441,8 +434,8 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		jsx_entity: {
 			rules: [
-				match(";", ENTITY, leave()),
-				match([LETTER, DIGIT, "#"], ENTITY),
+				match(";", TOKENS.entity, leave()),
+				match([LETTER, DIGIT, "#"], TOKENS.entity),
 				// malformed entity: pop without consuming so the outer state can
 				// handle the offending char.
 				fallback(leave()),
@@ -454,19 +447,19 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		jsx_children: {
 			rules: [
-				match("&", ENTITY, enter("jsx_entity")),
+				match("&", TOKENS.entity, enter("jsx_entity")),
 				match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
 
 				// close variants: `</>` fragment-close wins over `</`; both
 				// precede the open variants because first-match wins across
 				// rules.
-				match("</>", TAG_BOUNDARY, leave()),
-				match("</", TAG_BOUNDARY, goto("jsx_close_name")),
+				match("</>", TOKENS.punctuation, leave()),
+				match("</", TOKENS.punctuation, goto("jsx_close_name")),
 
 				// nested element / fragment open — pushes a new children frame
 				// that pops when that child's close fires.
-				match("<>", TAG_BOUNDARY, enter("jsx_children")),
-				match("<", TAG_BOUNDARY, enter("jsx_tag_name")),
+				match("<>", TOKENS.punctuation, enter("jsx_children")),
+				match("<", TOKENS.punctuation, enter("jsx_tag_name")),
 
 				// jsx text content: no token, just consume.
 				fallback({}),
@@ -478,10 +471,10 @@ export default define_grammar({
 		// -------------------------------------------------------------------
 		jsx_close_name: {
 			rules: [
-				match([LETTER, DIGIT, "_", "$", "-"], TAG_NAME),
+				match([LETTER, DIGIT, "_", "$", "-"], TOKENS.tag_name),
 				match([".", ":"], TOKENS.punctuation),
 				on([" ", "\t", "\n", "\r"]),
-				match(">", TAG_BOUNDARY, leave()),
+				match(">", TOKENS.punctuation, leave()),
 			],
 		},
 	},

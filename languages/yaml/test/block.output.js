@@ -18,7 +18,7 @@ export const test = [
 		"match": "-"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 14,
 		"end": 19,
 		"match": "apple"
@@ -30,7 +30,7 @@ export const test = [
 		"match": "-"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 24,
 		"end": 30,
 		"match": "banana"
@@ -42,7 +42,7 @@ export const test = [
 		"match": "-"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 35,
 		"end": 41,
 		"match": "cherry"
@@ -72,7 +72,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 59,
 		"end": 65,
 		"match": "value1"
@@ -90,7 +90,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 74,
 		"end": 80,
 		"match": "value2"
@@ -126,7 +126,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 98,
 		"end": 103,
 		"match": "first"
@@ -168,7 +168,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 127,
 		"end": 133,
 		"match": "second"

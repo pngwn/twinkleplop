@@ -55,7 +55,7 @@ export const reclassifiers = [
 				"raw_svelte_expression",
 				"identifier",
 				"keyword",
-				"svelte-block",
+				"svelte_block",
 			],
 		},
 	),

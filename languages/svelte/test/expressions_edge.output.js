@@ -48,19 +48,19 @@ export const test = [
 		"match": "<!-- close-block sigil (shared with `{/if}`, `{/each}`, etc). -->"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 439,
 		"end": 440,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 440,
 		"end": 441,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 441,
 		"end": 442,
 		"match": ">"
@@ -90,19 +90,19 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 456,
 		"end": 458,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 458,
 		"end": 459,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 459,
 		"end": 460,
 		"match": ">"
@@ -120,19 +120,19 @@ export const test = [
 		"match": "<!-- when the `/` is not at the start of the body. -->"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 593,
 		"end": 594,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 594,
 		"end": 595,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 595,
 		"end": 596,
 		"match": ">"
@@ -156,19 +156,19 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 610,
 		"end": 612,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 612,
 		"end": 613,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 613,
 		"end": 614,
 		"match": ">"

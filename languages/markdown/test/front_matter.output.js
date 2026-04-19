@@ -1,6 +1,6 @@
 export const test = [
 	{
-		"type": "front-matter-marker",
+		"type": "front_matter_marker",
 		"start": 0,
 		"end": 4,
 		"match": "---\n"
@@ -12,13 +12,13 @@ export const test = [
 		"match": "title: Hello\ndate: 2026-04-14"
 	},
 	{
-		"type": "front-matter-marker",
+		"type": "front_matter_marker",
 		"start": 33,
 		"end": 38,
 		"match": "\n---\n"
 	},
 	{
-		"type": "heading-marker",
+		"type": "heading_marker",
 		"start": 39,
 		"end": 40,
 		"match": "#"

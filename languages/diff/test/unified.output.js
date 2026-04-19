@@ -18,12 +18,6 @@ export const test = [
 		"match": "b/src/new_name.js"
 	},
 	{
-		"type": "meta",
-		"start": 47,
-		"end": 53,
-		"match": "index "
-	},
-	{
 		"type": "hash",
 		"start": 53,
 		"end": 60,
@@ -132,12 +126,6 @@ export const test = [
 		"match": "@@"
 	},
 	{
-		"type": "context",
-		"start": 138,
-		"end": 152,
-		"match": "const foo = 1;"
-	},
-	{
 		"type": "deleted_marker",
 		"start": 153,
 		"end": 154,
@@ -160,11 +148,5 @@ export const test = [
 		"start": 170,
 		"end": 184,
 		"match": "const bar = 3;"
-	},
-	{
-		"type": "context",
-		"start": 186,
-		"end": 208,
-		"match": "const baz = foo + bar;"
 	}
 ];

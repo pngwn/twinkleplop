@@ -1,18 +1,48 @@
 export const test = [
 	{
-		"type": "directive",
+		"type": "operator",
 		"start": 0,
+		"end": 1,
+		"match": "%"
+	},
+	{
+		"type": "keyword",
+		"start": 1,
+		"end": 5,
+		"match": "YAML"
+	},
+	{
+		"type": "number",
+		"start": 6,
 		"end": 9,
-		"match": "%YAML 1.2"
+		"match": "1.2"
 	},
 	{
-		"type": "directive",
+		"type": "operator",
 		"start": 10,
-		"end": 40,
-		"match": "%TAG !e! tag:example.com,2024:"
+		"end": 11,
+		"match": "%"
 	},
 	{
-		"type": "doc-marker",
+		"type": "keyword",
+		"start": 11,
+		"end": 14,
+		"match": "TAG"
+	},
+	{
+		"type": "identifier",
+		"start": 15,
+		"end": 18,
+		"match": "!e!"
+	},
+	{
+		"type": "identifier",
+		"start": 19,
+		"end": 40,
+		"match": "tag:example.com,2024:"
+	},
+	{
+		"type": "punctuation",
 		"start": 41,
 		"end": 44,
 		"match": "---"
@@ -30,19 +60,19 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 55,
 		"end": 60,
 		"match": "first"
 	},
 	{
-		"type": "doc-marker",
+		"type": "punctuation",
 		"start": 61,
 		"end": 64,
 		"match": "..."
 	},
 	{
-		"type": "doc-marker",
+		"type": "punctuation",
 		"start": 65,
 		"end": 68,
 		"match": "---"
@@ -60,13 +90,13 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 79,
 		"end": 85,
 		"match": "second"
 	},
 	{
-		"type": "doc-marker",
+		"type": "punctuation",
 		"start": 86,
 		"end": 89,
 		"match": "..."

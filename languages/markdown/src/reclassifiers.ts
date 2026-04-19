@@ -25,21 +25,21 @@
 import type { Reclassifier, TokenizeResult } from "@twinkleplop/core";
 
 const STYLE_OPEN: Record<string, string> = {
-	"bold-open": "bold",
-	"italic-open": "italic",
-	"strike-open": "strike",
-	"code-open": "code",
-	"link-text-open": "link-text",
-	"autolink-open": "autolink",
+	"bold_open": "bold",
+	"italic_open": "italic",
+	"strike_open": "strike",
+	"code_open": "code",
+	"link_text_open": "link_text",
+	"autolink_open": "autolink",
 };
 
 const STYLE_CLOSE: Record<string, string> = {
-	"bold-close": "bold",
-	"italic-close": "italic",
-	"strike-close": "strike",
-	"code-close": "code",
-	"link-text-close": "link-text",
-	"autolink-close": "autolink",
+	"bold_close": "bold",
+	"italic_close": "italic",
+	"strike_close": "strike",
+	"code_close": "code",
+	"link_text_close": "link_text",
+	"autolink_close": "autolink",
 };
 
 function compose_type(stack: string[], base: string): string {

@@ -15,38 +15,33 @@ export default [
 		"end": 10
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 11,
 		"end": 12
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 12,
 		"end": 15
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 15,
 		"end": 16
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 21,
 		"end": 23
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 23,
 		"end": 26
 	},
 	{
-		"type": "tag-boundary",
-		"start": 26,
-		"end": 27
-	},
-	{
 		"type": "punctuation",
-		"start": 27,
+		"start": 26,
 		"end": 28
 	}
 ];

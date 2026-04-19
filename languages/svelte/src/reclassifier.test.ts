@@ -41,7 +41,7 @@ describe("Svelte language — style embedding", () => {
 		const src = "<style>.btn { color: red; }</style>";
 		const tokens = enrich(src);
 		expect(tokens.some((t) => t.type === "raw_style")).toBe(false);
-		expect(type_of(tokens, ".btn")).toBe("class-name");
+		expect(type_of(tokens, ".btn")).toBe("selector_class");
 		expect(type_of(tokens, "color")).toBe("property");
 	});
 });
@@ -70,7 +70,7 @@ describe("Svelte language — `{expression}` interpolations", () => {
 	it("tokenizes attribute expression values", () => {
 		const src = "<button onclick={handler}>Click</button>";
 		const tokens = enrich(src);
-		expect(type_of(tokens, "onclick")).toBe("attr-name");
+		expect(type_of(tokens, "onclick")).toBe("attr_name");
 		// `handler` is tokenized as JS identifier.
 		expect(type_of(tokens, "handler")).toBe("identifier");
 	});
@@ -100,7 +100,7 @@ describe("Svelte language — block expressions", () => {
 		const tokens = enrich(src);
 		// The block keyword (without sigil) is a svelte-block token.
 		expect(
-			tokens.some((t) => t.type === "svelte-block" && t.value === "if"),
+			tokens.some((t) => t.type === "svelte_block" && t.value === "if"),
 		).toBe(true);
 		// `#` is a punctuation token.
 		expect(tokens.some((t) => t.type === "punctuation" && t.value === "#")).toBe(
@@ -128,7 +128,7 @@ describe("Svelte language — block expressions", () => {
 		const tokens = enrich(src);
 		// `@const` tokenizes as `@` (punctuation) + `const` (svelte-block).
 		expect(
-			tokens.some((t) => t.type === "svelte-block" && t.value === "const"),
+			tokens.some((t) => t.type === "svelte_block" && t.value === "const"),
 		).toBe(true);
 		expect(tokens.some((t) => t.type === "punctuation" && t.value === "@")).toBe(
 			true,
@@ -144,10 +144,10 @@ describe("Svelte language — `svelte:*` elements", () => {
 		const src = "<svelte:component this={X}/>";
 		const tokens = enrich(src);
 		expect(
-			tokens.some((t) => t.type === "svelte-element" && t.value === "svelte"),
+			tokens.some((t) => t.type === "keyword" && t.value === "svelte"),
 		).toBe(true);
 		expect(
-			tokens.some((t) => t.type === "tag-name" && t.value === "component"),
+			tokens.some((t) => t.type === "tag_name" && t.value === "component"),
 		).toBe(true);
 		// The `:` between them is punctuation.
 		expect(tokens.some((t) => t.type === "punctuation" && t.value === ":")).toBe(
@@ -156,7 +156,7 @@ describe("Svelte language — `svelte:*` elements", () => {
 		// And no lingering combined `svelte:component` tag-name.
 		expect(
 			tokens.some(
-				(t) => t.type === "tag-name" && t.value === "svelte:component",
+				(t) => t.type === "tag_name" && t.value === "svelte:component",
 			),
 		).toBe(false);
 	});
@@ -166,10 +166,10 @@ describe("Svelte language — `svelte:*` elements", () => {
 		const tokens = enrich(src);
 		expect(
 			tokens.some(
-				(t) => t.type === "tag-name" && t.value === "notsvelte:options",
+				(t) => t.type === "tag_name" && t.value === "notsvelte:options",
 			),
 		).toBe(true);
-		expect(tokens.some((t) => t.type === "svelte-element")).toBe(false);
+		expect(tokens.some((t) => t.type === "keyword")).toBe(false);
 	});
 });
 
@@ -196,10 +196,10 @@ describe("Svelte language — full component", () => {
 		// Tokens from all four sub-languages present.
 		const types = new Set(tokens.map((t) => t.type));
 		// Svelte-specific
-		expect(types.has("svelte-block")).toBe(true);
+		expect(types.has("svelte_block")).toBe(true);
 		// HTML structure
-		expect(types.has("tag-name")).toBe(true);
-		expect(types.has("attr-name")).toBe(true);
+		expect(types.has("tag_name")).toBe(true);
+		expect(types.has("attr_name")).toBe(true);
 		// JS from script block and interpolations
 		expect(types.has("keyword")).toBe(true);
 		expect(types.has("identifier")).toBe(true);

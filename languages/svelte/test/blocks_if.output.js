@@ -12,7 +12,7 @@ export const test = [
 		"match": "#"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 2,
 		"end": 4,
 		"match": "if"
@@ -30,37 +30,37 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 18,
 		"end": 19,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 19,
 		"end": 20,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 20,
 		"end": 21,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 25,
 		"end": 27,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 27,
 		"end": 28,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 28,
 		"end": 29,
 		"match": ">"
@@ -78,7 +78,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 32,
 		"end": 39,
 		"match": "else if"
@@ -96,37 +96,37 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 52,
 		"end": 53,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 53,
 		"end": 54,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 54,
 		"end": 55,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 59,
 		"end": 61,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 61,
 		"end": 62,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 62,
 		"end": 63,
 		"match": ">"
@@ -144,7 +144,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 66,
 		"end": 70,
 		"match": "else"
@@ -156,37 +156,37 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 73,
 		"end": 74,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 74,
 		"end": 75,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 75,
 		"end": 76,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 80,
 		"end": 82,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 82,
 		"end": 83,
 		"match": "p"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 83,
 		"end": 84,
 		"match": ">"
@@ -204,7 +204,7 @@ export const test = [
 		"match": "/"
 	},
 	{
-		"type": "svelte-block",
+		"type": "svelte_block",
 		"start": 87,
 		"end": 89,
 		"match": "if"

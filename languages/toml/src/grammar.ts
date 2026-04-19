@@ -95,8 +95,6 @@ import { define_grammar } from "@twinkleplop/core/compile";
 // ---------------------------------------------------------------------------
 // Custom token types
 // ---------------------------------------------------------------------------
-const ARRAY_TABLE_HEADER = "array_table_header";
-
 // ---------------------------------------------------------------------------
 // Shared rule fragments
 // ---------------------------------------------------------------------------
@@ -510,7 +508,7 @@ export default define_grammar({
 		// -----------------------------------------------------------------
 		array_table_header: {
 			rules: [
-				match("[[", ARRAY_TABLE_HEADER, goto("array_table_header_key")),
+				match("[[", TOKENS.array_table_header, goto("array_table_header_key")),
 			],
 		},
 
@@ -524,7 +522,7 @@ export default define_grammar({
 				match(".", TOKENS.punctuation),
 				// closing `]]` matches the opening `[[` token type so a theme
 				// that styles array-of-tables delimiters can target both ends.
-				match("]]", ARRAY_TABLE_HEADER, leave()),
+				match("]]", TOKENS.array_table_header, leave()),
 			],
 		},
 

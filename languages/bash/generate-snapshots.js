@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { language } from "./src/index.js";
+import { language } from "./dist/index.js";
 
 const test_dir = path.join(import.meta.dirname, "test");
 const files = fs.readdirSync(test_dir);

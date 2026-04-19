@@ -12,7 +12,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 6,
 		"end": 12,
 		"match": "widget"
@@ -30,7 +30,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 22,
 		"end": 27,
 		"match": "1.2.3"

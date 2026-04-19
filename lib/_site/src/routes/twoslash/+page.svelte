@@ -184,17 +184,17 @@
 	.code-wrap :global(.number) { color: #d2a6ff; }
 	.code-wrap :global(.comment) { color: #5c6773; font-style: italic; }
 	/* Svelte-specific tokens from @twinkleplop/svelte grammar */
-	.code-wrap :global(.tag-name) { color: #6bebff; }
-	.code-wrap :global(.attr-name) { color: #ffb86b; }
+	.code-wrap :global(.tag_name) { color: #6bebff; }
+	.code-wrap :global(.attr_name) { color: #ffb86b; }
 	.code-wrap :global(.template) { color: #b8cc52; }
 	.code-wrap :global(.boolean) { color: #d2a6ff; }
-	.code-wrap :global(.svelte-block) { color: #ff6beb; }
-	.code-wrap :global(.svelte-directive) { color: #b86bff; }
+	.code-wrap :global(.svelte_block) { color: #ff6beb; }
+	.code-wrap :global(.svelte_directive) { color: #b86bff; }
 	.code-wrap :global(.punctuation) { color: #888; }
 	.code-wrap :global(.function) { color: #22d3ee; }
 	.code-wrap :global(.identifier) { color: #bfbdb6; }
 	.code-wrap :global(.regex) { color: #95e6cb; }
-	.code-wrap :global(.class-name) { color: #22d3ee; }
+	.code-wrap :global(.selector_class) { color: #22d3ee; }
 	.code-wrap :global(.builtin) { color: #c084fc; }
 
 	/* --- twoslash hover tooltips ------------------------------------ */

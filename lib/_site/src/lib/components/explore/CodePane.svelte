@@ -5,9 +5,9 @@
 		title: string;
 		subtitle: string;
 		pane_id: string;
-		lines: string[];
+		html: string;
+		line_count: number;
 		palette_style: string;
-		show_line_numbers: boolean;
 		density: density_mode;
 		font: string;
 		perf_ms: number;
@@ -18,18 +18,14 @@
 		title,
 		subtitle,
 		pane_id,
-		lines,
+		html,
+		line_count,
 		palette_style,
-		show_line_numbers,
 		density,
 		font,
 		perf_ms,
 		perf_token_count,
 	}: Props = $props();
-
-	function pad_ln(n: number): string {
-		return String(n).padStart(3, " ");
-	}
 </script>
 
 <div class="pane" data-pane={pane_id} style={palette_style}>
@@ -41,13 +37,8 @@
 		<div class="pane__meta"></div>
 	</header>
 
-	<div class="pane__body" style:font-family={font}>
-		<pre class="code" data-density={density}>{#each lines as line, li (li)}<div
-					class="code__line"
-				>{#if show_line_numbers}<span class="code__ln">{pad_ln(li + 1)}</span>{/if}<span
-						class="code__content"
-					>{#if line.length === 0}<span class="code__empty"> </span>{:else}{@html line}{/if}</span
-					></div>{/each}</pre>
+	<div class="pane__body" style:font-family={font} data-density={density}>
+		{@html html}
 	</div>
 
 	<footer class="pane__foot">
@@ -55,7 +46,7 @@
 			<span class="dot"></span>
 			<span>{perf_token_count} tokens</span>
 			<span class="sep">·</span>
-			<span>{lines.length} lines</span>
+			<span>{line_count} lines</span>
 		</div>
 		<div class="pane__foot-r">
 			<span class="perf">

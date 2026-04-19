@@ -18,7 +18,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 25,
 		"end": 30,
 		"match": "value"
@@ -60,7 +60,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 89,
 		"end": 96,
 		"match": "foo#bar"

@@ -1,24 +1,24 @@
 export const test = [
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 0,
 		"end": 1,
 		"match": "["
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 1,
 		"end": 5,
 		"match": "text"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 5,
 		"end": 6,
 		"match": "]"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 6,
 		"end": 7,
 		"match": "("
@@ -30,31 +30,31 @@ export const test = [
 		"match": "https://example.com"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 26,
 		"end": 27,
 		"match": ")"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 29,
 		"end": 30,
 		"match": "["
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 30,
 		"end": 40,
 		"match": "with title"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 40,
 		"end": 41,
 		"match": "]"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 41,
 		"end": 42,
 		"match": "("
@@ -66,91 +66,91 @@ export const test = [
 		"match": "https://example.com "
 	},
 	{
-		"type": "url-title",
+		"type": "url_title",
 		"start": 62,
 		"end": 71,
 		"match": "\"Example\""
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 71,
 		"end": 72,
 		"match": ")"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 74,
 		"end": 75,
 		"match": "["
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 75,
 		"end": 84,
 		"match": "reference"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 84,
 		"end": 85,
 		"match": "]"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 85,
 		"end": 86,
 		"match": "["
 	},
 	{
-		"type": "url-reference",
+		"type": "property",
 		"start": 86,
 		"end": 91,
 		"match": "label"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 91,
 		"end": 92,
 		"match": "]"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 94,
 		"end": 95,
 		"match": "["
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 95,
 		"end": 108,
 		"match": "just brackets"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 108,
 		"end": 109,
 		"match": "]"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 111,
 		"end": 113,
 		"match": "!["
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 113,
 		"end": 122,
 		"match": "image alt"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 122,
 		"end": 123,
 		"match": "]"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 123,
 		"end": 124,
 		"match": "("
@@ -162,7 +162,7 @@ export const test = [
 		"match": "image.png"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 133,
 		"end": 134,
 		"match": ")"

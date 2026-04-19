@@ -18,22 +18,10 @@ export const test = [
 		"match": "b/script.sh"
 	},
 	{
-		"type": "meta",
-		"start": 35,
-		"end": 44,
-		"match": "old mode "
-	},
-	{
 		"type": "number",
 		"start": 44,
 		"end": 50,
 		"match": "100644"
-	},
-	{
-		"type": "meta",
-		"start": 51,
-		"end": 60,
-		"match": "new mode "
 	},
 	{
 		"type": "number",

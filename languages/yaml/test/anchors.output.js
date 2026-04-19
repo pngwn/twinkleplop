@@ -12,7 +12,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "anchor",
+		"type": "variable",
 		"start": 8,
 		"end": 16,
 		"match": "&default"
@@ -30,7 +30,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 25,
 		"end": 34,
 		"match": "localhost"
@@ -66,7 +66,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "alias",
+		"type": "variable",
 		"start": 56,
 		"end": 64,
 		"match": "*default"
@@ -84,10 +84,16 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "tag",
+		"type": "operator",
 		"start": 73,
+		"end": 75,
+		"match": "!!"
+	},
+	{
+		"type": "keyword",
+		"start": 75,
 		"end": 78,
-		"match": "!!str"
+		"match": "str"
 	},
 	{
 		"type": "string",
@@ -108,10 +114,16 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "tag",
+		"type": "operator",
 		"start": 99,
+		"end": 100,
+		"match": "!"
+	},
+	{
+		"type": "keyword",
+		"start": 100,
 		"end": 112,
-		"match": "!myapp/widget"
+		"match": "myapp/widget"
 	},
 	{
 		"type": "number",
@@ -132,13 +144,25 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "tag",
+		"type": "operator",
 		"start": 130,
-		"end": 157,
-		"match": "!<tag:example.com,2024:foo>"
+		"end": 132,
+		"match": "!<"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "keyword",
+		"start": 132,
+		"end": 156,
+		"match": "tag:example.com,2024:foo"
+	},
+	{
+		"type": "operator",
+		"start": 156,
+		"end": 157,
+		"match": ">"
+	},
+	{
+		"type": "identifier",
 		"start": 158,
 		"end": 163,
 		"match": "value"
@@ -156,13 +180,19 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "tag",
+		"type": "operator",
 		"start": 178,
-		"end": 188,
-		"match": "!e!special"
+		"end": 179,
+		"match": "!"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "keyword",
+		"start": 179,
+		"end": 188,
+		"match": "e!special"
+	},
+	{
+		"type": "identifier",
 		"start": 189,
 		"end": 193,
 		"match": "data"

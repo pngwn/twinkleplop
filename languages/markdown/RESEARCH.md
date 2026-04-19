@@ -1200,10 +1200,10 @@ key observations:
   header. this is a localized lookahead, not a full second pass.
 - suggested token name set (lowercase, kebab-case) aligned with prism's
   markdown grammar for compatibility:
-  `heading`, `heading-marker`, `bold`, `italic`, `strike`,
-  `code`, `code-block`, `code-language`, `blockquote`, `list-marker`,
-  `task-marker`, `hr`, `url`, `url-text`, `url-link`, `url-title`,
-  `url-reference`, `image`, `autolink`, `entity`, `escape`, `hard-break`,
+  `heading`, `heading_marker`, `bold`, `italic`, `strike`,
+  `code`, `code_block`, `code_language`, `blockquote`, `list_marker`,
+  `task_marker`, `hr`, `url`, `url-text`, `url_link`, `url_title`,
+  `property`, `image`, `autolink`, `entity`, `escape`, `hard_break`,
   `html-tag`, `html-attr`, `html-attr-value`, `html-comment`, `punctuation`,
   `table-separator`, `table-align`, `front-matter`, `language-<name>`.
 - do not try to match the full html5 entity list; match `&[A-Za-z][A-Za-z0-9]*;`

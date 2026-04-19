@@ -1,12 +1,12 @@
 export const test = [
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 0,
 		"end": 1,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 1,
 		"end": 10,
 		"match": "Component"
@@ -48,19 +48,19 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 27,
 		"end": 29,
 		"match": "/>"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 30,
 		"end": 31,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 31,
 		"end": 36,
 		"match": "input"
@@ -102,7 +102,7 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 62,
 		"end": 64,
 		"match": "/>"

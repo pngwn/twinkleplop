@@ -84,12 +84,6 @@ export const test = [
 		"match": "@@"
 	},
 	{
-		"type": "context",
-		"start": 47,
-		"end": 55,
-		"match": "line one"
-	},
-	{
 		"type": "deleted_marker",
 		"start": 56,
 		"end": 57,

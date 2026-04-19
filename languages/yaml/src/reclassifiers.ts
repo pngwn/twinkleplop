@@ -1,10 +1,10 @@
 // YAML reclassifier.
 //
-// The core grammar emits every unquoted scalar as `plain_scalar`. A post pass
-// walks the token stream, inspects each plain scalar's source text, and
+// The core grammar emits every unquoted scalar as `identifier`. A post pass
+// walks the token stream, inspects each identifier's source text, and
 // rewrites the token type to `boolean`, `null`, `number` when the content
 // matches the YAML 1.2 core schema (or the permissive YAML 1.1 superset for
-// booleans). A second pass promotes plain-scalar keys — scalars whose next
+// booleans). A second pass promotes identifier keys — scalars whose next
 // non-trivia token is a `:` punctuation — to `property`.
 //
 // Accepted booleans (spec-strict + permissive 1.1):
@@ -21,7 +21,7 @@
 //   [-+]?(\.inf|\.Inf|\.INF)            infinity
 //   \.nan|\.NaN|\.NAN                   not a number
 //
-// Anything that does not match stays as `plain_scalar`.
+// Anything that does not match stays as `identifier`.
 
 import type { Reclassifier, TokenizeResult } from "@twinkleplop/core";
 
@@ -149,7 +149,7 @@ function is_float_after_sign(text: string, start: number): boolean {
 	return pos === n;
 }
 
-// rewrite plain_scalar tokens based on their source text.
+// rewrite identifier tokens based on their source text.
 export const classify_scalars: Reclassifier = (
 	input: string,
 	result: TokenizeResult,
@@ -159,8 +159,8 @@ export const classify_scalars: Reclassifier = (
 	const n = tokens.length / 3;
 	if (n === 0) return { tokens, token_types };
 
-	const plain_id = token_types.indexOf("plain_scalar");
-	if (plain_id < 0) return { tokens, token_types };
+	const ident_id = token_types.indexOf("identifier");
+	if (ident_id < 0) return { tokens, token_types };
 
 	const ensure = (name: string): number => {
 		let id = token_types.indexOf(name);
@@ -175,7 +175,7 @@ export const classify_scalars: Reclassifier = (
 	const number_id = ensure("number");
 
 	for (let i = 0; i < n; i++) {
-		if (tokens[i * 3] !== plain_id) continue;
+		if (tokens[i * 3] !== ident_id) continue;
 		const start = tokens[i * 3 + 1];
 		const end = tokens[i * 3 + 2];
 		const text = input.slice(start, end);
@@ -186,7 +186,7 @@ export const classify_scalars: Reclassifier = (
 	return { tokens, token_types };
 };
 
-// promote plain_scalar keys to `property`. a key is a plain_scalar whose next
+// promote identifier keys to `property`. a key is an identifier whose next
 // non-trivia token is a `:` punctuation.
 export const promote_keys: Reclassifier = (
 	input: string,
@@ -197,10 +197,10 @@ export const promote_keys: Reclassifier = (
 	const n = tokens.length / 3;
 	if (n === 0) return { tokens, token_types };
 
-	const plain_id = token_types.indexOf("plain_scalar");
+	const ident_id = token_types.indexOf("identifier");
 	const punct_id = token_types.indexOf("punctuation");
 	const comment_id = token_types.indexOf("comment");
-	if (plain_id < 0 || punct_id < 0) return { tokens, token_types };
+	if (ident_id < 0 || punct_id < 0) return { tokens, token_types };
 
 	let property_id = token_types.indexOf("property");
 	if (property_id < 0) {
@@ -209,7 +209,7 @@ export const promote_keys: Reclassifier = (
 	}
 
 	for (let i = 0; i < n; i++) {
-		if (tokens[i * 3] !== plain_id) continue;
+		if (tokens[i * 3] !== ident_id) continue;
 		// look ahead for the next non-trivia token. trivia = comment.
 		let j = i + 1;
 		while (j < n && tokens[j * 3] === comment_id) j++;

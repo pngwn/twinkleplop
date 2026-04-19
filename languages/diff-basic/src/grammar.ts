@@ -31,14 +31,6 @@ import {
 import * as TOKENS from "@twinkleplop/core/tokens";
 import { define_grammar } from "@twinkleplop/core/compile";
 
-const INSERTED = "inserted";
-const INSERTED_MARKER = "inserted_marker";
-const DELETED = "deleted";
-const DELETED_MARKER = "deleted_marker";
-const CHANGED = "changed";
-const CHANGED_MARKER = "changed_marker";
-const LABEL = "label";
-
 export default define_grammar({
 	name: "diff-basic",
 	states: {
@@ -48,10 +40,10 @@ export default define_grammar({
 			rules: [
 				on("\n"),
 
-				match("@@", LABEL, enter("hunk_range")),
+				match("@@", TOKENS.label, enter("hunk_range")),
 
 				// "! " requires the space to avoid shell !command conflicts
-				match("! ", CHANGED_MARKER, enter("changed_line")),
+				match("! ", TOKENS.changed_marker, enter("changed_line")),
 
 				// no-newline marker
 				match("\\ ", TOKENS.comment, enter("consume_rest_comment")),
@@ -63,8 +55,8 @@ export default define_grammar({
 				on("++", enter("consume_line")),
 				on("--", enter("consume_line")),
 
-				match("+", INSERTED_MARKER, enter("inserted_line")),
-				match("-", DELETED_MARKER, enter("deleted_line")),
+				match("+", TOKENS.inserted_marker, enter("inserted_line")),
+				match("-", TOKENS.deleted_marker, enter("deleted_line")),
 
 				// non-diff line: consume silently
 				fallback(enter("consume_line")),
@@ -75,16 +67,16 @@ export default define_grammar({
 		hunk_range: {
 			rules: [
 				// closing delimiter. @@@ before @@ for correct length priority.
-				match("@@@", LABEL, goto("hunk_context")),
-				match("@@", LABEL, goto("hunk_context")),
+				match("@@@", TOKENS.label, goto("hunk_context")),
+				match("@@", TOKENS.label, goto("hunk_context")),
 				// extra @ from opening @@@ (main consumed first 2)
-				match("@", LABEL),
+				match("@", TOKENS.label),
 				match(DIGIT, TOKENS.number),
 				match(",", TOKENS.punctuation),
 				match(["+", "-"], TOKENS.punctuation),
 				on(" "),
 				on("\n", goto("main")),
-				fallback({ token: LABEL }),
+				fallback({ token: TOKENS.label }),
 			],
 		},
 
@@ -94,15 +86,15 @@ export default define_grammar({
 		},
 
 		inserted_line: {
-			rules: [on("\n", leave()), fallback({ token: INSERTED })],
+			rules: [on("\n", leave()), fallback({ token: TOKENS.inserted })],
 		},
 
 		deleted_line: {
-			rules: [on("\n", leave()), fallback({ token: DELETED })],
+			rules: [on("\n", leave()), fallback({ token: TOKENS.deleted })],
 		},
 
 		changed_line: {
-			rules: [on("\n", leave()), fallback({ token: CHANGED })],
+			rules: [on("\n", leave()), fallback({ token: TOKENS.changed })],
 		},
 
 		consume_rest_comment: {

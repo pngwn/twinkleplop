@@ -271,8 +271,6 @@ const NON_ASCII = range([[0x80, 0xffff]]);
 // custom token for f-string format spec content (`>10`, `.3f`, `x<*^20`, ...).
 // not the same as `string` because it is a mini-language inside the
 // replacement field rather than literal text.
-const FORMAT_SPEC = "format";
-
 // ---------------------------------------------------------------------------
 // shared rule fragments
 // ---------------------------------------------------------------------------
@@ -663,11 +661,11 @@ export default define_grammar({
 		// =================================================================
 		fstring_format_spec: {
 			rules: [
-				match("{{", FORMAT_SPEC),
-				match("}}", FORMAT_SPEC),
+				match("{{", TOKENS.format),
+				match("}}", TOKENS.format),
 				match("{", TOKENS.punctuation, enter("fstring_expr_top")),
 				match("}", TOKENS.punctuation, leave()),
-				fallback({ token: FORMAT_SPEC }),
+				fallback({ token: TOKENS.format }),
 			],
 		},
 	},

@@ -210,7 +210,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 177,
 		"end": 181,
 		"match": "tRuE"
@@ -228,7 +228,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "plain_scalar",
+		"type": "identifier",
 		"start": 192,
 		"end": 200,
 		"match": "null-ish"

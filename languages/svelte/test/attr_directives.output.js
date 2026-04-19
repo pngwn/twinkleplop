@@ -1,24 +1,24 @@
 export const test = [
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 0,
 		"end": 1,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 1,
 		"end": 6,
 		"match": "input"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 7,
 		"end": 12,
 		"match": "bind:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 12,
 		"end": 17,
 		"match": "value"
@@ -48,13 +48,13 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 25,
 		"end": 30,
 		"match": "bind:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 30,
 		"end": 34,
 		"match": "this"
@@ -84,31 +84,31 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 40,
 		"end": 42,
 		"match": "/>"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 43,
 		"end": 44,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 44,
 		"end": 50,
 		"match": "button"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 51,
 		"end": 54,
 		"match": "on:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 54,
 		"end": 59,
 		"match": "click"
@@ -138,49 +138,49 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 69,
 		"end": 70,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 72,
 		"end": 74,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 74,
 		"end": 80,
 		"match": "button"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 80,
 		"end": 81,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 82,
 		"end": 83,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 83,
 		"end": 89,
 		"match": "button"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 90,
 		"end": 93,
 		"match": "on:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 93,
 		"end": 98,
 		"match": "click"
@@ -192,7 +192,7 @@ export const test = [
 		"match": "|"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 99,
 		"end": 113,
 		"match": "preventDefault"
@@ -204,7 +204,7 @@ export const test = [
 		"match": "|"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 114,
 		"end": 129,
 		"match": "stopPropagation"
@@ -234,49 +234,49 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 139,
 		"end": 140,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 144,
 		"end": 146,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 146,
 		"end": 152,
 		"match": "button"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 152,
 		"end": 153,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 154,
 		"end": 155,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 155,
 		"end": 158,
 		"match": "div"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 159,
 		"end": 163,
 		"match": "use:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 163,
 		"end": 169,
 		"match": "action"
@@ -306,49 +306,49 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 178,
 		"end": 179,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 181,
 		"end": 183,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 183,
 		"end": 186,
 		"match": "div"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 186,
 		"end": 187,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 188,
 		"end": 189,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 189,
 		"end": 192,
 		"match": "div"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 193,
 		"end": 204,
 		"match": "transition:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 204,
 		"end": 208,
 		"match": "fade"
@@ -378,49 +378,49 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 226,
 		"end": 227,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 229,
 		"end": 231,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 231,
 		"end": 234,
 		"match": "div"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 234,
 		"end": 235,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 236,
 		"end": 237,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 237,
 		"end": 240,
 		"match": "div"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 241,
 		"end": 252,
 		"match": "transition:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 252,
 		"end": 256,
 		"match": "fade"
@@ -432,127 +432,127 @@ export const test = [
 		"match": "|"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 257,
 		"end": 262,
 		"match": "local"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 262,
 		"end": 263,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 265,
 		"end": 267,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 267,
 		"end": 270,
 		"match": "div"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 270,
 		"end": 271,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 272,
 		"end": 273,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 273,
 		"end": 276,
 		"match": "div"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 277,
 		"end": 280,
 		"match": "in:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 280,
 		"end": 283,
 		"match": "fly"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 284,
 		"end": 288,
 		"match": "out:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 288,
 		"end": 291,
 		"match": "fly"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 292,
 		"end": 300,
 		"match": "animate:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 300,
 		"end": 304,
 		"match": "flip"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 304,
 		"end": 305,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 307,
 		"end": 309,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 309,
 		"end": 312,
 		"match": "div"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 312,
 		"end": 313,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 314,
 		"end": 315,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 315,
 		"end": 317,
 		"match": "li"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 318,
 		"end": 324,
 		"match": "class:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 324,
 		"end": 330,
 		"match": "active"
@@ -582,61 +582,61 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 342,
 		"end": 348,
 		"match": "class:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 348,
 		"end": 352,
 		"match": "done"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 352,
 		"end": 353,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 357,
 		"end": 359,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 359,
 		"end": 361,
 		"match": "li"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 361,
 		"end": 362,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 363,
 		"end": 364,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 364,
 		"end": 368,
 		"match": "span"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 369,
 		"end": 375,
 		"match": "style:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 375,
 		"end": 380,
 		"match": "color"
@@ -666,13 +666,13 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 385,
 		"end": 391,
 		"match": "style:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 391,
 		"end": 402,
 		"match": "font-weight"
@@ -684,7 +684,7 @@ export const test = [
 		"match": "|"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 403,
 		"end": 412,
 		"match": "important"
@@ -714,61 +714,61 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 416,
 		"end": 417,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 419,
 		"end": 421,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 421,
 		"end": 425,
 		"match": "span"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 425,
 		"end": 426,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 427,
 		"end": 428,
 		"match": "<"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 428,
 		"end": 431,
 		"match": "div"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 432,
 		"end": 436,
 		"match": "let:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 436,
 		"end": 440,
 		"match": "item"
 	},
 	{
-		"type": "svelte-directive",
+		"type": "svelte_directive",
 		"start": 441,
 		"end": 445,
 		"match": "let:"
 	},
 	{
-		"type": "attr-name",
+		"type": "attr_name",
 		"start": 445,
 		"end": 450,
 		"match": "index"
@@ -798,25 +798,25 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 454,
 		"end": 455,
 		"match": ">"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 457,
 		"end": 459,
 		"match": "</"
 	},
 	{
-		"type": "tag-name",
+		"type": "tag_name",
 		"start": 459,
 		"end": 462,
 		"match": "div"
 	},
 	{
-		"type": "tag-boundary",
+		"type": "punctuation",
 		"start": 462,
 		"end": 463,
 		"match": ">"

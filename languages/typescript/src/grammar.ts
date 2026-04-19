@@ -53,9 +53,6 @@ import {
 // custom token types
 // ---------------------------------------------------------------------------
 
-const TYPE = "type";
-const DECORATOR = "decorator";
-
 // ---------------------------------------------------------------------------
 // TypeScript keyword sets
 // ---------------------------------------------------------------------------
@@ -94,7 +91,7 @@ const ALL_DIVISION_KEYWORDS = ALL_KEYWORDS.filter(
 	(k) => !REGEX_PRECEDING_KEYWORDS.includes(k),
 );
 
-// built-in type names highlighted with the TYPE token.
+// built-in type names highlighted with the TOKENS.type token.
 // void, undefined, null are already handled by JS keywords/special values.
 const BUILTIN_TYPES = [
 	"number",
@@ -123,7 +120,7 @@ const ts_keywords_literals = (
 	keyword(ALL_DIVISION_KEYWORDS, to(div_dest)),
 	keyword(BOOLEAN_LITERALS, to(div_dest), TOKENS.boolean),
 	keyword(SPECIAL_VALUES, to(div_dest)),
-	keyword(BUILTIN_TYPES, to(div_dest), TYPE),
+	keyword(BUILTIN_TYPES, to(div_dest), TOKENS.type),
 ];
 
 // ---------------------------------------------------------------------------
@@ -148,7 +145,7 @@ export default define_grammar({
 				...ts_keywords_literals(null, "division"),
 
 				// decorator
-				match("@", DECORATOR),
+				match("@", TOKENS.decorator),
 
 				// regex
 				match("/", TOKENS.regex, enter("regex_pattern")),
@@ -174,7 +171,7 @@ export default define_grammar({
 				...ts_keywords_literals("regex_allow", null),
 
 				// decorator
-				match("@", DECORATOR),
+				match("@", TOKENS.decorator),
 
 				// opening brackets — after these, `/` is regex
 				match(["(", "{", "["], TOKENS.punctuation, goto("regex_allow")),
@@ -202,7 +199,7 @@ export default define_grammar({
 				...ts_keywords_literals(null, "tmpl_division"),
 
 				// decorator
-				match("@", DECORATOR),
+				match("@", TOKENS.decorator),
 
 				match("}", TOKENS.punctuation, leave()),
 				match("/", TOKENS.regex, enter("regex_pattern")),
@@ -227,7 +224,7 @@ export default define_grammar({
 				...ts_keywords_literals("tmpl_regex_allow", null),
 
 				// decorator
-				match("@", DECORATOR),
+				match("@", TOKENS.decorator),
 
 				match("}", TOKENS.punctuation, leave()),
 				// `{` pushes tmpl_regex_allow to track brace depth.

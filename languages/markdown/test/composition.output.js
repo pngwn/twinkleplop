@@ -180,25 +180,25 @@ export const test = [
 		"match": "italic "
 	},
 	{
-		"type": "italic link-text",
+		"type": "italic link_text",
 		"start": 140,
 		"end": 141,
 		"match": "["
 	},
 	{
-		"type": "italic link-text",
+		"type": "italic link_text",
 		"start": 141,
 		"end": 150,
 		"match": "link text"
 	},
 	{
-		"type": "italic link-text",
+		"type": "italic link_text",
 		"start": 150,
 		"end": 151,
 		"match": "]"
 	},
 	{
-		"type": "italic url-link",
+		"type": "italic url_link",
 		"start": 151,
 		"end": 152,
 		"match": "("
@@ -210,7 +210,7 @@ export const test = [
 		"match": "https://example.com"
 	},
 	{
-		"type": "italic url-link",
+		"type": "italic url_link",
 		"start": 171,
 		"end": 172,
 		"match": ")"
@@ -228,73 +228,73 @@ export const test = [
 		"match": "*"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 182,
 		"end": 183,
 		"match": "["
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 183,
 		"end": 193,
 		"match": "link with "
 	},
 	{
-		"type": "link-text bold",
+		"type": "link_text bold",
 		"start": 193,
 		"end": 195,
 		"match": "**"
 	},
 	{
-		"type": "link-text bold",
+		"type": "link_text bold",
 		"start": 195,
 		"end": 199,
 		"match": "bold"
 	},
 	{
-		"type": "link-text bold",
+		"type": "link_text bold",
 		"start": 199,
 		"end": 201,
 		"match": "**"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 201,
 		"end": 206,
 		"match": " and "
 	},
 	{
-		"type": "link-text code",
+		"type": "link_text code",
 		"start": 206,
 		"end": 207,
 		"match": "`"
 	},
 	{
-		"type": "link-text code",
+		"type": "link_text code",
 		"start": 207,
 		"end": 211,
 		"match": "code"
 	},
 	{
-		"type": "link-text code",
+		"type": "link_text code",
 		"start": 211,
 		"end": 212,
 		"match": "`"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 212,
 		"end": 219,
 		"match": " inside"
 	},
 	{
-		"type": "link-text",
+		"type": "link_text",
 		"start": 219,
 		"end": 220,
 		"match": "]"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 220,
 		"end": 221,
 		"match": "("
@@ -306,7 +306,7 @@ export const test = [
 		"match": "url"
 	},
 	{
-		"type": "url-link",
+		"type": "url_link",
 		"start": 224,
 		"end": 225,
 		"match": ")"
@@ -318,25 +318,25 @@ export const test = [
 		"match": "**"
 	},
 	{
-		"type": "bold link-text",
+		"type": "bold link_text",
 		"start": 229,
 		"end": 230,
 		"match": "["
 	},
 	{
-		"type": "bold link-text",
+		"type": "bold link_text",
 		"start": 230,
 		"end": 239,
 		"match": "bold link"
 	},
 	{
-		"type": "bold link-text",
+		"type": "bold link_text",
 		"start": 239,
 		"end": 240,
 		"match": "]"
 	},
 	{
-		"type": "bold url-link",
+		"type": "bold url_link",
 		"start": 240,
 		"end": 241,
 		"match": "("
@@ -348,7 +348,7 @@ export const test = [
 		"match": "url"
 	},
 	{
-		"type": "bold url-link",
+		"type": "bold url_link",
 		"start": 244,
 		"end": 245,
 		"match": ")"
@@ -534,25 +534,25 @@ export const test = [
 		"match": "bold across "
 	},
 	{
-		"type": "bold link-text",
+		"type": "bold link_text",
 		"start": 433,
 		"end": 435,
 		"match": "!["
 	},
 	{
-		"type": "bold link-text",
+		"type": "bold link_text",
 		"start": 435,
 		"end": 444,
 		"match": "image alt"
 	},
 	{
-		"type": "bold link-text",
+		"type": "bold link_text",
 		"start": 444,
 		"end": 445,
 		"match": "]"
 	},
 	{
-		"type": "bold url-link",
+		"type": "bold url_link",
 		"start": 445,
 		"end": 446,
 		"match": "("
@@ -564,7 +564,7 @@ export const test = [
 		"match": "img.png"
 	},
 	{
-		"type": "bold url-link",
+		"type": "bold url_link",
 		"start": 453,
 		"end": 454,
 		"match": ")"

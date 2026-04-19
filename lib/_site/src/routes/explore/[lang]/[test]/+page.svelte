@@ -13,10 +13,13 @@
 		PLOP_THEMES,
 		type tweak_state,
 	} from "$lib/explore/themes";
-	import {
-		to_lines_html,
-		type tokenize_result,
-	} from "$lib/explore/render_tokens";
+	import { to_html } from "@twinkleplop/core";
+
+	// core ships no .d.ts yet so we redeclare the result shape locally.
+	interface tokenize_result {
+		tokens: Uint32Array;
+		token_types: string[];
+	}
 	import { palette_to_vars } from "$lib/explore/palette_vars";
 	import { measure } from "$lib/explore/measure";
 	import {
@@ -175,10 +178,27 @@
 			Boolean((globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated);
 	});
 
-	let plop_lines = $derived(to_lines_html(source, plop_tokens));
+	let plop_html = $derived(
+		plop_tokens
+			? to_html(source, plop_tokens, {
+					class_name: "code",
+					line_numbers: tweaks.show_line_numbers,
+				})
+			: "",
+	);
+	let plop_line_count = $derived(count_lines(source));
 	let plop_token_count = $derived(
 		plop_tokens ? plop_tokens.tokens.length / 3 : 0,
 	);
+
+	function count_lines(text: string) {
+		if (!text) return 0;
+		let count = 1;
+		for (let i = 0; i < text.length; i++) {
+			if (text.charCodeAt(i) === 10) count++;
+		}
+		return count;
+	}
 
 	let plop_palette_style = $derived(
 		palette_to_vars(PLOP_THEMES[tweaks.plop_theme]),
@@ -229,9 +249,9 @@
 			subtitle={`theme: ${tweaks.plop_theme} · timer ${
 				cross_origin_isolated ? "~5µs" : "~100µs"
 			}`}
-			lines={plop_lines}
+			html={plop_html}
+			line_count={plop_line_count}
 			palette_style={plop_palette_style}
-			show_line_numbers={tweaks.show_line_numbers}
 			density={tweaks.density}
 			font={tweaks.font}
 			perf_ms={plop_ms}

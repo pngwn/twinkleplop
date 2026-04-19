@@ -96,13 +96,13 @@ export const test = [
 		"match": "echo"
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 145,
 		"end": 147,
 		"match": "$@"
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 148,
 		"end": 150,
 		"match": "$*"
@@ -120,7 +120,7 @@ export const test = [
 		"match": "\""
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 157,
 		"end": 159,
 		"match": "$#"
@@ -138,7 +138,7 @@ export const test = [
 		"match": "\""
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 162,
 		"end": 164,
 		"match": "$?"
@@ -156,19 +156,19 @@ export const test = [
 		"match": "echo"
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 171,
 		"end": 173,
 		"match": "$$"
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 174,
 		"end": 176,
 		"match": "$!"
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 177,
 		"end": 179,
 		"match": "$_"
@@ -186,19 +186,19 @@ export const test = [
 		"match": "echo"
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 199,
 		"end": 201,
 		"match": "$0"
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 202,
 		"end": 204,
 		"match": "$1"
 	},
 	{
-		"type": "variable_special",
+		"type": "variable",
 		"start": 205,
 		"end": 207,
 		"match": "$2"
