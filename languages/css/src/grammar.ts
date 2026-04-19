@@ -26,8 +26,13 @@ import  {define_grammar} from '@twinkleplop/core/compile'
 // ---------------------------------------------------------------------------
 
 const COMMENT = within("/*", "*/", TOKENS.comment);
-const STRING_DOUBLE = within('"', '"', TOKENS.string, { escape: "\\" });
-const STRING_SINGLE = within("'", "'", TOKENS.string, { escape: "\\" });
+// strings push an explicit body state so CSS hex escapes (`\HH`, 1-6 digits
+// with optional single trailing whitespace) and bare `\X` escapes emit as
+// distinct `string_escape` tokens. the body states themselves live on the
+// grammar below; all callers share them so adding a new state that uses
+// strings automatically gets escape tokenisation.
+const STRING_DOUBLE = match('"', TOKENS.string, enter("string_double"));
+const STRING_SINGLE = match("'", TOKENS.string, enter("string_single"));
 
 const ID_SELECTOR = match("#", TOKENS.selector_id, enter("id_selector"));
 const CLASS_SELECTOR = match(".", TOKENS.selector_class, enter("class_selector"));
@@ -171,8 +176,10 @@ export default define_grammar({
 				match(DIGIT, TOKENS.number, enter("number")),
 				match(".", TOKENS.number, enter("decimal")),
 
-				// Keywords (color names, inherit, auto, etc)
-				match(LETTER, TOKENS.keyword, enter("value_keyword")),
+				// value words: color names, `auto`, `inherit`, function names,
+				// etc. promoted to `function` by the reclassifier when
+				// followed by `(`.
+				match(LETTER, TOKENS.identifier, enter("value_identifier")),
 
 				// Operators
 				match([",", "/", "+", "*"], TOKENS.operator),
@@ -314,12 +321,12 @@ export default define_grammar({
 			rules: [match(LETTER, TOKENS.selector_pseudo), match("-", TOKENS.selector_pseudo), fallback(leave())],
 		},
 
-		// Parentheses content
+		// Parentheses content (pseudo-class args like `:nth-child(2n+1)`)
 		parentheses: {
 			rules: [
 				match(")", TOKENS.punctuation, leave()),
 				match("(", TOKENS.punctuation, enter("parentheses")),
-				match(range([[0, 127]]), TOKENS.keyword),
+				match(range([[0, 127]]), TOKENS.identifier),
 			],
 		},
 
@@ -366,8 +373,8 @@ export default define_grammar({
 				match(".", TOKENS.number, enter("decimal")),
 				// Another dash — CSS variable
 				match("-", TOKENS.css_variable, enter("css_custom_property")),
-				// Letter — keyword starting with dash
-				match(LETTER, TOKENS.keyword, enter("value_keyword")),
+				// Letter — identifier starting with dash (e.g. vendor-prefixed values)
+				match(LETTER, TOKENS.identifier, enter("value_identifier")),
 				// Anything else — just the minus operator
 				fallback(leave()),
 			],
@@ -401,11 +408,12 @@ export default define_grammar({
 			],
 		},
 
-		// Value keywords
-		value_keyword: {
+		// Value identifiers — color names, `auto`, `inherit`, function heads, etc.
+		// the reclassifier promotes these to `function` when `(` follows.
+		value_identifier: {
 			rules: [
-				match(ALNUM, TOKENS.keyword),
-				match(["-", "_"], TOKENS.keyword),
+				match(ALNUM, TOKENS.identifier),
+				match(["-", "_"], TOKENS.identifier),
 				match("(", TOKENS.punctuation, enter("function_args")),
 				fallback(leave()),
 			],
@@ -423,24 +431,24 @@ export default define_grammar({
 				// CSS variables must come before single dash
 				match("--", TOKENS.css_variable, enter("css_custom_property")),
 				match(DIGIT, TOKENS.number, enter("number")),
-				match(".", TOKENS.keyword, enter("url_filename")),
-				match(LETTER, TOKENS.keyword, enter("keyword_in_function")),
+				match(".", TOKENS.identifier, enter("url_filename")),
+				match(LETTER, TOKENS.identifier, enter("identifier_in_function")),
 				match([",", "/", "+", "*", "-"], TOKENS.operator),
 			],
 		},
 
 		url_filename: {
 			rules: [
-				match(ALNUM, TOKENS.keyword),
-				match([".", "-", "_", "/", ":"], TOKENS.keyword),
+				match(ALNUM, TOKENS.identifier),
+				match([".", "-", "_", "/", ":"], TOKENS.identifier),
 				fallback(leave()),
 			],
 		},
 
-		keyword_in_function: {
+		identifier_in_function: {
 			rules: [
-				match(ALNUM, TOKENS.keyword),
-				match(["-", "_"], TOKENS.keyword),
+				match(ALNUM, TOKENS.identifier),
+				match(["-", "_"], TOKENS.identifier),
 				fallback(leave()),
 			],
 		},
@@ -465,6 +473,116 @@ export default define_grammar({
 				match(DIGIT, TOKENS.number, enter("number")),
 				match(LETTER, TOKENS.selector, enter("identifier")),
 				match("-", TOKENS.selector),
+				fallback(leave()),
+			],
+		},
+
+		// -----------------------------------------------------------------
+		// String body states. `\` re-tokenises as `string_escape` and
+		// pushes the escape sub-machine. the only rule difference between
+		// `string_double` and `string_single` is the terminator quote.
+		// -----------------------------------------------------------------
+		string_double: {
+			rules: [
+				match("\\", TOKENS.string_escape, enter("esc_start")),
+				match('"', TOKENS.string, leave()),
+				fallback({ token: TOKENS.string }),
+			],
+		},
+
+		string_single: {
+			rules: [
+				match("\\", TOKENS.string_escape, enter("esc_start")),
+				match("'", TOKENS.string, leave()),
+				fallback({ token: TOKENS.string }),
+			],
+		},
+
+		// -----------------------------------------------------------------
+		// CSS escape sub-machine (§4.3.7 of css-syntax-3).
+		//
+		// after consuming `\`:
+		//   - a hex digit starts a hex escape (up to 6 total). after the
+		//     hex run, at most one trailing whitespace char is consumed
+		//     as part of the escape so that `\41 b` tokenises as escape
+		//     `\41 ` + content `b` (not escape `\41` + space + `b`).
+		//   - any other non-newline char is a simple 2-char escape.
+		//   - a newline is a line-continuation escape (consumed as part
+		//     of the escape via the same 2-char fallback).
+		// -----------------------------------------------------------------
+		esc_start: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_d2")),
+				fallback({ token: TOKENS.string_escape, exit: true }),
+			],
+		},
+
+		// Each hex_dN state: accept one more hex digit (up to 6 total), a
+		// single trailing whitespace, or unwind without consuming.
+		esc_hex_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_d3")),
+				match(
+					[" ", "\t", "\n", "\r", "\f"],
+					TOKENS.string_escape,
+					leave(),
+				),
+				fallback(leave()),
+			],
+		},
+		esc_hex_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_d4")),
+				match(
+					[" ", "\t", "\n", "\r", "\f"],
+					TOKENS.string_escape,
+					leave(),
+				),
+				fallback(leave()),
+			],
+		},
+		esc_hex_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_d5")),
+				match(
+					[" ", "\t", "\n", "\r", "\f"],
+					TOKENS.string_escape,
+					leave(),
+				),
+				fallback(leave()),
+			],
+		},
+		esc_hex_d5: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_d6")),
+				match(
+					[" ", "\t", "\n", "\r", "\f"],
+					TOKENS.string_escape,
+					leave(),
+				),
+				fallback(leave()),
+			],
+		},
+		esc_hex_d6: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_done")),
+				match(
+					[" ", "\t", "\n", "\r", "\f"],
+					TOKENS.string_escape,
+					leave(),
+				),
+				fallback(leave()),
+			],
+		},
+		// After 6 hex digits (the spec maximum): no more digits, but the
+		// optional single trailing whitespace still applies.
+		esc_hex_done: {
+			rules: [
+				match(
+					[" ", "\t", "\n", "\r", "\f"],
+					TOKENS.string_escape,
+					leave(),
+				),
 				fallback(leave()),
 			],
 		},

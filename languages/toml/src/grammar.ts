@@ -110,14 +110,28 @@ const COMMENT = within("#", "\n", TOKENS.comment, { multiline: false });
 // reverse (string→property) isn't recoverable without re-parsing.
 // ML strings are included in key position for lenience; TOML v1.0.0 forbids
 // them as keys but the grammar stays out of the validator's way.
-const BASIC_STRING = within('"', '"', TOKENS.string, { escape: "\\" });
+//
+// Basic (non-literal) strings push an explicit body state so that \uNNNN /
+// \UNNNNNNNN / \n / \t / etc. emit as distinct `string_escape` tokens via
+// the shared esc_* sub-machine defined on the grammar below. Literal
+// variants (`'...'` / `'''...'''`) keep using within() because `\` is a
+// plain content char — no escape tokenisation to do.
+const BASIC_STRING = match('"', TOKENS.string, enter("basic_string_body"));
 const LITERAL_STRING = within("'", "'", TOKENS.string);
-const ML_BASIC_STRING = within('"""', '"""', TOKENS.string, { escape: "\\" });
+const ML_BASIC_STRING = match(
+	'"""',
+	TOKENS.string,
+	enter("ml_basic_string_body"),
+);
 const ML_LITERAL_STRING = within("'''", "'''", TOKENS.string);
 
-const BASIC_KEY = within('"', '"', TOKENS.property, { escape: "\\" });
+const BASIC_KEY = match('"', TOKENS.property, enter("basic_key_body"));
 const LITERAL_KEY = within("'", "'", TOKENS.property);
-const ML_BASIC_KEY = within('"""', '"""', TOKENS.property, { escape: "\\" });
+const ML_BASIC_KEY = match(
+	'"""',
+	TOKENS.property,
+	enter("ml_basic_key_body"),
+);
 const ML_LITERAL_KEY = within("'''", "'''", TOKENS.property);
 
 // Bare key characters: A-Z a-z 0-9 - _
@@ -588,6 +602,143 @@ export default define_grammar({
 				// Comma and } terminate the value
 				on(",", goto("value_inline_table")),
 				on("}", goto("value_inline_table")),
+			],
+		},
+
+		// -----------------------------------------------------------------
+		// Basic string / key body states.
+		//
+		// Two emit tokens (`string` vs `property`) for the container chars
+		// but share the `string_escape` sub-machine via enter("…_start").
+		// For ML variants, `"""` as the first rule wins over fallback so
+		// embedded `"` or `""` inside the body pass through as content
+		// (spec allows up to 2 adjacent quotes before the terminator).
+		// -----------------------------------------------------------------
+		basic_string_body: {
+			rules: [
+				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
+				match('"', TOKENS.string, leave()),
+				fallback({ token: TOKENS.string }),
+			],
+		},
+
+		ml_basic_string_body: {
+			rules: [
+				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
+				match('"""', TOKENS.string, leave()),
+				fallback({ token: TOKENS.string }),
+			],
+		},
+
+		basic_key_body: {
+			rules: [
+				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
+				match('"', TOKENS.property, leave()),
+				fallback({ token: TOKENS.property }),
+			],
+		},
+
+		ml_basic_key_body: {
+			rules: [
+				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
+				match('"""', TOKENS.property, leave()),
+				fallback({ token: TOKENS.property }),
+			],
+		},
+
+		// -----------------------------------------------------------------
+		// Shared escape sub-machine — used by both string and key bodies.
+		//
+		// TOML v1.0.0 recognises short escapes (\b \t \n \f \r \" \\) and
+		// two structured forms: \uNNNN (4 hex) and \UNNNNNNNN (8 hex).
+		// Line-ending `\` in ML basic strings trims whitespace per spec;
+		// for the tokenizer we emit the `\<newline>` pair as a single
+		// `string_escape` and leave following whitespace as plain
+		// `string` / `property` — enough for themeable contrast.
+		// -----------------------------------------------------------------
+		esc_simple: {
+			rules: [fallback({ token: TOKENS.string_escape, exit: true })],
+		},
+
+		esc_u4_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		esc_u8_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d5")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d5: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d6")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d6: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d7")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d7: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d8")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d8: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
 			],
 		},
 

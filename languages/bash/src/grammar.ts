@@ -85,13 +85,16 @@
 import {
 	ALNUM,
 	DIGIT,
+	HEX,
 	LETTER,
 	enter,
 	fallback,
+	goto,
 	keyword,
 	leave,
 	match,
 	on,
+	range,
 	within,
 } from "@twinkleplop/core";
 
@@ -567,38 +570,167 @@ export default define_grammar({
 		// ansi_string_state — $'...' with escape sub-tokenization.
 		// (the atomic ANSI_STRING const is NOT used; we prefer this richer
 		// version that emits escape tokens for theme distinction.)
+		//
+		// covers the full bash ANSI-C escape table:
+		//   - simple 2-char (\a \b \e \E \f \n \r \t \v \\ \' \" \?)
+		//   - \xHH        — 1 to 2 hex digits
+		//   - \uHHHH      — 1 to 4 hex digits
+		//   - \UHHHHHHHH  — 1 to 8 hex digits
+		//   - \cX         — control character (any 1 char after \c)
+		//   - \NNN        — 1 to 3 octal digits
+		// any other \X falls through ansi_esc_simple as a 2-char escape.
 		// ===================================================================
 		ansi_string_state: {
 			rules: [
 				match("'", TOKENS.string, leave()),
-				// recognized escape table per ANSI_002dC-Quoting.html.
+				// recognized simple escapes per ANSI_002dC-Quoting.html
+				// handled as the default 1-char tail via ansi_esc_simple
+				// below; the only reason to list them explicitly would be
+				// to emit different token types, which we do not.
 				match(
-					[
-						"\\a",
-						"\\b",
-						"\\e",
-						"\\E",
-						"\\f",
-						"\\n",
-						"\\r",
-						"\\t",
-						"\\v",
-						"\\\\",
-						"\\'",
-						'\\"',
-						"\\?",
-					],
+					"\\",
 					TOKENS.string_escape,
+					enter("ansi_esc_start"),
 				),
-				// generic \X fallback for octal/hex/unicode/control forms.
-				// emits 2 chars as string_escape.
-				match("\\", TOKENS.string_escape, enter("ansi_escape_tail")),
 				fallback({ token: TOKENS.string }),
 			],
 		},
 
-		ansi_escape_tail: {
+		// ===================================================================
+		// ANSI-C escape sub-machine — shared by every `$'...'` body.
+		// each sub-state emits `string_escape`; partial matches unwind via
+		// fallback(leave()) without consuming so the parent re-processes
+		// the non-matching char as plain string content.
+		// ===================================================================
+		ansi_esc_start: {
+			rules: [
+				match("x", TOKENS.string_escape, goto("ansi_esc_hex_d1")),
+				match("u", TOKENS.string_escape, goto("ansi_esc_u4_d1")),
+				match("U", TOKENS.string_escape, goto("ansi_esc_u8_d1")),
+				match("c", TOKENS.string_escape, goto("ansi_esc_control")),
+				match(
+					range([["0", "7"]]),
+					TOKENS.string_escape,
+					goto("ansi_esc_oct_d2"),
+				),
+				// any other char is a simple 2-char escape — recognised
+				// (\a \b \e \E \f \n \r \t \v \\ \' \" \?) or literal.
+				fallback({ token: TOKENS.string_escape, exit: true }),
+			],
+		},
+
+		// \xHH — 1 to 2 hex digits.
+		ansi_esc_hex_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_hex_d2")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_hex_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		// \uHHHH — 1 to 4 hex digits.
+		ansi_esc_u4_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u4_d2")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u4_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u4_d3")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u4_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u4_d4")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u4_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		// \UHHHHHHHH — 1 to 8 hex digits.
+		ansi_esc_u8_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u8_d2")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u8_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u8_d3")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u8_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u8_d4")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u8_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u8_d5")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u8_d5: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u8_d6")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u8_d6: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u8_d7")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u8_d7: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("ansi_esc_u8_d8")),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_u8_d8: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		// \cX — control character (any one char after \c).
+		ansi_esc_control: {
 			rules: [fallback({ token: TOKENS.string_escape, exit: true })],
+		},
+
+		// \NNN octal — 1 to 3 octal digits. first digit consumed by
+		// ansi_esc_start; these handle the optional 2nd and 3rd.
+		ansi_esc_oct_d2: {
+			rules: [
+				match(
+					range([["0", "7"]]),
+					TOKENS.string_escape,
+					goto("ansi_esc_oct_d3"),
+				),
+				fallback(leave()),
+			],
+		},
+		ansi_esc_oct_d3: {
+			rules: [
+				match(range([["0", "7"]]), TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
 		},
 
 		// ===================================================================

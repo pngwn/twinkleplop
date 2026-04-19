@@ -39,6 +39,7 @@
 
 import {
 	DIGIT,
+	HEX,
 	LETTER,
 	enter,
 	fallback,
@@ -106,12 +107,14 @@ const tag_chars = [
 // shared comment rule; comments run from `#` to end of line
 const COMMENT = within("#", "\n", TOKENS.comment, { multiline: false });
 
-// shared quoted strings. yaml `"..."` supports json-like \-escapes; `'...'`
-// has no backslash escaping (only `''` as a literal quote, which `within`
-// does not support directly — the pair of quotes will tokenize as two
-// string tokens which coalesce into one, so the final token span is still
-// correct).
-const DOUBLE_STRING = within('"', '"', TOKENS.string, { escape: "\\" });
+// shared quoted strings. yaml `"..."` supports a rich set of \-escapes
+// (short forms, `\xNN`, `\uNNNN`, `\UNNNNNNNN`, `\<LF>` line-continuation);
+// these push an explicit body state so each escape emits a `string_escape`
+// token. `'...'` has no backslash escaping (only `''` as a literal quote,
+// which `within` does not support directly — the pair of quotes will
+// tokenize as two string tokens which coalesce into one, so the final
+// token span is still correct).
+const DOUBLE_STRING = match('"', TOKENS.string, enter("double_string_body"));
 const SINGLE_STRING = within("'", "'", TOKENS.string);
 
 // shared whitespace. yaml treats only spaces and tabs as in-line whitespace;
@@ -505,6 +508,119 @@ export default define_grammar({
 
 		folded_nl_exit: {
 			rules: [match("\n", TOKENS.string, leave())],
+		},
+
+		// ------------------------------------------------------------------
+		// double-quoted string body. yaml 1.2 short escapes (\0 \a \b \t \n
+		// \v \f \r \e \" \/ \\ \N \_ \L \P \<space>) plus structured forms
+		// \xNN / \uNNNN / \UNNNNNNNN and the `\<newline>` line-continuation.
+		// every escape emits `string_escape` via the shared sub-machine.
+		// ------------------------------------------------------------------
+		double_string_body: {
+			rules: [
+				match("\\x", TOKENS.string_escape, enter("esc_hex_d1")),
+				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
+				match('"', TOKENS.string, leave()),
+				fallback({ token: TOKENS.string }),
+			],
+		},
+
+		// shared escape sub-machine. emits `string_escape`; terminal rules
+		// leave() back to double_string_body. partial escapes (`\x` with no
+		// hex, `\u` with fewer than 4, etc.) unwind via fallback(leave())
+		// without consuming so the parent body re-processes the non-hex
+		// char normally.
+		esc_simple: {
+			rules: [fallback({ token: TOKENS.string_escape, exit: true })],
+		},
+
+		esc_hex_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_hex_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		esc_u4_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		esc_u8_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d5")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d5: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d6")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d6: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d7")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d7: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d8")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d8: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
 		},
 	},
 });

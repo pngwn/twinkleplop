@@ -63,6 +63,10 @@ Recent merges:
 - **property** — css, markdown, toml, yaml
 - **regex** — bash, javascript, tsx, typescript
 
+## 12 languages
+
+- **string_escape** — bash, css, go, javascript, json, python, rust, sql, toml, tsx, typescript, yaml
+
 ## 3 languages
 
 - **attr_name** — html, svelte, tsx
@@ -127,7 +131,6 @@ Recent merges:
 - **selector_pseudo** — css
 - **space** — whitespace
 - **strike** — markdown
-- **string_escape** — bash
 - **svelte_block** — svelte
 - **svelte_directive** — svelte
 - **tab** — whitespace

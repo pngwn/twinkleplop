@@ -48,6 +48,7 @@
 import {
 	ALNUM,
 	DIGIT,
+	HEX,
 	LETTER,
 	enter,
 	fallback,
@@ -233,16 +234,18 @@ export default define_grammar({
 		// and U&'...' where the grammar treats the body the same.
 		//
 		// two escape mechanisms are accepted concurrently:
-		//   - `''`  → doubled single-quote, standard sql
-		//   - `\X`  → backslash escape, mysql-default and pg E-strings
-		// strings in the standard have no backslash escape, but accepting
-		// backslash-escape here is permissive and harmless for compliant
-		// strings because those never contain a bare `\` anyway.
+		//   - `''`  → doubled single-quote, standard sql (emits as
+		//             string_escape so themes can distinguish it)
+		//   - `\X`  → 2-char backslash escape, mysql-default permissive.
+		//             the grammar does NOT sub-tokenize \xNN / \uNNNN in
+		//             plain strings because pg (with standard_conforming_
+		//             strings) and ANSI SQL treat `\` as literal; only
+		//             E-strings route through the richer esc_ machine.
 		// -----------------------------------------------------------------
 		single_string: {
 			rules: [
-				match("''", TOKENS.string),
-				match("\\", TOKENS.string, enter("string_escape")),
+				match("''", TOKENS.string_escape),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
 				match("'", TOKENS.string, leave()),
 				fallback({ token: TOKENS.string }),
 			],
@@ -250,25 +253,160 @@ export default define_grammar({
 
 		// -----------------------------------------------------------------
 		// pg_escape_string — E'...' / e'...' postgres c-style escape
-		// strings. same rule set as single_string; the separate state
-		// exists for symmetry and to document intent.
+		// strings. full escape table per §4.1.2.2:
+		//   - `\b` `\f` `\n` `\r` `\t` — simple control chars
+		//   - `\NNN`   — 1 to 3 octal digits
+		//   - `\xNN`   — 1 to 2 hex digits
+		//   - `\uNNNN` — exactly 4 hex (BMP unicode)
+		//   - `\UNNNNNNNN` — exactly 8 hex (full unicode)
+		//   - `\X`     — any other char, literal (still emitted as
+		//                string_escape so the `\` is visually marked)
+		//   - `''`     — doubled-quote also works in E-strings
 		// -----------------------------------------------------------------
 		pg_escape_string: {
 			rules: [
-				match("''", TOKENS.string),
-				match("\\", TOKENS.string, enter("string_escape")),
+				match("''", TOKENS.string_escape),
+				match("\\x", TOKENS.string_escape, enter("esc_hex_d1")),
+				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+				match("\\", TOKENS.string_escape, enter("e_esc_start")),
 				match("'", TOKENS.string, leave()),
 				fallback({ token: TOKENS.string }),
 			],
 		},
 
 		// -----------------------------------------------------------------
-		// string_escape — one-shot state that consumes exactly one char
-		// (the char after `\`) and pops. fallback with exit:true consumes
-		// any char and pops, which is what we want.
+		// escape sub-machine.
+		//
+		// esc_simple: generic 1-char escape (for plain single_string's \X).
+		// e_esc_start: dispatcher for E-strings' `\` already consumed —
+		//   routes octal digits to a 2-digit tail, anything else to the
+		//   same 1-char-consume fallback.
+		// esc_hex_d1/d2: up to 2 hex digits.
+		// esc_u4_d1..d4: up to 4 hex digits.
+		// esc_u8_d1..d8: up to 8 hex digits.
+		// esc_oct_d2/d3: optional 2nd and 3rd octal digit after the
+		//   dispatcher consumed the 1st.
+		// partial matches unwind via fallback(leave()) without consuming,
+		// so remaining chars fall back to the parent string body.
 		// -----------------------------------------------------------------
-		string_escape: {
-			rules: [fallback({ token: TOKENS.string, exit: true })],
+		esc_simple: {
+			rules: [fallback({ token: TOKENS.string_escape, exit: true })],
+		},
+
+		e_esc_start: {
+			rules: [
+				match(
+					range([["0", "7"]]),
+					TOKENS.string_escape,
+					goto("esc_oct_d2"),
+				),
+				fallback({ token: TOKENS.string_escape, exit: true }),
+			],
+		},
+
+		esc_hex_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_hex_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		esc_u4_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		esc_u8_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d5")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d5: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d6")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d6: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d7")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d7: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d8")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d8: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		esc_oct_d2: {
+			rules: [
+				match(
+					range([["0", "7"]]),
+					TOKENS.string_escape,
+					goto("esc_oct_d3"),
+				),
+				fallback(leave()),
+			],
+		},
+		esc_oct_d3: {
+			rules: [
+				match(range([["0", "7"]]), TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
 		},
 
 		// -----------------------------------------------------------------

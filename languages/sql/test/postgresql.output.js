@@ -1012,6 +1012,26 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1362,
+		"end": 1363
+	},
+	{
+		"type": "string_escape",
+		"start": 1363,
+		"end": 1365
+	},
+	{
+		"type": "string",
+		"start": 1365,
+		"end": 1370
+	},
+	{
+		"type": "string_escape",
+		"start": 1370,
+		"end": 1372
+	},
+	{
+		"type": "string",
+		"start": 1372,
 		"end": 1377
 	},
 	{
@@ -1032,6 +1052,26 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1383,
+		"end": 1384
+	},
+	{
+		"type": "string_escape",
+		"start": 1384,
+		"end": 1388
+	},
+	{
+		"type": "string",
+		"start": 1388,
+		"end": 1389
+	},
+	{
+		"type": "string_escape",
+		"start": 1389,
+		"end": 1391
+	},
+	{
+		"type": "string",
+		"start": 1391,
 		"end": 1392
 	},
 	{

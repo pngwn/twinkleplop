@@ -451,8 +451,8 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		// The inner CSS is tokenized — `body` as selector, `color` as property.
 		expect(type_of(tokens, "body")).toBe("selector");
 		expect(type_of(tokens, "color")).toBe("property");
-		// `red` is emitted as a keyword (CSS named color) by the CSS grammar.
-		expect(type_of(tokens, "red")).toBe("keyword");
+		// `red` is emitted as an identifier (CSS named color) by the CSS grammar.
+		expect(type_of(tokens, "red")).toBe("identifier");
 		// The inner `css` identifier has been consumed by the inner group,
 		// so no leftover raw template body shows up as a plain `template`
 		// token spanning the CSS source text.

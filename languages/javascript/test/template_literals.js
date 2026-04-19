@@ -422,26 +422,56 @@ export default [
 	{
 		"type": "template",
 		"start": 496,
+		"end": 503
+	},
+	{
+		"type": "string_escape",
+		"start": 503,
+		"end": 505
+	},
+	{
+		"type": "template",
+		"start": 505,
 		"end": 512
 	},
 	{
 		"type": "template",
 		"start": 513,
+		"end": 517
+	},
+	{
+		"type": "string_escape",
+		"start": 517,
+		"end": 519
+	},
+	{
+		"type": "template",
+		"start": 519,
 		"end": 524
 	},
 	{
 		"type": "template",
 		"start": 525,
+		"end": 533
+	},
+	{
+		"type": "string_escape",
+		"start": 533,
 		"end": 535
 	},
 	{
-		"type": "identifier",
+		"type": "template",
 		"start": 535,
 		"end": 541
 	},
 	{
+		"type": "string_escape",
+		"start": 541,
+		"end": 543
+	},
+	{
 		"type": "template",
-		"start": 542,
+		"start": 543,
 		"end": 544
 	},
 	{

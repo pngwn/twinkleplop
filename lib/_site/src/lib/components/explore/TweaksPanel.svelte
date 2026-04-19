@@ -1,10 +1,10 @@
 <script lang="ts">
 	import {
 		FONTS,
+		THEMES,
 		type density_mode,
 		type flavor_name,
-		type plop_theme_name,
-		type shiki_theme_name,
+		type theme_name,
 		type tweak_state,
 	} from "$lib/explore/themes";
 
@@ -17,18 +17,7 @@
 
 	let { visible, state, on_update, on_close }: Props = $props();
 
-	const PLOP_THEMES_LIST: plop_theme_name[] = [
-		"plop-noir",
-		"plop-lumen",
-		"plop-phosphor",
-		"plop-synth",
-	];
-	const SHIKI_THEMES_LIST: shiki_theme_name[] = [
-		"github-dark",
-		"github-light",
-		"rose-pine",
-		"catppuccin-mocha",
-	];
+	const THEMES_LIST = Object.keys(THEMES) as theme_name[];
 	const DENSITIES: density_mode[] = ["compact", "comfortable", "relaxed"];
 	const FLAVORS_LIST: flavor_name[] = [
 		"phosphor",
@@ -47,30 +36,14 @@
 		</header>
 
 		<section class="tweaks__sec">
-			<div class="tweaks__label">Twinkleplop theme</div>
+			<div class="tweaks__label">Theme</div>
 			<div class="tweaks__chips">
-				{#each PLOP_THEMES_LIST as t (t)}
+				{#each THEMES_LIST as t (t)}
 					<button
 						class="tweak-chip"
-						class:is-on={state.plop_theme === t}
+						class:is-on={state.theme === t}
 						type="button"
-						onclick={() => on_update({ plop_theme: t })}
-					>
-						{t}
-					</button>
-				{/each}
-			</div>
-		</section>
-
-		<section class="tweaks__sec">
-			<div class="tweaks__label">Shiki theme</div>
-			<div class="tweaks__chips">
-				{#each SHIKI_THEMES_LIST as t (t)}
-					<button
-						class="tweak-chip"
-						class:is-on={state.shiki_theme === t}
-						type="button"
-						onclick={() => on_update({ shiki_theme: t })}
+						onclick={() => on_update({ theme: t })}
 					>
 						{t}
 					</button>

@@ -1,5 +1,12 @@
 import type { TokenizerIntrospector } from "./introspector";
 
+// shape every theme package ships: one entry per canonical token name
+// exported from `./tokens`, plus the extra `background_color` key that
+// themes declare but the generated stylesheets do not bind.
+export type theme_palette = Record<string, string> & {
+	background_color: string;
+};
+
 // Character class symbol types
 export type CharacterClassSymbol = symbol;
 

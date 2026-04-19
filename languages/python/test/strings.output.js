@@ -86,8 +86,32 @@ export const test = [
 	{
 		"type": "string",
 		"start": 76,
+		"end": 84,
+		"match": "\"escape "
+	},
+	{
+		"type": "string_escape",
+		"start": 84,
+		"end": 86,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 86,
+		"end": 92,
+		"match": "quoted"
+	},
+	{
+		"type": "string_escape",
+		"start": 92,
+		"end": 94,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 94,
 		"end": 101,
-		"match": "\"escape \\\"quoted\\\" chars\""
+		"match": " chars\""
 	},
 	{
 		"type": "identifier",
@@ -104,8 +128,32 @@ export const test = [
 	{
 		"type": "string",
 		"start": 106,
+		"end": 116,
+		"match": "'she said "
+	},
+	{
+		"type": "string_escape",
+		"start": 116,
+		"end": 118,
+		"match": "\\'"
+	},
+	{
+		"type": "string",
+		"start": 118,
+		"end": 120,
+		"match": "hi"
+	},
+	{
+		"type": "string_escape",
+		"start": 120,
+		"end": 122,
+		"match": "\\'"
+	},
+	{
+		"type": "string",
+		"start": 122,
 		"end": 123,
-		"match": "'she said \\'hi\\''"
+		"match": "'"
 	},
 	{
 		"type": "identifier",
@@ -122,8 +170,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 128,
+		"end": 136,
+		"match": "\"newline"
+	},
+	{
+		"type": "string_escape",
+		"start": 136,
+		"end": 138,
+		"match": "\\n"
+	},
+	{
+		"type": "string",
+		"start": 138,
 		"end": 143,
-		"match": "\"newline\\nhere\""
+		"match": "here\""
 	},
 	{
 		"type": "identifier",
@@ -140,8 +200,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 148,
+		"end": 152,
+		"match": "\"tab"
+	},
+	{
+		"type": "string_escape",
+		"start": 152,
+		"end": 154,
+		"match": "\\t"
+	},
+	{
+		"type": "string",
+		"start": 154,
 		"end": 159,
-		"match": "\"tab\\there\""
+		"match": "here\""
 	},
 	{
 		"type": "identifier",
@@ -158,8 +230,32 @@ export const test = [
 	{
 		"type": "string",
 		"start": 164,
+		"end": 173,
+		"match": "\"unicode "
+	},
+	{
+		"type": "string_escape",
+		"start": 173,
+		"end": 179,
+		"match": "\\u00e9"
+	},
+	{
+		"type": "string",
+		"start": 179,
+		"end": 180,
+		"match": " "
+	},
+	{
+		"type": "string_escape",
+		"start": 180,
+		"end": 189,
+		"match": "\\N{SNAKE}"
+	},
+	{
+		"type": "string",
+		"start": 189,
 		"end": 190,
-		"match": "\"unicode \\u00e9 \\N{SNAKE}\""
+		"match": "\""
 	},
 	{
 		"type": "identifier",
@@ -176,8 +272,32 @@ export const test = [
 	{
 		"type": "string",
 		"start": 195,
+		"end": 200,
+		"match": "\"hex "
+	},
+	{
+		"type": "string_escape",
+		"start": 200,
+		"end": 204,
+		"match": "\\x41"
+	},
+	{
+		"type": "string",
+		"start": 204,
+		"end": 211,
+		"match": " octal "
+	},
+	{
+		"type": "string_escape",
+		"start": 211,
+		"end": 215,
+		"match": "\\101"
+	},
+	{
+		"type": "string",
+		"start": 215,
 		"end": 216,
-		"match": "\"hex \\x41 octal \\101\""
+		"match": "\""
 	},
 	{
 		"type": "identifier",
@@ -192,10 +312,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 221,
+		"end": 222,
+		"match": "b"
+	},
+	{
+		"type": "string",
+		"start": 222,
 		"end": 229,
-		"match": "b\"bytes\""
+		"match": "\"bytes\""
 	},
 	{
 		"type": "identifier",
@@ -210,10 +336,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 234,
+		"end": 235,
+		"match": "B"
+	},
+	{
+		"type": "string",
+		"start": 235,
 		"end": 242,
-		"match": "B\"BYTES\""
+		"match": "\"BYTES\""
 	},
 	{
 		"type": "identifier",
@@ -228,10 +360,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 247,
+		"end": 248,
+		"match": "r"
+	},
+	{
+		"type": "string",
+		"start": 248,
 		"end": 268,
-		"match": "r\"raw \\n not escaped\""
+		"match": "\"raw \\n not escaped\""
 	},
 	{
 		"type": "identifier",
@@ -246,10 +384,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 273,
+		"end": 274,
+		"match": "R"
+	},
+	{
+		"type": "string",
+		"start": 274,
 		"end": 281,
-		"match": "R\"raw R\""
+		"match": "\"raw R\""
 	},
 	{
 		"type": "identifier",
@@ -264,10 +408,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 286,
+		"end": 287,
+		"match": "u"
+	},
+	{
+		"type": "string",
+		"start": 287,
 		"end": 295,
-		"match": "u\"legacy\""
+		"match": "\"legacy\""
 	},
 	{
 		"type": "identifier",
@@ -282,10 +432,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 300,
+		"end": 301,
+		"match": "U"
+	},
+	{
+		"type": "string",
+		"start": 301,
 		"end": 309,
-		"match": "U\"LEGACY\""
+		"match": "\"LEGACY\""
 	},
 	{
 		"type": "identifier",
@@ -300,10 +456,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 314,
+		"end": 316,
+		"match": "rb"
+	},
+	{
+		"type": "string",
+		"start": 316,
 		"end": 327,
-		"match": "rb\"raw bytes\""
+		"match": "\"raw bytes\""
 	},
 	{
 		"type": "identifier",
@@ -318,10 +480,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 333,
+		"end": 335,
+		"match": "br"
+	},
+	{
+		"type": "string",
+		"start": 335,
 		"end": 345,
-		"match": "br\"byte raw\""
+		"match": "\"byte raw\""
 	},
 	{
 		"type": "identifier",
@@ -336,10 +504,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 350,
+		"end": 352,
+		"match": "rB"
+	},
+	{
+		"type": "string",
+		"start": 352,
 		"end": 358,
-		"match": "rB\"case\""
+		"match": "\"case\""
 	},
 	{
 		"type": "identifier",
@@ -354,10 +528,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 363,
+		"end": 365,
+		"match": "Br"
+	},
+	{
+		"type": "string",
+		"start": 365,
 		"end": 372,
-		"match": "Br\"case2\""
+		"match": "\"case2\""
 	},
 	{
 		"type": "identifier",
@@ -390,10 +570,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 405,
+		"end": 406,
+		"match": "r"
+	},
+	{
+		"type": "string",
+		"start": 406,
 		"end": 433,
-		"match": "r\"\"\"raw triple \\n literal\"\"\""
+		"match": "\"\"\"raw triple \\n literal\"\"\""
 	},
 	{
 		"type": "identifier",
@@ -410,8 +596,32 @@ export const test = [
 	{
 		"type": "string",
 		"start": 438,
+		"end": 450,
+		"match": "\"bad escape "
+	},
+	{
+		"type": "string_escape",
+		"start": 450,
+		"end": 452,
+		"match": "\\q"
+	},
+	{
+		"type": "string",
+		"start": 452,
+		"end": 453,
+		"match": " "
+	},
+	{
+		"type": "string_escape",
+		"start": 453,
+		"end": 455,
+		"match": "\\z"
+	},
+	{
+		"type": "string",
+		"start": 455,
 		"end": 462,
-		"match": "\"bad escape \\q \\z stays\""
+		"match": " stays\""
 	},
 	{
 		"type": "identifier",

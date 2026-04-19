@@ -7,7 +7,6 @@
 		pane_id: string;
 		html: string;
 		line_count: number;
-		palette_style: string;
 		density: density_mode;
 		font: string;
 		perf_ms: number;
@@ -20,7 +19,6 @@
 		pane_id,
 		html,
 		line_count,
-		palette_style,
 		density,
 		font,
 		perf_ms,
@@ -28,7 +26,7 @@
 	}: Props = $props();
 </script>
 
-<div class="pane" data-pane={pane_id} style={palette_style}>
+<div class="pane" data-pane={pane_id}>
 	<header class="pane__head">
 		<div class="pane__title-group">
 			<div class="pane__title">{title}</div>

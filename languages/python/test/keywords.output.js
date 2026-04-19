@@ -90,7 +90,7 @@ export const test = [
 		"match": "in"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 72,
 		"end": 77,
 		"match": "range"

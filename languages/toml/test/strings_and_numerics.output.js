@@ -32,8 +32,68 @@ export const test = [
 	{
 		"type": "string",
 		"start": 368,
+		"end": 383,
+		"match": "\"I'm a string. "
+	},
+	{
+		"type": "string_escape",
+		"start": 383,
+		"end": 385,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 385,
+		"end": 401,
+		"match": "You can quote me"
+	},
+	{
+		"type": "string_escape",
+		"start": 401,
+		"end": 403,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 403,
+		"end": 409,
+		"match": ". Name"
+	},
+	{
+		"type": "string_escape",
+		"start": 409,
+		"end": 411,
+		"match": "\\t"
+	},
+	{
+		"type": "string",
+		"start": 411,
+		"end": 414,
+		"match": "Jos"
+	},
+	{
+		"type": "string_escape",
+		"start": 414,
+		"end": 422,
+		"match": "\\u00E9\\n"
+	},
+	{
+		"type": "string",
+		"start": 422,
+		"end": 430,
+		"match": "Location"
+	},
+	{
+		"type": "string_escape",
+		"start": 430,
+		"end": 432,
+		"match": "\\t"
+	},
+	{
+		"type": "string",
+		"start": 432,
 		"end": 436,
-		"match": "\"I'm a string. \\\"You can quote me\\\". Name\\tJos\\u00E9\\nLocation\\tSF.\""
+		"match": "SF.\""
 	},
 	{
 		"type": "comment",
@@ -80,8 +140,32 @@ export const test = [
 	{
 		"type": "string",
 		"start": 660,
+		"end": 680,
+		"match": "\"\"\"\nThe quick brown "
+	},
+	{
+		"type": "string_escape",
+		"start": 680,
+		"end": 682,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 682,
+		"end": 700,
+		"match": "\n  fox jumps over "
+	},
+	{
+		"type": "string_escape",
+		"start": 700,
+		"end": 702,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 702,
 		"end": 722,
-		"match": "\"\"\"\nThe quick brown \\\n\n  fox jumps over \\\n    the lazy dog.\"\"\""
+		"match": "    the lazy dog.\"\"\""
 	},
 	{
 		"type": "property",
@@ -98,8 +182,56 @@ export const test = [
 	{
 		"type": "string",
 		"start": 731,
+		"end": 734,
+		"match": "\"\"\""
+	},
+	{
+		"type": "string_escape",
+		"start": 734,
+		"end": 736,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 736,
+		"end": 756,
+		"match": "    The quick brown "
+	},
+	{
+		"type": "string_escape",
+		"start": 756,
+		"end": 758,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 758,
+		"end": 775,
+		"match": "  fox jumps over "
+	},
+	{
+		"type": "string_escape",
+		"start": 775,
+		"end": 777,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 777,
+		"end": 794,
+		"match": "    the lazy dog."
+	},
+	{
+		"type": "string_escape",
+		"start": 794,
+		"end": 796,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 796,
 		"end": 801,
-		"match": "\"\"\"\\\n    The quick brown \\\n  fox jumps over \\\n    the lazy dog.\\\n  \"\"\""
+		"match": "  \"\"\""
 	},
 	{
 		"type": "comment",
@@ -122,8 +254,56 @@ export const test = [
 	{
 		"type": "string",
 		"start": 901,
+		"end": 904,
+		"match": "\"\"\""
+	},
+	{
+		"type": "string_escape",
+		"start": 904,
+		"end": 906,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 906,
+		"end": 926,
+		"match": "    The quick brown "
+	},
+	{
+		"type": "string_escape",
+		"start": 926,
+		"end": 928,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 928,
+		"end": 945,
+		"match": "  fox jumps over "
+	},
+	{
+		"type": "string_escape",
+		"start": 945,
+		"end": 947,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 947,
+		"end": 964,
+		"match": "    the lazy dog."
+	},
+	{
+		"type": "string_escape",
+		"start": 964,
+		"end": 966,
+		"match": "\\\n"
+	},
+	{
+		"type": "string",
+		"start": 966,
 		"end": 971,
-		"match": "\"\"\"\\\n    The quick brown \\\n  fox jumps over \\\n    the lazy dog.\\\n  \"\"\""
+		"match": "  \"\"\""
 	},
 	{
 		"type": "comment",
@@ -146,8 +326,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1113,
+		"end": 1118,
+		"match": "\"\"\"a "
+	},
+	{
+		"type": "string_escape",
+		"start": 1118,
+		"end": 1120,
+		"match": "\\\\"
+	},
+	{
+		"type": "string",
+		"start": 1120,
 		"end": 1125,
-		"match": "\"\"\"a \\\\\nb\"\"\""
+		"match": "\nb\"\"\""
 	},
 	{
 		"type": "comment",
@@ -170,8 +362,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1213,
+		"end": 1218,
+		"match": "\"\"\"a "
+	},
+	{
+		"type": "string_escape",
+		"start": 1218,
+		"end": 1222,
+		"match": "\\\\\\\\"
+	},
+	{
+		"type": "string",
+		"start": 1222,
 		"end": 1227,
-		"match": "\"\"\"a \\\\\\\\\nb\"\"\""
+		"match": "\nb\"\"\""
 	},
 	{
 		"type": "comment",
@@ -194,8 +398,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1316,
+		"end": 1321,
+		"match": "\"\"\"a "
+	},
+	{
+		"type": "string_escape",
+		"start": 1321,
+		"end": 1327,
+		"match": "\\\\\\\\\\\n"
+	},
+	{
+		"type": "string",
+		"start": 1327,
 		"end": 1333,
-		"match": "\"\"\"a \\\\\\\\\\\n  b\"\"\""
+		"match": "  b\"\"\""
 	},
 	{
 		"type": "comment",
@@ -260,8 +476,68 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1527,
+		"end": 1566,
+		"match": "\"\"\"Here are fifteen quotation marks: \"\""
+	},
+	{
+		"type": "string_escape",
+		"start": 1566,
+		"end": 1568,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 1568,
+		"end": 1570,
+		"match": "\"\""
+	},
+	{
+		"type": "string_escape",
+		"start": 1570,
+		"end": 1572,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 1572,
+		"end": 1574,
+		"match": "\"\""
+	},
+	{
+		"type": "string_escape",
+		"start": 1574,
+		"end": 1576,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 1576,
+		"end": 1578,
+		"match": "\"\""
+	},
+	{
+		"type": "string_escape",
+		"start": 1578,
+		"end": 1580,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 1580,
+		"end": 1582,
+		"match": "\"\""
+	},
+	{
+		"type": "string_escape",
+		"start": 1582,
+		"end": 1584,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 1584,
 		"end": 1588,
-		"match": "\"\"\"Here are fifteen quotation marks: \"\"\\\"\"\"\\\"\"\"\\\"\"\"\\\"\"\"\\\".\"\"\""
+		"match": ".\"\"\""
 	},
 	{
 		"type": "comment",
@@ -308,8 +584,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1780,
+		"end": 1783,
+		"match": "\"\"\""
+	},
+	{
+		"type": "string_escape",
+		"start": 1783,
+		"end": 1785,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 1785,
 		"end": 1797,
-		"match": "\"\"\"\\\"one quote\"\"\""
+		"match": "one quote\"\"\""
 	},
 	{
 		"type": "property",
@@ -326,8 +614,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1804,
+		"end": 1807,
+		"match": "\"\"\""
+	},
+	{
+		"type": "string_escape",
+		"start": 1807,
+		"end": 1811,
+		"match": "\\\"\\\""
+	},
+	{
+		"type": "string",
+		"start": 1811,
 		"end": 1824,
-		"match": "\"\"\"\\\"\\\"two quotes\"\"\""
+		"match": "two quotes\"\"\""
 	},
 	{
 		"type": "property",
@@ -386,8 +686,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1984,
+		"end": 1990,
+		"match": "\"\"\"lol"
+	},
+	{
+		"type": "string_escape",
+		"start": 1990,
+		"end": 1992,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 1992,
 		"end": 1998,
-		"match": "\"\"\"lol\\\"\"\" \"\"\""
+		"match": "\"\" \"\"\""
 	},
 	{
 		"type": "property",

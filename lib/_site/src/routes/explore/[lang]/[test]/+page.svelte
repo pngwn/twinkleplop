@@ -10,7 +10,7 @@
 
 	import {
 		DEFAULT_TWEAKS,
-		PLOP_THEMES,
+		THEMES,
 		type tweak_state,
 	} from "$lib/explore/themes";
 	import { to_html } from "@twinkleplop/core";
@@ -147,7 +147,7 @@
 				() =>
 					local_highlighter.codeToHtml(source, {
 						lang: shiki_lang,
-						theme: tweaks.shiki_theme,
+						theme: THEMES[tweaks.theme].shiki_id,
 					}),
 				// shiki is an order of magnitude heavier than twinkleplop;
 				// trim the budget so edits still feel responsive.
@@ -200,8 +200,12 @@
 		return count;
 	}
 
-	let plop_palette_style = $derived(
-		palette_to_vars(PLOP_THEMES[tweaks.plop_theme]),
+	// palette_style drives the plop pane's token colours AND the shared
+	// `--twp-background` so both panes paint against the theme's editor
+	// background. it lives on the .panes wrapper so the shiki pane — which
+	// ignores the token vars — still inherits --twp-background.
+	let palette_style = $derived(
+		palette_to_vars(THEMES[tweaks.theme].palette),
 	);
 
 	function handle_lang(next: string) {
@@ -242,16 +246,15 @@
 		on_toggle_visible={() => (source_open = !source_open)}
 	/>
 
-	<div class="panes">
+	<div class="panes" style={palette_style}>
 		<CodePane
 			pane_id="plop"
 			title="twinkleplop"
-			subtitle={`theme: ${tweaks.plop_theme} · timer ${
+			subtitle={`theme: ${tweaks.theme} · timer ${
 				cross_origin_isolated ? "~5µs" : "~100µs"
 			}`}
 			html={plop_html}
 			line_count={plop_line_count}
-			palette_style={plop_palette_style}
 			density={tweaks.density}
 			font={tweaks.font}
 			perf_ms={plop_ms}
@@ -268,7 +271,7 @@
 				? "loading oniguruma..."
 				: shiki_error
 					? `error: ${shiki_error}`
-					: `theme: ${tweaks.shiki_theme}`}
+					: `theme: ${THEMES[tweaks.theme].shiki_id}`}
 			{shiki_html}
 			{source}
 			font={tweaks.font}

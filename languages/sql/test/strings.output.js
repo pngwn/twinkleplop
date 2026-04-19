@@ -22,6 +22,16 @@ export const test = [
 	{
 		"type": "string",
 		"start": 29,
+		"end": 33
+	},
+	{
+		"type": "string_escape",
+		"start": 33,
+		"end": 35
+	},
+	{
+		"type": "string",
+		"start": 35,
 		"end": 42
 	},
 	{
@@ -42,6 +52,16 @@ export const test = [
 	{
 		"type": "string",
 		"start": 52,
+		"end": 57
+	},
+	{
+		"type": "string_escape",
+		"start": 57,
+		"end": 59
+	},
+	{
+		"type": "string",
+		"start": 59,
 		"end": 65
 	},
 	{
@@ -62,6 +82,16 @@ export const test = [
 	{
 		"type": "string",
 		"start": 75,
+		"end": 76
+	},
+	{
+		"type": "string_escape",
+		"start": 76,
+		"end": 84
+	},
+	{
+		"type": "string",
+		"start": 84,
 		"end": 85
 	},
 	{
@@ -117,6 +147,16 @@ export const test = [
 	{
 		"type": "string",
 		"start": 129,
+		"end": 140
+	},
+	{
+		"type": "string_escape",
+		"start": 140,
+		"end": 142
+	},
+	{
+		"type": "string",
+		"start": 142,
 		"end": 146
 	},
 	{
@@ -227,6 +267,26 @@ export const test = [
 	{
 		"type": "string",
 		"start": 261,
+		"end": 272
+	},
+	{
+		"type": "string_escape",
+		"start": 272,
+		"end": 274
+	},
+	{
+		"type": "string",
+		"start": 274,
+		"end": 281
+	},
+	{
+		"type": "string_escape",
+		"start": 281,
+		"end": 283
+	},
+	{
+		"type": "string",
+		"start": 283,
 		"end": 284
 	},
 	{
@@ -302,6 +362,16 @@ export const test = [
 	{
 		"type": "string",
 		"start": 536,
+		"end": 537
+	},
+	{
+		"type": "string_escape",
+		"start": 537,
+		"end": 559
+	},
+	{
+		"type": "string",
+		"start": 559,
 		"end": 560
 	},
 	{
@@ -322,6 +392,16 @@ export const test = [
 	{
 		"type": "string",
 		"start": 646,
+		"end": 666
+	},
+	{
+		"type": "string_escape",
+		"start": 666,
+		"end": 668
+	},
+	{
+		"type": "string",
+		"start": 668,
 		"end": 669
 	},
 	{
@@ -337,6 +417,16 @@ export const test = [
 	{
 		"type": "string",
 		"start": 678,
+		"end": 685
+	},
+	{
+		"type": "string_escape",
+		"start": 685,
+		"end": 687
+	},
+	{
+		"type": "string",
+		"start": 687,
 		"end": 871
 	},
 	{

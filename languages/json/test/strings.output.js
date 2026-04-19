@@ -44,8 +44,32 @@ export const test = [
 	{
 		"type": "string",
 		"start": 48,
+		"end": 58,
+		"match": "\"she said "
+	},
+	{
+		"type": "string_escape",
+		"start": 58,
+		"end": 60,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 60,
+		"end": 62,
+		"match": "hi"
+	},
+	{
+		"type": "string_escape",
+		"start": 62,
+		"end": 64,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 64,
 		"end": 65,
-		"match": "\"she said \\\"hi\\\"\""
+		"match": "\""
 	},
 	{
 		"type": "punctuation",
@@ -68,8 +92,32 @@ export const test = [
 	{
 		"type": "string",
 		"start": 82,
+		"end": 87,
+		"match": "\"path"
+	},
+	{
+		"type": "string_escape",
+		"start": 87,
+		"end": 89,
+		"match": "\\\\"
+	},
+	{
+		"type": "string",
+		"start": 89,
+		"end": 91,
+		"match": "to"
+	},
+	{
+		"type": "string_escape",
+		"start": 91,
+		"end": 93,
+		"match": "\\\\"
+	},
+	{
+		"type": "string",
+		"start": 93,
 		"end": 98,
-		"match": "\"path\\\\to\\\\file\""
+		"match": "file\""
 	},
 	{
 		"type": "punctuation",
@@ -92,8 +140,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 113,
+		"end": 114,
+		"match": "\""
+	},
+	{
+		"type": "string_escape",
+		"start": 114,
+		"end": 132,
+		"match": "\\u0041\\u0042\\u0043"
+	},
+	{
+		"type": "string",
+		"start": 132,
 		"end": 133,
-		"match": "\"\\u0041\\u0042\\u0043\""
+		"match": "\""
 	},
 	{
 		"type": "punctuation",
@@ -116,8 +176,44 @@ export const test = [
 	{
 		"type": "string",
 		"start": 149,
+		"end": 155,
+		"match": "\"line1"
+	},
+	{
+		"type": "string_escape",
+		"start": 155,
+		"end": 157,
+		"match": "\\n"
+	},
+	{
+		"type": "string",
+		"start": 157,
+		"end": 162,
+		"match": "line2"
+	},
+	{
+		"type": "string_escape",
+		"start": 162,
+		"end": 164,
+		"match": "\\t"
+	},
+	{
+		"type": "string",
+		"start": 164,
+		"end": 167,
+		"match": "tab"
+	},
+	{
+		"type": "string_escape",
+		"start": 167,
+		"end": 173,
+		"match": "\\r\\b\\f"
+	},
+	{
+		"type": "string",
+		"start": 173,
 		"end": 174,
-		"match": "\"line1\\nline2\\ttab\\r\\b\\f\""
+		"match": "\""
 	},
 	{
 		"type": "punctuation",
@@ -140,8 +236,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 187,
+		"end": 189,
+		"match": "\"a"
+	},
+	{
+		"type": "string_escape",
+		"start": 189,
+		"end": 191,
+		"match": "\\/"
+	},
+	{
+		"type": "string",
+		"start": 191,
 		"end": 193,
-		"match": "\"a\\/b\""
+		"match": "b\""
 	},
 	{
 		"type": "punctuation",

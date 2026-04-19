@@ -30,7 +30,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 55,
 		"end": 62,
 		"match": "inherit"
@@ -54,7 +54,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 75,
 		"end": 82,
 		"match": "initial"
@@ -78,7 +78,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 92,
 		"end": 97,
 		"match": "unset"
@@ -102,7 +102,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 107,
 		"end": 113,
 		"match": "revert"
@@ -150,7 +150,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 168,
 		"end": 174,
 		"match": "static"
@@ -174,7 +174,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 187,
 		"end": 195,
 		"match": "relative"
@@ -198,7 +198,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 208,
 		"end": 216,
 		"match": "absolute"
@@ -222,7 +222,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 229,
 		"end": 234,
 		"match": "fixed"
@@ -246,7 +246,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 247,
 		"end": 253,
 		"match": "sticky"
@@ -294,7 +294,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 309,
 		"end": 313,
 		"match": "none"
@@ -318,7 +318,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 325,
 		"end": 331,
 		"match": "inline"
@@ -342,7 +342,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 343,
 		"end": 355,
 		"match": "inline-block"
@@ -366,7 +366,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 367,
 		"end": 371,
 		"match": "flex"
@@ -390,7 +390,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 383,
 		"end": 387,
 		"match": "grid"
@@ -414,7 +414,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 399,
 		"end": 404,
 		"match": "table"
@@ -438,7 +438,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 416,
 		"end": 424,
 		"match": "contents"
@@ -486,7 +486,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 483,
 		"end": 487,
 		"match": "auto"
@@ -510,7 +510,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 500,
 		"end": 506,
 		"match": "hidden"
@@ -534,7 +534,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 519,
 		"end": 526,
 		"match": "visible"
@@ -558,7 +558,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 539,
 		"end": 545,
 		"match": "scroll"
@@ -582,7 +582,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 560,
 		"end": 568,
 		"match": "collapse"
@@ -606,7 +606,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 584,
 		"end": 590,
 		"match": "normal"
@@ -630,7 +630,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 606,
 		"end": 610,
 		"match": "bold"
@@ -654,7 +654,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 626,
 		"end": 632,
 		"match": "bolder"
@@ -678,7 +678,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 648,
 		"end": 655,
 		"match": "lighter"
@@ -702,7 +702,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 670,
 		"end": 676,
 		"match": "italic"
@@ -726,7 +726,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 696,
 		"end": 705,
 		"match": "underline"
@@ -750,7 +750,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 725,
 		"end": 733,
 		"match": "overline"
@@ -774,7 +774,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 753,
 		"end": 765,
 		"match": "line-through"
@@ -822,7 +822,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 809,
 		"end": 820,
 		"match": "transparent"
@@ -846,7 +846,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 835,
 		"end": 847,
 		"match": "currentColor"

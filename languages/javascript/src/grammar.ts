@@ -229,14 +229,13 @@ export const IDENTIFIER_TERMINATORS = [
 
 export const SINGLE_LINE_COMMENT = within("//", "\n", "comment");
 export const MULTI_LINE_COMMENT = within("/*", "*/", "comment");
-export const STRING_DOUBLE = within('"', '"', TOKENS.string, {
-	escape: "\\",
-	multiline: true,
-});
-export const STRING_SINGLE = within("'", "'", TOKENS.string, {
-	escape: "\\",
-	multiline: true,
-});
+// strings use explicit body states (string_double / string_single) so that
+// escape sequences (\n, \t, \xNN, \uNNNN, \u{...}) can be emitted as distinct
+// `string_escape` tokens. the body states themselves are defined on the
+// grammar below; they pop back to whatever state pushed them, matching the
+// old within-based "don't change outer state" semantics.
+export const STRING_DOUBLE = match('"', TOKENS.string, enter("string_double"));
+export const STRING_SINGLE = match("'", TOKENS.string, enter("string_single"));
 export const TEMPLATE_LITERAL = match(
 	"`",
 	TOKENS.template,
@@ -601,11 +600,114 @@ export default define_grammar({
 		},
 
 		// -------------------------------------------------------------------------
+		// String body states — pushed from STRING_DOUBLE / STRING_SINGLE.
+		//
+		// escapes route to the shared esc_* sub-machine so each escape
+		// sequence emits its own `string_escape` token:
+		//   - `\u{...}` → esc_u_braces (arbitrary hex + closing `}`)
+		//   - `\uNNNN`  → esc_u4_d1 .. esc_u4_d4 (up to 4 hex digits)
+		//   - `\xNN`    → esc_hex_d1, esc_hex_d2 (up to 2 hex digits)
+		//   - `\X`      → esc_simple (any single char, incl. `\n`, `\\`,
+		//                 `\"`, `\'`, `\0`, `\<newline>` line continuation)
+		//
+		// the longer matches come first so `\u{` wins over `\u` and `\u`
+		// wins over `\`.
+		// -------------------------------------------------------------------------
+		string_double: {
+			rules: [
+				match("\\u{", TOKENS.string_escape, enter("esc_u_braces")),
+				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+				match("\\x", TOKENS.string_escape, enter("esc_hex_d1")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
+				match('"', TOKENS.string, leave()),
+				fallback({ token: TOKENS.string }),
+			],
+		},
+
+		string_single: {
+			rules: [
+				match("\\u{", TOKENS.string_escape, enter("esc_u_braces")),
+				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+				match("\\x", TOKENS.string_escape, enter("esc_hex_d1")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
+				match("'", TOKENS.string, leave()),
+				fallback({ token: TOKENS.string }),
+			],
+		},
+
+		// -------------------------------------------------------------------------
+		// shared escape sub-states — used by string_double, string_single,
+		// and template_literal. every sub-state emits `string_escape`; the
+		// final consumed char uses `leave()` (or the 1-char fallback exits)
+		// to pop back to the parent string/template body. partial matches
+		// like `\x` (no hex digits) unwind via `fallback(leave())` without
+		// consuming, so the parent body re-processes the char normally.
+		// -------------------------------------------------------------------------
+		esc_simple: {
+			rules: [fallback({ token: TOKENS.string_escape, exit: true })],
+		},
+
+		esc_hex_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_hex_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		esc_u4_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		esc_u_braces: {
+			rules: [
+				match(HEX, TOKENS.string_escape),
+				match("}", TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		// -------------------------------------------------------------------------
 		// Template literal
+		//
+		// escapes route through the same esc_* sub-machine as strings so
+		// `\`` is an escape (doesn't terminate the template) and `\n` /
+		// `\u{...}` etc. emit as `string_escape` for themeable contrast
+		// against the surrounding `template` content.
 		// -------------------------------------------------------------------------
 		template_literal: {
 			rules: [
 				match("${", TOKENS.punctuation, enter("tmpl_regex_allow")),
+				match("\\u{", TOKENS.string_escape, enter("esc_u_braces")),
+				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+				match("\\x", TOKENS.string_escape, enter("esc_hex_d1")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
 				match("`", TOKENS.template, leave()),
 				fallback({ token: TOKENS.template }),
 			],

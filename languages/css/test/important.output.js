@@ -24,7 +24,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 14,
 		"end": 17,
 		"match": "red"
@@ -54,7 +54,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 40,
 		"end": 45,
 		"match": "block"

@@ -36,7 +36,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 104,
 		"end": 108,
 		"match": "blue"
@@ -72,7 +72,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 130,
 		"end": 133,
 		"match": "red"
@@ -114,7 +114,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 167,
 		"end": 172,
 		"match": "white"
@@ -162,7 +162,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 198,
 		"end": 203,
 		"match": "green"
@@ -264,7 +264,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 303,
 		"end": 308,
 		"match": "block"
@@ -366,7 +366,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 390,
 		"end": 393,
 		"match": "red"
@@ -402,7 +402,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 416,
 		"end": 420,
 		"match": "blue"
@@ -450,7 +450,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 456,
 		"end": 462,
 		"match": "yellow"
@@ -498,7 +498,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 497,
 		"end": 503,
 		"match": "purple"
@@ -528,7 +528,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 521,
 		"end": 526,
 		"match": "green"
@@ -588,7 +588,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 599,
 		"end": 603,
 		"match": "blue"
@@ -654,7 +654,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 644,
 		"end": 647,
 		"match": "red"
@@ -684,7 +684,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 666,
 		"end": 671,
 		"match": "white"

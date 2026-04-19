@@ -1,5 +1,5 @@
 import { tokenize } from "@twinkleplop/core";
-import { grammar } from "./src/index.js";
+import { grammar } from "./dist/index.js";
 import fs from "node:fs";
 import path from "node:path";
 

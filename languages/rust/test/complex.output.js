@@ -612,6 +612,16 @@ export const test = [
 	{
 		"type": "string",
 		"start": 504,
+		"end": 505
+	},
+	{
+		"type": "string_escape",
+		"start": 505,
+		"end": 507
+	},
+	{
+		"type": "string",
+		"start": 507,
 		"end": 508
 	},
 	{

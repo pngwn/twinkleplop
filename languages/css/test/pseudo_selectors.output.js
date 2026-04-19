@@ -30,7 +30,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 18,
 		"end": 22,
 		"match": "blue"
@@ -78,7 +78,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 56,
 		"end": 59,
 		"match": "red"

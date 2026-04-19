@@ -1,4 +1,5 @@
 import type { Highlighter } from "shiki";
+import { SHIKI_THEME_IDS } from "./themes";
 
 // keys match the twinkleplop language slugs; value is the shiki grammar id
 // (or null when shiki has no equivalent grammar). any lang not in this map
@@ -23,13 +24,6 @@ export const SHIKI_LANG_MAP: Record<string, string | null> = {
 	"diff-basic": null,
 };
 
-export const SHIKI_THEMES_LOADED = [
-	"github-dark",
-	"github-light",
-	"rose-pine",
-	"catppuccin-mocha",
-] as const;
-
 let highlighter_promise: Promise<Highlighter> | null = null;
 
 // lazily builds a single highlighter instance shared across the session.
@@ -43,7 +37,7 @@ export function get_highlighter(): Promise<Highlighter> {
 				(l): l is string => l !== null,
 			);
 			return createHighlighter({
-				themes: [...SHIKI_THEMES_LOADED],
+				themes: SHIKI_THEME_IDS,
 				langs,
 			});
 		})();

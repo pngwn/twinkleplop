@@ -16,7 +16,7 @@ export function to_html(
 	options: { class_name?: string; line_numbers?: boolean } = {}
 ) {
 	const { tokens, token_types } = token_result;
-	const { class_name = "highlight", line_numbers = false } = options;
+	const { class_name = "twinkleplop", line_numbers = false } = options;
 
 	const out: string[] = [];
 	out.push(`<pre class="${class_name}"><code>`);
@@ -37,7 +37,7 @@ export function to_html(
 		if (cls === open_class) return;
 		close_span();
 		if (cls !== null) {
-			out.push(`<span class="${cls}">`);
+			out.push(`<span class="tok ${cls}">`);
 			open_class = cls;
 		}
 	}

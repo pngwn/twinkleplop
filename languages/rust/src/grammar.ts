@@ -298,18 +298,20 @@ export default define_grammar({
 		},
 
 		// -------------------------------------------------------------------
-		// string body — regular and byte/c strings with escape sequences
+		// string body — regular and byte/c strings with escape sequences.
+		// routes `\u{...}`, `\xNN`, and bare `\X` through the shared
+		// esc_unicode / esc_hex / esc_simple sub-states so escapes are
+		// emitted as distinct `string_escape` tokens. raw strings do NOT
+		// route here — they use raw_string_* states with no escape handling.
 		// -------------------------------------------------------------------
 		string_body: {
 			rules: [
-				match("\\", TOKENS.string, enter("string_escape")),
+				match("\\u{", TOKENS.string_escape, enter("esc_unicode")),
+				match("\\x", TOKENS.string_escape, enter("esc_hex")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
 				match('"', TOKENS.string, leave()),
 				fallback({ token: TOKENS.string }),
 			],
-		},
-
-		string_escape: {
-			rules: [fallback({ token: TOKENS.string, exit: true })],
 		},
 
 		// -------------------------------------------------------------------
@@ -421,13 +423,14 @@ export default define_grammar({
 			],
 		},
 
-		// char literal body after the opening quote
+		// char literal body after the opening quote. shares the same
+		// esc_* sub-states as string_body — every rust escape form is
+		// valid in both contexts.
 		char_literal_body: {
 			rules: [
-				// escape sequences
-				match("\\u{", TOKENS.string, enter("char_unicode_body")),
-				match("\\x", TOKENS.string, enter("char_hex_body")),
-				match("\\", TOKENS.string, enter("char_simple_escape")),
+				match("\\u{", TOKENS.string_escape, enter("esc_unicode")),
+				match("\\x", TOKENS.string_escape, enter("esc_hex")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
 				// closing quote (empty char literal)
 				match("'", TOKENS.string, leave()),
 				// body character then expect closing quote
@@ -435,26 +438,34 @@ export default define_grammar({
 			],
 		},
 
-		char_simple_escape: {
+		// -------------------------------------------------------------------
+		// shared escape sub-states — used by string_body, char_literal_body
+		// and char_body (byte chars). each emits `string_escape` for the
+		// escape payload and pops back to the parent body on completion or
+		// a mismatched char (fallback(leave()) without consuming, so the
+		// parent body re-processes the terminator).
+		// -------------------------------------------------------------------
+		esc_simple: {
 			rules: [
-				// consume the escape char (n, t, r, 0, \, ', ") then leave
-				// back to char_literal_body which will find the closing `'`
-				fallback({ token: TOKENS.string, exit: true }),
+				// consume the escape char (n, t, r, 0, \, ', ") and leave.
+				// bare `\z` / unknown escapes also get emitted as
+				// string_escape here; rust flags them at compile time.
+				fallback({ token: TOKENS.string_escape, exit: true }),
 			],
 		},
 
-		char_unicode_body: {
+		esc_unicode: {
 			rules: [
-				match(HEX, TOKENS.string),
-				match("_", TOKENS.string),
-				match("}", TOKENS.string, leave()),
+				match(HEX, TOKENS.string_escape),
+				match("_", TOKENS.string_escape),
+				match("}", TOKENS.string_escape, leave()),
 				fallback(leave()),
 			],
 		},
 
-		char_hex_body: {
+		esc_hex: {
 			rules: [
-				match(HEX, TOKENS.string),
+				match(HEX, TOKENS.string_escape),
 				fallback(leave()),
 			],
 		},
@@ -486,13 +497,14 @@ export default define_grammar({
 			],
 		},
 
-		// byte char literal body (after b' which is already consumed)
-		// main is the parent on the stack
+		// byte char literal body (after b' which is already consumed).
+		// main is the parent on the stack. shares the esc_* sub-states
+		// with regular string/char bodies.
 		char_body: {
 			rules: [
-				match("\\u{", TOKENS.string, enter("char_unicode_body")),
-				match("\\x", TOKENS.string, enter("char_hex_body")),
-				match("\\", TOKENS.string, enter("char_simple_escape")),
+				match("\\u{", TOKENS.string_escape, enter("esc_unicode")),
+				match("\\x", TOKENS.string_escape, enter("esc_hex")),
+				match("\\", TOKENS.string_escape, enter("esc_simple")),
 				match("'", TOKENS.string, leave()),
 				fallback({ token: TOKENS.string, ...goto("char_literal_close") }),
 			],

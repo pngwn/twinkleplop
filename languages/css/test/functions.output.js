@@ -30,7 +30,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 61,
 		"end": 67,
 		"match": "rotate"
@@ -60,7 +60,7 @@ export const test = [
 		"match": ")"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 75,
 		"end": 80,
 		"match": "scale"
@@ -84,7 +84,7 @@ export const test = [
 		"match": ")"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 86,
 		"end": 96,
 		"match": "translateX"
@@ -126,7 +126,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 116,
 		"end": 125,
 		"match": "translate"
@@ -174,7 +174,7 @@ export const test = [
 		"match": ")"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 138,
 		"end": 142,
 		"match": "skew"
@@ -216,7 +216,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 163,
 		"end": 169,
 		"match": "scaleX"
@@ -240,7 +240,7 @@ export const test = [
 		"match": ")"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 173,
 		"end": 179,
 		"match": "scaleY"
@@ -264,7 +264,7 @@ export const test = [
 		"match": ")"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 185,
 		"end": 195,
 		"match": "translateY"
@@ -312,7 +312,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 217,
 		"end": 223,
 		"match": "matrix"
@@ -414,7 +414,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 295,
 		"end": 298,
 		"match": "rgb"
@@ -474,7 +474,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 326,
 		"end": 330,
 		"match": "rgba"
@@ -546,7 +546,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 358,
 		"end": 361,
 		"match": "hsl"
@@ -618,7 +618,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 394,
 		"end": 398,
 		"match": "hsla"
@@ -708,7 +708,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 472,
 		"end": 476,
 		"match": "calc"
@@ -768,7 +768,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 500,
 		"end": 503,
 		"match": "min"
@@ -828,7 +828,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 528,
 		"end": 531,
 		"match": "max"
@@ -888,7 +888,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 554,
 		"end": 559,
 		"match": "clamp"
@@ -972,7 +972,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 613,
 		"end": 617,
 		"match": "blur"
@@ -1002,7 +1002,7 @@ export const test = [
 		"match": ")"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 623,
 		"end": 633,
 		"match": "brightness"
@@ -1050,7 +1050,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 701,
 		"end": 716,
 		"match": "linear-gradient"
@@ -1062,13 +1062,13 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 717,
 		"end": 719,
 		"match": "to"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 720,
 		"end": 725,
 		"match": "right"
@@ -1080,7 +1080,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 727,
 		"end": 730,
 		"match": "red"
@@ -1092,7 +1092,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 732,
 		"end": 736,
 		"match": "blue"
@@ -1116,7 +1116,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 758,
 		"end": 773,
 		"match": "radial-gradient"
@@ -1128,7 +1128,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 774,
 		"end": 780,
 		"match": "circle"
@@ -1140,7 +1140,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 782,
 		"end": 788,
 		"match": "yellow"
@@ -1152,7 +1152,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 790,
 		"end": 795,
 		"match": "green"
@@ -1176,7 +1176,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 817,
 		"end": 831,
 		"match": "conic-gradient"
@@ -1188,7 +1188,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 832,
 		"end": 836,
 		"match": "from"
@@ -1212,7 +1212,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 844,
 		"end": 847,
 		"match": "red"
@@ -1224,7 +1224,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 849,
 		"end": 855,
 		"match": "yellow"
@@ -1236,7 +1236,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 857,
 		"end": 862,
 		"match": "green"
@@ -1266,7 +1266,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 906,
 		"end": 909,
 		"match": "url"
@@ -1302,7 +1302,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 943,
 		"end": 946,
 		"match": "url"
@@ -1344,7 +1344,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1014,
 		"end": 1020,
 		"match": "circle"
@@ -1386,7 +1386,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1039,
 		"end": 1046,
 		"match": "ellipse"
@@ -1440,7 +1440,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1069,
 		"end": 1076,
 		"match": "polygon"
@@ -1536,7 +1536,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1114,
 		"end": 1119,
 		"match": "inset"
@@ -1620,7 +1620,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1190,
 		"end": 1196,
 		"match": "repeat"
@@ -1674,7 +1674,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1227,
 		"end": 1233,
 		"match": "minmax"
@@ -1704,7 +1704,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1241,
 		"end": 1245,
 		"match": "auto"
@@ -1728,7 +1728,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1256,
 		"end": 1267,
 		"match": "fit-content"
@@ -1776,7 +1776,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1315,
 		"end": 1319,
 		"match": "attr"
@@ -1788,7 +1788,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1320,
 		"end": 1330,
 		"match": "data-label"
@@ -1818,7 +1818,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1379,
 		"end": 1382,
 		"match": "var"
@@ -1842,7 +1842,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1398,
 		"end": 1402,
 		"match": "blue"
@@ -1872,7 +1872,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 1444,
 		"end": 1456,
 		"match": "cubic-bezier"

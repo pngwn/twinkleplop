@@ -362,26 +362,14 @@ export const test = [
 	{
 		"type": "string_escape",
 		"start": 306,
-		"end": 308,
-		"match": "\\x"
+		"end": 314,
+		"match": "\\x48\\x69"
 	},
 	{
 		"type": "string",
-		"start": 308,
-		"end": 310,
-		"match": "48"
-	},
-	{
-		"type": "string_escape",
-		"start": 310,
-		"end": 312,
-		"match": "\\x"
-	},
-	{
-		"type": "string",
-		"start": 312,
+		"start": 314,
 		"end": 315,
-		"match": "69'"
+		"match": "'"
 	},
 	{
 		"type": "comment",

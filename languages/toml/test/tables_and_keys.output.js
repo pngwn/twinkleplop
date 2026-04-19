@@ -680,14 +680,8 @@ export const test = [
 	{
 		"type": "property",
 		"start": 935,
-		"end": 936,
-		"match": "\""
-	},
-	{
-		"type": "property",
-		"start": 939,
 		"end": 940,
-		"match": "\""
+		"match": "\"ʎǝʞ\""
 	},
 	{
 		"type": "operator",
@@ -980,14 +974,8 @@ export const test = [
 	{
 		"type": "property",
 		"start": 1318,
-		"end": 1319,
-		"match": "\""
-	},
-	{
-		"type": "property",
-		"start": 1320,
 		"end": 1321,
-		"match": "\""
+		"match": "\"ʞ\""
 	},
 	{
 		"type": "punctuation",

@@ -177,6 +177,16 @@ export const test = [
 	{
 		"type": "string",
 		"start": 165,
+		"end": 168
+	},
+	{
+		"type": "string_escape",
+		"start": 168,
+		"end": 170
+	},
+	{
+		"type": "string",
+		"start": 170,
 		"end": 179
 	},
 	{
@@ -802,6 +812,26 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1124,
+		"end": 1126
+	},
+	{
+		"type": "string_escape",
+		"start": 1126,
+		"end": 1128
+	},
+	{
+		"type": "string",
+		"start": 1128,
+		"end": 1129
+	},
+	{
+		"type": "string_escape",
+		"start": 1129,
+		"end": 1131
+	},
+	{
+		"type": "string",
+		"start": 1131,
 		"end": 1133
 	},
 	{

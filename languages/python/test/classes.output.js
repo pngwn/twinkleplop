@@ -102,7 +102,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 119,
 		"end": 124,
 		"match": "float"
@@ -156,7 +156,7 @@ export const test = [
 		"match": "->"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 154,
 		"end": 159,
 		"match": "float"
@@ -354,7 +354,7 @@ export const test = [
 		"match": "->"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 315,
 		"end": 320,
 		"match": "float"
@@ -420,7 +420,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 375,
 		"end": 379,
 		"match": "list"
@@ -486,7 +486,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 414,
 		"end": 418,
 		"match": "list"
@@ -558,7 +558,7 @@ export const test = [
 		"match": "items"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 460,
 		"end": 464,
 		"match": "type"
@@ -594,7 +594,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 474,
 		"end": 478,
 		"match": "list"
@@ -618,7 +618,7 @@ export const test = [
 		"match": "]"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 482,
 		"end": 486,
 		"match": "type"
@@ -636,7 +636,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 494,
 		"end": 499,
 		"match": "tuple"
@@ -648,7 +648,7 @@ export const test = [
 		"match": "["
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 500,
 		"end": 503,
 		"match": "int"
@@ -660,7 +660,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 505,
 		"end": 508,
 		"match": "str"

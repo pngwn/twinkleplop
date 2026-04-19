@@ -24,7 +24,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 19,
 		"end": 22,
 		"match": "url"
@@ -36,7 +36,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 23,
 		"end": 29,
 		"match": "bg.jpg"
@@ -78,7 +78,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 60,
 		"end": 63,
 		"match": "url"
@@ -90,7 +90,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 64,
 		"end": 74,
 		"match": "./icon.jpg"
@@ -132,7 +132,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 95,
 		"end": 98,
 		"match": "url"
@@ -186,7 +186,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 134,
 		"end": 137,
 		"match": "url"
@@ -216,7 +216,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 153,
 		"end": 157,
 		"match": "auto"
@@ -258,7 +258,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 174,
 		"end": 184,
 		"match": "cursor.png"
@@ -294,7 +294,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 204,
 		"end": 207,
 		"match": "url"
@@ -306,7 +306,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 208,
 		"end": 218,
 		"match": "cursor.png"
@@ -348,7 +348,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 241,
 		"end": 244,
 		"match": "url"
@@ -360,7 +360,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 245,
 		"end": 255,
 		"match": "cursor.png"
@@ -402,7 +402,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 275,
 		"end": 278,
 		"match": "red"
@@ -426,7 +426,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 289,
 		"end": 292,
 		"match": "url"
@@ -438,7 +438,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 293,
 		"end": 303,
 		"match": "cursor.png"
@@ -480,7 +480,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 324,
 		"end": 327,
 		"match": "url"
@@ -492,7 +492,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 328,
 		"end": 338,
 		"match": "cursor.png"
@@ -516,7 +516,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "keyword",
+		"type": "identifier",
 		"start": 349,
 		"end": 352,
 		"match": "red"

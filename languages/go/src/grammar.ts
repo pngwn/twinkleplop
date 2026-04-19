@@ -22,8 +22,11 @@
 //     grammar treats newlines as whitespace. A semantic analyzer (not a
 //     highlighter) would need those inserted semicolons.
 //   - Invalid escape sequences inside interpreted strings and runes are not
-//     flagged. The tokenizer accepts any backslash-character pair; a
-//     validator would reject `\k`, short hex escapes, etc.
+//     flagged. Unknown 1-char escapes (`\k`, `\z`) tokenize as
+//     `string_escape`; short `\x`, `\u`, `\U`, and `\NNN` escapes (fewer
+//     than required digits) tokenize the partial sequence as `string_escape`
+//     and return the remaining chars to the string body. A validator would
+//     reject these.
 //   - `//go:build` and `//go:generate` directive comments are tokenized as
 //     ordinary line comments. Most Go highlighters do not distinguish them.
 //   - The imaginary-literal back-compat rule (`0123i` is decimal 123i, not
@@ -326,21 +329,16 @@ export default define_grammar({
 		// interpreted string body — "..." with \-escapes. newlines inside
 		// are a syntax error per spec, but the highlighter does not enforce
 		// that; an unterminated string consumes until the next `"` or EOF.
+		// escapes route through the shared string_escape_start sub-machine
+		// so every form (\uNNNN, \UNNNNNNNN, \xNN, \NNN octal, \n / \t /
+		// etc.) emits as a distinct `string_escape` token.
 		// -------------------------------------------------------------------
 		string_body: {
 			rules: [
-				match("\\", TOKENS.string, enter("string_escape")),
+				match("\\", TOKENS.string_escape, enter("string_escape_start")),
 				match('"', TOKENS.string, leave()),
 				fallback({ token: TOKENS.string }),
 			],
-		},
-
-		// consume exactly one character as part of the escape sequence, then
-		// return to the string body. this emits the escape char with the
-		// string token type; the preceding `\` was emitted by the string
-		// body and the two are coalesced into one string token span.
-		string_escape: {
-			rules: [fallback({ token: TOKENS.string, exit: true })],
 		},
 
 		// -------------------------------------------------------------------
@@ -358,18 +356,160 @@ export default define_grammar({
 		// rune body — '...' with \-escapes. a rune contains exactly one
 		// character or one escape per spec, but the tokenizer does not
 		// enforce that (over-accepting multi-char runes is what prism and
-		// pygments also do).
+		// pygments also do). escapes share the same sub-machine as strings.
 		// -------------------------------------------------------------------
 		rune_body: {
 			rules: [
-				match("\\", TOKENS.string, enter("rune_escape")),
+				match("\\", TOKENS.string_escape, enter("string_escape_start")),
 				match("'", TOKENS.string, leave()),
 				fallback({ token: TOKENS.string }),
 			],
 		},
 
-		rune_escape: {
-			rules: [fallback({ token: TOKENS.string, exit: true })],
+		// -------------------------------------------------------------------
+		// escape sub-machine — shared by string_body and rune_body.
+		//
+		// go recognises five structured escape forms plus simple 1-char
+		// escapes:
+		//   - `\uNNNN`     — 4 hex digits (BMP unicode)
+		//   - `\UNNNNNNNN` — 8 hex digits (full unicode)
+		//   - `\xNN`       — exactly 2 hex digits (byte value)
+		//   - `\NNN`       — exactly 3 octal digits (byte value 0-255)
+		//   - `\X`         — 1-char escape (\a \b \f \n \r \t \v \\ \' \")
+		//
+		// sub-states transition via `goto` so the stack depth stays at +1
+		// above the string/rune body; the terminal state's `leave()` (or
+		// a fallback(leave()) on a too-short escape) pops back. partial
+		// matches unwind without consuming so the remaining chars are
+		// picked up by the parent body.
+		// -------------------------------------------------------------------
+		string_escape_start: {
+			rules: [
+				match("x", TOKENS.string_escape, goto("esc_hex_d1")),
+				match("u", TOKENS.string_escape, goto("esc_u4_d1")),
+				match("U", TOKENS.string_escape, goto("esc_u8_d1")),
+				// octal first digit 0-7. the spec requires exactly 3 digits,
+				// so esc_oct_d2 and esc_oct_d3 are strict (fallback leaves
+				// without consuming on anything non-octal).
+				match(
+					range([["0", "7"]]),
+					TOKENS.string_escape,
+					goto("esc_oct_d2"),
+				),
+				// simple 1-char escape (\n, \t, \\, \", \', \a, \b, \f, \r,
+				// \v, and unrecognized \z etc.).
+				fallback({ token: TOKENS.string_escape, exit: true }),
+			],
+		},
+
+		// \xNN — exactly 2 hex digits.
+		esc_hex_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_hex_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_hex_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		// \uNNNN — exactly 4 hex digits.
+		esc_u4_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		// \UNNNNNNNN — exactly 8 hex digits.
+		esc_u8_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d5")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d5: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d6")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d6: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d7")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d7: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u8_d8")),
+				fallback(leave()),
+			],
+		},
+		esc_u8_d8: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
+		},
+
+		// \NNN octal — exactly 3 octal digits. the first digit was consumed
+		// by string_escape_start, so these states handle only the 2nd and
+		// 3rd slots.
+		esc_oct_d2: {
+			rules: [
+				match(
+					range([["0", "7"]]),
+					TOKENS.string_escape,
+					goto("esc_oct_d3"),
+				),
+				fallback(leave()),
+			],
+		},
+		esc_oct_d3: {
+			rules: [
+				match(range([["0", "7"]]), TOKENS.string_escape, leave()),
+				fallback(leave()),
+			],
 		},
 
 		// -------------------------------------------------------------------

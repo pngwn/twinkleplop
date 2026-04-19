@@ -38,8 +38,44 @@ export const test = [
 	{
 		"type": "string",
 		"start": 27,
+		"end": 36,
+		"match": "\"escaped "
+	},
+	{
+		"type": "string_escape",
+		"start": 36,
+		"end": 38,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 38,
+		"end": 43,
+		"match": "quote"
+	},
+	{
+		"type": "string_escape",
+		"start": 43,
+		"end": 45,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 45,
+		"end": 50,
+		"match": " and "
+	},
+	{
+		"type": "string_escape",
+		"start": 50,
+		"end": 52,
+		"match": "\\n"
+	},
+	{
+		"type": "string",
+		"start": 52,
 		"end": 61,
-		"match": "\"escaped \\\"quote\\\" and \\n newline\""
+		"match": " newline\""
 	},
 	{
 		"type": "property",

@@ -528,7 +528,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 350,
 		"end": 353,
 		"match": "int"

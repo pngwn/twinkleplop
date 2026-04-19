@@ -15,13 +15,14 @@
 
 import {
 	DIGIT,
+	HEX,
 	enter,
 	fallback,
 	goto,
 	keyword,
+	leave,
 	match,
 	on,
-	within,
 } from "@twinkleplop/core";
 
 import * as TOKENS from "@twinkleplop/core/tokens";
@@ -49,11 +50,11 @@ export default define_grammar({
 			rules: [
 				WHITESPACE,
 
-				// strings — within() handles the delimiters, escape sequences,
-				// and multiline content in one declaration. the escape option
-				// tells the tokenizer that `\` prevents the next character from
-				// closing the string, so `\"` does not end the match.
-				within('"', '"', TOKENS.string, { escape: "\\" }),
+				// strings — push into a body state so escape sequences get
+				// their own `string_escape` tokens. the body handles the
+				// closing `"`, and the `\` rule routes through the shared
+				// escape sub-machine (simple escapes and `\uNNNN` unicode).
+				match('"', TOKENS.string, enter("string_body")),
 
 				// boolean literals and null — keyword() adds word-boundary
 				// checking so `trueish` does not match as `true` + `ish`.
@@ -163,6 +164,68 @@ export default define_grammar({
 			rules: [
 				match(DIGIT, TOKENS.number),
 				fallback(goto("main")),
+			],
+		},
+
+		// -----------------------------------------------------------------
+		// string_body — content inside `"..."`.
+		//
+		// `\` is re-tokenised as `string_escape` and pushes the escape
+		// sub-machine. `"` closes the string and pops back to main.
+		// all other chars (including non-ASCII and whitespace) emit as
+		// plain `string`. JSON does not permit literal control chars
+		// inside strings per RFC 8259 §7, but the tokenizer does not
+		// enforce that.
+		// -----------------------------------------------------------------
+		string_body: {
+			rules: [
+				match("\\", TOKENS.string_escape, enter("string_escape_start")),
+				match('"', TOKENS.string, leave()),
+				fallback({ token: TOKENS.string }),
+			],
+		},
+
+		// -----------------------------------------------------------------
+		// string_escape_start — dispatch on the char after `\`.
+		//
+		// JSON recognises 8 simple escapes (\" \\ \/ \b \f \n \r \t) and
+		// one structured form (\uNNNN with exactly 4 hex digits). everything
+		// else (e.g. \z) is still emitted as `string_escape` for the two
+		// chars `\X` — JSON would reject it at parse time; the tokenizer
+		// does not validate.
+		// -----------------------------------------------------------------
+		string_escape_start: {
+			rules: [
+				match("u", TOKENS.string_escape, goto("esc_u4_d1")),
+				fallback({ token: TOKENS.string_escape, exit: true }),
+			],
+		},
+
+		// \uNNNN — exactly 4 hex digits. fallback(leave()) unwinds on a
+		// shorter sequence without consuming so the parent body re-processes
+		// the non-hex char normally.
+		esc_u4_d1: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d2")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d2: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d3")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d3: {
+			rules: [
+				match(HEX, TOKENS.string_escape, goto("esc_u4_d4")),
+				fallback(leave()),
+			],
+		},
+		esc_u4_d4: {
+			rules: [
+				match(HEX, TOKENS.string_escape, leave()),
+				fallback(leave()),
 			],
 		},
 	},

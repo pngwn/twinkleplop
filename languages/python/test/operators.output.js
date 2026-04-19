@@ -798,7 +798,7 @@ export const test = [
 		"match": "->"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 311,
 		"end": 314,
 		"match": "int"

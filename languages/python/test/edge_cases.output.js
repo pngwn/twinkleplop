@@ -176,8 +176,32 @@ export const test = [
 	{
 		"type": "string",
 		"start": 84,
+		"end": 94,
+		"match": "\"she said "
+	},
+	{
+		"type": "string_escape",
+		"start": 94,
+		"end": 96,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 96,
+		"end": 98,
+		"match": "hi"
+	},
+	{
+		"type": "string_escape",
+		"start": 98,
+		"end": 100,
+		"match": "\\\""
+	},
+	{
+		"type": "string",
+		"start": 100,
 		"end": 101,
-		"match": "\"she said \\\"hi\\\"\""
+		"match": "\""
 	},
 	{
 		"type": "identifier",
@@ -636,7 +660,7 @@ export const test = [
 		"match": "in"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 251,
 		"end": 256,
 		"match": "range"
@@ -852,7 +876,7 @@ export const test = [
 		"match": "->"
 	},
 	{
-		"type": "class_name",
+		"type": "builtin",
 		"start": 374,
 		"end": 377,
 		"match": "str"
@@ -870,13 +894,19 @@ export const test = [
 		"match": "return"
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 394,
-		"end": 398,
-		"match": "f\"C("
+		"end": 395,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 395,
+		"end": 398,
+		"match": "\"C("
+	},
+	{
+		"type": "expression",
 		"start": 398,
 		"end": 399,
 		"match": "{"
@@ -900,7 +930,7 @@ export const test = [
 		"match": "value"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 409,
 		"end": 412,
 		"match": "!r}"

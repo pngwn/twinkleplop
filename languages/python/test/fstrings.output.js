@@ -12,13 +12,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 4,
-		"end": 12,
-		"match": "f\"hello "
+		"end": 5,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 5,
+		"end": 12,
+		"match": "\"hello "
+	},
+	{
+		"type": "expression",
 		"start": 12,
 		"end": 13,
 		"match": "{"
@@ -30,7 +36,7 @@ export const test = [
 		"match": "name"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 17,
 		"end": 18,
 		"match": "}"
@@ -54,13 +60,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 24,
-		"end": 35,
-		"match": "f'value is "
+		"end": 25,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 25,
+		"end": 35,
+		"match": "'value is "
+	},
+	{
+		"type": "expression",
 		"start": 35,
 		"end": 36,
 		"match": "{"
@@ -72,7 +84,7 @@ export const test = [
 		"match": "x"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 37,
 		"end": 38,
 		"match": "}"
@@ -96,13 +108,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 44,
-		"end": 46,
-		"match": "f\""
+		"end": 45,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 45,
+		"end": 46,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 46,
 		"end": 47,
 		"match": "{"
@@ -126,7 +144,7 @@ export const test = [
 		"match": "y"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 52,
 		"end": 53,
 		"match": "}"
@@ -150,13 +168,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 59,
-		"end": 67,
-		"match": "F\"upper "
+		"end": 60,
+		"match": "F"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 60,
+		"end": 67,
+		"match": "\"upper "
+	},
+	{
+		"type": "expression",
 		"start": 67,
 		"end": 68,
 		"match": "{"
@@ -168,7 +192,7 @@ export const test = [
 		"match": "val"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 71,
 		"end": 72,
 		"match": "}"
@@ -192,13 +216,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 78,
-		"end": 80,
-		"match": "f\""
+		"end": 79,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 79,
+		"end": 80,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 80,
 		"end": 81,
 		"match": "{"
@@ -210,7 +240,7 @@ export const test = [
 		"match": "x"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 82,
 		"end": 85,
 		"match": "!r}"
@@ -234,13 +264,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 91,
-		"end": 93,
-		"match": "f\""
+		"end": 92,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 92,
+		"end": 93,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 93,
 		"end": 94,
 		"match": "{"
@@ -252,7 +288,7 @@ export const test = [
 		"match": "y"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 95,
 		"end": 98,
 		"match": "!s}"
@@ -276,13 +312,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 104,
-		"end": 106,
-		"match": "f\""
+		"end": 105,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 105,
+		"end": 106,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 106,
 		"end": 107,
 		"match": "{"
@@ -294,7 +336,7 @@ export const test = [
 		"match": "z"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 108,
 		"end": 111,
 		"match": "!a}"
@@ -318,13 +360,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 117,
-		"end": 119,
-		"match": "f\""
+		"end": 118,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 118,
+		"end": 119,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 119,
 		"end": 120,
 		"match": "{"
@@ -348,7 +396,7 @@ export const test = [
 		"match": ">10"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 127,
 		"end": 128,
 		"match": "}"
@@ -372,13 +420,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 134,
-		"end": 136,
-		"match": "f\""
+		"end": 135,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 135,
+		"end": 136,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 136,
 		"end": 137,
 		"match": "{"
@@ -402,7 +456,7 @@ export const test = [
 		"match": ">"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 142,
 		"end": 143,
 		"match": "{"
@@ -414,7 +468,7 @@ export const test = [
 		"match": "width"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 148,
 		"end": 149,
 		"match": "}"
@@ -426,7 +480,7 @@ export const test = [
 		"match": "."
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 150,
 		"end": 151,
 		"match": "{"
@@ -438,7 +492,7 @@ export const test = [
 		"match": "prec"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 155,
 		"end": 156,
 		"match": "}"
@@ -450,7 +504,7 @@ export const test = [
 		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 157,
 		"end": 158,
 		"match": "}"
@@ -474,13 +528,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 164,
-		"end": 166,
-		"match": "f\""
+		"end": 165,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 165,
+		"end": 166,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 166,
 		"end": 167,
 		"match": "{"
@@ -498,7 +558,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 169,
 		"end": 170,
 		"match": "}"
@@ -522,13 +582,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 176,
-		"end": 178,
-		"match": "f\""
+		"end": 177,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 177,
+		"end": 178,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 178,
 		"end": 179,
 		"match": "{"
@@ -552,7 +618,7 @@ export const test = [
 		"match": "y"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 187,
 		"end": 188,
 		"match": "}"
@@ -576,13 +642,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 194,
-		"end": 196,
-		"match": "f\""
+		"end": 195,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 195,
+		"end": 196,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 196,
 		"end": 197,
 		"match": "{"
@@ -606,7 +678,7 @@ export const test = [
 		"match": "5"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 203,
 		"end": 204,
 		"match": "}"
@@ -630,13 +702,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 210,
-		"end": 217,
-		"match": "rf\"raw "
+		"end": 212,
+		"match": "rf"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 212,
+		"end": 217,
+		"match": "\"raw "
+	},
+	{
+		"type": "expression",
 		"start": 217,
 		"end": 218,
 		"match": "{"
@@ -648,7 +726,7 @@ export const test = [
 		"match": "val"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 221,
 		"end": 222,
 		"match": "}"
@@ -672,13 +750,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 236,
-		"end": 243,
-		"match": "fR\"RAW "
+		"end": 238,
+		"match": "fR"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 238,
+		"end": 243,
+		"match": "\"RAW "
+	},
+	{
+		"type": "expression",
 		"start": 243,
 		"end": 244,
 		"match": "{"
@@ -690,7 +774,7 @@ export const test = [
 		"match": "val"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 247,
 		"end": 248,
 		"match": "}"
@@ -714,25 +798,37 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 254,
-		"end": 256,
-		"match": "f\""
+		"end": 255,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 255,
+		"end": 256,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 256,
 		"end": 257,
 		"match": "{"
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 257,
-		"end": 259,
-		"match": "f'"
+		"end": 258,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 258,
+		"end": 259,
+		"match": "'"
+	},
+	{
+		"type": "expression",
 		"start": 259,
 		"end": 260,
 		"match": "{"
@@ -744,7 +840,7 @@ export const test = [
 		"match": "inner"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 265,
 		"end": 266,
 		"match": "}"
@@ -756,7 +852,7 @@ export const test = [
 		"match": "'"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 267,
 		"end": 268,
 		"match": "}"
@@ -780,25 +876,37 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 274,
-		"end": 283,
-		"match": "f\"nested "
+		"end": 275,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 275,
+		"end": 283,
+		"match": "\"nested "
+	},
+	{
+		"type": "expression",
 		"start": 283,
 		"end": 284,
 		"match": "{"
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 284,
-		"end": 286,
-		"match": "f\""
+		"end": 285,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 285,
+		"end": 286,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 286,
 		"end": 287,
 		"match": "{"
@@ -810,7 +918,7 @@ export const test = [
 		"match": "inner"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 292,
 		"end": 293,
 		"match": "}"
@@ -822,7 +930,7 @@ export const test = [
 		"match": "\""
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 294,
 		"end": 295,
 		"match": "}"
@@ -846,13 +954,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 308,
-		"end": 315,
-		"match": "f\"dict "
+		"end": 309,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 309,
+		"end": 315,
+		"match": "\"dict "
+	},
+	{
+		"type": "expression",
 		"start": 315,
 		"end": 316,
 		"match": "{"
@@ -864,7 +978,7 @@ export const test = [
 		"match": "d"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 317,
 		"end": 318,
 		"match": "}"
@@ -888,13 +1002,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 325,
-		"end": 332,
-		"match": "f\"call "
+		"end": 326,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 326,
+		"end": 332,
+		"match": "\"call "
+	},
+	{
+		"type": "expression",
 		"start": 332,
 		"end": 333,
 		"match": "{"
@@ -932,8 +1052,14 @@ export const test = [
 	{
 		"type": "punctuation",
 		"start": 342,
+		"end": 343,
+		"match": ")"
+	},
+	{
+		"type": "expression",
+		"start": 343,
 		"end": 344,
-		"match": ")}"
+		"match": "}"
 	},
 	{
 		"type": "string",
@@ -954,13 +1080,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 350,
-		"end": 362,
-		"match": "f\"subscript "
+		"end": 351,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 351,
+		"end": 362,
+		"match": "\"subscript "
+	},
+	{
+		"type": "expression",
 		"start": 362,
 		"end": 363,
 		"match": "{"
@@ -986,8 +1118,14 @@ export const test = [
 	{
 		"type": "punctuation",
 		"start": 368,
+		"end": 369,
+		"match": "]"
+	},
+	{
+		"type": "expression",
+		"start": 369,
 		"end": 370,
-		"match": "]}"
+		"match": "}"
 	},
 	{
 		"type": "string",
@@ -1008,10 +1146,16 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 376,
+		"end": 377,
+		"match": "f"
+	},
+	{
+		"type": "string",
+		"start": 377,
 		"end": 397,
-		"match": "f\"{{literal braces}}\""
+		"match": "\"{{literal braces}}\""
 	},
 	{
 		"type": "identifier",
@@ -1026,13 +1170,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 402,
-		"end": 422,
-		"match": "f\"\"\"triple\nf-string "
+		"end": 403,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 403,
+		"end": 422,
+		"match": "\"\"\"triple\nf-string "
+	},
+	{
+		"type": "expression",
 		"start": 422,
 		"end": 423,
 		"match": "{"
@@ -1044,7 +1194,7 @@ export const test = [
 		"match": "x"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 424,
 		"end": 425,
 		"match": "}"
@@ -1068,13 +1218,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 447,
-		"end": 455,
-		"match": "f\"slice "
+		"end": 448,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 448,
+		"end": 455,
+		"match": "\"slice "
+	},
+	{
+		"type": "expression",
 		"start": 455,
 		"end": 456,
 		"match": "{"
@@ -1112,8 +1268,14 @@ export const test = [
 	{
 		"type": "punctuation",
 		"start": 463,
+		"end": 464,
+		"match": "]"
+	},
+	{
+		"type": "expression",
+		"start": 464,
 		"end": 465,
-		"match": "]}"
+		"match": "}"
 	},
 	{
 		"type": "string",
@@ -1134,13 +1296,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 471,
-		"end": 473,
-		"match": "f\""
+		"end": 472,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 472,
+		"end": 473,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 473,
 		"end": 474,
 		"match": "{"
@@ -1188,7 +1356,7 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 485,
 		"end": 486,
 		"match": "}"
@@ -1212,13 +1380,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 493,
-		"end": 495,
-		"match": "f\""
+		"end": 494,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 494,
+		"end": 495,
+		"match": "\""
+	},
+	{
+		"type": "expression",
 		"start": 495,
 		"end": 496,
 		"match": "{"
@@ -1244,8 +1418,14 @@ export const test = [
 	{
 		"type": "punctuation",
 		"start": 503,
+		"end": 504,
+		"match": "]"
+	},
+	{
+		"type": "expression",
+		"start": 504,
 		"end": 505,
-		"match": "]}"
+		"match": "}"
 	},
 	{
 		"type": "string",
@@ -1266,13 +1446,19 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "string",
+		"type": "keyword",
 		"start": 511,
-		"end": 517,
-		"match": "f\"mix "
+		"end": 512,
+		"match": "f"
 	},
 	{
-		"type": "punctuation",
+		"type": "string",
+		"start": 512,
+		"end": 517,
+		"match": "\"mix "
+	},
+	{
+		"type": "expression",
 		"start": 517,
 		"end": 518,
 		"match": "{"
@@ -1284,7 +1470,7 @@ export const test = [
 		"match": "a"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 519,
 		"end": 520,
 		"match": "}"
@@ -1296,7 +1482,7 @@ export const test = [
 		"match": " and "
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 525,
 		"end": 526,
 		"match": "{"
@@ -1308,7 +1494,7 @@ export const test = [
 		"match": "b"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 527,
 		"end": 528,
 		"match": "}"
@@ -1320,7 +1506,7 @@ export const test = [
 		"match": " and "
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 533,
 		"end": 534,
 		"match": "{"
@@ -1344,7 +1530,7 @@ export const test = [
 		"match": "x<10"
 	},
 	{
-		"type": "punctuation",
+		"type": "expression",
 		"start": 540,
 		"end": 541,
 		"match": "}"

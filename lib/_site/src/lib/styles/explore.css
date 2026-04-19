@@ -511,7 +511,9 @@
 	flex-direction: column;
 	min-height: 0;
 	min-width: 0;
-	background: var(--bg-pane);
+	/* --twp-background comes from the active theme's palette (set on the
+	   .panes wrapper). when absent we fall back to the flavor's pane bg. */
+	background: var(--twp-background, var(--bg-pane));
 	border-top: 1px solid var(--border);
 }
 
@@ -954,73 +956,125 @@
 	width: 100%;
 }
 
-/* token colors are driven by css variables on the owning pane so that
-   swapping the twinkleplop theme is a single style-attribute update. */
+/* token colors driven by css variables on the owning pane so swapping
+   the twinkleplop palette is a single style-attribute update.
+   `to_html` emits `<span class="tok ${tokentype}">`, so selectors pair
+   the base `.tok` class with the canonical token name. identifier
+   doubles as the "default text" colour when a token has no explicit
+   rule. */
 .explore-app .tok {
-	color: var(--c-text, inherit);
+	color: var(--twp-identifier, inherit);
 }
-.explore-app .tok--keyword {
-	color: var(--c-keyword, var(--c-text, inherit));
-}
-.explore-app .tok--type {
-	color: var(--c-type, var(--c-text, inherit));
-}
-.explore-app .tok--string {
-	color: var(--c-string, var(--c-text, inherit));
-}
-.explore-app .tok--number {
-	color: var(--c-number, var(--c-text, inherit));
-}
-.explore-app .tok--comment {
-	color: var(--c-comment, var(--c-text, inherit));
+
+/* universal primitives */
+.explore-app .tok.boolean { color: var(--twp-boolean); }
+.explore-app .tok.comment {
+	color: var(--twp-comment);
 	font-style: italic;
 	opacity: 0.85;
 }
-.explore-app .tok--func {
-	color: var(--c-func, var(--c-text, inherit));
-}
-.explore-app .tok--ident {
-	color: var(--c-ident, var(--c-text, inherit));
-}
-.explore-app .tok--constant {
-	color: var(--c-constant, var(--c-text, inherit));
-}
-.explore-app .tok--operator {
-	color: var(--c-operator, var(--c-text, inherit));
-}
-.explore-app .tok--punct {
-	color: var(--c-punct, var(--c-text, inherit));
-}
-.explore-app .tok--property {
-	color: var(--c-property, var(--c-text, inherit));
-}
-.explore-app .tok--decorator {
-	color: var(--c-decorator, var(--c-text, inherit));
-}
-.explore-app .tok--tag {
-	color: var(--c-tag, var(--c-text, inherit));
-}
-.explore-app .tok--attr {
-	color: var(--c-attr, var(--c-text, inherit));
-}
-.explore-app .tok--lifetime {
-	color: var(--c-lifetime, var(--c-text, inherit));
-}
-.explore-app .tok--macro {
-	color: var(--c-macro, var(--c-text, inherit));
-}
-.explore-app .tok--selector {
-	color: var(--c-selector, var(--c-text, inherit));
-}
-.explore-app .tok--rune {
-	color: var(--c-rune, var(--c-text, inherit));
-}
-.explore-app .tok--interp-open {
-	color: var(--c-interp-open, var(--c-text, inherit));
-}
-.explore-app .tok--interp-close {
-	color: var(--c-interp-close, var(--c-text, inherit));
-}
-.explore-app .tok--ws {
+.explore-app .tok.identifier { color: var(--twp-identifier); }
+.explore-app .tok.keyword { color: var(--twp-keyword); }
+.explore-app .tok.number { color: var(--twp-number); }
+.explore-app .tok.operator { color: var(--twp-operator); }
+.explore-app .tok.punctuation { color: var(--twp-punctuation); }
+.explore-app .tok.regex { color: var(--twp-regex); }
+.explore-app .tok.string { color: var(--twp-string); }
+.explore-app .tok.template { color: var(--twp-template); }
+
+/* named entities */
+.explore-app .tok.attribute { color: var(--twp-attribute); }
+.explore-app .tok.builtin { color: var(--twp-builtin); }
+.explore-app .tok.class_name { color: var(--twp-class_name); }
+.explore-app .tok.decorator { color: var(--twp-decorator); }
+.explore-app .tok.lifetime { color: var(--twp-lifetime); }
+.explore-app .tok.property { color: var(--twp-property); }
+.explore-app .tok.type { color: var(--twp-type); }
+.explore-app .tok.variable { color: var(--twp-variable); }
+.explore-app .tok.function { color: var(--twp-function); }
+
+/* markup */
+.explore-app .tok.attr_name { color: var(--twp-attr_name); }
+.explore-app .tok.doctype { color: var(--twp-doctype); }
+.explore-app .tok.entity { color: var(--twp-entity); }
+.explore-app .tok.tag_name { color: var(--twp-tag_name); }
+
+/* css */
+.explore-app .tok.css_variable { color: var(--twp-css_variable); }
+.explore-app .tok.selector { color: var(--twp-selector); }
+.explore-app .tok.selector_class { color: var(--twp-selector_class); }
+.explore-app .tok.selector_id { color: var(--twp-selector_id); }
+.explore-app .tok.selector_pseudo { color: var(--twp-selector_pseudo); }
+.explore-app .tok.unit { color: var(--twp-unit); }
+
+/* diff */
+.explore-app .tok.changed { color: var(--twp-changed); }
+.explore-app .tok.changed_marker { color: var(--twp-changed_marker); }
+.explore-app .tok.deleted { color: var(--twp-deleted); }
+.explore-app .tok.deleted_marker { color: var(--twp-deleted_marker); }
+.explore-app .tok.hash { color: var(--twp-hash); }
+.explore-app .tok.heading { color: var(--twp-heading); }
+.explore-app .tok.inserted { color: var(--twp-inserted); }
+.explore-app .tok.inserted_marker { color: var(--twp-inserted_marker); }
+.explore-app .tok.label { color: var(--twp-label); }
+
+/* markdown content */
+.explore-app .tok.autolink { color: var(--twp-autolink); }
+.explore-app .tok.bold { color: var(--twp-bold); font-weight: 700; }
+.explore-app .tok.code { color: var(--twp-code); }
+.explore-app .tok.code_block { color: var(--twp-code_block); }
+.explore-app .tok.code_language { color: var(--twp-code_language); }
+.explore-app .tok.italic { color: var(--twp-italic); font-style: italic; }
+.explore-app .tok.link_text { color: var(--twp-link_text); }
+.explore-app .tok.strike { color: var(--twp-strike); text-decoration: line-through; }
+.explore-app .tok.url { color: var(--twp-url); }
+.explore-app .tok.url_link { color: var(--twp-url_link); }
+.explore-app .tok.url_title { color: var(--twp-url_title); }
+.explore-app .tok.autolink_open,
+.explore-app .tok.autolink_close { color: var(--twp-autolink); }
+.explore-app .tok.bold_open,
+.explore-app .tok.bold_close { color: var(--twp-bold); }
+.explore-app .tok.code_open,
+.explore-app .tok.code_close { color: var(--twp-code); }
+.explore-app .tok.italic_open,
+.explore-app .tok.italic_close { color: var(--twp-italic); }
+.explore-app .tok.link_text_open,
+.explore-app .tok.link_text_close { color: var(--twp-link_text); }
+.explore-app .tok.strike_open,
+.explore-app .tok.strike_close { color: var(--twp-strike); }
+.explore-app .tok.blockquote_marker { color: var(--twp-blockquote_marker); }
+.explore-app .tok.code_fence { color: var(--twp-code_fence); }
+.explore-app .tok.front_matter_marker { color: var(--twp-front_matter_marker); }
+.explore-app .tok.heading_marker { color: var(--twp-heading_marker); }
+.explore-app .tok.hr { color: var(--twp-hr); }
+.explore-app .tok.list_marker { color: var(--twp-list_marker); }
+.explore-app .tok.task_marker { color: var(--twp-task_marker); }
+.explore-app .tok.escape { color: var(--twp-escape); }
+.explore-app .tok.hard_break { color: var(--twp-hard_break); }
+
+/* svelte */
+.explore-app .tok.expression { color: var(--twp-expression); }
+.explore-app .tok.svelte_block { color: var(--twp-svelte_block); }
+.explore-app .tok.svelte_directive { color: var(--twp-svelte_directive); }
+
+/* whitespace — never coloured, but keep layout-preserving */
+.explore-app .tok.space,
+.explore-app .tok.tab,
+.explore-app .tok.newline,
+.explore-app .tok.carriage_return {
 	white-space: pre;
 }
+
+/* language-unique */
+.explore-app .tok.string_escape { color: var(--twp-string_escape); }
+.explore-app .tok.format { color: var(--twp-format); }
+.explore-app .tok.attr_sigil { color: var(--twp-attr_sigil); }
+.explore-app .tok.bit { color: var(--twp-bit); }
+.explore-app .tok.array_table_header { color: var(--twp-array_table_header); }
+.explore-app .tok.datetime { color: var(--twp-datetime); }
+.explore-app .tok.block_scalar_header { color: var(--twp-block_scalar_header); }
+.explore-app .tok.directive { color: var(--twp-directive); }
+.explore-app .tok.doc_marker { color: var(--twp-doc_marker); }
+.explore-app .tok.plain_scalar { color: var(--twp-plain_scalar); }
+.explore-app .tok.tag { color: var(--twp-tag); }
+.explore-app .tok.null { color: var(--twp-null); }
