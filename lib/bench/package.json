@@ -20,6 +20,9 @@
 	},
 	"dependencies": {
 		"@twinkleplop/javascript": "workspace:*",
+		"@twinkleplop/python": "workspace:*",
+		"@twinkleplop/rust": "workspace:*",
+		"@twinkleplop/svelte": "workspace:*",
 		"@twinkleplop/typescript": "workspace:*",
 		"@wooorm/starry-night": "^3.8.0",
 		"highlight.js": "^11.11.1",

@@ -280,6 +280,15 @@ importers:
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript
+      '@twinkleplop/python':
+        specifier: workspace:*
+        version: link:../../languages/python
+      '@twinkleplop/rust':
+        specifier: workspace:*
+        version: link:../../languages/rust
+      '@twinkleplop/svelte':
+        specifier: workspace:*
+        version: link:../../languages/svelte
       '@twinkleplop/typescript':
         specifier: workspace:*
         version: link:../../languages/typescript

@@ -21,6 +21,8 @@ import {
 	capture,
 	embed_interleaved,
 	optional,
+	promote_by_text_set,
+	promote_function_calls,
 	rewrite_types,
 	seq,
 	type,
@@ -662,7 +664,26 @@ export const class_name_promoter: Reclassifier = (input, result) => {
 	return result;
 };
 
+// restoration of distinctions the grammar no longer emits. the grammar
+// emits every call-site name and every "true"/"false" as `identifier`;
+// these two passes restore the `function` and `boolean` token types so
+// themes that rely on them keep working by default.
+export const promote_boolean_literals: Reclassifier = promote_by_text_set(
+	"identifier",
+	"boolean",
+	["true", "false"],
+);
+
+export const promote_call_site_functions: Reclassifier = promote_function_calls(
+	"identifier",
+	"function",
+	{ plain: true },
+	{ trivia: ["comment"] },
+);
+
 export const reclassifiers = [
+	promote_boolean_literals,
+	promote_call_site_functions,
 	rewrite_types(function_variable_rules, { trivia: ["comment"] }),
 	interface_member_promoter,
 	class_name_promoter,

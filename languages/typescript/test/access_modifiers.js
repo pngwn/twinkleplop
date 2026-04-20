@@ -25,7 +25,7 @@ export default [
 		"end": 33
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 34,
 		"end": 38
 	},
@@ -40,7 +40,7 @@ export default [
 		"end": 41
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 42,
 		"end": 48
 	},
@@ -55,7 +55,7 @@ export default [
 		"end": 60
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 61,
 		"end": 70
 	},
@@ -70,7 +70,7 @@ export default [
 		"end": 73
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 74,
 		"end": 80
 	},
@@ -130,7 +130,7 @@ export default [
 		"end": 139
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 140,
 		"end": 146
 	},
@@ -155,7 +155,7 @@ export default [
 		"end": 164
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 165,
 		"end": 171
 	},
@@ -180,7 +180,7 @@ export default [
 		"end": 191
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 192,
 		"end": 198
 	},
@@ -190,7 +190,7 @@ export default [
 		"end": 199
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 203,
 		"end": 214
 	},
@@ -210,7 +210,7 @@ export default [
 		"end": 222
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 223,
 		"end": 229
 	},
@@ -275,7 +275,7 @@ export default [
 		"end": 287
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 288,
 		"end": 292
 	},
@@ -290,7 +290,7 @@ export default [
 		"end": 295
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 296,
 		"end": 302
 	},
@@ -365,7 +365,7 @@ export default [
 		"end": 359
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 360,
 		"end": 369
 	},
@@ -380,7 +380,7 @@ export default [
 		"end": 372
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 373,
 		"end": 379
 	},

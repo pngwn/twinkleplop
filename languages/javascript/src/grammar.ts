@@ -308,7 +308,6 @@ export const js_paren_common = [
 		["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "/", "~", "^", "%"],
 		TOKENS.operator,
 	),
-	match(BOOLEAN_LITERALS, TOKENS.boolean),
 	match(["_", "$", ALNUM], TOKENS.identifier),
 ];
 
@@ -330,7 +329,6 @@ export const keywordsLiterals = (
 ) => [
 	keyword(REGEX_PRECEDING_KEYWORDS, to(regexDest)),
 	keyword(DIVISION_KEYWORDS, to(divDest)),
-	keyword(BOOLEAN_LITERALS, to(divDest), TOKENS.boolean),
 	keyword(SPECIAL_VALUES, to(divDest)),
 ];
 
@@ -379,9 +377,13 @@ export default define_grammar({
 			],
 		},
 
+		// call-site identifier: the grammar emits these as plain `identifier`
+		// tokens. a fidelity reclassifier (promote_function_calls) can upgrade
+		// them to `function` post-hoc, so consumers can opt in to function-call
+		// colouring or skip it entirely.
 		function_name: {
 			rules: [
-				match(["_", "$", ALNUM], TOKENS.function),
+				match(["_", "$", ALNUM], TOKENS.identifier),
 				match("(", TOKENS.punctuation, goto("function_body")),
 				on([" ", "\t"]),
 			],
@@ -416,9 +418,6 @@ export default define_grammar({
 				// Other punctuation
 				match(["[", "]", "{", "}"], TOKENS.punctuation),
 				match([";", "."], TOKENS.punctuation),
-
-				// Literals
-				match(BOOLEAN_LITERALS, TOKENS.boolean),
 
 				// Identifiers (recursive probe for nested function calls)
 				on(["_", "$", LETTER], goto("identifier_probe")),
@@ -785,12 +784,13 @@ export default define_grammar({
 		},
 
 		// -------------------------------------------------------------------------
-		// function_name_tmpl — emits `function` tokens for a call-site identifier
-		// inside `${...}`. Mirror of base function_name.
+		// function_name_tmpl — call-site identifier inside `${...}`. mirror of
+		// function_name; emits plain `identifier`, with call-site promotion
+		// layered on by the fidelity reclassifier.
 		// -------------------------------------------------------------------------
 		function_name_tmpl: {
 			rules: [
-				match(["_", "$", ALNUM], TOKENS.function),
+				match(["_", "$", ALNUM], TOKENS.identifier),
 				match("(", TOKENS.punctuation, goto("function_body_tmpl")),
 				on([" ", "\t"]),
 			],
@@ -827,8 +827,6 @@ export default define_grammar({
 				match("}", TOKENS.punctuation, leave()),
 				match(["[", "]"], TOKENS.punctuation),
 				match([";", "."], TOKENS.punctuation),
-
-				match(BOOLEAN_LITERALS, TOKENS.boolean),
 
 				on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
 			],

@@ -54,7 +54,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 53,
 		"end": 57,
 		"match": "True"
@@ -72,7 +72,7 @@ export const test = [
 		"match": "class"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 65,
 		"end": 71,
 		"match": "Circle"
@@ -102,7 +102,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 119,
 		"end": 124,
 		"match": "float"
@@ -156,7 +156,7 @@ export const test = [
 		"match": "->"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 154,
 		"end": 159,
 		"match": "float"
@@ -354,7 +354,7 @@ export const test = [
 		"match": "->"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 315,
 		"end": 320,
 		"match": "float"
@@ -384,7 +384,7 @@ export const test = [
 		"match": "class"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 352,
 		"end": 359,
 		"match": "Generic"
@@ -396,7 +396,7 @@ export const test = [
 		"match": "["
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 360,
 		"end": 361,
 		"match": "T"
@@ -420,7 +420,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 375,
 		"end": 379,
 		"match": "list"
@@ -432,7 +432,7 @@ export const test = [
 		"match": "["
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 380,
 		"end": 381,
 		"match": "T"
@@ -486,7 +486,7 @@ export const test = [
 		"match": ":"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 414,
 		"end": 418,
 		"match": "list"
@@ -498,7 +498,7 @@ export const test = [
 		"match": "["
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 419,
 		"end": 420,
 		"match": "T"
@@ -558,13 +558,13 @@ export const test = [
 		"match": "items"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 460,
 		"end": 464,
 		"match": "type"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 465,
 		"end": 468,
 		"match": "Vec"
@@ -576,7 +576,7 @@ export const test = [
 		"match": "["
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 469,
 		"end": 470,
 		"match": "T"
@@ -594,7 +594,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 474,
 		"end": 478,
 		"match": "list"
@@ -606,7 +606,7 @@ export const test = [
 		"match": "["
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 479,
 		"end": 480,
 		"match": "T"
@@ -618,13 +618,13 @@ export const test = [
 		"match": "]"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 482,
 		"end": 486,
 		"match": "type"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 487,
 		"end": 491,
 		"match": "Pair"
@@ -636,7 +636,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 494,
 		"end": 499,
 		"match": "tuple"
@@ -648,7 +648,7 @@ export const test = [
 		"match": "["
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 500,
 		"end": 503,
 		"match": "int"
@@ -660,7 +660,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 505,
 		"end": 508,
 		"match": "str"

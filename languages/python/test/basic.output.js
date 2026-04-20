@@ -84,7 +84,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 55,
 		"end": 59,
 		"match": "True"

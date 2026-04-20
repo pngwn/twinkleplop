@@ -5,7 +5,7 @@ export default [
 		"end": 8
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 9,
 		"end": 17
 	},

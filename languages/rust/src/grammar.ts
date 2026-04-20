@@ -111,7 +111,7 @@ const KEYWORDS = [
 	"yield",
 ];
 
-const BOOLEAN_LITERALS = ["true", "false"];
+export const BOOLEAN_LITERALS = ["true", "false"];
 
 // ---------------------------------------------------------------------------
 // operator lists (sorted by descending length for maximal munch)
@@ -173,6 +173,17 @@ const INT_SUFFIXES = [
 const FLOAT_SUFFIXES = ["f32", "f64"];
 
 const ALL_SUFFIXES = [...INT_SUFFIXES, ...FLOAT_SUFFIXES];
+
+// lowercase primitive type names — tokenized as class_name so they highlight
+// alongside other types rather than falling through to `identifier`. the
+// integer / float width names overlap with numeric literal suffixes above.
+export const PRIMITIVE_TYPES = [
+	...INT_SUFFIXES,
+	...FLOAT_SUFFIXES,
+	"bool",
+	"char",
+	"str",
+];
 
 // ---------------------------------------------------------------------------
 // shared rule fragments
@@ -245,9 +256,12 @@ export default define_grammar({
 				// operators (after :: so :: is punctuation, not two colons)
 				match(OP_ALL, TOKENS.operator),
 
-				// keywords and booleans
+				// keywords only. BOOLEAN_LITERALS and PRIMITIVE_TYPES used to be
+				// emitted here as typed tokens; they now fall through to the
+				// identifier path and are restored post-hoc by the reclassifier
+				// pipeline, so consumers can opt in to the `boolean` and
+				// `class_name` classifications.
 				keyword(KEYWORDS),
-				keyword(BOOLEAN_LITERALS, {}, TOKENS.boolean),
 
 				// numbers starting with 0 (hex, octal, binary prefixes)
 				match(["0x", "0X"], TOKENS.number, enter("hex_number")),
@@ -257,8 +271,12 @@ export default define_grammar({
 				// decimal numbers
 				match(DIGIT, TOKENS.number, enter("number")),
 
-				// identifiers: uppercase start → type, lowercase/_ → identifier
-				match(UPPER, TOKENS.class_name, enter("type_identifier")),
+				// identifiers: two entry states so uppercase-start names can be
+				// continued by their own body state (useful for future rules
+				// that differ between UPPER- and lower-start identifiers). both
+				// dispatches emit `identifier`; PascalCase promotion happens
+				// in the restoration reclassifier.
+				match(UPPER, TOKENS.identifier, enter("type_identifier")),
 				match(["_", LOWER], TOKENS.identifier, enter("identifier")),
 			],
 		},
@@ -276,11 +294,12 @@ export default define_grammar({
 
 		// -------------------------------------------------------------------
 		// type_identifier — continuation of an uppercase identifier
-		// (structs, enums, traits, type aliases: Vec, String, Option, etc.)
+		// (structs, enums, traits, type aliases: Vec, String, Option, etc.).
+		// emits plain `identifier`; PascalCase promotion happens post-hoc.
 		// -------------------------------------------------------------------
 		type_identifier: {
 			rules: [
-				match(["_", ALNUM], TOKENS.class_name),
+				match(["_", ALNUM], TOKENS.identifier),
 				match("!", TOKENS.builtin, leave()),
 				fallback(leave()),
 			],
@@ -480,12 +499,14 @@ export default define_grammar({
 
 		// -------------------------------------------------------------------
 		// lifetime_token — entered after probe rewinds to the `'`.
-		// consumes the full lifetime: `'identifier`
+		// the leading `'` is punctuation, the identifier body is tagged
+		// `lifetime`. the reclassifier pipeline may later extend a lifetime
+		// token forward to swallow a trailing type identifier (e.g. `str`
+		// in `&'a str`), which is why the body itself is kept minimal here.
 		// -------------------------------------------------------------------
 		lifetime_token: {
 			rules: [
-				// opening quote as part of the lifetime
-				match("'", TOKENS.lifetime, goto("lifetime_body")),
+				match("'", TOKENS.punctuation, goto("lifetime_body")),
 				fallback(goto("main")),
 			],
 		},
@@ -570,9 +591,10 @@ export default define_grammar({
 				// dot alone could be method call — leave for main
 				match("..", TOKENS.operator, leave()),
 				match(".", TOKENS.number, enter("decimal")),
-				match(["e", "E"], TOKENS.number, enter("exponent_sign")),
+				// the exponent indicator splits out as its own operator token
+				match(["e", "E"], TOKENS.operator, enter("exponent_sign")),
 				// type suffixes
-				keyword(ALL_SUFFIXES, goto("main"), TOKENS.number),
+				keyword(ALL_SUFFIXES, goto("main"), TOKENS.class_name),
 				fallback(goto("main")),
 			],
 		},
@@ -580,8 +602,8 @@ export default define_grammar({
 		decimal: {
 			rules: [
 				match(["_", DIGIT], TOKENS.number),
-				match(["e", "E"], TOKENS.number, enter("exponent_sign")),
-				keyword(FLOAT_SUFFIXES, goto("main"), TOKENS.number),
+				match(["e", "E"], TOKENS.operator, enter("exponent_sign")),
+				keyword(FLOAT_SUFFIXES, goto("main"), TOKENS.class_name),
 				fallback(goto("main")),
 			],
 		},
@@ -597,7 +619,7 @@ export default define_grammar({
 		exponent_digits: {
 			rules: [
 				match(["_", DIGIT], TOKENS.number),
-				keyword(FLOAT_SUFFIXES, goto("main"), TOKENS.number),
+				keyword(FLOAT_SUFFIXES, goto("main"), TOKENS.class_name),
 				fallback(goto("main")),
 			],
 		},
@@ -605,7 +627,7 @@ export default define_grammar({
 		hex_number: {
 			rules: [
 				match(["_", HEX], TOKENS.number),
-				keyword(INT_SUFFIXES, goto("main"), TOKENS.number),
+				keyword(INT_SUFFIXES, goto("main"), TOKENS.class_name),
 				fallback(goto("main")),
 			],
 		},
@@ -613,7 +635,7 @@ export default define_grammar({
 		octal_number: {
 			rules: [
 				match(["_", range([["0", "7"]])], TOKENS.number),
-				keyword(INT_SUFFIXES, goto("main"), TOKENS.number),
+				keyword(INT_SUFFIXES, goto("main"), TOKENS.class_name),
 				fallback(goto("main")),
 			],
 		},
@@ -621,7 +643,7 @@ export default define_grammar({
 		binary_number: {
 			rules: [
 				match(["_", "0", "1"], TOKENS.number),
-				keyword(INT_SUFFIXES, goto("main"), TOKENS.number),
+				keyword(INT_SUFFIXES, goto("main"), TOKENS.class_name),
 				fallback(goto("main")),
 			],
 		},

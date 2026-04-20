@@ -85,7 +85,7 @@ export default [
 		"end": 107
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 108,
 		"end": 111
 	},
@@ -380,7 +380,7 @@ export default [
 		"end": 262
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 262,
 		"end": 265
 	},
@@ -425,7 +425,7 @@ export default [
 		"end": 298
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 298,
 		"end": 301
 	},
@@ -535,7 +535,7 @@ export default [
 		"end": 359
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 359,
 		"end": 363
 	},
@@ -585,7 +585,7 @@ export default [
 		"end": 394
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 397,
 		"end": 408
 	},
@@ -615,7 +615,7 @@ export default [
 		"end": 429
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 432,
 		"end": 438
 	},
@@ -810,7 +810,7 @@ export default [
 		"end": 603
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 604,
 		"end": 613
 	},
@@ -845,7 +845,7 @@ export default [
 		"end": 640
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 641,
 		"end": 646
 	},
@@ -880,7 +880,7 @@ export default [
 		"end": 672
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 672,
 		"end": 676
 	},
@@ -1185,7 +1185,7 @@ export default [
 		"end": 898
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 899,
 		"end": 903
 	},

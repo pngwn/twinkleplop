@@ -25,7 +25,7 @@ export const test = [
 		"end": 22
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 22,
 		"end": 29
 	},
@@ -70,7 +70,7 @@ export const test = [
 		"end": 50
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 51,
 		"end": 55
 	},
@@ -120,7 +120,7 @@ export const test = [
 		"end": 86
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 87,
 		"end": 93
 	},
@@ -130,8 +130,13 @@ export const test = [
 		"end": 94
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 94,
+		"end": 95
+	},
+	{
+		"type": "lifetime",
+		"start": 95,
 		"end": 96
 	},
 	{
@@ -160,8 +165,13 @@ export const test = [
 		"end": 111
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 111,
+		"end": 112
+	},
+	{
+		"type": "lifetime",
+		"start": 112,
 		"end": 113
 	},
 	{
@@ -185,7 +195,7 @@ export const test = [
 		"end": 130
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 131,
 		"end": 138
 	},
@@ -195,7 +205,7 @@ export const test = [
 		"end": 139
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 139,
 		"end": 145
 	},
@@ -205,7 +215,7 @@ export const test = [
 		"end": 146
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 147,
 		"end": 150
 	},
@@ -245,8 +255,13 @@ export const test = [
 		"end": 166
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 166,
+		"end": 167
+	},
+	{
+		"type": "lifetime",
+		"start": 167,
 		"end": 168
 	},
 	{
@@ -255,7 +270,7 @@ export const test = [
 		"end": 169
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 170,
 		"end": 176
 	},
@@ -265,8 +280,13 @@ export const test = [
 		"end": 177
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 177,
+		"end": 178
+	},
+	{
+		"type": "lifetime",
+		"start": 178,
 		"end": 179
 	},
 	{
@@ -315,8 +335,13 @@ export const test = [
 		"end": 205
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 205,
+		"end": 206
+	},
+	{
+		"type": "lifetime",
+		"start": 206,
 		"end": 207
 	},
 	{
@@ -345,7 +370,7 @@ export const test = [
 		"end": 222
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 231,
 		"end": 237
 	},
@@ -375,7 +400,7 @@ export const test = [
 		"end": 277
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 278,
 		"end": 285
 	},
@@ -455,7 +480,7 @@ export const test = [
 		"end": 346
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 347,
 		"end": 353
 	},
@@ -470,7 +495,7 @@ export const test = [
 		"end": 357
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 358,
 		"end": 361
 	},
@@ -505,7 +530,7 @@ export const test = [
 		"end": 378
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 378,
 		"end": 383
 	},
@@ -562,6 +587,11 @@ export const test = [
 	{
 		"type": "number",
 		"start": 450,
+		"end": 457
+	},
+	{
+		"type": "class_name",
+		"start": 457,
 		"end": 460
 	},
 	{
@@ -585,7 +615,7 @@ export const test = [
 		"end": 480
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 481,
 		"end": 485
 	},
@@ -737,6 +767,11 @@ export const test = [
 	{
 		"type": "number",
 		"start": 608,
+		"end": 609
+	},
+	{
+		"type": "class_name",
+		"start": 609,
 		"end": 612
 	},
 	{
@@ -810,7 +845,7 @@ export const test = [
 		"end": 730
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 740,
 		"end": 742
 	},
@@ -850,7 +885,7 @@ export const test = [
 		"end": 768
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 769,
 		"end": 775
 	},
@@ -865,7 +900,7 @@ export const test = [
 		"end": 779
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 780,
 		"end": 783
 	},
@@ -900,7 +935,7 @@ export const test = [
 		"end": 800
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 800,
 		"end": 805
 	},
@@ -1070,7 +1105,7 @@ export const test = [
 		"end": 929
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 934,
 		"end": 936
 	},

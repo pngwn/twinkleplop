@@ -202,7 +202,7 @@ const KEYWORDS = [
 	"yield",
 ];
 
-const BOOLEAN_LITERALS = ["True", "False"];
+export const BOOLEAN_LITERALS = ["True", "False"];
 const NONE_LITERAL = ["None"];
 
 // lowercase builtin types — pep 8 / pep 585 puts these in type-annotation
@@ -211,7 +211,7 @@ const NONE_LITERAL = ["None"];
 // textmate-style grammars scope them as `support.type.python` → the github
 // theme's `support` rule, which resolves to blue; user-defined PascalCase
 // class names stay as `class_name` (the orange `entity.name` color).
-const BUILTIN_TYPES = [
+export const BUILTIN_TYPES = [
 	"int",
 	"float",
 	"complex",
@@ -337,22 +337,20 @@ const number_entries = [
 // `builtin` rather than being swallowed by a generic identifier rule;
 // ordering relative to other keyword rules does not matter since the sets
 // are disjoint.
-const keyword_entries = [
-	keyword(BUILTIN_TYPES, {}, TOKENS.builtin),
-	keyword(BOOLEAN_LITERALS, {}, TOKENS.boolean),
-	keyword(NONE_LITERAL),
-	keyword(KEYWORDS),
-];
+// BUILTIN_TYPES and BOOLEAN_LITERALS are no longer matched as typed keywords
+// at grammar time. they fall through to the identifier path and a restoration
+// reclassifier (promote_by_text_set) upgrades them post-hoc, so consumers can
+// opt out of the `builtin` / `boolean` classification.
+const keyword_entries = [keyword(NONE_LITERAL), keyword(KEYWORDS)];
 
-// identifier entry — split by case so PascalCase identifiers (per pep 8 the
-// convention for class / type names) emit as `class_name` and everything else
-// as `identifier`. user-defined types, generics (T, K, V), and typing-module
-// names like `Optional` / `Union` all get caught by the uppercase rule;
-// lowercase builtins (`int`, `str`, `list`, ...) are handled by the keyword
-// rule above.
+// identifier entry — split by case only so `type_identifier_body`'s rules
+// stay reachable. both dispatches emit `identifier`; the restoration pass
+// (promote_pascal_case) upgrades PascalCase names to `class_name` post-hoc.
+// keeping two states lets us preserve the dispatch shape without doing the
+// classification at lex time.
 const uppercase_identifier_entry = match(
 	UPPER,
-	TOKENS.class_name,
+	TOKENS.identifier,
 	enter("type_identifier_body"),
 );
 const identifier_entry = match(
@@ -418,14 +416,14 @@ export default define_grammar({
 		},
 
 		// =================================================================
-		// type_identifier_body — continuation of a PascalCase identifier
-		// (treated as a class / type name). emits `class_name` for the
-		// continuation chars so the entire identifier coalesces into one
-		// class_name token.
+		// type_identifier_body — continuation of a PascalCase identifier.
+		// emits plain `identifier` for the continuation chars so the whole
+		// token coalesces into one identifier span. a restoration pass
+		// (promote_pascal_case) upgrades the token to `class_name` afterward.
 		// =================================================================
 		type_identifier_body: {
 			rules: [
-				match(["_", ALNUM, NON_ASCII], TOKENS.class_name),
+				match(["_", ALNUM, NON_ASCII], TOKENS.identifier),
 				fallback(leave()),
 			],
 		},
@@ -875,12 +873,13 @@ export default define_grammar({
 		},
 
 		// shared fallback for both probes: re-tokenise the consumed prefix
-		// letters as a plain identifier (lowercase start) or class_name
-		// (uppercase start) and continue reading identifier continuation.
+		// letters as a plain identifier and route to the appropriate
+		// continuation state based on case. class_name promotion for
+		// PascalCase starts happens in the restoration reclassifier.
 		string_prefix_fallback: {
 			rules: [
 				match(ALL_PREFIXES_LOWER_START, TOKENS.identifier, goto("identifier_body")),
-				match(ALL_PREFIXES_UPPER_START, TOKENS.class_name, goto("type_identifier_body")),
+				match(ALL_PREFIXES_UPPER_START, TOKENS.identifier, goto("type_identifier_body")),
 			],
 		},
 

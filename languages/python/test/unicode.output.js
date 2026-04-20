@@ -132,7 +132,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 76,
 		"end": 80,
 		"match": "True"

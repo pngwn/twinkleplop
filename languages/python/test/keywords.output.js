@@ -6,7 +6,7 @@ export const test = [
 		"match": "if"
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 3,
 		"end": 7,
 		"match": "True"
@@ -30,7 +30,7 @@ export const test = [
 		"match": "elif"
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 23,
 		"end": 28,
 		"match": "False"
@@ -90,7 +90,7 @@ export const test = [
 		"match": "in"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 72,
 		"end": 77,
 		"match": "range"
@@ -210,7 +210,7 @@ export const test = [
 		"match": "import"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 164,
 		"end": 168,
 		"match": "List"
@@ -222,7 +222,7 @@ export const test = [
 		"match": "as"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 172,
 		"end": 173,
 		"match": "L"
@@ -234,7 +234,7 @@ export const test = [
 		"match": "raise"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 184,
 		"end": 194,
 		"match": "ValueError"
@@ -264,7 +264,7 @@ export const test = [
 		"match": "except"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 209,
 		"end": 218,
 		"match": "Exception"
@@ -576,7 +576,7 @@ export const test = [
 		"match": "class"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 464,
 		"end": 467,
 		"match": "Foo"
@@ -588,7 +588,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 468,
 		"end": 472,
 		"match": "Base"

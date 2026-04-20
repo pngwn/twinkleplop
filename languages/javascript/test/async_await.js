@@ -15,7 +15,7 @@ export default [
 		"end": 44
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 45,
 		"end": 54
 	},
@@ -60,7 +60,7 @@ export default [
 		"end": 85
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 86,
 		"end": 91
 	},
@@ -120,7 +120,7 @@ export default [
 		"end": 137
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 137,
 		"end": 141
 	},
@@ -195,7 +195,7 @@ export default [
 		"end": 236
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 236,
 		"end": 241
 	},
@@ -280,7 +280,7 @@ export default [
 		"end": 333
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 334,
 		"end": 343
 	},
@@ -335,7 +335,7 @@ export default [
 		"end": 416
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 417,
 		"end": 426
 	},
@@ -380,7 +380,7 @@ export default [
 		"end": 461
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 462,
 		"end": 471
 	},
@@ -445,7 +445,7 @@ export default [
 		"end": 524
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 524,
 		"end": 529
 	},
@@ -490,7 +490,7 @@ export default [
 		"end": 578
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 579,
 		"end": 589
 	},
@@ -525,7 +525,7 @@ export default [
 		"end": 615
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 616,
 		"end": 624
 	},
@@ -555,7 +555,7 @@ export default [
 		"end": 650
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 651,
 		"end": 660
 	},
@@ -595,7 +595,7 @@ export default [
 		"end": 690
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 691,
 		"end": 699
 	},
@@ -650,7 +650,7 @@ export default [
 		"end": 761
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 762,
 		"end": 770
 	},
@@ -725,7 +725,7 @@ export default [
 		"end": 809
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 809,
 		"end": 812
 	},
@@ -735,7 +735,7 @@ export default [
 		"end": 814
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 819,
 		"end": 825
 	},
@@ -745,7 +745,7 @@ export default [
 		"end": 828
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 833,
 		"end": 839
 	},
@@ -755,7 +755,7 @@ export default [
 		"end": 842
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 847,
 		"end": 853
 	},
@@ -840,7 +840,7 @@ export default [
 		"end": 936
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 937,
 		"end": 947
 	},
@@ -880,7 +880,7 @@ export default [
 		"end": 973
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 974,
 		"end": 982
 	},
@@ -900,7 +900,7 @@ export default [
 		"end": 1000
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 1001,
 		"end": 1008
 	},
@@ -935,7 +935,7 @@ export default [
 		"end": 1035
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 1035,
 		"end": 1044
 	},
@@ -980,7 +980,7 @@ export default [
 		"end": 1104
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 1105,
 		"end": 1115
 	},
@@ -1005,7 +1005,7 @@ export default [
 		"end": 1139
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 1140,
 		"end": 1153
 	},

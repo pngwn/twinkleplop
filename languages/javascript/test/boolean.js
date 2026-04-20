@@ -1,6 +1,6 @@
 export default [
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 0,
 		"end": 4
 	},
@@ -10,7 +10,7 @@ export default [
 		"end": 5
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 6,
 		"end": 11
 	},

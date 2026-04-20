@@ -15,8 +15,13 @@ export const test = [
 		"end": 7
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 7,
+		"end": 8
+	},
+	{
+		"type": "lifetime",
+		"start": 8,
 		"end": 9
 	},
 	{
@@ -45,8 +50,13 @@ export const test = [
 		"end": 15
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 15,
+		"end": 16
+	},
+	{
+		"type": "lifetime",
+		"start": 16,
 		"end": 17
 	},
 	{
@@ -70,8 +80,13 @@ export const test = [
 		"end": 27
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 27,
+		"end": 28
+	},
+	{
+		"type": "lifetime",
+		"start": 28,
 		"end": 29
 	},
 	{
@@ -110,8 +125,13 @@ export const test = [
 		"end": 52
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 52,
+		"end": 53
+	},
+	{
+		"type": "lifetime",
+		"start": 53,
 		"end": 54
 	},
 	{
@@ -120,8 +140,13 @@ export const test = [
 		"end": 55
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 56,
+		"end": 57
+	},
+	{
+		"type": "lifetime",
+		"start": 57,
 		"end": 58
 	},
 	{
@@ -150,8 +175,13 @@ export const test = [
 		"end": 64
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 64,
+		"end": 65
+	},
+	{
+		"type": "lifetime",
+		"start": 65,
 		"end": 66
 	},
 	{
@@ -180,8 +210,13 @@ export const test = [
 		"end": 76
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 76,
+		"end": 77
+	},
+	{
+		"type": "lifetime",
+		"start": 77,
 		"end": 78
 	},
 	{
@@ -205,8 +240,13 @@ export const test = [
 		"end": 88
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 88,
+		"end": 89
+	},
+	{
+		"type": "lifetime",
+		"start": 89,
 		"end": 90
 	},
 	{
@@ -235,7 +275,7 @@ export const test = [
 		"end": 112
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 113,
 		"end": 116
 	},
@@ -245,8 +285,13 @@ export const test = [
 		"end": 117
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 117,
+		"end": 118
+	},
+	{
+		"type": "lifetime",
+		"start": 118,
 		"end": 119
 	},
 	{
@@ -275,8 +320,13 @@ export const test = [
 		"end": 134
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 134,
+		"end": 135
+	},
+	{
+		"type": "lifetime",
+		"start": 135,
 		"end": 136
 	},
 	{
@@ -325,8 +375,13 @@ export const test = [
 		"end": 164
 	},
 	{
-		"type": "lifetime",
+		"type": "punctuation",
 		"start": 164,
+		"end": 165
+	},
+	{
+		"type": "lifetime",
+		"start": 165,
 		"end": 171
 	},
 	{

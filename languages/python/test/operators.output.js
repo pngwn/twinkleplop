@@ -798,7 +798,7 @@ export const test = [
 		"match": "->"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 311,
 		"end": 314,
 		"match": "int"
@@ -972,7 +972,7 @@ export const test = [
 		"match": "..."
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 397,
 		"end": 405,
 		"match": "Ellipsis"

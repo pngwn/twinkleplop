@@ -93,7 +93,11 @@ const ALL_DIVISION_KEYWORDS = ALL_KEYWORDS.filter(
 
 // built-in type names highlighted with the TOKENS.type token.
 // void, undefined, null are already handled by JS keywords/special values.
-const BUILTIN_TYPES = [
+// exported so the reclassifier can promote them to `type` post-hoc. used to
+// be routed through keyword() at grammar time; stripped out so the grammar
+// emits them as plain `identifier` and consumers can opt in to the type
+// annotation by including promote_builtin_types in their pipeline.
+export const BUILTIN_TYPES = [
 	"number",
 	"string",
 	"boolean",
@@ -118,9 +122,7 @@ const ts_keywords_literals = (
 ) => [
 	keyword(REGEX_PRECEDING_KEYWORDS, to(regex_dest)),
 	keyword(ALL_DIVISION_KEYWORDS, to(div_dest)),
-	keyword(BOOLEAN_LITERALS, to(div_dest), TOKENS.boolean),
 	keyword(SPECIAL_VALUES, to(div_dest)),
-	keyword(BUILTIN_TYPES, to(div_dest), TOKENS.type),
 ];
 
 // ---------------------------------------------------------------------------

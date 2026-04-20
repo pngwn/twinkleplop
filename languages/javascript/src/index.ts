@@ -5,6 +5,8 @@ import {
 	class_name_promoter,
 	function_variable_rules,
 	interface_member_promoter,
+	promote_boolean_literals,
+	promote_call_site_functions,
 	reclassifiers,
 	scan_tagged_template,
 } from "./reclassifiers.js";
@@ -34,6 +36,8 @@ export {
 	class_name_promoter,
 	function_variable_rules,
 	interface_member_promoter,
+	promote_boolean_literals,
+	promote_call_site_functions,
 	scan_tagged_template,
 };
 

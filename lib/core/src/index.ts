@@ -17,5 +17,11 @@ export {
 	capture,
 	balanced_parens,
 } from "./reclassifier";
+export {
+	promote_by_text_set,
+	promote_pascal_case,
+	promote_function_calls,
+} from "./fidelity";
+export type { FunctionCallVariants } from "./fidelity";
 export * from "./types";
 export * from "./dsl";

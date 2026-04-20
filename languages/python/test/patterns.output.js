@@ -90,7 +90,7 @@ export const test = [
 		"match": "case"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 97,
 		"end": 102,
 		"match": "Point"
@@ -168,7 +168,7 @@ export const test = [
 		"match": "case"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 140,
 		"end": 145,
 		"match": "Point"
@@ -528,7 +528,7 @@ export const test = [
 		"match": "="
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 350,
 		"end": 353,
 		"match": "int"

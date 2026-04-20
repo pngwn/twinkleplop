@@ -245,12 +245,12 @@ export const test = [
 		"end": 269
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 270,
 		"end": 274
 	},
 	{
-		"type": "boolean",
+		"type": "identifier",
 		"start": 275,
 		"end": 280
 	}

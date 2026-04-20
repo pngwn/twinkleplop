@@ -8,21 +8,40 @@
 // the same as built-in types.
 
 import type { Reclassifier } from "@twinkleplop/core";
-import { embed_interleaved, rewrite_types } from "@twinkleplop/core";
+import {
+	embed_interleaved,
+	promote_by_text_set,
+	rewrite_types,
+} from "@twinkleplop/core";
 
 import {
 	class_name_promoter,
 	function_variable_rules,
 	interface_member_promoter,
+	promote_boolean_literals,
+	promote_call_site_functions,
 	scan_tagged_template,
 } from "@twinkleplop/javascript";
+
+import { BUILTIN_TYPES } from "./grammar.js";
 
 export {
 	class_name_promoter,
 	function_variable_rules,
 	interface_member_promoter,
+	promote_boolean_literals,
+	promote_call_site_functions,
 	scan_tagged_template,
 };
+
+// restore the `type` token that the grammar no longer emits directly.
+// BUILTIN_TYPES words used to be matched via a keyword() rule emitting
+// TOKENS.type; we moved the classification out so consumers can opt in.
+export const promote_builtin_types: Reclassifier = promote_by_text_set(
+	"identifier",
+	"type",
+	BUILTIN_TYPES,
+);
 
 // ---------------------------------------------------------------------------
 // type_position_promoter
@@ -792,7 +811,14 @@ export const type_position_promoter: Reclassifier = (input, result) => {
 };
 
 export const reclassifiers: Reclassifier[] = [
-	// run the JS function-variable rules first so the type-position pass
+	// restoration first: bring the stream up to the fidelity the JS / TS
+	// grammars used to emit directly (boolean, call-site function, builtin
+	// type). these must run before type_position_promoter because it may
+	// demote function tokens that appear inside type positions.
+	promote_boolean_literals,
+	promote_call_site_functions,
+	promote_builtin_types,
+	// run the JS function-variable rules next so the type-position pass
 	// can see (and where needed, correct) their output. the type-position
 	// pass slots in before the interface-member promoter so that demoted
 	// `function` → `identifier` tokens inside interface bodies still get

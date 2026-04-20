@@ -67,61 +67,141 @@ export const test = [
 	{
 		"type": "number",
 		"start": 84,
+		"end": 87
+	},
+	{
+		"type": "operator",
+		"start": 87,
+		"end": 88
+	},
+	{
+		"type": "number",
+		"start": 88,
 		"end": 90
 	},
 	{
 		"type": "number",
 		"start": 91,
+		"end": 94
+	},
+	{
+		"type": "operator",
+		"start": 94,
+		"end": 95
+	},
+	{
+		"type": "number",
+		"start": 95,
 		"end": 97
 	},
 	{
 		"type": "number",
 		"start": 98,
+		"end": 101
+	},
+	{
+		"type": "operator",
+		"start": 101,
+		"end": 102
+	},
+	{
+		"type": "number",
+		"start": 102,
 		"end": 105
 	},
 	{
 		"type": "number",
 		"start": 106,
+		"end": 109
+	},
+	{
+		"type": "operator",
+		"start": 109,
+		"end": 110
+	},
+	{
+		"type": "number",
+		"start": 110,
 		"end": 113
 	},
 	{
 		"type": "number",
 		"start": 115,
+		"end": 117
+	},
+	{
+		"type": "class_name",
+		"start": 117,
 		"end": 120
 	},
 	{
 		"type": "number",
 		"start": 121,
+		"end": 123
+	},
+	{
+		"type": "class_name",
+		"start": 123,
 		"end": 126
 	},
 	{
 		"type": "number",
 		"start": 127,
+		"end": 129
+	},
+	{
+		"type": "class_name",
+		"start": 129,
 		"end": 134
 	},
 	{
 		"type": "number",
 		"start": 135,
+		"end": 139
+	},
+	{
+		"type": "class_name",
+		"start": 139,
 		"end": 141
 	},
 	{
 		"type": "number",
 		"start": 142,
+		"end": 146
+	},
+	{
+		"type": "class_name",
+		"start": 146,
 		"end": 149
 	},
 	{
 		"type": "number",
 		"start": 150,
+		"end": 156
+	},
+	{
+		"type": "class_name",
+		"start": 156,
 		"end": 159
 	},
 	{
 		"type": "number",
 		"start": 160,
+		"end": 163
+	},
+	{
+		"type": "class_name",
+		"start": 163,
 		"end": 166
 	},
 	{
 		"type": "number",
 		"start": 167,
+		"end": 171
+	},
+	{
+		"type": "class_name",
+		"start": 171,
 		"end": 174
 	}
 ];

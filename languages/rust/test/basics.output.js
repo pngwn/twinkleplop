@@ -155,7 +155,7 @@ export const test = [
 		"end": 106
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 107,
 		"end": 112
 	},
@@ -215,7 +215,7 @@ export const test = [
 		"end": 146
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 147,
 		"end": 152
 	},
@@ -490,7 +490,7 @@ export const test = [
 		"end": 317
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 318,
 		"end": 324
 	},
@@ -500,7 +500,7 @@ export const test = [
 		"end": 325
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 325,
 		"end": 326
 	},
@@ -515,7 +515,7 @@ export const test = [
 		"end": 329
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 334,
 		"end": 338
 	},
@@ -525,7 +525,7 @@ export const test = [
 		"end": 339
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 339,
 		"end": 340
 	},
@@ -535,7 +535,7 @@ export const test = [
 		"end": 342
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 347,
 		"end": 351
 	},
@@ -555,7 +555,7 @@ export const test = [
 		"end": 361
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 362,
 		"end": 369
 	},
@@ -600,7 +600,7 @@ export const test = [
 		"end": 392
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 393,
 		"end": 399
 	},

@@ -255,7 +255,7 @@ export default [
 		"end": 152
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 153,
 		"end": 159
 	},

@@ -230,7 +230,7 @@ export default [
 		"end": 177
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 177,
 		"end": 180
 	},

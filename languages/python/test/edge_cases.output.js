@@ -660,7 +660,7 @@ export const test = [
 		"match": "in"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 251,
 		"end": 256,
 		"match": "range"
@@ -768,7 +768,7 @@ export const test = [
 		"match": "class"
 	},
 	{
-		"type": "class_name",
+		"type": "identifier",
 		"start": 298,
 		"end": 299,
 		"match": "C"
@@ -876,7 +876,7 @@ export const test = [
 		"match": "->"
 	},
 	{
-		"type": "builtin",
+		"type": "identifier",
 		"start": 374,
 		"end": 377,
 		"match": "str"

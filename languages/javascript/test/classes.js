@@ -20,7 +20,7 @@ export default [
 		"end": 29
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 32,
 		"end": 43
 	},
@@ -80,7 +80,7 @@ export default [
 		"end": 77
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 81,
 		"end": 86
 	},
@@ -105,7 +105,7 @@ export default [
 		"end": 103
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 103,
 		"end": 106
 	},
@@ -195,7 +195,7 @@ export default [
 		"end": 192
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 195,
 		"end": 206
 	},
@@ -285,7 +285,7 @@ export default [
 		"end": 266
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 270,
 		"end": 275
 	},
@@ -310,7 +310,7 @@ export default [
 		"end": 290
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 290,
 		"end": 295
 	},
@@ -330,7 +330,7 @@ export default [
 		"end": 311
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 311,
 		"end": 314
 	},
@@ -410,7 +410,7 @@ export default [
 		"end": 400
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 401,
 		"end": 414
 	},
@@ -520,7 +520,7 @@ export default [
 		"end": 515
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 519,
 		"end": 532
 	},
@@ -535,7 +535,7 @@ export default [
 		"end": 537
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 541,
 		"end": 552
 	},
@@ -600,7 +600,7 @@ export default [
 		"end": 602
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 603,
 		"end": 607
 	},
@@ -680,7 +680,7 @@ export default [
 		"end": 694
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 697,
 		"end": 708
 	},
@@ -735,7 +735,7 @@ export default [
 		"end": 764
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 765,
 		"end": 772
 	},
@@ -820,7 +820,7 @@ export default [
 		"end": 874
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 875,
 		"end": 882
 	},
@@ -870,7 +870,7 @@ export default [
 		"end": 923
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 924,
 		"end": 931
 	},
@@ -935,7 +935,7 @@ export default [
 		"end": 978
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 979,
 		"end": 989
 	},
@@ -1015,7 +1015,7 @@ export default [
 		"end": 1041
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 1042,
 		"end": 1052
 	},
@@ -1185,7 +1185,7 @@ export default [
 		"end": 1198
 	},
 	{
-		"type": "function",
+		"type": "identifier",
 		"start": 1199,
 		"end": 1209
 	},
