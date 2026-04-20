@@ -25,10 +25,22 @@
 // braces by their own token type and does not depend on what the
 // expression body has become.
 
-import type { Reclassifier, TokenizeResult } from "@twinkleplop/core";
-import { embed_grammars } from "@twinkleplop/core";
+import type {
+	LanguageFn,
+	LanguagePipeline,
+	Reclassifier,
+	TokenizeResult,
+} from "@twinkleplop/core";
+import { always, embed_grammars } from "@twinkleplop/core";
 import { language as css_language } from "@twinkleplop/css";
 import { language as js_language } from "@twinkleplop/javascript";
+
+// cached default-fidelity sub-tokenizers for embed call sites (see HTML
+// package for rationale).
+let js_fn: LanguageFn | undefined;
+let css_fn: LanguageFn | undefined;
+const js_default = (src: string) => (js_fn ??= js_language())(src);
+const css_default = (src: string) => (css_fn ??= css_language())(src);
 
 const BLOCK_OR_AT_SIGILS = new Set(["#", ":", "/", "@"]);
 
@@ -75,11 +87,14 @@ const rewrite_block_braces: Reclassifier = (
 	return result;
 };
 
-export const reclassifiers = [
-	rewrite_block_braces,
-	embed_grammars({
-		raw_script: (src) => js_language(src),
-		raw_style: (src) => css_language(src),
-		raw_svelte_expression: (src) => js_language(src),
-	}),
+export const reclassifiers: LanguagePipeline = [
+	always(rewrite_block_braces, "type_claim"),
+	always(
+		embed_grammars({
+			raw_script: js_default,
+			raw_style: css_default,
+			raw_svelte_expression: js_default,
+		}),
+		"embed",
+	),
 ];

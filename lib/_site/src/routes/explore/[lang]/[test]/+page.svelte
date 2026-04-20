@@ -8,6 +8,7 @@
 	import RaceBar from "$lib/components/explore/RaceBar.svelte";
 	import TweaksPanel from "$lib/components/explore/TweaksPanel.svelte";
 
+	import { SvelteSet } from "svelte/reactivity";
 	import {
 		DEFAULT_TWEAKS,
 		THEMES,
@@ -56,13 +57,45 @@
 	const all_languages = Object.keys(grammar_loaders);
 	const sample_options = $derived(data.css_files.map(([file]) => file));
 
-	let grammar = $state<((src: string) => tokenize_result) | undefined>();
+	// the factory reference is kept separately from the resolved grammar so
+	// flipping a fidelity tag just re-runs the derivation below without
+	// re-importing the language module.
+	let make_language = $state<
+		((opts?: unknown) => (src: string) => tokenize_result) | undefined
+	>();
+	let available_tags = $state<string[]>([]);
+	let enabled_tags = new SvelteSet<string>();
 
 	async function load_grammar() {
 		const loader = grammar_loaders[data.lang];
-		if (!loader) return;
-		const mod = (await loader()) as { language?: (src: string) => tokenize_result };
-		grammar = mod.language;
+		if (!loader) {
+			make_language = undefined;
+			available_tags = [];
+			enabled_tags.clear();
+			return;
+		}
+		const mod = (await loader()) as {
+			language?: (options?: unknown) => (src: string) => tokenize_result;
+			reclassifiers?: Array<
+				| ((...a: unknown[]) => unknown)
+				| { reclassifier: unknown; produces: string[] }
+			>;
+		};
+		const tags: string[] = [];
+		const seen = new Set<string>();
+		for (const entry of mod.reclassifiers ?? []) {
+			if (typeof entry === "function") continue;
+			for (const p of entry.produces) {
+				if (!seen.has(p)) {
+					seen.add(p);
+					tags.push(p);
+				}
+			}
+		}
+		available_tags = tags;
+		enabled_tags.clear();
+		for (const tag of tags) enabled_tags.add(tag);
+		make_language = mod.language;
 	}
 
 	$effect(() => {
@@ -70,6 +103,22 @@
 		data.lang;
 		load_grammar();
 	});
+
+	let grammar = $derived.by(() => {
+		if (!make_language) return undefined;
+		const fidelity =
+			enabled_tags.size === 0
+				? "low"
+				: enabled_tags.size === available_tags.length
+					? "high"
+					: [...enabled_tags];
+		return make_language({ fidelity });
+	});
+
+	function toggle_tag(tag: string) {
+		if (enabled_tags.has(tag)) enabled_tags.delete(tag);
+		else enabled_tags.add(tag);
+	}
 
 	// source buffer: starts with the server-provided file, editable locally.
 	let source = $state("");
@@ -246,6 +295,23 @@
 		on_toggle_visible={() => (source_open = !source_open)}
 	/>
 
+	{#snippet fidelity_meta()}
+		{#if available_tags.length > 0}
+			<div class="fidelity-tags">
+				{#each available_tags as tag (tag)}
+					<label class="fidelity-tag">
+						<input
+							type="checkbox"
+							checked={enabled_tags.has(tag)}
+							onchange={() => toggle_tag(tag)}
+						/>
+						<span>{tag}</span>
+					</label>
+				{/each}
+			</div>
+		{/if}
+	{/snippet}
+
 	<div class="panes" style={palette_style}>
 		<CodePane
 			pane_id="plop"
@@ -259,6 +325,7 @@
 			font={tweaks.font}
 			perf_ms={plop_ms}
 			perf_token_count={plop_token_count}
+			meta={fidelity_meta}
 		/>
 		<div class="panes__gutter" aria-hidden="true">
 			<div class="panes__trace"></div>
@@ -295,3 +362,32 @@
 		on_close={() => (tweaks_visible = false)}
 	/>
 </div>
+
+<style>
+	.fidelity-tags {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5em;
+	}
+	.fidelity-tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3em;
+		font-size: 0.7rem;
+		letter-spacing: 0.05em;
+		color: var(--fg-muted);
+		cursor: pointer;
+		user-select: none;
+	}
+	.fidelity-tag input {
+		margin: 0;
+		width: 0.85em;
+		height: 0.85em;
+		accent-color: var(--accent);
+		cursor: pointer;
+	}
+	.fidelity-tag:hover {
+		color: var(--fg);
+	}
+</style>

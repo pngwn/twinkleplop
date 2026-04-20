@@ -1,23 +1,33 @@
 // TypeScript reclassifiers.
 //
-// The JavaScript pipeline (function-variable detection, interface-member
-// promotion, tagged-template embedding) still applies. In addition,
-// TypeScript runs a `type_position_promoter` that walks the token stream
-// once and rewrites identifiers appearing in type position to the `type`
-// token, so custom type references (User, Promise, Array, ...) highlight
-// the same as built-in types.
+// The JavaScript pipeline (function-variable detection, scope-aware property
+// claims, tagged-template embedding) still applies. In addition, TypeScript
+// runs a `type_position_promoter` that walks the token stream once and
+// rewrites identifiers appearing in type position to the `type` token, so
+// custom type references (User, Promise, Array, ...) highlight the same as
+// built-in types.
 
-import type { Reclassifier } from "@twinkleplop/core";
+import type {
+	Claim,
+	ClaimFn,
+	ClaimingReclassifier,
+	LanguagePipeline,
+	Reclassifier,
+} from "@twinkleplop/core";
 import {
+	always,
+	as_claim_producer,
 	embed_interleaved,
+	make_token_view,
 	promote_by_text_set,
 	rewrite_types,
+	tag,
 } from "@twinkleplop/core";
 
 import {
+	claim_property_scope,
 	class_name_promoter,
 	function_variable_rules,
-	interface_member_promoter,
 	promote_boolean_literals,
 	promote_call_site_functions,
 	scan_tagged_template,
@@ -26,9 +36,9 @@ import {
 import { BUILTIN_TYPES } from "./grammar.js";
 
 export {
+	claim_property_scope,
 	class_name_promoter,
 	function_variable_rules,
-	interface_member_promoter,
 	promote_boolean_literals,
 	promote_call_site_functions,
 	scan_tagged_template,
@@ -173,6 +183,20 @@ const STMT_KEYWORD_TERMINATORS = new Set([
 	"type",
 ]);
 
+// keywords that can legitimately be the LAST token of a type expression.
+// used by the `{` exit check so return annotations like `(): this {` and
+// `(): T | undefined {` correctly terminate type mode at the method body.
+const TYPE_TERMINAL_KEYWORDS = new Set([
+	"this",
+	"void",
+	"undefined",
+	"null",
+	"never",
+	"unknown",
+	"any",
+	"object",
+]);
+
 // keywords that reset the in-var-decl flag (start a fresh statement).
 const STMT_STARTERS = new Set([
 	"if",
@@ -199,43 +223,43 @@ const STMT_STARTERS = new Set([
 	"return",
 ]);
 
-export const type_position_promoter: Reclassifier = (input, result) => {
-	const { tokens, token_types } = result;
+// precedence for TPP's type claims. uses the default `type` precedence
+// (45), which beats function (30) / property (20) / identifier (0). TPP no
+// longer emits claims on annotation anchors — `claim_property_scope` and
+// `function_variable_rules` are now each the SOLE owner of their shape
+// (scope-aware `:` classification and `=`-assignment respectively), so
+// there's no over-claimer for TPP to correct.
+const TPP_TYPE_PREC = 45;
+
+const type_position_promoter_fn: ClaimFn = (input, tokens, token_types) => {
+	const claims: Claim[] = [];
 	const n = tokens.length / 3;
-	if (n === 0) return result;
+	if (n === 0) return claims;
 
 	const identifier_id = token_types.indexOf("identifier");
 	const keyword_id = token_types.indexOf("keyword");
 	const punctuation_id = token_types.indexOf("punctuation");
 	const operator_id = token_types.indexOf("operator");
-	const comment_id = token_types.indexOf("comment");
 	const type_id = token_types.indexOf("type");
 
 	// only run in grammars that emit a `type` token (typescript). plain JS
 	// doesn't register this type, so the pass is a no-op there.
-	if (type_id < 0) return result;
+	if (type_id < 0) return claims;
 	if (
 		identifier_id < 0 ||
 		keyword_id < 0 ||
 		punctuation_id < 0 ||
 		operator_id < 0
 	) {
-		return result;
+		return claims;
 	}
 
-	const kind_of = (i: number): number => tokens[i * 3];
-	const text_of = (i: number): string =>
-		input.slice(tokens[i * 3 + 1], tokens[i * 3 + 2]);
-	const is_trivia = (i: number): boolean =>
-		i >= 0 && i < n && kind_of(i) === comment_id;
-	const next_nt = (from: number): number => {
-		for (let i = from; i < n; i++) if (!is_trivia(i)) return i;
-		return -1;
-	};
-	const prev_nt = (from: number): number => {
-		for (let i = from; i >= 0; i--) if (!is_trivia(i)) return i;
-		return -1;
-	};
+	const view = make_token_view(input, tokens, token_types);
+	const kind_of = view.kind_of;
+	const text_of = view.text_of;
+	const is_trivia = view.is_trivia;
+	const next_nt = view.next_non_trivia;
+	const prev_nt = view.prev_non_trivia;
 
 	let paren_depth = 0;
 	let brace_depth = 0;
@@ -534,6 +558,11 @@ export const type_position_promoter: Reclassifier = (input, result) => {
 							closer_from_prev_token = true;
 						} else if (pk === operator_id && text_of(p) === ">") {
 							closer_from_prev_token = true;
+						} else if (pk === keyword_id && TYPE_TERMINAL_KEYWORDS.has(text_of(p))) {
+							// type expressions often end on a keyword like
+							// `this`, `void`, `undefined`, etc. — treat them as
+							// the same closing signal as an identifier / type.
+							closer_from_prev_token = true;
 						}
 					}
 				}
@@ -703,7 +732,13 @@ export const type_position_promoter: Reclassifier = (input, result) => {
 						if (nt === ":" || nt === "?:") skip = true;
 					}
 				}
-				if (!skip) tokens[i * 3] = type_id;
+				if (!skip) {
+					claims.push({
+						token_idx: i,
+						type_id,
+						precedence: TPP_TYPE_PREC,
+					});
+				}
 			}
 			continue;
 		}
@@ -720,25 +755,15 @@ export const type_position_promoter: Reclassifier = (input, result) => {
 			}
 			const kind = classify_colon(i);
 			if (kind) {
-				// for param / field annotations, demote the anchor if an
-				// earlier pass (function_variable_rules) classified it as
-				// `function` — something like `handler: () => void` is a
-				// function-typed member, not a function assignment. we skip
-				// this for annotation_var because `const f: T = () => ...`
-				// still semantically holds a function value and matches the
-				// Prism convention of keeping `f` as `function`.
-				if (
-					kind === "annotation_param" ||
-					kind === "annotation_field"
-				) {
-					const function_id = token_types.indexOf("function");
-					if (function_id >= 0) {
-						const anchor = prev_nt(i - 1);
-						if (anchor >= 0 && tokens[anchor * 3] === function_id) {
-							tokens[anchor * 3] = identifier_id;
-						}
-					}
-				}
+				// step 6 change: no identifier claim is emitted on the anchor
+				// anymore. the old "demote function → identifier" hack was
+				// needed because function_variable_rules overclaimed `function`
+				// on any `ident : arrow` shape (class fields, function params,
+				// interface members). fn_var now only claims for `=` shapes,
+				// and claim_property_scope is the sole owner of `:` positions,
+				// so class fields and function params simply never receive a
+				// competing claim — they stay `identifier` by default. the
+				// type-mode state machine below is unchanged.
 				enter_mode(kind);
 			}
 			continue;
@@ -807,28 +832,35 @@ export const type_position_promoter: Reclassifier = (input, result) => {
 		}
 	}
 
-	return result;
+	return claims;
 };
 
-export const reclassifiers: Reclassifier[] = [
+export const type_position_promoter: ClaimingReclassifier = as_claim_producer(
+	type_position_promoter_fn,
+);
+
+export const reclassifiers: LanguagePipeline = [
 	// restoration first: bring the stream up to the fidelity the JS / TS
 	// grammars used to emit directly (boolean, call-site function, builtin
 	// type). these must run before type_position_promoter because it may
 	// demote function tokens that appear inside type positions.
-	promote_boolean_literals,
-	promote_call_site_functions,
-	promote_builtin_types,
-	// run the JS function-variable rules next so the type-position pass
-	// can see (and where needed, correct) their output. the type-position
-	// pass slots in before the interface-member promoter so that demoted
-	// `function` → `identifier` tokens inside interface bodies still get
-	// a chance to be promoted to `property` by the interface pass.
-	// class_name_promoter runs last among the identifier-rewriters so it
-	// has the final say on positions it specifically owns (class/interface
-	// heads, `new`, `instanceof`).
-	rewrite_types(function_variable_rules, { trivia: ["comment"] }),
-	type_position_promoter,
-	interface_member_promoter,
-	class_name_promoter,
-	embed_interleaved({ scan: scan_tagged_template }),
+	tag(promote_boolean_literals, ["boolean"]),
+	tag(promote_call_site_functions, ["function"]),
+	tag(promote_builtin_types, ["type"]),
+	// claim_property_scope batches with function_variable_rules above —
+	// both see the base stream, their claims merge by precedence. interface
+	// members claim at prec 35 (beats function's 30) so `cb: () => X` in
+	// an interface resolves to property without needing a separate
+	// re-promotion pass. class fields never get a property claim, so
+	// type_position_promoter doesn't need class_field_demoter to clean up
+	// after it. class_name_promoter runs last among the identifier-rewriters
+	// so it has the final say on positions it specifically owns
+	// (class/interface heads, `new`, `instanceof`).
+	tag(rewrite_types(function_variable_rules, { trivia: ["comment"] }), [
+		"function",
+	]),
+	tag(claim_property_scope, ["property"]),
+	tag(type_position_promoter, ["type"]),
+	tag(class_name_promoter, ["class_name"]),
+	always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
 ];

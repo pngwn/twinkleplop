@@ -2,7 +2,9 @@ import { describe, expect, it, test } from "vitest";
 import { verify } from "@twinkleplop/core/compile";
 import fs from "node:fs";
 import path from "node:path";
-import { language, raw_grammar } from "./index.js";
+import { language as make_language, raw_grammar } from "./index.js";
+
+const language = make_language();
 
 const md_path = path.join(import.meta.dirname, "..", "test");
 const md_files = fs

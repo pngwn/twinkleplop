@@ -20,6 +20,10 @@ interface HighlightOptions {
 	twoslash?: object;
 }
 
+// bind a default-fidelity svelte highlighter once; the twoslash flow is
+// not fidelity-configurable today.
+const svelte = svelte_language();
+
 /**
  * Create a reusable Svelte highlighter. Caches the underlying
  * twoslash TypeScript environment across calls.
@@ -28,7 +32,7 @@ export function create_highlighter(options: HighlightOptions = {}) {
 	const twoslasher = create_twoslasher(options.twoslash ?? {});
 	return (code: string) => {
 		const result = twoslasher(code, "svelte");
-		const tokens = svelte_language(result.code);
+		const tokens = svelte(result.code);
 		return render(result.code, tokens, result, options);
 	};
 }

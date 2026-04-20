@@ -2,7 +2,9 @@
 // JavaScript and CSS via the reclassifier pipeline.
 
 import { describe, it, expect } from "vitest";
-import { language } from "./index.js";
+import { language as make_language } from "./index.js";
+
+const language = make_language();
 
 function tokens_of(src: string) {
 	const result = language(src);

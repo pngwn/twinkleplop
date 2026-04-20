@@ -1,0 +1,20 @@
+// collects user scores and renders them as html.
+import { render } from "./lib.js";
+
+const MAX = 100;
+const users = [
+  { name: "ada\tlovelace", score: 93, active: true },
+  { name: "alan",          score: null, active: false },
+];
+
+class Scoreboard {
+  constructor(entries) { this.entries = entries; }
+  top() { return this.entries.filter((e) => e.active).sort((a, b) => b.score - a.score); }
+}
+
+const re = /^[a-z]+$/i;
+const format = (u) => `${u.name}: ${u.score ?? "-"}`;
+const styles = css`:root { --fg: #1f2328; } body .scores { padding: 1rem; color: var(--fg); } .scores:hover { cursor: pointer; }`;
+const markup = html`<!doctype html><ul class="scores" id="board">${users.map((u) => `<li>${format(u)}</li>`).join("")}</ul>`;
+
+render(markup, styles);

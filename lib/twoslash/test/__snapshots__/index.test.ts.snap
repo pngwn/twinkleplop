@@ -2,12 +2,12 @@
 
 exports[`@twinkleplop/twoslash > renders a ^? query annotation 1`] = `
 "<pre class="highlight twoslash"><code><span class="keyword">const</span> <span class="twoslash-hover"><span class="twoslash-target"><span class="identifier">point</span></span><span class="twoslash-popover"><span class="twoslash-popover-type"><span class="keyword">const</span> <span class="identifier">point</span><span class="operator">:</span> <span class="punctuation">{</span>
-    <span class="identifier">x</span><span class="operator">:</span> <span class="identifier">number</span><span class="punctuation">;</span>
-    <span class="identifier">y</span><span class="operator">:</span> <span class="identifier">number</span><span class="punctuation">;</span>
+    <span class="property">x</span><span class="operator">:</span> <span class="identifier">number</span><span class="punctuation">;</span>
+    <span class="property">y</span><span class="operator">:</span> <span class="identifier">number</span><span class="punctuation">;</span>
 <span class="punctuation">}</span></span></span></span> <span class="operator">=</span> <span class="punctuation">{</span> <span class="twoslash-hover"><span class="twoslash-target"><span class="property">x</span></span><span class="twoslash-popover"><span class="twoslash-popover-type"><span class="punctuation">(</span><span class="identifier">property</span><span class="punctuation">)</span> <span class="identifier">x</span><span class="operator">:</span> <span class="identifier">number</span></span></span></span><span class="operator">:</span> <span class="number">1</span><span class="punctuation">,</span> <span class="twoslash-hover"><span class="twoslash-target"><span class="property">y</span></span><span class="twoslash-popover"><span class="twoslash-popover-type"><span class="punctuation">(</span><span class="identifier">property</span><span class="punctuation">)</span> <span class="identifier">y</span><span class="operator">:</span> <span class="identifier">number</span></span></span></span><span class="operator">:</span> <span class="number">2</span> <span class="punctuation">}</span>
 <span class="twoslash-query"><span class="twoslash-query-type"><span class="keyword">const</span> <span class="identifier">point</span><span class="operator">:</span> <span class="punctuation">{</span>
-    <span class="identifier">x</span><span class="operator">:</span> <span class="identifier">number</span><span class="punctuation">;</span>
-    <span class="identifier">y</span><span class="operator">:</span> <span class="identifier">number</span><span class="punctuation">;</span>
+    <span class="property">x</span><span class="operator">:</span> <span class="identifier">number</span><span class="punctuation">;</span>
+    <span class="property">y</span><span class="operator">:</span> <span class="identifier">number</span><span class="punctuation">;</span>
 <span class="punctuation">}</span></span></span></code></pre>"
 `;
 

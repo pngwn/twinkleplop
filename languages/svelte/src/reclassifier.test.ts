@@ -3,7 +3,9 @@
 // `{expression}` interpolations and block expression bodies.
 
 import { describe, expect, it } from "vitest";
-import { language } from "./index.js";
+import { language as make_language } from "./index.js";
+
+const language = make_language();
 
 function enrich(src: string) {
 	const result = language(src);

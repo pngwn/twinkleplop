@@ -29,7 +29,12 @@
 //    keyword classification to a post-pass that only inspects whole
 //    identifier tokens sidesteps every mid-word false-positive.
 
-import type { Reclassifier, TokenizeResult } from "@twinkleplop/core";
+import { always, tag } from "@twinkleplop/core";
+import type {
+	LanguagePipeline,
+	Reclassifier,
+	TokenizeResult,
+} from "@twinkleplop/core";
 import { RESERVED_SET, BUILTIN_SET, BOOLEAN_SET } from "./grammar.js";
 
 const is_ident_char = (ch: string): boolean => {
@@ -255,4 +260,13 @@ export const merge_numbers: Reclassifier = (
 //      arithmetic back into single number tokens.
 //   3. promote_keywords — rewrites plain identifier tokens that match
 //      reserved words / builtins / booleans to their proper types.
-export const reclassifiers = [extend_variables, merge_numbers, promote_keywords];
+//
+// extend_variables and merge_numbers are token-boundary corrections — they
+// reshape the stream in ways that downstream consumers and grammars assume,
+// so they run at every fidelity. promote_keywords is the identifier-fidelity
+// pass and can be dropped via `fidelity: 'low'`.
+export const reclassifiers: LanguagePipeline = [
+	always(extend_variables, "shape"),
+	always(merge_numbers, "shape"),
+	tag(promote_keywords, ["keyword", "builtin", "boolean"]),
+];

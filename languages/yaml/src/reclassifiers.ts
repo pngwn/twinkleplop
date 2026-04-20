@@ -23,7 +23,12 @@
 //
 // Anything that does not match stays as `identifier`.
 
-import type { Reclassifier, TokenizeResult } from "@twinkleplop/core";
+import { tag } from "@twinkleplop/core";
+import type {
+	LanguagePipeline,
+	Reclassifier,
+	TokenizeResult,
+} from "@twinkleplop/core";
 
 const BOOLEAN_VALUES = new Set([
 	"true",
@@ -224,4 +229,7 @@ export const promote_keys: Reclassifier = (
 	return { tokens, token_types };
 };
 
-export const reclassifiers = [classify_scalars, promote_keys];
+export const reclassifiers: LanguagePipeline = [
+	tag(classify_scalars, ["boolean", "null", "number"]),
+	tag(promote_keys, ["property"]),
+];

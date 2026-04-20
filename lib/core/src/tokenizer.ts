@@ -1087,8 +1087,15 @@ export function tokenize(
 	}
 	// INTROSPECTION_END
 
+	// return a FRESH copy of token_types so downstream reclassifiers that
+	// push new type names (promote_by_text_set, interface_member_promoter,
+	// class_name_promoter, ...) can't mutate the compiled grammar's shared
+	// array. without this, the grammar's vocabulary grows across calls and
+	// rewrite_types's cached-bytecode integer ids drift — functions can end
+	// up relabeled as types after a prior call appended "type" to the
+	// grammar's token_types.
 	return {
 		tokens: tokens.subarray(0, token_count * 3),
-		token_types: token_types,
+		token_types: token_types.slice(),
 	};
 }

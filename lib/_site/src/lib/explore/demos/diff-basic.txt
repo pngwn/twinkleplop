@@ -1,0 +1,7 @@
+@@ -1,5 +1,6 @@ function start(opts) {
+   import { start } from "./core";
+-  const port = 3000;
++  const port = 8080;
++  const host = "0.0.0.0";
+!  const retries = 3;
+   start({ port });

@@ -18,15 +18,22 @@
 // one `operator` token for `&`.
 
 import {
-	rewrite_types,
-	seq,
-	type,
+	always,
 	any_of,
 	balanced_parens,
+	make_token_view,
 	promote_by_text_set,
 	promote_pascal_case,
+	rewrite_types,
+	seq,
+	tag,
+	type,
 } from "@twinkleplop/core";
-import type { Reclassifier, TokenizeResult } from "@twinkleplop/core";
+import type {
+	LanguagePipeline,
+	Reclassifier,
+	TokenizeResult,
+} from "@twinkleplop/core";
 
 import { BOOLEAN_LITERALS, PRIMITIVE_TYPES } from "./grammar.js";
 
@@ -96,50 +103,35 @@ const reclassify_generics = (): Reclassifier => {
 		const class_name_id = token_types.indexOf("class_name");
 		const keyword_id = token_types.indexOf("keyword");
 		const identifier_id = token_types.indexOf("identifier");
-		const comment_id = token_types.indexOf("comment");
 
 		if (operator_id === -1 || punctuation_id === -1) {
 			return { tokens, token_types };
 		}
 
-		const count = tokens.length / 3;
-
-		const is_trivia = (type_id: number): boolean => type_id === comment_id;
-
-		const prev_non_trivia = (idx: number): number => {
-			for (let i = idx - 1; i >= 0; i--) {
-				if (!is_trivia(tokens[i * 3])) return i;
-			}
-			return -1;
-		};
-
-		const token_text = (idx: number): string => {
-			const s = tokens[idx * 3 + 1];
-			const e = tokens[idx * 3 + 2];
-			return input.slice(s, e);
-		};
+		const view = make_token_view(input, tokens, token_types);
+		const count = view.count;
 
 		// check if the `<` at index i likely opens a type-generics block.
 		const is_type_position = (i: number): boolean => {
-			const prev = prev_non_trivia(i);
+			const prev = view.prev_non_trivia(i - 1);
 			if (prev < 0) return false;
-			const prev_type = tokens[prev * 3];
+			const prev_type = view.kind_of(prev);
 
 			if (prev_type === class_name_id) return true;
 
-			if (prev_type === punctuation_id && token_text(prev) === "::") {
+			if (prev_type === punctuation_id && view.text_of(prev) === "::") {
 				return true;
 			}
 
 			if (prev_type === keyword_id) {
-				return GENERIC_LEADING_KEYWORDS.has(token_text(prev));
+				return GENERIC_LEADING_KEYWORDS.has(view.text_of(prev));
 			}
 
 			if (prev_type === identifier_id) {
-				const prev_prev = prev_non_trivia(prev);
+				const prev_prev = view.prev_non_trivia(prev - 1);
 				if (prev_prev < 0) return false;
-				if (tokens[prev_prev * 3] !== keyword_id) return false;
-				return GENERIC_NAME_LEADING_KEYWORDS.has(token_text(prev_prev));
+				if (view.kind_of(prev_prev) !== keyword_id) return false;
+				return GENERIC_NAME_LEADING_KEYWORDS.has(view.text_of(prev_prev));
 			}
 
 			return false;
@@ -151,8 +143,8 @@ const reclassify_generics = (): Reclassifier => {
 		const find_close = (start: number): number => {
 			let depth = 1;
 			for (let i = start + 1; i < count; i++) {
-				if (tokens[i * 3] !== operator_id) continue;
-				const value = token_text(i);
+				if (view.kind_of(i) !== operator_id) continue;
+				const value = view.text_of(i);
 
 				if (value === "<") {
 					depth++;
@@ -176,16 +168,16 @@ const reclassify_generics = (): Reclassifier => {
 		};
 
 		for (let i = 0; i < count; i++) {
-			if (tokens[i * 3] !== operator_id) continue;
-			if (token_text(i) !== "<") continue;
+			if (view.kind_of(i) !== operator_id) continue;
+			if (view.text_of(i) !== "<") continue;
 			if (!is_type_position(i)) continue;
 
 			const close_idx = find_close(i);
 			if (close_idx === -1) continue;
 
 			for (let j = i; j <= close_idx; j++) {
-				if (tokens[j * 3] !== operator_id) continue;
-				const v = token_text(j);
+				if (view.kind_of(j) !== operator_id) continue;
+				const v = view.text_of(j);
 				if (v === "<" || v === ">" || v === ">>") {
 					tokens[j * 3] = punctuation_id;
 				}
@@ -268,11 +260,17 @@ const extend_lifetime_over_type = (): Reclassifier => {
 // extend_lifetime_over_type now refuses to absorb an identifier that is
 // itself followed by `(`, so it commutes with function_call_rules — either
 // ordering produces the same output.
-export const reclassifiers = [
-	promote_rust_booleans,
-	promote_rust_primitive_types,
-	promote_rust_pascal_case,
-	reclassify_generics(),
-	rewrite_types(function_call_rules, { trivia: ["comment"] }),
-	extend_lifetime_over_type(),
+// reclassify_generics is a correctness pass — it rewrites operator `<`/`>`
+// to punctuation at type-generic boundaries so downstream consumers can
+// distinguish generic brackets from comparison operators. it runs at every
+// fidelity.
+export const reclassifiers: LanguagePipeline = [
+	tag(promote_rust_booleans, ["boolean"]),
+	tag(promote_rust_primitive_types, ["class_name"]),
+	tag(promote_rust_pascal_case, ["class_name"]),
+	always(reclassify_generics(), "type_claim"),
+	tag(rewrite_types(function_call_rules, { trivia: ["comment"] }), [
+		"function",
+	]),
+	tag(extend_lifetime_over_type(), ["lifetime"], "shape"),
 ];

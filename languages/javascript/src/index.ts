@@ -2,9 +2,9 @@ import { create_language } from "@twinkleplop/core";
 import { compile } from "@twinkleplop/core/compile";
 import { default as raw_grammar } from "./grammar.js";
 import {
+	claim_property_scope,
 	class_name_promoter,
 	function_variable_rules,
-	interface_member_promoter,
 	promote_boolean_literals,
 	promote_call_site_functions,
 	reclassifiers,
@@ -23,19 +23,19 @@ import {
 // full enriched experience without composing anything by hand.
 //
 // Individual reclassifier pieces (`function_variable_rules`,
-// `interface_member_promoter`, `scan_tagged_template`) are exported so
-// benchmarks and advanced consumers can compose custom pipelines without
-// copy-pasting the canonical rules or opt out of the cross-language
-// tagged-template embedder when they want a JS-only pipeline.
+// `claim_property_scope`, `scan_tagged_template`) are exported so benchmarks
+// and advanced consumers can compose custom pipelines without copy-pasting
+// the canonical rules or opt out of the cross-language tagged-template
+// embedder when they want a JS-only pipeline.
 
 export const grammar = compile(raw_grammar);
 export const language = create_language(grammar, reclassifiers);
 export {
 	raw_grammar,
 	reclassifiers,
+	claim_property_scope,
 	class_name_promoter,
 	function_variable_rules,
-	interface_member_promoter,
 	promote_boolean_literals,
 	promote_call_site_functions,
 	scan_tagged_template,

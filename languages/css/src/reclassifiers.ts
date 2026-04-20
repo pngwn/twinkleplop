@@ -11,7 +11,8 @@
 // lookahead is `type("punctuation", "(")`. trivia (comments) between the
 // two is skipped by the rewrite engine.
 
-import { rewrite_types, seq, type } from "@twinkleplop/core";
+import { rewrite_types, seq, tag, type } from "@twinkleplop/core";
+import type { LanguagePipeline } from "@twinkleplop/core";
 
 export const function_call_rules = [
 	{
@@ -21,6 +22,8 @@ export const function_call_rules = [
 	},
 ];
 
-export const reclassifiers = [
-	rewrite_types(function_call_rules, { trivia: ["comment"] }),
+export const reclassifiers: LanguagePipeline = [
+	tag(rewrite_types(function_call_rules, { trivia: ["comment"] }), [
+		"function",
+	]),
 ];

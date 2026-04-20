@@ -22,7 +22,12 @@
 //
 // tokens outside any style keep their original type unchanged.
 
-import type { Reclassifier, TokenizeResult } from "@twinkleplop/core";
+import { tag } from "@twinkleplop/core";
+import type {
+	LanguagePipeline,
+	Reclassifier,
+	TokenizeResult,
+} from "@twinkleplop/core";
 
 const STYLE_OPEN: Record<string, string> = {
 	"bold_open": "bold",
@@ -133,4 +138,13 @@ export const compound_styles: Reclassifier = (
 	};
 };
 
-export const reclassifiers: Reclassifier[] = [compound_styles];
+export const reclassifiers: LanguagePipeline = [
+	tag(compound_styles, [
+		"bold",
+		"italic",
+		"strike",
+		"code",
+		"link_text",
+		"autolink",
+	]),
+];

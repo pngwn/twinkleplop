@@ -301,6 +301,9 @@ importers:
       kleur:
         specifier: ^4.1.5
         version: 4.1.5
+      sugar-high:
+        specifier: ^1.1.0
+        version: 1.1.0
     devDependencies:
       '@twinkleplop/core':
         specifier: workspace:*
@@ -1823,6 +1826,9 @@ packages:
 
   stringify-entities@4.0.4:
     resolution: {integrity: sha512-IwfBptatlO+QCJUo19AqvrPNqlVMpW9YEL2LIVY+Rpv2qsjCGxaDLNRgeGsQWJhfItebuJhsGSLjaBbNSQ+ieg==}
+
+  sugar-high@1.1.0:
+    resolution: {integrity: sha512-pL68G9H5VgK5z5aRAp8Yl4+obwbfEpr4BCCdO9V9JrWTFQiPMuN2GKxl9Vn/oxzkcS8TOTFFNti3LXe0UWX2Yw==}
 
   svelte-check@4.4.6:
     resolution: {integrity: sha512-kP1zG81EWaFe9ZyTv4ZXv44Csi6Pkdpb7S3oj6m+K2ec/IcDg/a8LsFsnVLqm2nxtkSwsd5xPj/qFkTBgXHXjg==}
@@ -3367,6 +3373,8 @@ snapshots:
     dependencies:
       character-entities-html4: 2.1.0
       character-entities-legacy: 3.0.0
+
+  sugar-high@1.1.0: {}
 
   svelte-check@4.4.6(picomatch@4.0.4)(svelte@5.55.3)(typescript@5.8.3):
     dependencies:

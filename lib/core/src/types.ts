@@ -93,8 +93,14 @@ export interface TokenizeResult {
 //
 // A Reclassifier is a pure function over a TokenizeResult that may rewrite
 // token types, splice new tokens in, or both. Multiple reclassifiers are
-// composed into a pipeline by `reclassify(...)`. Phase 1 only supports
-// in-place type rewriting via `rewrite_types`; future phases add embedding.
+// composed into a pipeline by `reclassify(...)`.
+//
+// Claim-producing reclassifiers (step 2 of the refactor) additionally carry
+// a `__claim` method that returns claims for a frozen input rather than
+// mutating. The pipeline runner batches adjacent claim-producers: each sees
+// the same base stream, their claims merge by precedence, and the winning
+// claims apply once. Passes without `__claim` still mutate in place and
+// break the batch.
 
 export type Reclassifier = (
 	input: string,
@@ -102,6 +108,88 @@ export type Reclassifier = (
 ) => TokenizeResult;
 
 export type ReclassifierPipeline = Reclassifier[];
+
+// A claim asserts that a given token should have a given type, at the given
+// precedence. Higher precedence wins during merge; when two claims tie on
+// precedence, the earlier-emitted claim wins (stable insertion order).
+export interface Claim {
+	token_idx: number;
+	type_id: number;
+	precedence: number;
+}
+
+// Claim-mode entry. A claim-producing reclassifier may append new names to
+// `token_types` (for types it wants to rewrite to) but MUST NOT mutate any
+// slot of `tokens`. Returned claims reference type_ids valid for the
+// (possibly extended) `token_types` array at call time.
+export type ClaimFn = (
+	input: string,
+	tokens: Uint32Array,
+	token_types: string[],
+) => Claim[];
+
+// A Reclassifier with a `__claim` property is claim-producing: callable in
+// apply mode (as a normal Reclassifier) and also usable in batch mode via
+// `.__claim`. The apply-mode path applies the claims itself; the batch path
+// defers application so multiple passes can merge claims by precedence.
+export type ClaimingReclassifier = Reclassifier & {
+	__claim: ClaimFn;
+};
+
+// reclassifier layers. a reclassifier belongs to exactly one layer, which
+// reflects what kind of transform it performs — and, post-refactor, which
+// execution tier it will run in once claims-based composition lands.
+//
+//   shape       — modifies the token STREAM (merges adjacent tokens, splits
+//                 tokens, otherwise changes token count / positions). must
+//                 run sequentially and before type_claim passes because
+//                 downstream passes' token indices depend on the final stream
+//                 shape. examples: bash/extend_variables, bash/merge_numbers,
+//                 rust/extend_lifetime_over_type.
+//   type_claim  — rewrites only token TYPES (no shape changes). the vast
+//                 majority of passes. in the current architecture these still
+//                 run sequentially; in the planned claims-based architecture
+//                 they will run against the base stream and merge by precedence.
+//   embed       — splices SUB-LANGUAGE tokens into the host stream. always
+//                 runs after all type_claim passes so sub-tokenization sees
+//                 the fully classified host tokens around it.
+//
+// the layer is metadata today (step 1 of the reclassifier refactor). later
+// steps drive the pipeline runner from these labels.
+export type ReclassifierLayer = "shape" | "type_claim" | "embed";
+
+// a tagged reclassifier advertises which token types it may produce and which
+// execution layer it belongs to. the language factory uses `produces` to decide
+// whether the pass runs under a given fidelity setting; an empty `produces`
+// array marks the pass as always-on (correctness / normalisation / embed
+// passes), equivalent to leaving the reclassifier untagged in earlier versions.
+export interface TaggedReclassifier {
+	reclassifier: Reclassifier;
+	produces: string[];
+	layer: ReclassifierLayer;
+}
+
+export type ReclassifierEntry = Reclassifier | TaggedReclassifier;
+export type LanguagePipeline = ReclassifierEntry[];
+
+// coarse fidelity tiers plus a fine-grained allowlist by output token type.
+//   'high'        — run every reclassifier (all produces). the default.
+//   'low'         — run only always-on entries; skip every tagged pass. the
+//                   output stream contains bare grammar-level tokens.
+//   string[]      — run always-on entries plus any tagged entry whose
+//                   `produces` intersects the list. unknown names are
+//                   silently ignored.
+export type FidelityLevel = "high" | "low";
+export type FidelitySpec = FidelityLevel | readonly string[];
+
+export interface LanguageOptions {
+	fidelity?: FidelitySpec;
+}
+
+// a compiled language: call the factory with options to get the tokenize
+// function for that configuration. `language()` (no args) is the default,
+// full-fidelity pipeline.
+export type LanguageFactory = (options?: LanguageOptions) => LanguageFn;
 
 // Pattern language for `rewrite_types` — tag-discriminated union so authors
 // build patterns with the exported combinator helpers (`type`, `seq`,

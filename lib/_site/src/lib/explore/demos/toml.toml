@@ -1,0 +1,19 @@
+# sample project manifest
+title = "Twinkleplop"
+version = "1.0.0"
+enabled = true
+port = 8080
+ratio = inf
+banner = "line 1\nline 2"
+released = 2026-04-20T09:30:00Z
+
+[package]
+name = "demo"
+authors = ["ada <ada@example.com>", "alan"]
+
+[dependencies]
+core = { version = "^1.0", features = ["fast"] }
+
+[[bin]]
+name = "cli"
+path = "src/cli.rs"

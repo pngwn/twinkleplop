@@ -17,6 +17,7 @@
 //     disambiguates.
 
 import {
+	always,
 	any_of,
 	balanced_parens,
 	optional,
@@ -25,9 +26,10 @@ import {
 	promote_pascal_case,
 	rewrite_types,
 	seq,
+	tag,
 	type,
 } from "@twinkleplop/core";
-import type { Reclassifier } from "@twinkleplop/core";
+import type { LanguagePipeline, Reclassifier } from "@twinkleplop/core";
 
 import { BOOLEAN_LITERALS, BUILTIN_TYPES } from "./grammar.js";
 
@@ -75,10 +77,13 @@ export const promote_python_function_calls: Reclassifier = promote_function_call
 	{ trivia: ["comment"] },
 );
 
-export const reclassifiers = [
-	promote_python_booleans,
-	promote_python_builtins,
-	promote_python_pascal_case,
-	rewrite_types(type_alias_rules, { trivia: ["comment"] }),
-	promote_python_function_calls,
+// type_alias_rules disambiguates PEP 695 soft-keyword `type` — a correctness
+// pass that should fire at every fidelity. the remaining restorations are
+// fidelity-gated by the target token type they produce.
+export const reclassifiers: LanguagePipeline = [
+	tag(promote_python_booleans, ["boolean"]),
+	tag(promote_python_builtins, ["builtin"]),
+	tag(promote_python_pascal_case, ["class_name"]),
+	always(rewrite_types(type_alias_rules, { trivia: ["comment"] }), "type_claim"),
+	tag(promote_python_function_calls, ["function"]),
 ];

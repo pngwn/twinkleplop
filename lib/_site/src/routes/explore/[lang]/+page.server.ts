@@ -1,22 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 
-// Per-language default test file for `/explore/<lang>` without a test param.
-// Each entry points to a real fixture name in `packages/<lang>/test/`.
-const DEFAULTS: Record<string, string> = {
-	whitespace: 'whitespace_css',
-	html: 'embedded',
-	svelte: 'counter',
-	rust: 'complex',
-	sql: 'complex',
-	python: 'classes',
-	go: 'basics',
-	diff: 'unified',
-	'diff-basic': 'basic_hunk',
-	tsx: 'ts_in_jsx',
-	typescript: 'classes'
-};
-
+// every language ships a "demo" snippet under
+// lib/_site/src/lib/explore/demos/<lang>.<ext> that exercises most token
+// types. it doubles as the landing sample for `/explore/<lang>`.
 export const load = async ({ params }) => {
-	const default_test = DEFAULTS[params.lang] ?? 'at_rules';
-	throw redirect(302, `${params.lang}/${default_test}`);
+	throw redirect(302, `${params.lang}/demo`);
 };

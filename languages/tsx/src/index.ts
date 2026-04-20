@@ -2,8 +2,8 @@ import { create_language } from "@twinkleplop/core";
 import { compile } from "@twinkleplop/core/compile";
 import { default as raw_grammar } from "./grammar.js";
 import {
+	claim_property_scope,
 	function_variable_rules,
-	interface_member_promoter,
 	reclassifiers,
 	scan_tagged_template,
 } from "./reclassifiers.js";
@@ -19,7 +19,7 @@ export const language = create_language(grammar, reclassifiers);
 export {
 	raw_grammar,
 	reclassifiers,
+	claim_property_scope,
 	function_variable_rules,
-	interface_member_promoter,
 	scan_tagged_template,
 };

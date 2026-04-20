@@ -45,7 +45,7 @@ export const light: theme_palette = {
 	decorator: "#8250df", // scale.purple[5] — entity.name.function fallback
 	lifetime: "#cf222e", // scale.red[5] — storage.modifier.lifetime fallback to keyword
 	property: "#0550ae", // scale.blue[6] — meta.property-name / support
-	type: "#cf222e", // scale.red[5] — storage.type → keyword
+	type: "#0550ae", // scale.blue[6] — entity.name.type / support.type
 	variable: "#1f2328", // fg.default — variable.other
 	function: "#8250df", // scale.purple[5] — entity.name.function
 
@@ -170,7 +170,7 @@ export const dark: theme_palette = {
 	decorator: "#d2a8ff", // scale.purple[2] — entity.name.function fallback
 	lifetime: "#ff7b72", // scale.red[3] — storage.modifier.lifetime fallback
 	property: "#79c0ff", // scale.blue[2] — meta.property-name
-	type: "#ff7b72", // scale.red[3] — storage.type
+	type: "#79c0ff", // scale.blue[2] — entity.name.type / support.type
 	variable: "#e6edf3", // fg.default — variable.other
 	function: "#d2a8ff", // scale.purple[2] — entity.name.function
 

@@ -287,7 +287,7 @@ const sub_grammar: Grammar = {
 	},
 };
 const sub_compiled = compile(sub_grammar);
-const sub_language: LanguageFn = create_language(sub_compiled, []);
+const sub_language: LanguageFn = create_language(sub_compiled, [])();
 
 function as_tokens(result: TokenizeResult, input: string) {
 	const out: { type: string; value: string; start: number; end: number }[] = [];
@@ -409,7 +409,7 @@ describe("reclassifier — embedGrammars", () => {
 				],
 				{},
 			),
-		]);
+		])();
 		const src = "<abc>";
 		const raw = tokenize(src, host_compiled);
 		const enriched = reclassify([
@@ -436,7 +436,7 @@ describe("reclassifier — embedGrammars", () => {
 			},
 		};
 		const compiled_sub = compile(colliding_sub);
-		const lang = create_language(compiled_sub, []);
+		const lang = create_language(compiled_sub, [])();
 		const src = "<abc>";
 		const raw = tokenize(src, host_compiled);
 		const enriched = reclassify([
@@ -588,7 +588,7 @@ describe("reclassifier — embedGrammars with trim and wrap", () => {
 		},
 	};
 	const tmpl_compiled = compile(tmpl_grammar);
-	const tmpl_lang: LanguageFn = create_language(tmpl_compiled, []);
+	const tmpl_lang: LanguageFn = create_language(tmpl_compiled, [])();
 
 	test("trim skips leading/trailing chars before sub-tokenizing", () => {
 		// `abc` → one coalesced template token spanning positions 0-5.
@@ -679,7 +679,13 @@ describe("reclassifier — embedGrammars with trim and wrap", () => {
 });
 
 describe("reclassifier — pipeline composition", () => {
-	test("transforms run in order", () => {
+	test("adjacent rewrite_types passes see the same base stream (batched)", () => {
+		// post-step-2, consecutive claim-producing reclassifiers (including
+		// rewrite_types) are batched: both passes see the ORIGINAL input,
+		// their claims accumulate, and merge by precedence. the second
+		// transform here anchors on "stage1" which does not exist in the
+		// base vocabulary, so its rule is skipped at compile time and the
+		// second pass contributes no claims. only `first`'s claim applies.
 		const first = rewrite_types(
 			[
 				{
@@ -690,8 +696,6 @@ describe("reclassifier — pipeline composition", () => {
 			],
 			{},
 		);
-		// The second transform sees the output of the first — the anchor type
-		// name has changed, so we key on "stage1" now.
 		const second = rewrite_types(
 			[
 				{
@@ -705,7 +709,73 @@ describe("reclassifier — pipeline composition", () => {
 		const raw = tokenize("a = 1", compiled);
 		const result = reclassify([first, second])("a = 1", raw);
 		const tokens = types_only(result, "a = 1");
+		expect(tokens.find((t) => t.value === "a")?.type).toBe("stage1");
+	});
+
+	test("non-claim reclassifier between two rewrite_types breaks the batch", () => {
+		// a plain mutating Reclassifier in the middle forces the first batch
+		// to flush before the second claim-producer runs. now the second
+		// sees the mutated stream, so chaining works again.
+		const first = rewrite_types(
+			[
+				{
+					anchor: "identifier",
+					when: type("operator", "="),
+					rewrite: "stage1",
+				},
+			],
+			{},
+		);
+		// identity mutating pass — forces the batch flush before `second`.
+		const noop: (
+			input: string,
+			result: TokenizeResult,
+		) => TokenizeResult = (_input, result) => result;
+		const second = rewrite_types(
+			[
+				{
+					anchor: "stage1",
+					when: type("operator", "="),
+					rewrite: "stage2",
+				},
+			],
+			{},
+		);
+		const raw = tokenize("a = 1", compiled);
+		const result = reclassify([first, noop, second])("a = 1", raw);
+		const tokens = types_only(result, "a = 1");
 		expect(tokens.find((t) => t.value === "a")?.type).toBe("stage2");
+	});
+
+	test("batched claims resolve by precedence, not order", () => {
+		// two rewrite_types passes targeting the same anchor with DIFFERENT
+		// target types. since the claim-producers are batched, both see the
+		// base stream and both emit a claim for `a`. precedence decides:
+		// `function` (30) beats `property` (20) regardless of which rule
+		// appears first in the pipeline.
+		const a = rewrite_types([
+			{
+				anchor: "identifier",
+				when: type("operator", "="),
+				rewrite: "function",
+			},
+		]);
+		const b = rewrite_types([
+			{
+				anchor: "identifier",
+				when: type("operator", "="),
+				rewrite: "property",
+			},
+		]);
+		const raw = tokenize("a = 1", compiled);
+		const ab = reclassify([a, b])("a = 1", raw);
+		const ba = reclassify([b, a])("a = 1", raw);
+		expect(types_only(ab, "a = 1").find((t) => t.value === "a")?.type).toBe(
+			"function",
+		);
+		expect(types_only(ba, "a = 1").find((t) => t.value === "a")?.type).toBe(
+			"function",
+		);
 	});
 
 	test("empty pipeline is a no-op", () => {
@@ -714,17 +784,21 @@ describe("reclassifier — pipeline composition", () => {
 		expect(result).toBe(raw);
 	});
 
-	test("rewrite_types leaves tokens referencing a fresh token_types array", () => {
+	test("rewrite_types does not pollute the grammar's shared token_types", () => {
+		// tokenize returns a fresh copy of the grammar's token_types, and
+		// rewrite_types further clones before mutating, so after a full
+		// pipeline run the grammar's original array is unchanged.
+		const grammar_types = compiled.token_types;
+		const grammar_types_len = grammar_types.length;
 		const raw = tokenize("a = 1", compiled);
-		const original_types = raw.token_types;
 		reclassify([
 			rewrite_types([
 				{ anchor: "identifier", when: type("operator", "="), rewrite: "function" },
 			]),
 		])("a = 1", raw);
-		// The grammar's shared token_types array must NOT have been mutated.
-		expect(original_types).toBe(compiled.token_types);
-		expect(original_types.includes("function")).toBe(false); // toy grammar never emits `function`
+		expect(compiled.token_types).toBe(grammar_types);
+		expect(compiled.token_types.length).toBe(grammar_types_len);
+		expect(compiled.token_types.includes("function")).toBe(false);
 	});
 
 	test("first-match-wins within one rewrite_types call", () => {
@@ -794,7 +868,7 @@ const interleaved_sub: Grammar = {
 	},
 };
 const interleaved_sub_compiled = compile(interleaved_sub);
-const interleaved_sub_lang: LanguageFn = create_language(interleaved_sub_compiled, []);
+const interleaved_sub_lang: LanguageFn = create_language(interleaved_sub_compiled, [])();
 
 // Scanner for our synthetic host: find "TAG[...]" groups.
 //
@@ -940,7 +1014,7 @@ describe("reclassifier — embed_interleaved", () => {
 				},
 			},
 		};
-		const straddle_lang: LanguageFn = create_language(compile(straddle_sub), []);
+		const straddle_lang: LanguageFn = create_language(compile(straddle_sub), [])();
 		const src = "TAG[ab<H>cd]";
 		const raw = tokenize(src, interleaved_host_compiled);
 		const result = reclassify([
@@ -980,7 +1054,7 @@ describe("reclassifier — embed_interleaved", () => {
 				root: { rules: [{ range: [["a", "z"]], token: "mark" }] },
 			},
 		};
-		const mark_lang: LanguageFn = create_language(compile(mark_sub), []);
+		const mark_lang: LanguageFn = create_language(compile(mark_sub), [])();
 		const scan: GroupScanFn = (tokens, input, i, token_types) => {
 			const base = scan_interleaved(tokens, input, i, token_types);
 			if (base === null) return null;
@@ -1052,7 +1126,7 @@ describe("reclassifier — embed_interleaved", () => {
 				},
 			},
 		};
-		const lang: LanguageFn = create_language(compile(straddle_sub), []);
+		const lang: LanguageFn = create_language(compile(straddle_sub), [])();
 		const src = "TAG[ab<H>cd]";
 		const raw = tokenize(src, interleaved_host_compiled);
 		const result = reclassify([

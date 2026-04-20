@@ -10,7 +10,8 @@
 // the sets below are a permissive union across postgresql, mysql, sqlite,
 // and transact-sql. see RESEARCH.md for the dialect-by-dialect breakdown.
 
-import type { Reclassifier } from "@twinkleplop/core";
+import { tag } from "@twinkleplop/core";
+import type { LanguagePipeline, Reclassifier } from "@twinkleplop/core";
 
 const TYPE_TOKEN = "type";
 
@@ -187,4 +188,6 @@ const keyword_reclassifier: Reclassifier = (input, result) => {
 	return result;
 };
 
-export const reclassifiers = [keyword_reclassifier];
+export const reclassifiers: LanguagePipeline = [
+	tag(keyword_reclassifier, ["keyword", "boolean", "type"]),
+];

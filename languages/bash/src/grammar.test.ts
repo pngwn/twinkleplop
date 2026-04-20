@@ -2,7 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, it, expect, test } from "vitest";
 import { verify } from "@twinkleplop/core/compile";
-import { language, raw_grammar } from "./index.js";
+import { language as make_language, raw_grammar } from "./index.js";
+
+const language = make_language();
 
 const test_path = path.join(import.meta.dirname, "..", "test");
 const test_files = fs.readdirSync(test_path);

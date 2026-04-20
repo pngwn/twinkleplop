@@ -15,19 +15,29 @@ import type {
 	AnyOfPatternSpec,
 	BalancedPatternSpec,
 	CapturePatternSpec,
+	Claim,
+	ClaimFn,
+	ClaimingReclassifier,
 	CompiledGrammar,
 	EmbedEntry,
 	EmbedInterleavedConfig,
 	EmbedMapping,
+	FidelitySpec,
 	GroupDescriptor,
+	LanguageFactory,
 	LanguageFn,
+	LanguageOptions,
+	LanguagePipeline,
 	OptionalPatternSpec,
 	Reclassifier,
+	ReclassifierEntry,
+	ReclassifierLayer,
 	ReclassifierPipeline,
 	Region,
 	RewriteOptions,
 	RewriteRule,
 	SeqPatternSpec,
+	TaggedReclassifier,
 	TokenizeResult,
 	TokenPatternSpec,
 	TypePatternSpec,
@@ -866,6 +876,79 @@ function match_bytecode(
 void disassemble_program;
 
 // ---------------------------------------------------------------------------
+// claim helpers
+// ---------------------------------------------------------------------------
+//
+// claims express "this token should be type X with precedence P". within a
+// single claim-producing pass, `rewrite_types`' first-match-wins semantics
+// means at most one claim per token per pass. across batched passes, multiple
+// claims for the same token may coexist and merge_claims resolves the winner
+// by precedence (higher wins; ties broken by emission order).
+//
+// the precedence table below reflects JS/TS conventions, because those are
+// the pipelines with 2+ rewrite_types calls where conflicts actually occur.
+// the mapping is "more specific role wins over less specific" — a class_name
+// beats a type beats a function beats a property beats a bare identifier.
+// types that never conflict in practice (keywords, literals, punctuation,
+// operators) get stable but arbitrary positions.
+
+// ordered from lowest to highest precedence. types absent from this map
+// fall back to DEFAULT_PRECEDENCE, which sits above `identifier` but below
+// the language-specific roles — so unknown claims still beat a bare
+// identifier but lose to an explicit role claim.
+const PRECEDENCE_TABLE: Record<string, number> = {
+	identifier: 0,
+	punctuation: 5,
+	operator: 5,
+	variable: 10,
+	property: 20,
+	function: 30,
+	builtin: 40,
+	type: 45,
+	class_name: 50,
+	lifetime: 55,
+	keyword: 70,
+	boolean: 75,
+	null: 75,
+	number: 75,
+	comment: 80,
+	string: 80,
+};
+const DEFAULT_PRECEDENCE = 25;
+
+function precedence_for(type_name: string): number {
+	const p = PRECEDENCE_TABLE[type_name];
+	return p === undefined ? DEFAULT_PRECEDENCE : p;
+}
+
+// resolves a list of claims to one winner per token_idx. higher precedence
+// wins; on tie, the first-emitted claim wins (stable insertion preserved by
+// skipping non-strict-greater-than on later claims).
+function merge_claims(claims: Claim[]): Claim[] {
+	if (claims.length === 0) return claims;
+	const winners = new Map<number, Claim>();
+	for (let i = 0; i < claims.length; i++) {
+		const c = claims[i];
+		const existing = winners.get(c.token_idx);
+		if (existing === undefined || c.precedence > existing.precedence) {
+			winners.set(c.token_idx, c);
+		}
+	}
+	return Array.from(winners.values());
+}
+
+// writes each claim's type_id into the token stream in place. the caller
+// typically runs merge_claims first so at most one claim touches each token,
+// but apply_claims accepts raw lists too — later writes simply overwrite
+// earlier ones when duplicates exist.
+function apply_claims(tokens: Uint32Array, claims: Claim[]): void {
+	for (let i = 0; i < claims.length; i++) {
+		const c = claims[i];
+		tokens[c.token_idx * 3] = c.type_id;
+	}
+}
+
+// ---------------------------------------------------------------------------
 // rewrite_types
 // ---------------------------------------------------------------------------
 
@@ -897,233 +980,287 @@ interface CompiledRule {
  * for cascading rewrites, compose multiple `rewrite_types(...)` transforms in
  * the pipeline passed to `reclassify`.
  */
-export function rewrite_types(
+// compiled form of a rewrite_types() call. anchor_id and the bytecode's
+// matcher type_ids reference the ORIGINAL vocabulary seen at compile time
+// (indices 0..compile_base_len) — those are always stable across calls.
+// target ids (anchor_target_id, capture_targets[].target_id) may reference
+// types appended during compile; appended_names captures those by name so
+// the caller can re-resolve them against its runtime token_types and build
+// a remap table when the two don't line up (batched claim mode).
+interface CompiledRewriteState {
+	compile_base_len: number;
+	appended_names: string[];
+	compiled: CompiledRule[];
+	anchor_offset: Int32Array;
+	anchor_count: Uint8Array;
+	rule_table: CompiledRule[];
+	trivia: Uint8Array;
+	program: Int32Array;
+	value_pool: Uint16Array;
+	value_offsets: Int32Array;
+}
+
+function compile_rewrite(
 	rules: RewriteRule[],
-	options: RewriteOptions = {},
-): Reclassifier {
-	// rule compilation cache. keyed by the result.token_types array
-	// reference; in practice tokenize() always returns the SAME
-	// compiled_grammar.token_types reference, so the cache hits on every
-	// subsequent call for the same grammar. on a cache miss we recompile
-	// and snapshot any new type names that were appended (rewrite targets
-	// that weren't in the original vocab) so we can re-extend the per-call
-	// token_types clone consistently.
-	let cached_input_types: string[] | null = null;
-	let cached_compiled: CompiledRule[] | null = null;
-	let cached_anchor_offset: Int32Array | null = null;
-	let cached_anchor_count: Uint8Array | null = null;
-	let cached_rule_table: CompiledRule[] | null = null;
-	let cached_trivia: Uint8Array | null = null;
-	let cached_appended_types: string[] | null = null;
-	let cached_program: Int32Array | null = null;
-	let cached_value_pool: Uint16Array | null = null;
-	let cached_value_offsets: Int32Array | null = null;
+	options: RewriteOptions,
+	input_types: string[],
+): CompiledRewriteState {
+	// compile against a scratch copy so we don't pollute the caller's input
+	// token_types (grammars share token_types arrays across calls via the
+	// tokenizer, and earlier versions of this code accidentally grew that
+	// shared array).
+	const scratch = input_types.slice();
+	const name_to_id = new Map<string, number>();
+	for (let i = 0; i < scratch.length; i++) name_to_id.set(scratch[i], i);
+	const compile_base_len = scratch.length;
+	const ensure_id = (name: string): number => {
+		let id = name_to_id.get(name);
+		if (id === undefined) {
+			id = scratch.length;
+			scratch.push(name);
+			name_to_id.set(name, id);
+		}
+		return id;
+	};
 
-	return (input: string, result: TokenizeResult): TokenizeResult => {
-		// clone both arrays so the transform is pure -- the caller's raw
-		// TokenizeResult is never mutated. Uint32Array clone is a fast memcpy;
-		// token_types is a tiny string[] whose clone cost is negligible.
-		const tokens = new Uint32Array(result.tokens);
-		const token_types = result.token_types.slice();
+	const ctx = make_compile_ctx();
+	const compiled: CompiledRule[] = [];
+	for (const rule of rules) {
+		const anchor_spec =
+			typeof rule.anchor === "string"
+				? {
+						type_name: rule.anchor,
+						value: undefined as string | string[] | undefined,
+					}
+				: { type_name: rule.anchor.type_name, value: rule.anchor.value };
+		const anchor_id = name_to_id.get(anchor_spec.type_name);
+		if (anchor_id === undefined) continue;
 
-		// fast path: same vocabulary as last call → reuse the compiled rules
-		// and trivia mask. only need to re-append rewrite-target types that
-		// the cache discovered on first compile.
-		if (
-			cached_input_types === result.token_types &&
-			cached_compiled !== null &&
-			cached_anchor_offset !== null &&
-			cached_anchor_count !== null &&
-			cached_rule_table !== null &&
-			cached_trivia !== null &&
-			cached_appended_types !== null &&
-			cached_program !== null &&
-			cached_value_pool !== null &&
-			cached_value_offsets !== null
-		) {
-			for (let i = 0; i < cached_appended_types.length; i++) {
-				token_types.push(cached_appended_types[i]);
+		const slots = make_capture_slots();
+		const when_pc = ctx.program_len;
+		if (rule.when !== undefined) {
+			compile_pattern_bytecode(rule.when, name_to_id, ctx, slots);
+		}
+		emit(ctx, OP_MATCH);
+
+		let anchor_target_id = -1;
+		let capture_targets: { slot_id: number; target_id: number }[] | null = null;
+		if (typeof rule.rewrite === "string") {
+			anchor_target_id = ensure_id(rule.rewrite);
+		} else {
+			capture_targets = [];
+			for (const name of Object.keys(rule.rewrite)) {
+				const slot_id = slots.name_to_slot.get(name);
+				if (slot_id === undefined) continue;
+				capture_targets.push({
+					slot_id,
+					target_id: ensure_id(rule.rewrite[name]),
+				});
 			}
-			if (cached_compiled.length === 0) return { tokens, token_types };
-			return run_rewrite_loop(
-				input,
-				tokens,
-				token_types,
-				cached_anchor_offset,
-				cached_anchor_count,
-				cached_rule_table,
-				cached_trivia,
-				cached_program,
-				cached_value_pool,
-				cached_value_offsets,
+		}
+
+		let anchor_value_set: Set<string> | null = null;
+		if (anchor_spec.value !== undefined) {
+			anchor_value_set = new Set(
+				Array.isArray(anchor_spec.value)
+					? anchor_spec.value
+					: [anchor_spec.value],
 			);
 		}
 
-		// slow path: compile rules and populate the cache.
-		const original_len = result.token_types.length;
-		const name_to_id = new Map<string, number>();
-		for (let i = 0; i < token_types.length; i++)
-			name_to_id.set(token_types[i], i);
-		const ensure_id = (name: string): number => {
-			let id = name_to_id.get(name);
-			if (id === undefined) {
-				id = token_types.length;
-				token_types.push(name);
-				name_to_id.set(name, id);
-			}
-			return id;
-		};
+		compiled.push({
+			anchor_id,
+			anchor_value_set,
+			anchor_target_id,
+			capture_targets,
+			before: rule.before ? compile_pattern(rule.before, name_to_id) : null,
+			when_pc,
+			max_capture_slots: slots.max_slots,
+		});
+	}
 
-		const ctx = make_compile_ctx();
-		const compiled: CompiledRule[] = [];
-		for (const rule of rules) {
-			// anchor can be a bare type name or a `type(name, value)` spec —
-			// normalize to (name, optional value constraint) up front.
-			const anchor_spec =
-				typeof rule.anchor === "string"
-					? { type_name: rule.anchor, value: undefined as string | string[] | undefined }
-					: { type_name: rule.anchor.type_name, value: rule.anchor.value };
-			const anchor_id = name_to_id.get(anchor_spec.type_name);
-			if (anchor_id === undefined) continue;
-
-			// compile the forward pattern first so capture slot IDs are
-			// assigned before we translate rewrite targets that reference
-			// them by name. an absent `when` compiles to a bare OP_MATCH —
-			// the forward scan succeeds immediately without consuming any
-			// tokens, leaving `before` (and the anchor's value constraint,
-			// if any) as the only filters.
-			const slots = make_capture_slots();
-			const when_pc = ctx.program_len;
-			if (rule.when !== undefined) {
-				compile_pattern_bytecode(rule.when, name_to_id, ctx, slots);
-			}
-			emit(ctx, OP_MATCH);
-
-			let anchor_target_id = -1;
-			let capture_targets: { slot_id: number; target_id: number }[] | null =
-				null;
-			if (typeof rule.rewrite === "string") {
-				anchor_target_id = ensure_id(rule.rewrite);
-			} else {
-				capture_targets = [];
-				for (const name of Object.keys(rule.rewrite)) {
-					const slot_id = slots.name_to_slot.get(name);
-					// capture name referenced in rewrite that doesn't appear
-					// in the when pattern — silently skip, same as the old
-					// Map.get() returning undefined.
-					if (slot_id === undefined) continue;
-					capture_targets.push({
-						slot_id,
-						target_id: ensure_id(rule.rewrite[name]),
-					});
-				}
-			}
-
-			let anchor_value_set: Set<string> | null = null;
-			if (anchor_spec.value !== undefined) {
-				anchor_value_set = new Set(
-					Array.isArray(anchor_spec.value)
-						? anchor_spec.value
-						: [anchor_spec.value],
-				);
-			}
-
-			compiled.push({
-				anchor_id,
-				anchor_value_set,
-				anchor_target_id,
-				capture_targets,
-				before: rule.before ? compile_pattern(rule.before, name_to_id) : null,
-				when_pc,
-				max_capture_slots: slots.max_slots,
-			});
+	const type_count = Math.max(256, scratch.length);
+	const anchor_offset = new Int32Array(type_count);
+	anchor_offset.fill(-1);
+	const anchor_count = new Uint8Array(type_count);
+	const rule_table: CompiledRule[] = [];
+	const buckets = new Map<number, CompiledRule[]>();
+	for (const r of compiled) {
+		let list = buckets.get(r.anchor_id);
+		if (!list) {
+			list = [];
+			buckets.set(r.anchor_id, list);
 		}
+		list.push(r);
+	}
+	for (const [anchor_id, list] of buckets) {
+		anchor_offset[anchor_id] = rule_table.length;
+		anchor_count[anchor_id] = list.length;
+		for (const r of list) rule_table.push(r);
+	}
 
-		// dense anchor dispatch table: for each token type_id, store the
-		// offset into rule_table and the number of rules that anchor on it.
-		// replaces a Map<type_id, CompiledRule[]> lookup with two typed
-		// array reads per token in the hot loop.
-		const type_count = Math.max(256, token_types.length);
-		const anchor_offset = new Int32Array(type_count);
-		anchor_offset.fill(-1);
-		const anchor_count = new Uint8Array(type_count);
-		const rule_table: CompiledRule[] = [];
-		const buckets = new Map<number, CompiledRule[]>();
-		for (const r of compiled) {
-			let list = buckets.get(r.anchor_id);
-			if (!list) {
-				list = [];
-				buckets.set(r.anchor_id, list);
-			}
-			list.push(r);
+	const trivia = new Uint8Array(Math.max(256, scratch.length));
+	if (options.trivia) {
+		for (const name of options.trivia) {
+			const id = name_to_id.get(name);
+			if (id !== undefined) trivia[id] = 1;
 		}
-		for (const [anchor_id, list] of buckets) {
-			anchor_offset[anchor_id] = rule_table.length;
-			anchor_count[anchor_id] = list.length;
-			for (const r of list) rule_table.push(r);
-		}
+	}
 
-		const trivia = new Uint8Array(Math.max(256, token_types.length));
-		if (options.trivia) {
-			for (const name of options.trivia) {
-				const id = name_to_id.get(name);
-				if (id !== undefined) trivia[id] = 1;
-			}
-		}
+	const program = ctx.program.slice(0, ctx.program_len);
+	const value_pool = ctx.value_pool.slice(0, ctx.value_pool_len);
+	const value_offsets = ctx.value_offsets.slice(0, ctx.value_offsets_len * 2);
 
-		// trim shared bytecode buffers to the exact size used. the growable
-		// buffers in CompileCtx are sized for growth; the cached frozen
-		// copies are tight so the interpreter reads only valid words.
-		const program = ctx.program.slice(0, ctx.program_len);
-		const value_pool = ctx.value_pool.slice(0, ctx.value_pool_len);
-		const value_offsets = ctx.value_offsets.slice(0, ctx.value_offsets_len * 2);
-
-		// snapshot any types that ensure_id appended past the original input
-		// vocab so the fast path can re-extend cleanly on subsequent calls.
-		cached_input_types = result.token_types;
-		cached_compiled = compiled;
-		cached_anchor_offset = anchor_offset;
-		cached_anchor_count = anchor_count;
-		cached_rule_table = rule_table;
-		cached_trivia = trivia;
-		cached_appended_types = token_types.slice(original_len);
-		cached_program = program;
-		cached_value_pool = value_pool;
-		cached_value_offsets = value_offsets;
-
-		if (compiled.length === 0) return { tokens, token_types };
-		return run_rewrite_loop(
-			input,
-			tokens,
-			token_types,
-			anchor_offset,
-			anchor_count,
-			rule_table,
-			trivia,
-			program,
-			value_pool,
-			value_offsets,
-		);
+	return {
+		compile_base_len,
+		appended_names: scratch.slice(compile_base_len),
+		compiled,
+		anchor_offset,
+		anchor_count,
+		rule_table,
+		trivia,
+		program,
+		value_pool,
+		value_offsets,
 	};
 }
 
-// hot loop extracted so the fast and slow paths share it. closes over
-// nothing mutable; pure walk over `tokens` applying matched rule rewrites
-// in place via the bytecode matcher. anchor dispatch is a direct array
-// index into anchor_offset/anchor_count rather than a Map.get per token.
-function run_rewrite_loop(
+// resolve each appended_name to its current id in token_types, extending
+// token_types when the name isn't already present. returns a remap from
+// compile-time index to runtime id so the loop can translate target_ids.
+// note: the caller owns token_types — apply mode passes a cloned copy,
+// claim mode passes the shared batch copy (and accepts the in-place push).
+function resolve_appended(
+	state: CompiledRewriteState,
+	token_types: string[],
+): Int32Array {
+	const n = state.appended_names.length;
+	const remap = new Int32Array(n);
+	for (let i = 0; i < n; i++) {
+		const name = state.appended_names[i];
+		let id = -1;
+		for (let k = 0; k < token_types.length; k++) {
+			if (token_types[k] === name) {
+				id = k;
+				break;
+			}
+		}
+		if (id < 0) {
+			id = token_types.length;
+			token_types.push(name);
+		}
+		remap[i] = id;
+	}
+	return remap;
+}
+
+// translate a compile-time target id to a runtime id. ids below
+// compile_base_len reference the original vocabulary and are stable; ids at
+// or above compile_base_len are entries in appended_names and need remap.
+function runtime_target(
+	compile_time_id: number,
+	state: CompiledRewriteState,
+	remap: Int32Array,
+): number {
+	if (compile_time_id < state.compile_base_len) return compile_time_id;
+	return remap[compile_time_id - state.compile_base_len];
+}
+
+/**
+ * build a Reclassifier that walks the token stream once and, for each rule,
+ * attempts to match at every token whose type equals the rule's anchor. on
+ * match, either the anchor token's type or a set of captured token spans
+ * are rewritten to the rule's target type(s).
+ *
+ * rules within one `rewrite_types` call apply first-match-wins per position.
+ * the returned reclassifier is claim-producing: it can run in apply mode
+ * (the default — callable as a Reclassifier, mutates its own cloned stream)
+ * or in batch mode via `.__claim`, where the pipeline runner collects claims
+ * from multiple rewrite_types passes, merges them by precedence, and applies
+ * once. across batched passes, ordering no longer matters — the winner for
+ * each token is determined by the precedence of the claimed type.
+ */
+export function rewrite_types(
+	rules: RewriteRule[],
+	options: RewriteOptions = {},
+): ClaimingReclassifier {
+	// cache the compiled state, keyed on the input token_types reference.
+	// in apply mode this rarely hits (tokenize returns fresh arrays) but the
+	// cache is cheap to maintain and avoids recompiling for repeated calls
+	// that happen to share an input. the batch-mode pipeline hits the cache
+	// reliably for consecutive calls within one invocation.
+	let cached_input_types: string[] | null = null;
+	let cached_state: CompiledRewriteState | null = null;
+
+	function get_state(input_types: string[]): CompiledRewriteState {
+		if (cached_input_types === input_types && cached_state !== null) {
+			return cached_state;
+		}
+		cached_state = compile_rewrite(rules, options, input_types);
+		cached_input_types = input_types;
+		return cached_state;
+	}
+
+	function collect(
+		input: string,
+		tokens: Uint32Array,
+		token_types: string[],
+		state: CompiledRewriteState,
+	): Claim[] {
+		if (state.compiled.length === 0) return [];
+		const remap = resolve_appended(state, token_types);
+		return run_rewrite_loop_claims(
+			input,
+			tokens,
+			token_types,
+			state,
+			remap,
+		);
+	}
+
+	const apply_fn: Reclassifier = (input, result) => {
+		const tokens = new Uint32Array(result.tokens);
+		const token_types = result.token_types.slice();
+		const state = get_state(result.token_types);
+		const claims = collect(input, tokens, token_types, state);
+		apply_claims(tokens, claims);
+		return { tokens, token_types };
+	};
+
+	const claim_fn: ClaimFn = (input, tokens, token_types) => {
+		const state = get_state(token_types);
+		return collect(input, tokens, token_types, state);
+	};
+
+	const fn = apply_fn as ClaimingReclassifier;
+	fn.__claim = claim_fn;
+	return fn;
+}
+
+// walk the token stream emitting claims for every first-match anchor
+// position. target ids are translated via `remap` so callers can freely
+// share token_types with other passes without id collisions. the matcher
+// type_ids in the bytecode (OP_TYPE etc.) reference original-vocab indices
+// and never need remapping — they refer to types the grammar actually
+// emits.
+function run_rewrite_loop_claims(
 	input: string,
 	tokens: Uint32Array,
 	token_types: string[],
-	anchor_offset: Int32Array,
-	anchor_count: Uint8Array,
-	rule_table: CompiledRule[],
-	trivia: Uint8Array,
-	program: Int32Array,
-	value_pool: Uint16Array,
-	value_offsets: Int32Array,
-): TokenizeResult {
+	state: CompiledRewriteState,
+	remap: Int32Array,
+): Claim[] {
+	const claims: Claim[] = [];
 	const count = tokens.length / 3;
+	const {
+		anchor_offset,
+		anchor_count,
+		rule_table,
+		trivia,
+		program,
+		value_pool,
+		value_offsets,
+	} = state;
 	for (let i = 0; i < count; i++) {
 		const type = tokens[i * 3];
 		if (trivia[type]) continue;
@@ -1162,13 +1299,17 @@ function run_rewrite_loop(
 			);
 			if (end === NO_MATCH) continue;
 
-			// apply rewrites. anchor-target form simply flips the anchor's
-			// type; capture-target form reads each slot's (start, end) pair
-			// from cap_starts/cap_ends and rewrites every token in the range
-			// but only if the slot's dirty bit is set (indicating the
-			// capture actually fired — optional captures may not).
+			// emit claims. anchor-target form flips the anchor's type;
+			// capture-target form claims every token inside each captured
+			// range (only when the slot's dirty bit is set, i.e. the capture
+			// actually fired — optional captures may not).
 			if (rule.anchor_target_id !== -1) {
-				tokens[i * 3] = rule.anchor_target_id;
+				const target_id = runtime_target(rule.anchor_target_id, state, remap);
+				claims.push({
+					token_idx: i,
+					type_id: target_id,
+					precedence: precedence_for(token_types[target_id]),
+				});
 			}
 			if (rule.capture_targets !== null) {
 				for (let c = 0; c < rule.capture_targets.length; c++) {
@@ -1179,8 +1320,10 @@ function run_rewrite_loop(
 					}
 					const s = cap_starts[slot];
 					const e = cap_ends[slot];
+					const target_id = runtime_target(target.target_id, state, remap);
+					const p = precedence_for(token_types[target_id]);
 					for (let t = s; t < e; t++) {
-						tokens[t * 3] = target.target_id;
+						claims.push({ token_idx: t, type_id: target_id, precedence: p });
 					}
 				}
 			}
@@ -1188,7 +1331,7 @@ function run_rewrite_loop(
 		}
 	}
 
-	return { tokens, token_types };
+	return claims;
 }
 
 // ---------------------------------------------------------------------------
@@ -1719,24 +1862,78 @@ function process_group(
 
 /**
  * compose a list of Reclassifier transforms into a single function that
- * applies them in order. each transform sees the output of the previous one.
+ * applies them in order. mutating reclassifiers run sequentially, each
+ * seeing the previous pass's output. consecutive CLAIM-producing passes
+ * (those with a `__claim` property, currently produced only by
+ * `rewrite_types`) are BATCHED: they all see the same frozen input, their
+ * claims accumulate, merge by precedence, and apply once. any mutating
+ * pass between two claim-producers breaks the batch — the first batch
+ * flushes before the mutating pass runs.
+ *
+ * effect: between claim-producers, ordering no longer matters — the winner
+ * for each token is the claim with the highest precedence, not the
+ * last-to-write. non-claim-producing passes keep their old sequential
+ * semantics.
  *
  * ```
  * const enriched = reclassify([
  *   rewrite_types(js_function_variable_rules, { trivia: ["comment"] }),
+ *   rewrite_types(js_property_rules, { trivia: ["comment"] }),
  * ])(input, tokenize(input, js_grammar));
  * ```
  */
+function is_claiming(fn: Reclassifier): fn is ClaimingReclassifier {
+	return (
+		"__claim" in fn &&
+		typeof (fn as ClaimingReclassifier).__claim === "function"
+	);
+}
+
 export function reclassify(
 	pipeline: ReclassifierPipeline,
 ): (input: string, result: TokenizeResult) => TokenizeResult {
 	return (input, result) => {
 		let current = result;
+		let batch: ClaimingReclassifier[] = [];
 		for (let i = 0; i < pipeline.length; i++) {
-			current = pipeline[i](input, current);
+			const fn = pipeline[i];
+			if (is_claiming(fn)) {
+				batch.push(fn);
+				continue;
+			}
+			if (batch.length > 0) {
+				current = flush_claim_batch(input, current, batch);
+				batch = [];
+			}
+			current = fn(input, current);
+		}
+		if (batch.length > 0) {
+			current = flush_claim_batch(input, current, batch);
 		}
 		return current;
 	};
+}
+
+// run every claim-producer in `batch` against the same base `current`,
+// accumulate their claims, merge by precedence, and apply once. the cloned
+// token_types is shared across the batch so name→id extensions stay
+// consistent (each claim-producer calls resolve_appended on the SAME
+// array, deduping names that a prior batch member already appended).
+function flush_claim_batch(
+	input: string,
+	current: TokenizeResult,
+	batch: ClaimingReclassifier[],
+): TokenizeResult {
+	const tokens = new Uint32Array(current.tokens);
+	const token_types = current.token_types.slice();
+	const all_claims: Claim[] = [];
+	for (let i = 0; i < batch.length; i++) {
+		const claims = batch[i].__claim(input, tokens, token_types);
+		for (let k = 0; k < claims.length; k++) all_claims.push(claims[k]);
+	}
+	const merged = merge_claims(all_claims);
+	apply_claims(tokens, merged);
+	return { tokens, token_types };
 }
 
 // ---------------------------------------------------------------------------
@@ -1744,28 +1941,148 @@ export function reclassify(
 // ---------------------------------------------------------------------------
 
 /**
- * bundle a compiled grammar with its reclassifier pipeline into a single
- * "language" function. language packages use this to expose the common-case
- * entry point -- one call that returns the fully enriched token stream.
+ * tag a reclassifier with the token type(s) it produces so the language
+ * factory can gate it on a fidelity setting. a pass tagged with `['function']`
+ * runs under `fidelity: 'high'` or `fidelity: ['function', ...]`, and is
+ * skipped under `fidelity: 'low'` or `fidelity: []`.
+ *
+ * the `layer` argument places the reclassifier in its execution tier:
+ *
+ *   shape       — changes token stream shape (merges/splits tokens).
+ *   type_claim  — rewrites token TYPES only. the common case and the default.
+ *   embed       — splices sub-language tokens into the host stream.
+ *
+ * for always-on correctness passes that should run at every fidelity, use
+ * `always(reclassifier, layer)` instead of `tag` so they're explicitly labelled
+ * rather than leaving the reclassifier as a bare function in the pipeline.
+ */
+export function tag(
+	reclassifier: Reclassifier,
+	produces: string[],
+	layer: ReclassifierLayer = "type_claim",
+): TaggedReclassifier {
+	return { reclassifier, produces, layer };
+}
+
+/**
+ * mark a reclassifier as always-on and assign it an execution layer.
+ * always-on passes run at every fidelity setting; they're typically
+ * correctness fixups (shape passes) or cross-language composition (embed
+ * passes) rather than identifier-detail enrichment.
+ */
+export function always(
+	reclassifier: Reclassifier,
+	layer: ReclassifierLayer,
+): TaggedReclassifier {
+	return { reclassifier, produces: [], layer };
+}
+
+/**
+ * wrap a raw ClaimFn into a ClaimingReclassifier — callable as a plain
+ * Reclassifier (apply mode: clone tokens+token_types, run claim_fn, merge
+ * by precedence, apply) and also exposes a `__claim` method so the
+ * pipeline runner can batch this pass alongside other claim producers.
+ *
+ * apply mode runs merge_claims before applying so a single pass that
+ * happens to emit multiple claims for one token (rare — most claim-fns
+ * emit at most one per position) produces deterministic output.
+ */
+export function as_claim_producer(claim_fn: ClaimFn): ClaimingReclassifier {
+	const apply_fn: Reclassifier = (input, result) => {
+		const tokens = new Uint32Array(result.tokens);
+		const token_types = result.token_types.slice();
+		const claims = claim_fn(input, tokens, token_types);
+		apply_claims(tokens, merge_claims(claims));
+		return { tokens, token_types };
+	};
+	const fn = apply_fn as ClaimingReclassifier;
+	fn.__claim = claim_fn;
+	return fn;
+}
+
+function is_tagged(entry: ReclassifierEntry): entry is TaggedReclassifier {
+	return typeof entry !== "function";
+}
+
+// always-on = tagged entry whose produces list is empty. matches the
+// old "plain Reclassifier in the pipeline" semantics now that every pass
+// carries a layer label.
+function is_always_on(entry: TaggedReclassifier): boolean {
+	return entry.produces.length === 0;
+}
+
+function select_pipeline(
+	pipeline: LanguagePipeline,
+	fidelity: FidelitySpec | undefined,
+): ReclassifierPipeline {
+	// 'high' (or omitted) runs every pass.
+	if (fidelity === undefined || fidelity === "high") {
+		return pipeline.map((entry) =>
+			is_tagged(entry) ? entry.reclassifier : entry,
+		);
+	}
+	if (fidelity === "low") {
+		// keep plain Reclassifier entries (legacy always-on) and tagged
+		// always-on entries (new layered correctness passes). drop every
+		// fidelity-gated tagged entry.
+		const selected: ReclassifierPipeline = [];
+		for (const entry of pipeline) {
+			if (!is_tagged(entry)) {
+				selected.push(entry);
+				continue;
+			}
+			if (is_always_on(entry)) selected.push(entry.reclassifier);
+		}
+		return selected;
+	}
+	// array allowlist — match by intersection with `produces`. unknown names
+	// are tolerated (they simply exclude no extra passes). always-on entries
+	// (empty produces) always run.
+	const allow = new Set(fidelity);
+	const selected: ReclassifierPipeline = [];
+	for (const entry of pipeline) {
+		if (!is_tagged(entry)) {
+			selected.push(entry);
+			continue;
+		}
+		if (is_always_on(entry)) {
+			selected.push(entry.reclassifier);
+			continue;
+		}
+		if (entry.produces.some((p) => allow.has(p))) {
+			selected.push(entry.reclassifier);
+		}
+	}
+	return selected;
+}
+
+/**
+ * bundle a compiled grammar with its reclassifier pipeline into a language
+ * factory. every language package exports one:
  *
  * ```
  * // in @twinkleplop/javascript
- * export const grammar = compile(raw_grammar);
- * export const reclassifiers = [rewrite_types(function_variable_rules, ...)];
  * export const language = create_language(grammar, reclassifiers);
  *
  * // in consumer code
- * import { language } from "@twinkleplop/javascript";
- * const tokens = language(source);
+ * import { language as js } from "@twinkleplop/javascript";
+ * const highlight = js();                                // full fidelity
+ * const bare      = js({ fidelity: "low" });             // no reclassifiers
+ * const partial   = js({ fidelity: ["function", "type"] });
+ * const tokens    = highlight(source);
  * ```
  *
- * consumers who want raw tokens or a custom pipeline can still import
- * `grammar` and `reclassifiers` separately and compose them manually.
+ * pipeline entries may be plain reclassifier functions (always run) or
+ * `tag(fn, produces)` (gated by fidelity). consumers who want a custom
+ * pipeline can still import `grammar` and `reclassifiers` separately and
+ * compose them manually.
  */
 export function create_language(
 	grammar: CompiledGrammar,
-	reclassifiers: ReclassifierPipeline = [],
-): (input: string) => TokenizeResult {
-	const pipeline = reclassify(reclassifiers);
-	return (input: string) => pipeline(input, tokenize(input, grammar));
+	pipeline: LanguagePipeline = [],
+): LanguageFactory {
+	return (options?: LanguageOptions): LanguageFn => {
+		const run = reclassify(select_pipeline(pipeline, options?.fidelity));
+		return (input: string) => run(input, tokenize(input, grammar));
+	};
 }

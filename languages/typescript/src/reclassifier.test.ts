@@ -3,7 +3,9 @@
 // interface_member_promoter pass.
 
 import { describe, it, expect } from "vitest";
-import { language } from "./index.js";
+import { language as make_language } from "./index.js";
+
+const language = make_language();
 
 function enrich(input) {
 	const result = language(input);
@@ -358,5 +360,74 @@ describe("TypeScript reclassifier — type-position promotion", () => {
 		const tokens = enrich("const x = fn(a, b); const y = a + b;");
 		expect(type_of(tokens, "a")).toBe("identifier");
 		expect(type_of(tokens, "b")).toBe("identifier");
+	});
+});
+
+describe("TypeScript reclassifier — generic parameter constraints", () => {
+	// regression: without angle tracking, the `{` in `<T extends { id: V }>`
+	// was mistaken for the class body `{`. that consumed expecting_class_body
+	// on the wrong brace, made the real body look like an `object` scope,
+	// and got class fields misclassified as properties while keys inside the
+	// type-literal constraint got no claim at all.
+
+	it("type literal inside class generic constraint — key is property", () => {
+		const tokens = enrich(
+			"class UserStore<T extends { id: number }> { x: T; }",
+		);
+		expect(type_of(tokens, "id")).toBe("property");
+	});
+
+	it("real class body fields after a generic constraint stay as identifier", () => {
+		const src = `class UserStore<T extends { id: number }> {
+			private items: Map<number, T> = new Map();
+			public readonly name = "users";
+			public readonly active: boolean = true;
+		}`;
+		const tokens = enrich(src);
+		expect(type_of(tokens, "items")).toBe("identifier");
+		expect(type_of(tokens, "name")).toBe("identifier");
+		expect(type_of(tokens, "active")).toBe("identifier");
+		// and confirm the inner type-literal key still promotes.
+		expect(type_of(tokens, "id")).toBe("property");
+	});
+
+	it("methods on a generic class remain function", () => {
+		// avoid `get` / `set` as method names — those are getter / setter
+		// keywords in JS/TS and the grammar tokenizes them as `keyword`,
+		// not `identifier`. pick neutral names.
+		const src = `class UserStore<T extends { id: number }> {
+			add(item: T): this { return this; }
+			lookup(id: number): T | undefined { return undefined; }
+		}`;
+		const tokens = enrich(src);
+		expect(type_of(tokens, "add")).toBe("function");
+		expect(type_of(tokens, "lookup")).toBe("function");
+		// method param identifiers stay as identifier.
+		expect(type_of(tokens, "item")).toBe("identifier");
+	});
+
+	it("interface with generic constraint — body members still property", () => {
+		const tokens = enrich(
+			"interface Repo<T extends { id: V }> { find(id: number): T; x: T; }",
+		);
+		// inside the generic constraint
+		const id_types = tokens.filter((t) => t.value === "id").map((t) => t.type);
+		// first `id` is the constraint's type-literal key (property);
+		// second `id` is the method parameter name inside `(id: number)`
+		// (identifier, paren scope).
+		expect(id_types).toContain("property");
+		expect(id_types).toContain("identifier");
+		// interface body member
+		expect(type_of(tokens, "x")).toBe("property");
+		expect(type_of(tokens, "find")).toBe("function");
+	});
+
+	it("class with generic + extends expression containing object literal", () => {
+		// `class C extends f({key: 1}) {}` — the `{key: 1}` is an object
+		// literal inside a call arg, not a type literal. key should claim
+		// property (object scope). real class body opens after `)`.
+		const tokens = enrich("class C extends f({ key: 1 }) { x = 1; }");
+		expect(type_of(tokens, "key")).toBe("property");
+		expect(type_of(tokens, "x")).toBe("identifier");
 	});
 });

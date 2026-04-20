@@ -6,7 +6,9 @@
 // negatives that must NOT be rewritten.
 
 import { describe, it, expect } from "vitest";
-import { language } from "./index.js";
+import { language as make_language } from "./index.js";
+
+const language = make_language();
 
 function enrich(input: string) {
 	const result = language(input);

@@ -1,0 +1,15 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TypeScript reclassifier — claim conflict diagnostic > bare class field 1`] = `[]`;
+
+exports[`TypeScript reclassifier — claim conflict diagnostic > bare interface member 1`] = `[]`;
+
+exports[`TypeScript reclassifier — claim conflict diagnostic > class field with function-type 1`] = `[]`;
+
+exports[`TypeScript reclassifier — claim conflict diagnostic > function param with function-type 1`] = `[]`;
+
+exports[`TypeScript reclassifier — claim conflict diagnostic > interface member with function-type 1`] = `[]`;
+
+exports[`TypeScript reclassifier — claim conflict diagnostic > object method shorthand 1`] = `[]`;
+
+exports[`TypeScript reclassifier — claim conflict diagnostic > pure object-literal property 1`] = `[]`;

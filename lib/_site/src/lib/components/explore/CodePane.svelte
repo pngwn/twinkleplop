@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from "svelte";
 	import type { density_mode } from "$lib/explore/themes";
 
 	interface Props {
@@ -11,6 +12,7 @@
 		font: string;
 		perf_ms: number;
 		perf_token_count: number;
+		meta?: Snippet;
 	}
 
 	let {
@@ -23,6 +25,7 @@
 		font,
 		perf_ms,
 		perf_token_count,
+		meta,
 	}: Props = $props();
 </script>
 
@@ -32,7 +35,7 @@
 			<div class="pane__title">{title}</div>
 			<div class="pane__subtitle">{subtitle}</div>
 		</div>
-		<div class="pane__meta"></div>
+		<div class="pane__meta">{@render meta?.()}</div>
 	</header>
 
 	<div class="pane__body" style:font-family={font} data-density={density}>

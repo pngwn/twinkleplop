@@ -10,6 +10,9 @@ export {
 	embed_interleaved,
 	reclassify,
 	rewrite_types,
+	tag,
+	always,
+	as_claim_producer,
 	type,
 	seq,
 	any_of,
@@ -17,6 +20,20 @@ export {
 	capture,
 	balanced_parens,
 } from "./reclassifier";
+export { make_token_view, make_scope_stack } from "./scan";
+export type {
+	TokenView,
+	Scope,
+	ScopeStack,
+	Bracket,
+} from "./scan";
+export {
+	permute_claim_producers,
+	tokens_to_named,
+	collect_claims_per_pass,
+	find_claim_conflicts,
+} from "./test_util";
+export type { ClaimConflict } from "./test_util";
 export {
 	promote_by_text_set,
 	promote_pascal_case,
