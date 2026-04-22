@@ -285,7 +285,7 @@ export default [
 		"end": 697
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 697,
 		"end": 701
 	},
@@ -320,7 +320,7 @@ export default [
 		"end": 720
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 720,
 		"end": 727
 	},
@@ -360,7 +360,7 @@ export default [
 		"end": 749
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 749,
 		"end": 754
 	},
@@ -390,7 +390,7 @@ export default [
 		"end": 769
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 769,
 		"end": 774
 	},

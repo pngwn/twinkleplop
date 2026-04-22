@@ -30,7 +30,7 @@ export default [
 		"end": 38
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 41,
 		"end": 52
 	},
@@ -75,7 +75,7 @@ export default [
 		"end": 84
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 87,
 		"end": 102
 	},
@@ -100,7 +100,7 @@ export default [
 		"end": 114
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 117,
 		"end": 126
 	},
@@ -275,7 +275,7 @@ export default [
 		"end": 289
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 294,
 		"end": 303
 	},
@@ -325,7 +325,7 @@ export default [
 		"end": 337
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 342,
 		"end": 358
 	},
@@ -355,7 +355,7 @@ export default [
 		"end": 383
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 388,
 		"end": 401
 	},
@@ -460,7 +460,7 @@ export default [
 		"end": 462
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 462,
 		"end": 465
 	},
@@ -525,7 +525,7 @@ export default [
 		"end": 500
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 503,
 		"end": 510
 	},
@@ -610,7 +610,7 @@ export default [
 		"end": 562
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 562,
 		"end": 576
 	},
@@ -635,7 +635,7 @@ export default [
 		"end": 584
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 589,
 		"end": 595
 	},
@@ -705,7 +705,7 @@ export default [
 		"end": 651
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 654,
 		"end": 660
 	},
@@ -730,7 +730,7 @@ export default [
 		"end": 671
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 674,
 		"end": 690
 	},
@@ -780,7 +780,7 @@ export default [
 		"end": 744
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 747,
 		"end": 761
 	},
@@ -820,7 +820,7 @@ export default [
 		"end": 782
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 785,
 		"end": 796
 	},
@@ -855,7 +855,7 @@ export default [
 		"end": 816
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 819,
 		"end": 826
 	},
@@ -885,7 +885,7 @@ export default [
 		"end": 862
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 863,
 		"end": 868
 	},
@@ -1115,7 +1115,7 @@ export default [
 		"end": 1047
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 1050,
 		"end": 1057
 	},

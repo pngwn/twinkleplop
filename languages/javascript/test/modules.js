@@ -100,7 +100,7 @@ export default [
 		"end": 131
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 132,
 		"end": 143
 	},
@@ -130,7 +130,7 @@ export default [
 		"end": 160
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 161,
 		"end": 170
 	},
@@ -175,7 +175,7 @@ export default [
 		"end": 209
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 212,
 		"end": 219
 	},
@@ -215,7 +215,7 @@ export default [
 		"end": 269
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 270,
 		"end": 274
 	},
@@ -885,7 +885,7 @@ export default [
 		"end": 1076
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 1076,
 		"end": 1080
 	},

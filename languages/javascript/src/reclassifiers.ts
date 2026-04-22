@@ -931,8 +931,6 @@ export const promote_call_site_functions: Reclassifier = promote_function_calls(
 // tagged-template embedder is always-on — embeds are not an identifier
 // fidelity axis.
 export const reclassifiers: LanguagePipeline = [
-	tag(promote_boolean_literals, ["boolean"]),
-	tag(promote_call_site_functions, ["function"]),
 	tag(rewrite_types(function_variable_rules, { trivia: ["comment"] }), [
 		"function",
 	]),

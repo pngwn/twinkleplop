@@ -75,7 +75,7 @@ export default [
 		"end": 92
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 97,
 		"end": 101
 	},

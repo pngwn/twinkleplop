@@ -255,7 +255,7 @@ export default [
 		"end": 164
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 165,
 		"end": 171
 	},

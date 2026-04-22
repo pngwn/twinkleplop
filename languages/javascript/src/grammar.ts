@@ -330,6 +330,9 @@ export const keywordsLiterals = (
 	keyword(REGEX_PRECEDING_KEYWORDS, to(regexDest)),
 	keyword(DIVISION_KEYWORDS, to(divDest)),
 	keyword(SPECIAL_VALUES, to(divDest)),
+	// grammar-native booleans — emits `boolean` directly so no reclassifier
+	// pass is needed. fidelity downgrade to `identifier` happens at render.
+	keyword(BOOLEAN_LITERALS, to(divDest), "boolean"),
 ];
 
 // ---------------------------------------------------------------------------
@@ -377,13 +380,14 @@ export default define_grammar({
 			],
 		},
 
-		// call-site identifier: the grammar emits these as plain `identifier`
-		// tokens. a fidelity reclassifier (promote_function_calls) can upgrade
-		// them to `function` post-hoc, so consumers can opt in to function-call
-		// colouring or skip it entirely.
+		// call-site identifier: the grammar emits these as `function` directly
+		// now that the probe has already detected the trailing `(`. render-
+		// time fidelity downgrade remaps `function` to `identifier` for
+		// consumers that want the coarser classification. skips the
+		// reclassifier pass entirely.
 		function_name: {
 			rules: [
-				match(["_", "$", ALNUM], TOKENS.identifier),
+				match(["_", "$", ALNUM], TOKENS.function),
 				match("(", TOKENS.punctuation, goto("function_body")),
 				on([" ", "\t"]),
 			],
@@ -785,12 +789,12 @@ export default define_grammar({
 
 		// -------------------------------------------------------------------------
 		// function_name_tmpl — call-site identifier inside `${...}`. mirror of
-		// function_name; emits plain `identifier`, with call-site promotion
-		// layered on by the fidelity reclassifier.
+		// function_name; emits `function` directly (probe already confirmed
+		// the trailing `(`), with render-time downgrade for fidelity.
 		// -------------------------------------------------------------------------
 		function_name_tmpl: {
 			rules: [
-				match(["_", "$", ALNUM], TOKENS.identifier),
+				match(["_", "$", ALNUM], TOKENS.function),
 				match("(", TOKENS.punctuation, goto("function_body_tmpl")),
 				on([" ", "\t"]),
 			],

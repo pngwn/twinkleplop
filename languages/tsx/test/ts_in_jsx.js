@@ -400,7 +400,7 @@ export default [
 		"end": 270
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 271,
 		"end": 275
 	},

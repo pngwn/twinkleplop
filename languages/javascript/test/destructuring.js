@@ -525,7 +525,7 @@ export default [
 		"end": 433
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 434,
 		"end": 441
 	},

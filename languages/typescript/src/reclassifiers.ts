@@ -832,12 +832,9 @@ export const type_position_promoter: ClaimingReclassifier = as_claim_producer(
 );
 
 export const reclassifiers: LanguagePipeline = [
-	// restoration first: bring the stream up to the fidelity the JS / TS
-	// grammars used to emit directly (boolean, call-site function, builtin
-	// type). these must run before type_position_promoter because it may
-	// demote function tokens that appear inside type positions.
-	tag(promote_boolean_literals, ["boolean"]),
-	tag(promote_call_site_functions, ["function"]),
+	// boolean and call-site function are emitted directly by the shared JS
+	// grammar now. builtin type promotion stays as a reclassifier — a
+	// simple text-set that runs after the grammar.
 	tag(promote_builtin_types, ["type"]),
 	// claim_property_scope batches with function_variable_rules above —
 	// both see the base stream, their claims merge by precedence. interface
