@@ -262,6 +262,11 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 186,
+		"end": 187
+	},
+	{
+		"type": "punctuation",
+		"start": 187,
 		"end": 189
 	},
 	{
@@ -312,6 +317,11 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 225,
+		"end": 226
+	},
+	{
+		"type": "punctuation",
+		"start": 226,
 		"end": 228
 	},
 	{

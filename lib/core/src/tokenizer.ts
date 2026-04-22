@@ -1,5 +1,6 @@
 import type { CompiledGrammar, PatternInfo, TokenizeResult } from "./types";
 import type { TokenizerIntrospector } from "./introspector";
+import { SEAL_BIT, STACK_OP_MASK } from "./compiler";
 
 interface ProbeEntry {
 	pos: number; // original position for reset
@@ -292,7 +293,8 @@ export function tokenize(
 				const t_base = trans_base3 + char_class * 3;
 				const transition = transitions[t_base];
 				const token_type = transitions[t_base + 1];
-				const stack_op = transitions[t_base + 2];
+				const stack_op_raw = transitions[t_base + 2];
+				const stack_op = stack_op_raw & STACK_OP_MASK;
 
 				// determine target state
 				let target_state = current_state;
@@ -361,7 +363,18 @@ export function tokenize(
 				// emit token only if not in probe state
 				if (!is_in_probe_state && token_type !== 65535) {
 					const new_end = pos + (matched_length || 1);
-					if (token_type === last_token_type && pos === last_token_end) {
+					// `matched_length > 0` means the match came from the
+					// multi-char bucket (char_maps hits leave matched_length
+					// at 0 and advance by 1 on emit), so the emission is a
+					// lexeme atom that must not coalesce backward into a
+					// same-type run. the compile-time seal bit covers the
+					// other conditions (boundary, explicit seal: true).
+					if (
+						matched_length === 0 &&
+						!(stack_op_raw & SEAL_BIT) &&
+						token_type === last_token_type &&
+						pos === last_token_end
+					) {
 						// extend previous token
 						tokens[(token_count - 1) * 3 + 2] = new_end;
 						// INTROSPECTION_START
@@ -657,7 +670,8 @@ export function tokenize(
 				const t_base = trans_base3 + matched_rule_idx * 3;
 				const transition = transitions[t_base];
 				const token_type = transitions[t_base + 1];
-				const stack_op = transitions[t_base + 2];
+				const stack_op_raw = transitions[t_base + 2];
+				const stack_op = stack_op_raw & STACK_OP_MASK;
 
 				// determine target state
 				let target_state = current_state;
@@ -716,7 +730,13 @@ export function tokenize(
 				// emit token only if not in probe state
 				if (!is_in_probe_state && token_type !== 65535) {
 					const new_end = pos + 1;
-					if (token_type === last_token_type && start_pos === last_token_end) {
+					// non-ascii matches are always single-char, so sealing
+					// here depends solely on the compile-time seal bit.
+					if (
+						!(stack_op_raw & SEAL_BIT) &&
+						token_type === last_token_type &&
+						start_pos === last_token_end
+					) {
 						// extend previous token
 						tokens[(token_count - 1) * 3 + 2] = new_end;
 						// INTROSPECTION_START
@@ -895,7 +915,8 @@ export function tokenize(
 				const idx = current_state * 3;
 				const transition = fallback_transitions[idx];
 				const token_type = fallback_transitions[idx + 1];
-				const stack_op = fallback_transitions[idx + 2];
+				const stack_op_raw = fallback_transitions[idx + 2];
+				const stack_op = stack_op_raw & STACK_OP_MASK;
 
 				// INTROSPECTION_START
 				if (INTROSPECTION && introspector) {
@@ -910,7 +931,14 @@ export function tokenize(
 				// emit token only if not in probe state
 				if (!is_in_probe_state && token_type !== 65535) {
 					const new_end = pos + 1;
-					if (token_type === last_token_type && start_pos === last_token_end) {
+					// fallback transitions cover single non-ascii chars, so
+					// sealing here depends solely on the compile-time seal
+					// bit.
+					if (
+						!(stack_op_raw & SEAL_BIT) &&
+						token_type === last_token_type &&
+						start_pos === last_token_end
+					) {
 						// extend previous token
 						tokens[(token_count - 1) * 3 + 2] = new_end;
 						// INTROSPECTION_START

@@ -116,8 +116,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 503,
+		"end": 537,
+		"match": "\"\"\"\nRoses are red\nViolets are blue"
+	},
+	{
+		"type": "string",
+		"start": 537,
 		"end": 540,
-		"match": "\"\"\"\nRoses are red\nViolets are blue\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -164,8 +170,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 702,
+		"end": 719,
+		"match": "    the lazy dog."
+	},
+	{
+		"type": "string",
+		"start": 719,
 		"end": 722,
-		"match": "    the lazy dog.\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "property",
@@ -230,8 +242,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 796,
+		"end": 798,
+		"match": "  "
+	},
+	{
+		"type": "string",
+		"start": 798,
 		"end": 801,
-		"match": "  \"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -302,8 +320,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 966,
+		"end": 968,
+		"match": "  "
+	},
+	{
+		"type": "string",
+		"start": 968,
 		"end": 971,
-		"match": "  \"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -338,8 +362,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1120,
+		"end": 1122,
+		"match": "\nb"
+	},
+	{
+		"type": "string",
+		"start": 1122,
 		"end": 1125,
-		"match": "\nb\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -374,8 +404,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1222,
+		"end": 1224,
+		"match": "\nb"
+	},
+	{
+		"type": "string",
+		"start": 1224,
 		"end": 1227,
-		"match": "\nb\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -410,8 +446,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1327,
+		"end": 1330,
+		"match": "  b"
+	},
+	{
+		"type": "string",
+		"start": 1330,
 		"end": 1333,
-		"match": "  b\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -434,8 +476,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1413,
+		"end": 1464,
+		"match": "\"\"\"Here are two quotation marks: \"\". Simple enough."
+	},
+	{
+		"type": "string",
+		"start": 1464,
 		"end": 1467,
-		"match": "\"\"\"Here are two quotation marks: \"\". Simple enough.\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "property",
@@ -452,8 +500,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1475,
+		"end": 1510,
+		"match": "\"\"\"Here are three quotation marks: "
+	},
+	{
+		"type": "string",
+		"start": 1510,
 		"end": 1513,
-		"match": "\"\"\"Here are three quotation marks: \"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "property",
@@ -536,8 +590,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1584,
+		"end": 1585,
+		"match": "."
+	},
+	{
+		"type": "string",
+		"start": 1585,
 		"end": 1588,
-		"match": ".\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -560,8 +620,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1650,
+		"end": 1704,
+		"match": "\"\"\"\"This,\" she said, \"is just a pointless statement.\" "
+	},
+	{
+		"type": "string",
+		"start": 1704,
 		"end": 1707,
-		"match": "\"\"\"\"This,\" she said, \"is just a pointless statement.\" \"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -596,8 +662,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1785,
+		"end": 1794,
+		"match": "one quote"
+	},
+	{
+		"type": "string",
+		"start": 1794,
 		"end": 1797,
-		"match": "one quote\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "property",
@@ -626,8 +698,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1811,
+		"end": 1821,
+		"match": "two quotes"
+	},
+	{
+		"type": "string",
+		"start": 1821,
 		"end": 1824,
-		"match": "two quotes\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "property",
@@ -644,8 +722,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1837,
+		"end": 1853,
+		"match": "\"\"\" \"one quote\" "
+	},
+	{
+		"type": "string",
+		"start": 1853,
 		"end": 1856,
-		"match": "\"\"\" \"one quote\" \"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "property",
@@ -662,8 +746,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1869,
+		"end": 1888,
+		"match": "\"\"\" \"\"two quotes\"\" "
+	},
+	{
+		"type": "string",
+		"start": 1888,
 		"end": 1891,
-		"match": "\"\"\" \"\"two quotes\"\" \"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -698,8 +788,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1992,
+		"end": 1995,
+		"match": "\"\" "
+	},
+	{
+		"type": "string",
+		"start": 1995,
 		"end": 1998,
-		"match": "\"\" \"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "property",
@@ -716,8 +812,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 2012,
+		"end": 2024,
+		"match": "\"\"\"aaa'''bbb"
+	},
+	{
+		"type": "string",
+		"start": 2024,
 		"end": 2027,
-		"match": "\"\"\"aaa'''bbb\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",
@@ -824,8 +926,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 2330,
+		"end": 2361,
+		"match": "'''I [dw]on't need \\d{2} apples"
+	},
+	{
+		"type": "string",
+		"start": 2361,
 		"end": 2364,
-		"match": "'''I [dw]on't need \\d{2} apples'''"
+		"match": "'''"
 	},
 	{
 		"type": "property",
@@ -842,8 +950,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 2374,
+		"end": 2464,
+		"match": "'''\nThe first newline is\ntrimmed in raw strings.\n   All other whitespace\n   is preserved.\n"
+	},
+	{
+		"type": "string",
+		"start": 2464,
 		"end": 2467,
-		"match": "'''\nThe first newline is\ntrimmed in raw strings.\n   All other whitespace\n   is preserved.\n'''"
+		"match": "'''"
 	},
 	{
 		"type": "comment",
@@ -866,8 +980,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 2547,
+		"end": 2599,
+		"match": "'''Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+	},
+	{
+		"type": "string",
+		"start": 2599,
 		"end": 2602,
-		"match": "'''Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\"'''"
+		"match": "'''"
 	},
 	{
 		"type": "comment",
@@ -890,8 +1010,38 @@ export const test = [
 	{
 		"type": "string",
 		"start": 2656,
+		"end": 2697,
+		"match": "''''That,' she said, 'is still pointless."
+	},
+	{
+		"type": "string",
+		"start": 2697,
+		"end": 2785,
+		"match": "''''\n\n# From tests/valid/string/multiline-quotes.toml: apostrophe-edge-cases\nlit_one = '"
+	},
+	{
+		"type": "string",
+		"start": 2785,
+		"end": 2797,
+		"match": "'''one quote"
+	},
+	{
+		"type": "string",
+		"start": 2797,
+		"end": 2813,
+		"match": "''''\nlit_two = '"
+	},
+	{
+		"type": "string",
+		"start": 2813,
+		"end": 2827,
+		"match": "''''two quotes"
+	},
+	{
+		"type": "string",
+		"start": 2827,
 		"end": 2832,
-		"match": "''''That,' she said, 'is still pointless.''''\n\n# From tests/valid/string/multiline-quotes.toml: apostrophe-edge-cases\nlit_one = ''''one quote''''\nlit_two = '''''two quotes'''''"
+		"match": "'''''"
 	},
 	{
 		"type": "property",
@@ -908,8 +1058,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 2849,
+		"end": 2865,
+		"match": "''' 'one quote' "
+	},
+	{
+		"type": "string",
+		"start": 2865,
 		"end": 2868,
-		"match": "''' 'one quote' '''"
+		"match": "'''"
 	},
 	{
 		"type": "property",
@@ -926,8 +1082,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 2885,
+		"end": 2904,
+		"match": "''' ''two quotes'' "
+	},
+	{
+		"type": "string",
+		"start": 2904,
 		"end": 2907,
-		"match": "''' ''two quotes'' '''"
+		"match": "'''"
 	},
 	{
 		"type": "property",
@@ -944,8 +1106,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 2921,
+		"end": 2933,
+		"match": "'''aaa\"\"\"bbb"
+	},
+	{
+		"type": "string",
+		"start": 2933,
 		"end": 2936,
-		"match": "'''aaa\"\"\"bbb'''"
+		"match": "'''"
 	},
 	{
 		"type": "comment",

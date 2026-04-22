@@ -29,6 +29,12 @@ export interface GrammarRule {
 	token?: string;
 	state?: string;
 	exit?: boolean;
+	// force a lexeme boundary after this rule even if the emitted token type
+	// matches the previous one. the compiler also sets this implicitly for
+	// multi-char matches, structural transitions (push/pop/sideways), and
+	// boundary-checked rules, so authors only need `seal: true` for
+	// lexeme-atom single-char matches that would otherwise coalesce.
+	seal?: boolean;
 }
 
 export type ParamBinding = string | boolean | null;

@@ -782,8 +782,20 @@ export const test = [
 	{
 		"type": "raw_svelte_expression",
 		"start": 392,
+		"end": 394,
+		"match": "x "
+	},
+	{
+		"type": "raw_svelte_expression",
+		"start": 394,
+		"end": 411,
+		"match": "/* inline } note "
+	},
+	{
+		"type": "raw_svelte_expression",
+		"start": 411,
 		"end": 417,
-		"match": "x /* inline } note */ + 1"
+		"match": "*/ + 1"
 	},
 	{
 		"type": "expression",
@@ -836,8 +848,14 @@ export const test = [
 	{
 		"type": "raw_svelte_expression",
 		"start": 427,
+		"end": 429,
+		"match": "x "
+	},
+	{
+		"type": "raw_svelte_expression",
+		"start": 429,
 		"end": 448,
-		"match": "x // trailing } note\n"
+		"match": "// trailing } note\n"
 	},
 	{
 		"type": "expression",

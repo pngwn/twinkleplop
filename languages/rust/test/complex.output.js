@@ -562,6 +562,11 @@ export const test = [
 	{
 		"type": "string",
 		"start": 407,
+		"end": 426
+	},
+	{
+		"type": "string",
+		"start": 426,
 		"end": 428
 	},
 	{
@@ -842,6 +847,21 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 699,
+		"end": 709
+	},
+	{
+		"type": "comment",
+		"start": 709,
+		"end": 720
+	},
+	{
+		"type": "comment",
+		"start": 720,
+		"end": 728
+	},
+	{
+		"type": "comment",
+		"start": 728,
 		"end": 730
 	},
 	{

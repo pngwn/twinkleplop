@@ -147,16 +147,31 @@ export const test = [
 	{
 		"type": "string",
 		"start": 154,
+		"end": 174
+	},
+	{
+		"type": "string",
+		"start": 174,
 		"end": 176
 	},
 	{
 		"type": "string",
 		"start": 177,
+		"end": 205
+	},
+	{
+		"type": "string",
+		"start": 205,
 		"end": 208
 	},
 	{
 		"type": "string",
 		"start": 209,
+		"end": 247
+	},
+	{
+		"type": "string",
+		"start": 247,
 		"end": 251
 	},
 	{
@@ -167,6 +182,11 @@ export const test = [
 	{
 		"type": "string",
 		"start": 266,
+		"end": 292
+	},
+	{
+		"type": "string",
+		"start": 292,
 		"end": 294
 	},
 	{
@@ -177,6 +197,11 @@ export const test = [
 	{
 		"type": "string",
 		"start": 313,
+		"end": 336
+	},
+	{
+		"type": "string",
+		"start": 336,
 		"end": 338
 	}
 ];

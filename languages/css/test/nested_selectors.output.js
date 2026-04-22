@@ -2,14 +2,26 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 38,
+		"match": "/* Test nested selectors and at-rules "
+	},
+	{
+		"type": "comment",
+		"start": 38,
 		"end": 40,
-		"match": "/* Test nested selectors and at-rules */"
+		"match": "*/"
 	},
 	{
 		"type": "comment",
 		"start": 42,
+		"end": 83,
+		"match": "/* Nested selectors inside regular rules "
+	},
+	{
+		"type": "comment",
+		"start": 83,
 		"end": 85,
-		"match": "/* Nested selectors inside regular rules */"
+		"match": "*/"
 	},
 	{
 		"type": "selector_class",
@@ -188,8 +200,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 211,
+		"end": 240,
+		"match": "/* Selectors inside at-rules "
+	},
+	{
+		"type": "comment",
+		"start": 240,
 		"end": 242,
-		"match": "/* Selectors inside at-rules */"
+		"match": "*/"
 	},
 	{
 		"type": "keyword",
@@ -338,8 +356,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 353,
+		"end": 369,
+		"match": "/* Deep nesting "
+	},
+	{
+		"type": "comment",
+		"start": 369,
 		"end": 371,
-		"match": "/* Deep nesting */"
+		"match": "*/"
 	},
 	{
 		"type": "selector_class",
@@ -560,8 +584,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 538,
+		"end": 579,
+		"match": "/* Mixed properties and nested selectors "
+	},
+	{
+		"type": "comment",
+		"start": 579,
 		"end": 581,
-		"match": "/* Mixed properties and nested selectors */"
+		"match": "*/"
 	},
 	{
 		"type": "selector_class",

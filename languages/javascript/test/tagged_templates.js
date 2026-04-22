@@ -2,11 +2,41 @@ export default [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 78
+	},
+	{
+		"type": "comment",
+		"start": 78,
 		"end": 106
 	},
 	{
 		"type": "comment",
 		"start": 107,
+		"end": 153
+	},
+	{
+		"type": "comment",
+		"start": 153,
+		"end": 231
+	},
+	{
+		"type": "comment",
+		"start": 231,
+		"end": 234
+	},
+	{
+		"type": "comment",
+		"start": 234,
+		"end": 309
+	},
+	{
+		"type": "comment",
+		"start": 309,
+		"end": 387
+	},
+	{
+		"type": "comment",
+		"start": 387,
 		"end": 463
 	},
 	{
@@ -77,6 +107,21 @@ export default [
 	{
 		"type": "comment",
 		"start": 774,
+		"end": 853
+	},
+	{
+		"type": "comment",
+		"start": 853,
+		"end": 856
+	},
+	{
+		"type": "comment",
+		"start": 856,
+		"end": 930
+	},
+	{
+		"type": "comment",
+		"start": 930,
 		"end": 997
 	},
 	{
@@ -292,6 +337,26 @@ export default [
 	{
 		"type": "comment",
 		"start": 1262,
+		"end": 1341
+	},
+	{
+		"type": "comment",
+		"start": 1341,
+		"end": 1344
+	},
+	{
+		"type": "comment",
+		"start": 1344,
+		"end": 1420
+	},
+	{
+		"type": "comment",
+		"start": 1420,
+		"end": 1492
+	},
+	{
+		"type": "comment",
+		"start": 1492,
 		"end": 1565
 	},
 	{
@@ -812,6 +877,26 @@ export default [
 	{
 		"type": "comment",
 		"start": 2459,
+		"end": 2538
+	},
+	{
+		"type": "comment",
+		"start": 2538,
+		"end": 2541
+	},
+	{
+		"type": "comment",
+		"start": 2541,
+		"end": 2616
+	},
+	{
+		"type": "comment",
+		"start": 2616,
+		"end": 2692
+	},
+	{
+		"type": "comment",
+		"start": 2692,
 		"end": 2713
 	},
 	{

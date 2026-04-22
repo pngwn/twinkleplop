@@ -96,7 +96,10 @@ describe("CSS reclassifier — negatives (must stay as original type)", () => {
 
 	it("`!important` stays keyword", () => {
 		const tokens = enrich("a { color: red !important; }");
-		expect(type_of(tokens, "!important")).toBe("keyword");
+		// `!` pushes into the `important` state and the body is a multi-char
+		// match, so they remain two atomic keyword lexemes after sealing
+		expect(type_of(tokens, "!")).toBe("keyword");
+		expect(type_of(tokens, "important")).toBe("keyword");
 	});
 
 	it("pseudo-class with parens does not promote selector_pseudo", () => {

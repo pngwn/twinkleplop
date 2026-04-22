@@ -32,8 +32,14 @@ export const test = [
 	{
 		"type": "keyword",
 		"start": 18,
+		"end": 19,
+		"match": "!"
+	},
+	{
+		"type": "keyword",
+		"start": 19,
 		"end": 28,
-		"match": "!important"
+		"match": "important"
 	},
 	{
 		"type": "punctuation",
@@ -62,8 +68,14 @@ export const test = [
 	{
 		"type": "keyword",
 		"start": 46,
+		"end": 47,
+		"match": "!"
+	},
+	{
+		"type": "keyword",
+		"start": 47,
 		"end": 56,
-		"match": "!important"
+		"match": "important"
 	},
 	{
 		"type": "punctuation",

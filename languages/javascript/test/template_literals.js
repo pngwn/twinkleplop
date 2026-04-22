@@ -607,6 +607,11 @@ export default [
 	{
 		"type": "comment",
 		"start": 730,
+		"end": 764
+	},
+	{
+		"type": "comment",
+		"start": 764,
 		"end": 839
 	},
 	{

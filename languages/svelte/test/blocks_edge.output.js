@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 75,
+		"match": "<!-- block heads share the same brace-tracking as `{expression}`: strings, "
+	},
+	{
+		"type": "comment",
+		"start": 75,
 		"end": 78,
-		"match": "<!-- block heads share the same brace-tracking as `{expression}`: strings, -->"
+		"match": "-->"
 	},
 	{
 		"type": "comment",
@@ -20,20 +26,38 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 98,
+		"end": 150,
+		"match": "*/` comments, and nested `{...}` are handled. regex "
+	},
+	{
+		"type": "comment",
+		"start": 150,
 		"end": 153,
-		"match": "*/` comments, and nested `{...}` are handled. regex -->"
+		"match": "-->"
 	},
 	{
 		"type": "comment",
 		"start": 154,
+		"end": 219,
+		"match": "<!-- literals are not, so inputs below are captured incorrectly. "
+	},
+	{
+		"type": "comment",
+		"start": 219,
 		"end": 222,
-		"match": "<!-- literals are not, so inputs below are captured incorrectly. -->"
+		"match": "-->"
 	},
 	{
 		"type": "comment",
 		"start": 224,
+		"end": 296,
+		"match": "<!-- 1. regex literal containing `}` inside an `#if` head closes early. "
+	},
+	{
+		"type": "comment",
+		"start": 296,
 		"end": 299,
-		"match": "<!-- 1. regex literal containing `}` inside an `#if` head closes early. -->"
+		"match": "-->"
 	},
 	{
 		"type": "expression",
@@ -128,8 +152,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 341,
+		"end": 395,
+		"match": "<!-- 2. same failure mode inside an `#each` iterable. "
+	},
+	{
+		"type": "comment",
+		"start": 395,
 		"end": 398,
-		"match": "<!-- 2. same failure mode inside an `#each` iterable. -->"
+		"match": "-->"
 	},
 	{
 		"type": "expression",
@@ -242,8 +272,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 474,
+		"end": 525,
+		"match": "<!-- 3. same failure mode inside an `@const` body. "
+	},
+	{
+		"type": "comment",
+		"start": 525,
 		"end": 528,
-		"match": "<!-- 3. same failure mode inside an `@const` body. -->"
+		"match": "-->"
 	},
 	{
 		"type": "expression",

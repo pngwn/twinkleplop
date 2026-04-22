@@ -140,8 +140,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 62,
+		"end": 65,
+		"match": "\"\"\""
+	},
+	{
+		"type": "string",
+		"start": 65,
 		"end": 68,
-		"match": "\"\"\"\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "identifier",
@@ -158,8 +164,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 73,
+		"end": 76,
+		"match": "'''"
+	},
+	{
+		"type": "string",
+		"start": 76,
 		"end": 79,
-		"match": "''''''"
+		"match": "'''"
 	},
 	{
 		"type": "identifier",

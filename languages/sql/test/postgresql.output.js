@@ -62,6 +62,11 @@ export const test = [
 	{
 		"type": "string",
 		"start": 59,
+		"end": 107
+	},
+	{
+		"type": "string",
+		"start": 107,
 		"end": 109
 	},
 	{

@@ -42,6 +42,16 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 90,
+		"end": 106
+	},
+	{
+		"type": "comment",
+		"start": 106,
+		"end": 123
+	},
+	{
+		"type": "comment",
+		"start": 123,
 		"end": 125
 	},
 	{
@@ -62,11 +72,21 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 136,
+		"end": 154
+	},
+	{
+		"type": "comment",
+		"start": 154,
 		"end": 156
 	},
 	{
 		"type": "comment",
 		"start": 157,
+		"end": 183
+	},
+	{
+		"type": "comment",
+		"start": 183,
 		"end": 185
 	},
 	{
@@ -87,6 +107,21 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 196,
+		"end": 206
+	},
+	{
+		"type": "comment",
+		"start": 206,
+		"end": 215
+	},
+	{
+		"type": "comment",
+		"start": 215,
+		"end": 234
+	},
+	{
+		"type": "comment",
+		"start": 234,
 		"end": 236
 	},
 	{
@@ -107,6 +142,11 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 247,
+		"end": 266
+	},
+	{
+		"type": "comment",
+		"start": 266,
 		"end": 268
 	},
 	{
@@ -127,6 +167,11 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 279,
+		"end": 308
+	},
+	{
+		"type": "comment",
+		"start": 308,
 		"end": 310
 	},
 	{
@@ -147,6 +192,36 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 322,
+		"end": 367
+	},
+	{
+		"type": "comment",
+		"start": 367,
+		"end": 372
+	},
+	{
+		"type": "comment",
+		"start": 372,
+		"end": 377
+	},
+	{
+		"type": "comment",
+		"start": 377,
+		"end": 382
+	},
+	{
+		"type": "comment",
+		"start": 382,
+		"end": 397
+	},
+	{
+		"type": "comment",
+		"start": 397,
+		"end": 412
+	},
+	{
+		"type": "comment",
+		"start": 412,
 		"end": 414
 	},
 	{
@@ -167,6 +242,16 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 426,
+		"end": 493
+	},
+	{
+		"type": "comment",
+		"start": 493,
+		"end": 644
+	},
+	{
+		"type": "comment",
+		"start": 644,
 		"end": 646
 	},
 	{
@@ -297,6 +382,21 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 975,
+		"end": 1002
+	},
+	{
+		"type": "comment",
+		"start": 1002,
+		"end": 1018
+	},
+	{
+		"type": "comment",
+		"start": 1018,
+		"end": 1053
+	},
+	{
+		"type": "comment",
+		"start": 1053,
 		"end": 1055
 	},
 	{

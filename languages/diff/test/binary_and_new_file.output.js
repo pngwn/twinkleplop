@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "keyword",
 		"start": 0,
+		"end": 5,
+		"match": "diff "
+	},
+	{
+		"type": "keyword",
+		"start": 5,
 		"end": 10,
-		"match": "diff --git"
+		"match": "--git"
 	},
 	{
 		"type": "string",
@@ -38,8 +44,14 @@ export const test = [
 	{
 		"type": "keyword",
 		"start": 102,
+		"end": 107,
+		"match": "diff "
+	},
+	{
+		"type": "keyword",
+		"start": 107,
 		"end": 112,
-		"match": "diff --git"
+		"match": "--git"
 	},
 	{
 		"type": "string",

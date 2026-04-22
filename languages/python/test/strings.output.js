@@ -50,8 +50,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 28,
+		"end": 44,
+		"match": "\"\"\"triple double"
+	},
+	{
+		"type": "string",
+		"start": 44,
 		"end": 47,
-		"match": "\"\"\"triple double\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "identifier",
@@ -68,8 +74,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 52,
+		"end": 68,
+		"match": "'''triple single"
+	},
+	{
+		"type": "string",
+		"start": 68,
 		"end": 71,
-		"match": "'''triple single'''"
+		"match": "'''"
 	},
 	{
 		"type": "identifier",
@@ -554,8 +566,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 377,
+		"end": 397,
+		"match": "\"\"\"multi\nline\nstring"
+	},
+	{
+		"type": "string",
+		"start": 397,
 		"end": 400,
-		"match": "\"\"\"multi\nline\nstring\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "identifier",
@@ -578,8 +596,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 406,
+		"end": 430,
+		"match": "\"\"\"raw triple \\n literal"
+	},
+	{
+		"type": "string",
+		"start": 430,
 		"end": 433,
-		"match": "\"\"\"raw triple \\n literal\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "identifier",

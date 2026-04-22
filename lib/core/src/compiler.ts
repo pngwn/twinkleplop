@@ -23,6 +23,14 @@ import {
 	CONTROL,
 } from "./constants";
 
+// packed high bit in the stack_op slot of the transitions table. the slot
+// originally stored values 0/1/2; the top bit is free. when set, it means
+// "this emission seals a lexeme boundary", and the runtime coalescer will
+// not fuse the emitted token with the previous one even if their types
+// match. the mask recovers the raw 0/1/2 stack op.
+export const SEAL_BIT = 1 << 7;
+export const STACK_OP_MASK = SEAL_BIT - 1;
+
 function clone_rules(rules: GrammarRule[] = []): GrammarRule[] {
 	return rules.map((rule) => ({ ...rule }));
 }
@@ -725,10 +733,30 @@ export function compile(grammar: Grammar): CompiledGrammar {
 				}
 			}
 
+			// a rule seals (forces a lexeme boundary on emission) when it is
+			// boundary-checked or the author opted in explicitly. structural
+			// transitions (push/pop/sideways) do NOT automatically seal: most
+			// grammars use single-char push rules whose emission is meant to
+			// coalesce with a following body (e.g. `E` prefix + `LSE`
+			// continuation, opening quote + string body). grammars that need
+			// a push/pop to seal opt in with `seal: true`.
+			//
+			// multi-char "lexeme atom" sealing is enforced at runtime by the
+			// tokenizer — it checks whether the emission came from a
+			// multi-char bucket match. that means a rule like
+			// `match: [...OP_4CHAR, "?"]` seals only when one of the longer
+			// alternatives actually fires, not when the bare `?` matches.
+			//
+			// the seal flag rides in the high bit of the stack_op slot so the
+			// runtime can gate coalescing without widening the transitions
+			// array.
+			const seal = rule.seal === true || rule.boundary === true;
+			const stack_op_packed = seal ? stack_op | SEAL_BIT : stack_op;
+
 			const t_base = ((state_id << 8) + rule_idx) * 3; // optimize multiplication
 			transitions[t_base] = next_state;
 			transitions[t_base + 1] = token_type;
-			transitions[t_base + 2] = stack_op;
+			transitions[t_base + 2] = stack_op_packed;
 
 			// handle patterns with smart validation
 			if (rule.match) {
@@ -933,7 +961,7 @@ export function compile(grammar: Grammar): CompiledGrammar {
 				const idx = state_id * 3;
 				fallback_transitions[idx] = next_state;
 				fallback_transitions[idx + 1] = token_type;
-				fallback_transitions[idx + 2] = stack_op;
+				fallback_transitions[idx + 2] = stack_op_packed;
 			}
 		});
 

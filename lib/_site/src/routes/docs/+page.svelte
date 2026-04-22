@@ -1,272 +1,149 @@
-<script>
-	// Documentation page with rainbow theme
+<script lang="ts">
+	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
+	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
+	import HomeHero from "$lib/docs/components/HomeHero.svelte";
+	import QuickLinks from "$lib/docs/components/QuickLinks.svelte";
+	import Section from "$lib/docs/components/Section.svelte";
+	import Card from "$lib/docs/components/Card.svelte";
+	import CardGrid from "$lib/docs/components/CardGrid.svelte";
+	import AsciiArt from "$lib/docs/components/AsciiArt.svelte";
+	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import Callout from "$lib/docs/components/Callout.svelte";
+
+	const pipeline_diagram_old = `┌─────────────┐     ┌──────────────┐     ┌──────────────┐
+│   grammar   │  => │   compiled   │ ─▶ │   theme      │ ─▶  twinkle·html
+└─────────────┘     │   grammar    │     │  tokenised   │
+                    └──────────────┘     └──────────────┘
+                         ▲                     ▲                     ▲
+                         │                     │                     │
+                      no regex              reusable              matches shiki
+                                           tree-sitter           exactly*`;
+
+const pipeline_diagram = `                 ┌────────────┐
+                 │  GRAMMAR   │
+                 └────────────┘
+                    ║      ║
+                    ║      ║
+                 ┌────────────┐
+                 │  COMPILED  │
+                 │  GRAMMAR   │
+                 └────────────┘
+                    ║      ║
+                    ║      ║
+┌──────────┐     ┌────────────┐     ┌──────────────┐     ┌────────────┐
+│  SOURCE  │ ==> │  LANGUAGE  │ ==> │  RAW TOKENS  │ ==> │  TWINKLED  │
+└──────────┘     └────────────┘     └──────────────┘     └────────────┘
+                     `
+
+	const hello_code = `<span class="ln">1</span><span class="tok-kw">import</span> <span class="tok-punct">&#123;</span> <span class="tok-var">twinkle</span> <span class="tok-punct">&#125;</span> <span class="tok-kw">from</span> <span class="tok-str">'twinkleplop'</span><span class="tok-punct">;</span>
+<span class="ln">2</span>
+<span class="ln">3</span><span class="tok-kw">const</span> <span class="tok-var">html</span> <span class="tok-punct">=</span> <span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-str">'const x = 1;'</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span> <span class="tok-var">lang</span><span class="tok-punct">:</span> <span class="tok-str">'ts'</span><span class="tok-punct">,</span> <span class="tok-var">theme</span><span class="tok-punct">:</span> <span class="tok-str">'github-dark'</span> <span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>`;
+
+	const quick_links = [
+		{ num: "01 ›", title: "quick start", meta: "install and twinkle", href: "/docs/getting_started" },
+		{ num: "02 ›", title: "themes", meta: "light and dark", href: "/docs/themes" },
+		{ num: "03 ›", title: "customization", meta: "make it your own", href: "/docs/tokenization" },
+		{ num: "04 ›", title: "api reference", meta: "every knob, every default", href: "/docs/api" },
+	];
+
+	const reading_cards = [
+		{
+			icon: "▸",
+			title: "getting started",
+			description: "Install, import, and get your first twinkle on the screen in under a minute. No build step required.",
+			more_href: "/docs/getting_started",
+			more_label: "read →",
+		},
+		{
+			icon: "◐",
+			title: "themes",
+			description: "Every shiki theme works unchanged, plus four new pixel-native themes tuned for CRT-class vibes.",
+			more_href: "/docs/themes",
+			more_label: "browse →",
+		},
+		{
+			icon: "λ",
+			title: "how tokenization works",
+			description: "Walk through the pipeline: source → lexer → tree → themed tokens → HTML. With pictures.",
+			more_href: "/docs/tokenization",
+			more_label: "read →",
+		},
+		{
+			icon: "⇢",
+			title: "transformers",
+			description: "Mutate the HAST before render. Line numbers, diff gutters, highlighted ranges, copy buttons.",
+			more_href: "/docs/transformers",
+			more_label: "read →",
+		},
+	];
 </script>
 
-<div class="docs-container">
-	<div class="docs-hero">
-		<h1 class="pixel-brand" data-text="DOCUMENTATION">DOCUMENTATION</h1>
-		<p class="docs-intro">
-			Minimal. Fast. Retro.
-		</p>
-	</div>
+<ArticleMain
+	pane_path="docs / welcome.md"
+	last_edit="last edit: 2m ago · v0.4.2"
+	next={{ dir: "next →", label: "01. getting started", href: "/docs/getting_started" }}
+>
+	<HomeHero
+		tagline="◎ docs · v0.4.2 · reading time ~ 3m"
+		title="twinkleplop"
+		lead="A syntax hilighter and code authoring toolkit. Small, fast, customisable. plop it in and make your code twinkle."
 
-	<section class="docs-section">
-		<div class="pixel-card">
-			<h2>GETTING STARTED</h2>
-			<p>Fast syntax highlighting for modern development</p>
-			<div class="feature-grid">
-				<div class="pixel-feature">
-					<h3>FAST</h3>
-					<p>8-15x faster</p>
-				</div>
-				<div class="pixel-feature">
-					<h3>CLEAN</h3>
-					<p>Minimal design</p>
-				</div>
-				<div class="pixel-feature">
-					<h3>SIMPLE</h3>
-					<p>Easy to use</p>
-				</div>
-			</div>
-		</div>
-	</section>
+	/>
 
-	<section class="docs-section">
-		<div class="pixel-card">
-			<h2>INSTALLATION</h2>
-			<div class="code-example">
-				<pre><code>npm install twinkleplop</code></pre>
-				<div class="rainbow-border"></div>
-			</div>
-		</div>
-	</section>
+	<!-- <Section id="quicklinks" title="quick links" num="§ 01"> -->
+		<QuickLinks items={quick_links} />
+	<!-- </Section> -->
 
-	<section class="docs-section">
-		<div class="pixel-card">
-			<h2>USAGE</h2>
-			<div class="code-example">
-				<pre><code
-						>import tokenize from 'twinkleplop';
+	<!-- <Section id="reading" title="start reading" num="§ 02">
+		<CardGrid cols={2}>
+			{#each reading_cards as c}
+				<Card
+					icon={c.icon}
+					title={c.title}
+					description={c.description}
+					more_href={c.more_href}
+					more_label={c.more_label}
+				/>
+			{/each}
+		</CardGrid>
+	</Section> -->
 
-const tokens = tokenize(yourCode, 'javascript');
-// Fast. Clean. Simple.</code
-					></pre>
-				<div class="rainbow-border"></div>
-			</div>
-		</div>
-	</section>
+	<Section id="pitch" title="the one-frame pitch" num="§ 03">
+		<AsciiArt content={pipeline_diagram} />
 
-	<section class="docs-section">
-		<div class="pixel-card">
-			<h2>FEATURES</h2>
-			<ul class="pixel-list">
-				<li>» Character scanning (8-15x faster)</li>
-				<li>» 50+ language support</li>
-				<li>» Zero dependencies</li>
-				<li>» TypeScript ready</li>
-				<li>» Minimal footprint</li>
-				<li>» Clean API</li>
-			</ul>
-		</div>
-	</section>
+	</Section>
 
-</div>
+	<Section id="hello" title="hello, twinkle" num="§ 04">
+		<p>The three-line version. Drop this in a browser or Node, run it, ship it:</p>
+		<CodeBlock fname="hello.ts" lang="typescript" html={hello_code} />
+		<Callout variant="tip">
+			<strong>Want to play before you read?</strong> Head to the <a href="/explore">lab</a> and drop
+			some code in. Every example on every docs page has a live link into the lab with your snippet
+			pre-loaded.
+		</Callout>
+	</Section>
+</ArticleMain>
+
+<ArticleOtp
+	title="welcome"
+	sections={[
+		{ href: "#quicklinks", label: "§01 — quick links", active: true },
+		{ href: "#reading", label: "§02 — start reading" },
+		{ href: "#pitch", label: "§03 — the one-frame pitch" },
+		{ href: "#hello", label: "§04 — hello, twinkle" },
+	]}
+	meta={[
+		{ label: "version", value: "0.4.2" },
+		{ label: "updated", value: "2m ago" },
+		{ label: "authors", value: "pngwn, al" },
+		{ label: "size", value: "14.2 kB gz" },
+	]}
+/>
 
 <style>
-	.docs-container {
-		max-width: 800px;
-		margin: 0 auto;
-		padding: 2rem;
+	.footnote {
+		color: var(--docs-fg-mute);
+		font-size: var(--docs-fs-xs);
+		margin-top: -12px;
 	}
-
-	.docs-hero {
-		text-align: center;
-		margin-bottom: 3rem;
-		border-bottom: 2px solid var(--border);
-		padding-bottom: 2rem;
-	}
-
-	.docs-hero h1 {
-		margin-bottom: 1rem;
-	}
-
-	.rainbow-text {
-		background: linear-gradient(
-			135deg,
-			#ff6b6b,
-			#feca57,
-			#48dbfb,
-			#ff9ff3,
-			#54a0ff,
-			#5f27cd,
-			#00d2d3,
-			#ff6b6b
-		);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-		background-size: 200% 200%;
-		animation: rainbow-wave 3s ease infinite;
-	}
-
-	.docs-intro {
-		font-family: 'VT323', monospace;
-		font-size: 1.5rem;
-		color: var(--text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 2px;
-	}
-
-	.magical-gradient {
-		background: linear-gradient(90deg, #ff6ec7, #ffb347, #6ec7ff);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-		background-size: 200% auto;
-		animation: gradient-slide 3s ease infinite;
-	}
-
-	.docs-section {
-		margin-bottom: 2rem;
-	}
-
-	.pixel-card {
-		background: var(--bg-primary);
-		border: 2px solid var(--border);
-		padding: 1.5rem;
-		margin-bottom: 1.5rem;
-		box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
-	}
-
-	.pixel-card:hover {
-		transform: translate(-2px, -2px);
-		box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.1);
-	}
-
-	.pixel-card h2 {
-		font-family: 'Silkscreen', monospace;
-		font-size: 1.25rem;
-		margin-bottom: 1rem;
-		color: var(--text-primary);
-		letter-spacing: 1px;
-	}
-
-	.sparkle-card {
-		background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 245, 251, 0.9));
-		border-radius: 20px;
-		padding: 2rem;
-		position: relative;
-		overflow: hidden;
-		border: 2px solid transparent;
-		background-clip: padding-box;
-		box-shadow: 0 10px 40px rgba(255, 110, 199, 0.1);
-		transition: all 0.3s ease;
-	}
-
-	.sparkle-card::before {
-		content: '';
-		position: absolute;
-		top: -2px;
-		left: -2px;
-		right: -2px;
-		bottom: -2px;
-		background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
-		border-radius: inherit;
-		z-index: -1;
-		opacity: 0.3;
-		background-size: 400% 400%;
-		animation: rainbow-wave 5s ease infinite;
-	}
-
-	.sparkle-card:hover {
-		transform: translateY(-5px);
-		box-shadow: 0 15px 50px rgba(255, 110, 199, 0.2);
-	}
-
-	.sparkle-card h2 {
-		margin-bottom: 1.5rem;
-		font-size: 2rem;
-	}
-
-	.feature-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-		gap: 1rem;
-		margin-top: 1.5rem;
-	}
-
-	.pixel-feature {
-		text-align: center;
-		padding: 1rem;
-		border: 2px solid var(--border);
-		background: var(--bg-secondary);
-	}
-
-	.pixel-feature:nth-child(1) { border-color: #ff6b6b; }
-	.pixel-feature:nth-child(2) { border-color: #6bffb8; }
-	.pixel-feature:nth-child(3) { border-color: #6bebff; }
-
-	.pixel-feature h3 {
-		font-family: 'Silkscreen', monospace;
-		font-size: 0.875rem;
-		margin-bottom: 0.5rem;
-		color: var(--text-primary);
-	}
-
-	.pixel-feature p {
-		font-family: 'VT323', monospace;
-		font-size: 1.125rem;
-		color: var(--text-secondary);
-	}
-
-
-	.code-example {
-		position: relative;
-		margin-top: 1rem;
-	}
-
-	.code-example pre {
-		background: var(--bg-code);
-		border: var(--border-width) solid var(--border);
-		padding: 1rem;
-		overflow-x: auto;
-		box-shadow: var(--shadow-sm);
-	}
-
-	.code-example code {
-		color: var(--text-primary);
-		font-family: var(--font-retro);
-		font-size: 1.25rem;
-	}
-
-	.rainbow-border {
-		height: 2px;
-		background: linear-gradient(90deg, 
-			#ff6b6b, #ffb86b, #ffeb6b, #6bffb8, 
-			#6bebff, #6b8eff, #b86bff, #ff6beb);
-		margin-top: -2px;
-	}
-
-	.pixel-list {
-		list-style: none;
-		padding: 0;
-		font-family: var(--font-retro);
-		font-size: 1.25rem;
-	}
-
-	.pixel-list li {
-		padding: 0.75rem 1rem;
-		margin-bottom: 0.5rem;
-		border-left: 4px solid var(--pixel-purple);
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
-		transition: transform 0.1s;
-	}
-
-	.pixel-list li:hover {
-		transform: translateX(4px);
-		border-left-color: var(--pixel-pink);
-	}
-
-
 </style>

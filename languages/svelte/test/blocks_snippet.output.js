@@ -140,8 +140,14 @@ export const test = [
 	{
 		"type": "punctuation",
 		"start": 68,
+		"end": 69,
+		"match": ">"
+	},
+	{
+		"type": "punctuation",
+		"start": 69,
 		"end": 71,
-		"match": "></"
+		"match": "</"
 	},
 	{
 		"type": "tag_name",

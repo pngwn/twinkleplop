@@ -212,6 +212,11 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 229,
+		"end": 265
+	},
+	{
+		"type": "comment",
+		"start": 265,
 		"end": 267
 	},
 	{
@@ -1202,6 +1207,11 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1357,
+		"end": 1360
+	},
+	{
+		"type": "string",
+		"start": 1360,
 		"end": 1362
 	},
 	{

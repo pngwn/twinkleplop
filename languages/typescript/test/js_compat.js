@@ -2,6 +2,16 @@ export default [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 17
+	},
+	{
+		"type": "comment",
+		"start": 17,
+		"end": 39
+	},
+	{
+		"type": "comment",
+		"start": 39,
 		"end": 41
 	},
 	{

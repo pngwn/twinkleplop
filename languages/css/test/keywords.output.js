@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 25,
+		"match": "/* Global value keywords "
+	},
+	{
+		"type": "comment",
+		"start": 25,
 		"end": 27,
-		"match": "/* Global value keywords */"
+		"match": "*/"
 	},
 	{
 		"type": "selector_class",
@@ -122,8 +128,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 118,
+		"end": 139,
+		"match": "/* Position keywords "
+	},
+	{
+		"type": "comment",
+		"start": 139,
 		"end": 141,
-		"match": "/* Position keywords */"
+		"match": "*/"
 	},
 	{
 		"type": "selector_class",
@@ -266,8 +278,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 258,
+		"end": 278,
+		"match": "/* Display keywords "
+	},
+	{
+		"type": "comment",
+		"start": 278,
 		"end": 280,
-		"match": "/* Display keywords */"
+		"match": "*/"
 	},
 	{
 		"type": "selector_class",
@@ -458,8 +476,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 429,
+		"end": 455,
+		"match": "/* Common property values "
+	},
+	{
+		"type": "comment",
+		"start": 455,
 		"end": 457,
-		"match": "/* Common property values */"
+		"match": "*/"
 	},
 	{
 		"type": "selector_class",
@@ -794,8 +818,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 770,
+		"end": 788,
+		"match": "/* Color keywords "
+	},
+	{
+		"type": "comment",
+		"start": 788,
 		"end": 790,
-		"match": "/* Color keywords */"
+		"match": "*/"
 	},
 	{
 		"type": "selector_class",

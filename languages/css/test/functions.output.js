@@ -14,8 +14,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 7,
+		"end": 46,
+		"match": "/* Transform functions - comprehensive "
+	},
+	{
+		"type": "comment",
+		"start": 46,
 		"end": 48,
-		"match": "/* Transform functions - comprehensive */"
+		"match": "*/"
 	},
 	{
 		"type": "property",
@@ -398,8 +404,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 246,
+		"end": 279,
+		"match": "/* Color functions - common ones "
+	},
+	{
+		"type": "comment",
+		"start": 279,
 		"end": 281,
-		"match": "/* Color functions - common ones */"
+		"match": "*/"
 	},
 	{
 		"type": "property",
@@ -692,8 +704,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 424,
+		"end": 461,
+		"match": "/* Math functions - widely supported "
+	},
+	{
+		"type": "comment",
+		"start": 461,
 		"end": 463,
-		"match": "/* Math functions - widely supported */"
+		"match": "*/"
 	},
 	{
 		"type": "property",
@@ -956,8 +974,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 581,
+		"end": 601,
+		"match": "/* Filter functions "
+	},
+	{
+		"type": "comment",
+		"start": 601,
 		"end": 603,
-		"match": "/* Filter functions */"
+		"match": "*/"
 	},
 	{
 		"type": "property",
@@ -1034,8 +1058,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 644,
+		"end": 679,
+		"match": "/* Gradient functions - more types "
+	},
+	{
+		"type": "comment",
+		"start": 679,
 		"end": 681,
-		"match": "/* Gradient functions - more types */"
+		"match": "*/"
 	},
 	{
 		"type": "property",
@@ -1250,8 +1280,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 868,
+		"end": 884,
+		"match": "/* URL function "
+	},
+	{
+		"type": "comment",
+		"start": 884,
 		"end": 886,
-		"match": "/* URL function */"
+		"match": "*/"
 	},
 	{
 		"type": "property",
@@ -1328,8 +1364,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 969,
+		"end": 999,
+		"match": "/* Shape functions - expanded "
+	},
+	{
+		"type": "comment",
+		"start": 999,
 		"end": 1001,
-		"match": "/* Shape functions - expanded */"
+		"match": "*/"
 	},
 	{
 		"type": "property",
@@ -1604,8 +1646,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 1145,
+		"end": 1163,
+		"match": "/* Grid functions "
+	},
+	{
+		"type": "comment",
+		"start": 1163,
 		"end": 1165,
-		"match": "/* Grid functions */"
+		"match": "*/"
 	},
 	{
 		"type": "property",
@@ -1760,8 +1808,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 1279,
+		"end": 1302,
+		"match": "/* Reference functions "
+	},
+	{
+		"type": "comment",
+		"start": 1302,
 		"end": 1304,
-		"match": "/* Reference functions */"
+		"match": "*/"
 	},
 	{
 		"type": "property",
@@ -1802,8 +1856,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 1336,
+		"end": 1361,
+		"match": "/* CSS custom properties "
+	},
+	{
+		"type": "comment",
+		"start": 1361,
 		"end": 1363,
-		"match": "/* CSS custom properties */"
+		"match": "*/"
 	},
 	{
 		"type": "css_variable",
@@ -1856,8 +1916,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 1408,
+		"end": 1428,
+		"match": "/* Timing functions "
+	},
+	{
+		"type": "comment",
+		"start": 1428,
 		"end": 1430,
-		"match": "/* Timing functions */"
+		"match": "*/"
 	},
 	{
 		"type": "property",

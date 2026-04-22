@@ -1062,6 +1062,11 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 760,
+		"end": 769
+	},
+	{
+		"type": "comment",
+		"start": 769,
 		"end": 771
 	},
 	{

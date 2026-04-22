@@ -287,6 +287,11 @@ export const test = [
 	{
 		"type": "string",
 		"start": 256,
+		"end": 699
+	},
+	{
+		"type": "string",
+		"start": 699,
 		"end": 701
 	},
 	{

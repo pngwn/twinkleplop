@@ -39,16 +39,15 @@ describe("HTML grammar — basic elements", () => {
 
 	it("tokenizes an open/close tag pair", () => {
 		const tokens = tokens_of("<p></p>");
-		// Note: adjacent same-type tag-boundary tokens are coalesced by the
-		// tokenizer (performance optimization — rendering is byte-identical).
-		// So the `>` of the open tag and the `</` of the close tag fuse into
-		// a single `></` tag-boundary token. We verify the structure via
-		// the type sequence and the accumulated values.
+		// `</` is a multi-char match and seals against any adjacent same-type
+		// emission, so the `>` of the open tag and the `</` of the close tag
+		// stay as separate atomic punctuation lexemes.
 		expect(types_of(tokens)).toEqual([
 			"punctuation", // <
-			"tag_name",     // p
-			"punctuation", // ></
-			"tag_name",     // p
+			"tag_name",    // p
+			"punctuation", // >
+			"punctuation", // </
+			"tag_name",    // p
 			"punctuation", // >
 		]);
 		expect(tokens.map((t) => t.value).join("")).toBe("<p></p>");
@@ -74,11 +73,16 @@ describe("HTML grammar — basic elements", () => {
 		expect(names).toEqual(["type", "name", "required"]);
 	});
 
-	it("tokenizes an HTML comment as a single token", () => {
+	it("tokenizes an HTML comment as contiguous comment lexemes", () => {
 		const tokens = tokens_of("<!-- hi there -->");
 		const comments = tokens.filter((t) => t.type === "comment");
-		expect(comments).toHaveLength(1);
-		expect(comments[0].value).toBe("<!-- hi there -->");
+		// the multi-char end delimiter `-->` seals, so the content and the
+		// closing delimiter emit as separate comment atoms. together they
+		// still cover the whole comment contiguously.
+		expect(comments.length).toBeGreaterThan(0);
+		expect(comments.map((c) => c.value).join("")).toBe("<!-- hi there -->");
+		expect(comments[0].start).toBe(0);
+		expect(comments[comments.length - 1].end).toBe(17);
 	});
 
 	it("tokenizes a DOCTYPE declaration", () => {

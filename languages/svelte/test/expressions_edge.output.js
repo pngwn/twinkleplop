@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 73,
+		"match": "<!-- documented grammar-level limitations. the expression body skips `\"` "
+	},
+	{
+		"type": "comment",
+		"start": 73,
 		"end": 76,
-		"match": "<!-- documented grammar-level limitations. the expression body skips `\"` -->"
+		"match": "-->"
 	},
 	{
 		"type": "comment",
@@ -20,32 +26,62 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 119,
+		"end": 151,
+		"match": "*/` comments, and tracks nested "
+	},
+	{
+		"type": "comment",
+		"start": 151,
 		"end": 154,
-		"match": "*/` comments, and tracks nested -->"
+		"match": "-->"
 	},
 	{
 		"type": "comment",
 		"start": 155,
+		"end": 226,
+		"match": "<!-- `{...}` via brace counting. regex literals are not recognized, so "
+	},
+	{
+		"type": "comment",
+		"start": 226,
 		"end": 229,
-		"match": "<!-- `{...}` via brace counting. regex literals are not recognized, so -->"
+		"match": "-->"
 	},
 	{
 		"type": "comment",
 		"start": 230,
+		"end": 290,
+		"match": "<!-- inputs below are captured incorrectly for that reason. "
+	},
+	{
+		"type": "comment",
+		"start": 290,
 		"end": 293,
-		"match": "<!-- inputs below are captured incorrectly for that reason. -->"
+		"match": "-->"
 	},
 	{
 		"type": "comment",
 		"start": 295,
+		"end": 369,
+		"match": "<!-- 1. a regex whose first `/` sits immediately after `{` is read as the "
+	},
+	{
+		"type": "comment",
+		"start": 369,
 		"end": 372,
-		"match": "<!-- 1. a regex whose first `/` sits immediately after `{` is read as the -->"
+		"match": "-->"
 	},
 	{
 		"type": "comment",
 		"start": 373,
+		"end": 435,
+		"match": "<!-- close-block sigil (shared with `{/if}`, `{/each}`, etc). "
+	},
+	{
+		"type": "comment",
+		"start": 435,
 		"end": 438,
-		"match": "<!-- close-block sigil (shared with `{/if}`, `{/each}`, etc). -->"
+		"match": "-->"
 	},
 	{
 		"type": "punctuation",
@@ -110,14 +146,26 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 462,
+		"end": 534,
+		"match": "<!-- 2. a regex literal containing `}` closes the expression early even "
+	},
+	{
+		"type": "comment",
+		"start": 534,
 		"end": 537,
-		"match": "<!-- 2. a regex literal containing `}` closes the expression early even -->"
+		"match": "-->"
 	},
 	{
 		"type": "comment",
 		"start": 538,
+		"end": 589,
+		"match": "<!-- when the `/` is not at the start of the body. "
+	},
+	{
+		"type": "comment",
+		"start": 589,
 		"end": 592,
-		"match": "<!-- when the `/` is not at the start of the body. -->"
+		"match": "-->"
 	},
 	{
 		"type": "punctuation",

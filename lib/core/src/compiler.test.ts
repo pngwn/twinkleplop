@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compile } from "./compiler";
+import { compile, SEAL_BIT, STACK_OP_MASK } from "./compiler";
 import { Grammar } from "./types";
 
 describe("compile", () => {
@@ -158,11 +158,14 @@ describe("compile", () => {
 		const transition_idx = 0 * 256 + root_quote_class;
 		const next_state = compiled.transitions[transition_idx * 3];
 		const token_type = compiled.transitions[transition_idx * 3 + 1];
-		const stack_op = compiled.transitions[transition_idx * 3 + 2];
+		const stack_op_raw = compiled.transitions[transition_idx * 3 + 2];
+		const stack_op = stack_op_raw & STACK_OP_MASK;
 
 		expect(next_state).toBe(1);
 		expect(token_type).toBe(0);
 		expect(stack_op).toBe(1);
+		// a single-char push does not auto-seal; grammars opt in with seal: true
+		expect(stack_op_raw & SEAL_BIT).toBeFalsy();
 	});
 
 	it("should handle character ranges", () => {
@@ -232,9 +235,13 @@ describe("compile", () => {
 		const close_paren_char = 41;
 		const nested_close_class = compiled.char_maps[1 * 128 + close_paren_char];
 		const transition_idx = 1 * 256 + nested_close_class;
-		const stack_op = compiled.transitions[transition_idx * 3 + 2];
+		const stack_op_raw = compiled.transitions[transition_idx * 3 + 2];
+		const stack_op = stack_op_raw & STACK_OP_MASK;
 
 		expect(stack_op).toBe(2);
+		// a pure pop continues the current lexeme (the closing char is part of
+		// the child body), so the seal bit is not set
+		expect(stack_op_raw & SEAL_BIT).toBeFalsy();
 	});
 
 	it("should handle multiple match characters", () => {

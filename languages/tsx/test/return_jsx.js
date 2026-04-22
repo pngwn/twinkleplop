@@ -162,6 +162,11 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 111,
+		"end": 112
+	},
+	{
+		"type": "punctuation",
+		"start": 112,
 		"end": 114
 	},
 	{

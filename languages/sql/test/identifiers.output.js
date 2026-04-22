@@ -62,6 +62,16 @@ export const test = [
 	{
 		"type": "identifier",
 		"start": 82,
+		"end": 88
+	},
+	{
+		"type": "identifier",
+		"start": 88,
+		"end": 97
+	},
+	{
+		"type": "identifier",
+		"start": 97,
 		"end": 106
 	},
 	{
@@ -87,6 +97,11 @@ export const test = [
 	{
 		"type": "identifier",
 		"start": 130,
+		"end": 136
+	},
+	{
+		"type": "identifier",
+		"start": 136,
 		"end": 145
 	},
 	{
@@ -112,6 +127,11 @@ export const test = [
 	{
 		"type": "identifier",
 		"start": 168,
+		"end": 174
+	},
+	{
+		"type": "identifier",
+		"start": 174,
 		"end": 183
 	},
 	{
@@ -362,6 +382,16 @@ export const test = [
 	{
 		"type": "identifier",
 		"start": 564,
+		"end": 566
+	},
+	{
+		"type": "identifier",
+		"start": 566,
+		"end": 569
+	},
+	{
+		"type": "identifier",
+		"start": 569,
 		"end": 573
 	},
 	{
@@ -382,6 +412,16 @@ export const test = [
 	{
 		"type": "identifier",
 		"start": 581,
+		"end": 583
+	},
+	{
+		"type": "identifier",
+		"start": 583,
+		"end": 586
+	},
+	{
+		"type": "identifier",
+		"start": 586,
 		"end": 590
 	},
 	{
@@ -402,6 +442,16 @@ export const test = [
 	{
 		"type": "identifier",
 		"start": 598,
+		"end": 600
+	},
+	{
+		"type": "identifier",
+		"start": 600,
+		"end": 603
+	},
+	{
+		"type": "identifier",
+		"start": 603,
 		"end": 607
 	},
 	{

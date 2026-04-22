@@ -837,6 +837,11 @@ export const test = [
 	{
 		"type": "string",
 		"start": 1004,
+		"end": 1017
+	},
+	{
+		"type": "string",
+		"start": 1017,
 		"end": 1019
 	},
 	{

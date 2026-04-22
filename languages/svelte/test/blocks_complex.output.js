@@ -1298,8 +1298,14 @@ export const test = [
 	{
 		"type": "punctuation",
 		"start": 721,
+		"end": 722,
+		"match": ">"
+	},
+	{
+		"type": "punctuation",
+		"start": 722,
 		"end": 724,
-		"match": "></"
+		"match": "</"
 	},
 	{
 		"type": "tag_name",
@@ -1634,8 +1640,20 @@ export const test = [
 	{
 		"type": "raw_svelte_expression",
 		"start": 937,
+		"end": 940,
+		"match": " x "
+	},
+	{
+		"type": "raw_svelte_expression",
+		"start": 940,
+		"end": 948,
+		"match": "/* > }? "
+	},
+	{
+		"type": "raw_svelte_expression",
+		"start": 948,
 		"end": 954,
-		"match": " x /* > }? */ > 0"
+		"match": "*/ > 0"
 	},
 	{
 		"type": "expression",
@@ -1724,8 +1742,20 @@ export const test = [
 	{
 		"type": "raw_svelte_expression",
 		"start": 987,
+		"end": 1017,
+		"match": " arr.filter(b => ({\n  a: 1,\n  "
+	},
+	{
+		"type": "raw_svelte_expression",
+		"start": 1017,
+		"end": 1025,
+		"match": "/* > }? "
+	},
+	{
+		"type": "raw_svelte_expression",
+		"start": 1025,
 		"end": 1086,
-		"match": " arr.filter(b => ({\n  a: 1,\n  /* > }? */  c: \"}\"\n})) as A<B> as C as D, i (html`<h1>hi</h1>` + \"}\")"
+		"match": "*/  c: \"}\"\n})) as A<B> as C as D, i (html`<h1>hi</h1>` + \"}\")"
 	},
 	{
 		"type": "expression",

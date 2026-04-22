@@ -86,8 +86,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 77,
+		"end": 103,
+		"match": "\"\"\"A circle with a radius."
+	},
+	{
+		"type": "string",
+		"start": 103,
 		"end": 106,
-		"match": "\"\"\"A circle with a radius.\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "identifier",

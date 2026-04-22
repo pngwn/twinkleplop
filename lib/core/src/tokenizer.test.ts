@@ -364,8 +364,8 @@ describe("tokenize - state transitions", () => {
 		const compiled = compile(grammar);
 		const result = tokenize('""x', compiled);
 		const tokens = get_tokens(result);
-		// Note: The two quotes get coalesced into a single token due to
-		// the tokenizer's optimization of consecutive same-type tokens
+		// structural push/pop on single-char matches do not seal by default,
+		// so the two quote emissions coalesce into a single quote lexeme
 		expect(tokens).toEqual([
 			{ type: "quote", start: 0, end: 2 },
 			{ type: "outside", start: 2, end: 3 },
@@ -390,7 +390,8 @@ describe("tokenize - state transitions", () => {
 		const compiled = compile(grammar);
 		const result = tokenize("((()))", compiled);
 		const tokens = get_tokens(result);
-		// Note: Consecutive tokens of the same type get coalesced
+		// single-char structural transitions do not seal by default, so the
+		// three pushes coalesce and the three pops coalesce
 		expect(tokens).toEqual([
 			{ type: "open", start: 0, end: 3 },
 			{ type: "close", start: 3, end: 6 },

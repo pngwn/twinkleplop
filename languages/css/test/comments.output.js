@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 11,
+		"match": "/* comment "
+	},
+	{
+		"type": "comment",
+		"start": 11,
 		"end": 13,
-		"match": "/* comment */"
+		"match": "*/"
 	},
 	{
 		"type": "selector",
@@ -26,7 +32,13 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 25,
+		"end": 67,
+		"match": "/* This is a\n\t\t   multi-line\n\t\t   comment "
+	},
+	{
+		"type": "comment",
+		"start": 67,
 		"end": 69,
-		"match": "/* This is a\n\t\t   multi-line\n\t\t   comment */"
+		"match": "*/"
 	}
 ];

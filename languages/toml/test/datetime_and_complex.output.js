@@ -3020,8 +3020,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 2762,
+		"end": 2768,
+		"match": "\"\"\"###"
+	},
+	{
+		"type": "string",
+		"start": 2768,
 		"end": 2771,
-		"match": "\"\"\"###\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "punctuation",

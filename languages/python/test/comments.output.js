@@ -50,8 +50,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 121,
+		"end": 151,
+		"match": "\"\"\"A docstring, not a comment."
+	},
+	{
+		"type": "string",
+		"start": 151,
 		"end": 154,
-		"match": "\"\"\"A docstring, not a comment.\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "comment",

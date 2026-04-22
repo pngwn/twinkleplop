@@ -17,21 +17,46 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 57,
+		"end": 75
+	},
+	{
+		"type": "comment",
+		"start": 75,
+		"end": 93
+	},
+	{
+		"type": "comment",
+		"start": 93,
 		"end": 113
 	},
 	{
 		"type": "comment",
 		"start": 114,
+		"end": 133
+	},
+	{
+		"type": "comment",
+		"start": 133,
 		"end": 135
 	},
 	{
 		"type": "comment",
 		"start": 137,
+		"end": 180
+	},
+	{
+		"type": "comment",
+		"start": 180,
 		"end": 182
 	},
 	{
 		"type": "comment",
 		"start": 184,
+		"end": 240
+	},
+	{
+		"type": "comment",
+		"start": 240,
 		"end": 299
 	},
 	{
@@ -57,6 +82,11 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 309,
+		"end": 325
+	},
+	{
+		"type": "comment",
+		"start": 325,
 		"end": 327
 	},
 	{
@@ -77,6 +107,11 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 350,
+		"end": 367
+	},
+	{
+		"type": "comment",
+		"start": 367,
 		"end": 401
 	},
 	{
@@ -87,6 +122,11 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 407,
+		"end": 414
+	},
+	{
+		"type": "comment",
+		"start": 414,
 		"end": 416
 	},
 	{

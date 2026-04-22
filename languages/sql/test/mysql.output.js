@@ -597,6 +597,11 @@ export const test = [
 	{
 		"type": "identifier",
 		"start": 953,
+		"end": 959
+	},
+	{
+		"type": "identifier",
+		"start": 959,
 		"end": 990
 	},
 	{

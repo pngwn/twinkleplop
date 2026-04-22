@@ -87,6 +87,11 @@ export const test = [
 	{
 		"type": "string_escape",
 		"start": 76,
+		"end": 80
+	},
+	{
+		"type": "string_escape",
+		"start": 80,
 		"end": 84
 	},
 	{
@@ -302,6 +307,11 @@ export const test = [
 	{
 		"type": "string",
 		"start": 293,
+		"end": 308
+	},
+	{
+		"type": "string",
+		"start": 308,
 		"end": 310
 	},
 	{
@@ -317,6 +327,11 @@ export const test = [
 	{
 		"type": "string",
 		"start": 319,
+		"end": 341
+	},
+	{
+		"type": "string",
+		"start": 341,
 		"end": 343
 	},
 	{
@@ -467,6 +482,11 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 974,
+		"end": 991
+	},
+	{
+		"type": "comment",
+		"start": 991,
 		"end": 993
 	},
 	{

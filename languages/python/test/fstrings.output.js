@@ -1154,8 +1154,20 @@ export const test = [
 	{
 		"type": "string",
 		"start": 377,
+		"end": 378,
+		"match": "\""
+	},
+	{
+		"type": "string",
+		"start": 378,
+		"end": 394,
+		"match": "{{literal braces"
+	},
+	{
+		"type": "string",
+		"start": 394,
 		"end": 397,
-		"match": "\"{{literal braces}}\""
+		"match": "}}\""
 	},
 	{
 		"type": "identifier",
@@ -1202,8 +1214,14 @@ export const test = [
 	{
 		"type": "string",
 		"start": 425,
+		"end": 439,
+		"match": "\nwith newlines"
+	},
+	{
+		"type": "string",
+		"start": 439,
 		"end": 442,
-		"match": "\nwith newlines\"\"\""
+		"match": "\"\"\""
 	},
 	{
 		"type": "identifier",
