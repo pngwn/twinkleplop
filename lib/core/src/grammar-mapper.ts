@@ -2,7 +2,6 @@
  * grammar mapper for introspection: maps compiled indices back to grammar names
  */
 
-import { normalize_grammar } from "./compiler";
 import type {
 	Grammar,
 	GrammarRule,
@@ -26,7 +25,7 @@ export class GrammarMapper {
 	token_names: Record<number, string>;
 
 	constructor(original_grammar: Grammar, compiled_grammar: CompiledGrammar) {
-		this.original_grammar = normalize_grammar(original_grammar);
+		this.original_grammar = original_grammar;
 		this.compiled_grammar = compiled_grammar;
 
 		this.state_names = {};

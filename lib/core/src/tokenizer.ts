@@ -1,6 +1,5 @@
 import type { CompiledGrammar, PatternInfo, TokenizeResult } from "./types";
 import type { TokenizerIntrospector } from "./introspector";
-import { SEAL_BIT, STACK_OP_MASK } from "./compiler";
 
 interface ProbeEntry {
 	pos: number; // original position for reset
@@ -42,6 +41,9 @@ export function tokenize(
 		probe_mask,
 		probe_fallbacks,
 		boundary_rules,
+		has_seals,
+		seal_flags,
+		fallback_seal_flags,
 	} = compiled_grammar;
 
 	const len = input.length;
@@ -293,8 +295,7 @@ export function tokenize(
 				const t_base = trans_base3 + char_class * 3;
 				const transition = transitions[t_base];
 				const token_type = transitions[t_base + 1];
-				const stack_op_raw = transitions[t_base + 2];
-				const stack_op = stack_op_raw & STACK_OP_MASK;
+				const stack_op = transitions[t_base + 2];
 
 				// determine target state
 				let target_state = current_state;
@@ -367,11 +368,13 @@ export function tokenize(
 					// multi-char bucket (char_maps hits leave matched_length
 					// at 0 and advance by 1 on emit), so the emission is a
 					// lexeme atom that must not coalesce backward into a
-					// same-type run. the compile-time seal bit covers the
-					// other conditions (boundary, explicit seal: true).
+					// same-type run. seal: true / boundary: true rules also
+					// block coalescing via seal_flags; has_seals is a loop
+					// invariant so V8 short-circuits the lookup on grammars
+					// without any sealing rules.
 					if (
 						matched_length === 0 &&
-						!(stack_op_raw & SEAL_BIT) &&
+						(!has_seals || !seal_flags![current_state * 256 + char_class]) &&
 						token_type === last_token_type &&
 						pos === last_token_end
 					) {
@@ -670,8 +673,7 @@ export function tokenize(
 				const t_base = trans_base3 + matched_rule_idx * 3;
 				const transition = transitions[t_base];
 				const token_type = transitions[t_base + 1];
-				const stack_op_raw = transitions[t_base + 2];
-				const stack_op = stack_op_raw & STACK_OP_MASK;
+				const stack_op = transitions[t_base + 2];
 
 				// determine target state
 				let target_state = current_state;
@@ -731,9 +733,9 @@ export function tokenize(
 				if (!is_in_probe_state && token_type !== 65535) {
 					const new_end = pos + 1;
 					// non-ascii matches are always single-char, so sealing
-					// here depends solely on the compile-time seal bit.
+					// here depends solely on the rule's seal flag.
 					if (
-						!(stack_op_raw & SEAL_BIT) &&
+						(!has_seals || !seal_flags![current_state * 256 + matched_rule_idx]) &&
 						token_type === last_token_type &&
 						start_pos === last_token_end
 					) {
@@ -915,8 +917,7 @@ export function tokenize(
 				const idx = current_state * 3;
 				const transition = fallback_transitions[idx];
 				const token_type = fallback_transitions[idx + 1];
-				const stack_op_raw = fallback_transitions[idx + 2];
-				const stack_op = stack_op_raw & STACK_OP_MASK;
+				const stack_op = fallback_transitions[idx + 2];
 
 				// INTROSPECTION_START
 				if (INTROSPECTION && introspector) {
@@ -932,10 +933,9 @@ export function tokenize(
 				if (!is_in_probe_state && token_type !== 65535) {
 					const new_end = pos + 1;
 					// fallback transitions cover single non-ascii chars, so
-					// sealing here depends solely on the compile-time seal
-					// bit.
+					// sealing here is a per-state flag.
 					if (
-						!(stack_op_raw & SEAL_BIT) &&
+						(!has_seals || !fallback_seal_flags![current_state]) &&
 						token_type === last_token_type &&
 						start_pos === last_token_end
 					) {
@@ -1115,15 +1115,12 @@ export function tokenize(
 	}
 	// INTROSPECTION_END
 
-	// return a FRESH copy of token_types so downstream reclassifiers that
-	// push new type names (promote_by_text_set, interface_member_promoter,
-	// class_name_promoter, ...) can't mutate the compiled grammar's shared
-	// array. without this, the grammar's vocabulary grows across calls and
-	// rewrite_types's cached-bytecode integer ids drift — functions can end
-	// up relabeled as types after a prior call appended "type" to the
-	// grammar's token_types.
+	// return token_types by reference. reclassifiers that mutate the array
+	// (promote_by_text_set, interface_member_promoter, class_name_promoter,
+	// ...) are responsible for cloning before they push new names. cloning
+	// here penalised every tokenize call, including reclassifier-free ones.
 	return {
 		tokens: tokens.subarray(0, token_count * 3),
-		token_types: token_types.slice(),
+		token_types,
 	};
 }

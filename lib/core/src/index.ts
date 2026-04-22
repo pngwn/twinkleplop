@@ -1,7 +1,7 @@
 // Main exports for @twinkleplop/core
 
 export { tokenize } from "./tokenizer";
-export { compile, normalize_grammar, resolve_includes } from "./compiler";
+export { compile } from "./compiler";
 export { verify, type VerifyIssue } from "./verify";
 export { to_html } from "./generator";
 export {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compile, SEAL_BIT, STACK_OP_MASK } from "./compiler";
+import { compile } from "./compiler";
 import { tokenize } from "./tokenizer";
 import type { Grammar, TokenizeResult } from "./types";
 
@@ -135,8 +135,7 @@ describe("seal predicate — each seal condition fires", () => {
 		char_code: number,
 	): number {
 		const char_class = compiled.char_maps[state_id * 128 + char_code];
-		const t_base = (state_id * 256 + char_class) * 3;
-		return compiled.transitions[t_base + 2] & SEAL_BIT;
+		return compiled.seal_flags?.[state_id * 256 + char_class] ?? 0;
 	}
 
 	it("(a) structural transitions alone do not auto-seal; grammars opt in", () => {
@@ -204,9 +203,7 @@ describe("seal predicate — each seal condition fires", () => {
 		// the rule is not compile-time sealed — single-char matches of the
 		// same rule must still coalesce
 		const root_id = compiled.states.get("root")!;
-		const t_base = (root_id * 256 + 0) * 3;
-		const stack_op_raw = compiled.transitions[t_base + 2];
-		expect(stack_op_raw & SEAL_BIT).toBeFalsy();
+		expect(compiled.seal_flags?.[root_id * 256 + 0] ?? 0).toBeFalsy();
 
 		// at runtime, adjacent single-char `c` hits coalesce, but a multi-char
 		// `ab` hit stays a distinct atom
@@ -234,9 +231,9 @@ describe("seal predicate — each seal condition fires", () => {
 		const root_id = compiled.states.get("root")!;
 		// the boundary rule occupies rule_idx 0
 		const t_base = (root_id * 256 + 0) * 3;
-		const stack_op_raw = compiled.transitions[t_base + 2];
-		expect(stack_op_raw & STACK_OP_MASK).toBe(0);
-		expect(stack_op_raw & SEAL_BIT).toBeTruthy();
+		// stack_op stays in {0,1,2}; seal flag lives in seal_flags
+		expect(compiled.transitions[t_base + 2]).toBe(0);
+		expect(compiled.seal_flags?.[root_id * 256 + 0]).toBe(1);
 	});
 
 	it("(d) seal: true opt-in forces a seal on a plain single-char rule", () => {
@@ -253,10 +250,8 @@ describe("seal predicate — each seal condition fires", () => {
 		};
 		const compiled = compile(grammar);
 		const root_id = compiled.states.get("root")!;
-		const t_base_a = (root_id * 256 + 0) * 3;
-		const t_base_b = (root_id * 256 + 1) * 3;
-		expect(compiled.transitions[t_base_a + 2] & SEAL_BIT).toBeTruthy();
-		expect(compiled.transitions[t_base_b + 2] & SEAL_BIT).toBeFalsy();
+		expect(compiled.seal_flags?.[root_id * 256 + 0]).toBe(1);
+		expect(compiled.seal_flags?.[root_id * 256 + 1] ?? 0).toBe(0);
 
 		// at runtime the sealed rule forces a lexeme boundary even though
 		// both rules emit the same token type: the second `a` (sealed) does
@@ -272,7 +267,9 @@ describe("seal predicate — each seal condition fires", () => {
 		]);
 	});
 
-	it("STACK_OP_MASK recovers the original 0/1/2 stack op even when sealed", () => {
+	it("stack_op stays in {0,1,2} even when the rule is sealed", () => {
+		// seal is tracked in a parallel Uint8Array so the tokenizer's hot
+		// path reads stack_op without masking.
 		const grammar: Grammar = {
 			name: "mask",
 			states: {
@@ -293,27 +290,22 @@ describe("seal predicate — each seal condition fires", () => {
 		const root_id = compiled.states.get("root")!;
 		const inner_id = compiled.states.get("inner")!;
 
-		const a_raw = compiled.transitions[(root_id * 256 + 0) * 3 + 2];
-		const open_raw = compiled.transitions[(root_id * 256 + 1) * 3 + 2];
-		const x_raw = compiled.transitions[(root_id * 256 + 2) * 3 + 2];
-		const arrow_raw = compiled.transitions[(root_id * 256 + 3) * 3 + 2];
-		const close_raw = compiled.transitions[(inner_id * 256 + 0) * 3 + 2];
+		const a_op = compiled.transitions[(root_id * 256 + 0) * 3 + 2];
+		const open_op = compiled.transitions[(root_id * 256 + 1) * 3 + 2];
+		const x_op = compiled.transitions[(root_id * 256 + 2) * 3 + 2];
+		const arrow_op = compiled.transitions[(root_id * 256 + 3) * 3 + 2];
+		const close_op = compiled.transitions[(inner_id * 256 + 0) * 3 + 2];
 
-		// plain rule, sealed via opt-in: stack_op 0 + seal bit
-		expect(a_raw & STACK_OP_MASK).toBe(0);
-		expect(a_raw & SEAL_BIT).toBeTruthy();
-		// push, sealed via opt-in: stack_op 1 + seal bit
-		expect(open_raw & STACK_OP_MASK).toBe(1);
-		expect(open_raw & SEAL_BIT).toBeTruthy();
-		// plain rule, unsealed: stack_op 0 without seal bit
-		expect(x_raw & STACK_OP_MASK).toBe(0);
-		expect(x_raw & SEAL_BIT).toBeFalsy();
-		// sideways, sealed via opt-in: stack_op 2 + seal bit
-		expect(arrow_raw & STACK_OP_MASK).toBe(2);
-		expect(arrow_raw & SEAL_BIT).toBeTruthy();
-		// pure pop, no seal: stack_op 2 without seal bit
-		expect(close_raw & STACK_OP_MASK).toBe(2);
-		expect(close_raw & SEAL_BIT).toBeFalsy();
+		expect(a_op).toBe(0);
+		expect(compiled.seal_flags?.[root_id * 256 + 0]).toBe(1);
+		expect(open_op).toBe(1);
+		expect(compiled.seal_flags?.[root_id * 256 + 1]).toBe(1);
+		expect(x_op).toBe(0);
+		expect(compiled.seal_flags?.[root_id * 256 + 2] ?? 0).toBe(0);
+		expect(arrow_op).toBe(2);
+		expect(compiled.seal_flags?.[root_id * 256 + 3]).toBe(1);
+		expect(close_op).toBe(2);
+		expect(compiled.seal_flags?.[inner_id * 256 + 0] ?? 0).toBe(0);
 	});
 });
 

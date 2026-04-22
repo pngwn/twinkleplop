@@ -31,7 +31,6 @@ import {
 	type,
 } from "@twinkleplop/core";
 import type {
-	Claim,
 	ClaimFn,
 	ClaimingReclassifier,
 	LanguagePipeline,
@@ -224,10 +223,9 @@ interface PropertyScopeData {
 const PROP_PREC = 20;
 const PROP_FN_PREC = 30; // matches the default `function` precedence.
 
-const claim_property_scope_fn: ClaimFn = (input, tokens, token_types) => {
-	const claims: Claim[] = [];
+const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink) => {
 	const view = make_token_view(input, tokens, token_types);
-	if (view.count === 0) return claims;
+	if (view.count === 0) return;
 
 	const identifier_id = token_types.indexOf("identifier");
 	const keyword_id = token_types.indexOf("keyword");
@@ -240,7 +238,7 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types) => {
 		punctuation_id < 0 ||
 		operator_id < 0
 	) {
-		return claims;
+		return;
 	}
 
 	let property_id = token_types.indexOf("property");
@@ -525,17 +523,9 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types) => {
 								top.data.brace_class === "object" &&
 								is_function_value(nxt)
 							) {
-								claims.push({
-									token_idx: i,
-									type_id: function_id,
-									precedence: PROP_FN_PREC,
-								});
+								sink.emit(i, function_id, PROP_FN_PREC);
 							} else {
-								claims.push({
-									token_idx: i,
-									type_id: property_id,
-									precedence: PROP_PREC,
-								});
+								sink.emit(i, property_id, PROP_PREC);
 							}
 						}
 					}
@@ -551,8 +541,6 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types) => {
 		const top = stack.top();
 		if (top !== undefined) top.data.at_start = false;
 	}
-
-	return claims;
 };
 
 export const claim_property_scope: ClaimingReclassifier = as_claim_producer(

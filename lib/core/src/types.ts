@@ -37,28 +37,14 @@ export interface GrammarRule {
 	seal?: boolean;
 }
 
-export type ParamBinding = string | boolean | null;
-export type ParamType = "state" | "state?" | "token" | "token?" | "match" | "boolean";
-export type IncludeEntry = string | { set: string; with?: Record<string, ParamBinding> };
-
-export interface Ruleset {
-	params?: Record<string, ParamType>;
-	include?: IncludeEntry | IncludeEntry[];
-	rules: GrammarRule[];
-}
-
 export interface GrammarState {
-	include?: IncludeEntry | IncludeEntry[];
 	rules?: GrammarRule[];
 	mode?: "probe" | "tokenise";
 	fallback?: string;
-	extend?: string | string[];
 }
 
 export interface Grammar {
 	name?: string;
-	groups?: Record<string, GrammarState>;
-	rulesets?: Record<string, Ruleset>;
 	states: Record<string, GrammarState>;
 }
 
@@ -87,6 +73,15 @@ export interface CompiledGrammar {
 	probe_fallbacks?: Map<number, number>;
 	// track which rules require boundary checking (state * 256 + rule_idx)
 	boundary_rules?: Set<number>;
+	// true when any rule sets seal: true or boundary: true. lets the
+	// tokenizer skip the per-emission seal lookup on grammars that don't
+	// opt in — most grammars don't.
+	has_seals: boolean;
+	// parallel Uint8Array to transitions, indexed by (state * 256 + rule_idx).
+	// 1 means the emission at that rule seals a lexeme boundary. undefined on
+	// grammars without any seal rules so the tokenizer can skip the lookup.
+	seal_flags?: Uint8Array;
+	fallback_seal_flags?: Uint8Array;
 }
 
 // Tokenizer types
@@ -118,21 +113,34 @@ export type ReclassifierPipeline = Reclassifier[];
 // A claim asserts that a given token should have a given type, at the given
 // precedence. Higher precedence wins during merge; when two claims tie on
 // precedence, the earlier-emitted claim wins (stable insertion order).
+//
+// The Claim object form is retained for diagnostic APIs (test_util's
+// collect_claims_per_pass). Hot paths emit into a ClaimSink instead, which
+// writes directly into parallel typed arrays to avoid per-match allocation.
 export interface Claim {
 	token_idx: number;
 	type_id: number;
 	precedence: number;
 }
 
+// Allocation-free claim emitter. Claim producers call `sink.emit(...)` for
+// each claim; the sink stores the tuple in parallel typed arrays. The batch
+// runner reuses a single sink across all producers in a batch and applies
+// winners in one pass.
+export interface ClaimSink {
+	emit(token_idx: number, type_id: number, precedence: number): void;
+}
+
 // Claim-mode entry. A claim-producing reclassifier may append new names to
 // `token_types` (for types it wants to rewrite to) but MUST NOT mutate any
-// slot of `tokens`. Returned claims reference type_ids valid for the
-// (possibly extended) `token_types` array at call time.
+// slot of `tokens`. Emitted type_ids must be valid for the (possibly
+// extended) `token_types` array at call time.
 export type ClaimFn = (
 	input: string,
 	tokens: Uint32Array,
 	token_types: string[],
-) => Claim[];
+	sink: ClaimSink,
+) => void;
 
 // A Reclassifier with a `__claim` property is claim-producing: callable in
 // apply mode (as a normal Reclassifier) and also usable in batch mode via

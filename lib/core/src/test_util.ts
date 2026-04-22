@@ -176,9 +176,17 @@ export function collect_claims_per_pass(
 		if (batch.length === 0) return;
 		const emitted_from_batch: Claim[][] = [];
 		for (let i = 0; i < batch.length; i++) {
-			const claims = batch[i](input, tokens, token_types);
-			emitted_from_batch.push(claims.slice());
-			out.push({ pass_index: batch_pass_indices[i], claims: claims.slice() });
+			// record each producer's claims into its own list via a recording
+			// sink, so the diagnostic can report per-pass breakdowns.
+			const recorded: Claim[] = [];
+			const sink = {
+				emit: (token_idx: number, type_id: number, precedence: number) => {
+					recorded.push({ token_idx, type_id, precedence });
+				},
+			};
+			batch[i](input, tokens, token_types, sink);
+			emitted_from_batch.push(recorded.slice());
+			out.push({ pass_index: batch_pass_indices[i], claims: recorded.slice() });
 		}
 		// apply merged claims so subsequent mutating passes see the real
 		// post-batch stream (matches runner behavior).

@@ -8,7 +8,6 @@
 // built-in types.
 
 import type {
-	Claim,
 	ClaimFn,
 	ClaimingReclassifier,
 	LanguagePipeline,
@@ -231,10 +230,9 @@ const STMT_STARTERS = new Set([
 // there's no over-claimer for TPP to correct.
 const TPP_TYPE_PREC = 45;
 
-const type_position_promoter_fn: ClaimFn = (input, tokens, token_types) => {
-	const claims: Claim[] = [];
+const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) => {
 	const n = tokens.length / 3;
-	if (n === 0) return claims;
+	if (n === 0) return;
 
 	const identifier_id = token_types.indexOf("identifier");
 	const keyword_id = token_types.indexOf("keyword");
@@ -244,14 +242,14 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types) => {
 
 	// only run in grammars that emit a `type` token (typescript). plain JS
 	// doesn't register this type, so the pass is a no-op there.
-	if (type_id < 0) return claims;
+	if (type_id < 0) return;
 	if (
 		identifier_id < 0 ||
 		keyword_id < 0 ||
 		punctuation_id < 0 ||
 		operator_id < 0
 	) {
-		return claims;
+		return;
 	}
 
 	const view = make_token_view(input, tokens, token_types);
@@ -733,11 +731,7 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types) => {
 					}
 				}
 				if (!skip) {
-					claims.push({
-						token_idx: i,
-						type_id,
-						precedence: TPP_TYPE_PREC,
-					});
+					sink.emit(i, type_id, TPP_TYPE_PREC);
 				}
 			}
 			continue;
@@ -831,8 +825,6 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types) => {
 			}
 		}
 	}
-
-	return claims;
 };
 
 export const type_position_promoter: ClaimingReclassifier = as_claim_producer(

@@ -1,5 +1,4 @@
 import type { Grammar } from "./types";
-import { resolve_includes, normalize_grammar } from "./compiler";
 
 export type VerifyIssue =
 	| {
@@ -20,16 +19,9 @@ export type VerifyIssue =
 // or unusable at runtime. currently checks:
 //   - transitions (rule.state / probe fallback) that point at undefined states
 //   - states that are defined but never referenced from anywhere
-//
-// the grammar is passed through the same resolve_includes + normalize_grammar
-// pipeline that `compile` uses so that states introduced via `include`,
-// `extend`, or rule sets are analysed alongside user authored states.
 export function verify(grammar: Grammar): VerifyIssue[] {
-	const resolved = resolve_includes(grammar);
-	const normalized = normalize_grammar(resolved);
-
 	const issues: VerifyIssue[] = [];
-	const state_names = Object.keys(normalized.states);
+	const state_names = Object.keys(grammar.states);
 	const defined_states = new Set(state_names);
 
 	// the first state in definition order is the tokenizer's entry point,
@@ -40,7 +32,7 @@ export function verify(grammar: Grammar): VerifyIssue[] {
 	}
 
 	for (const state_name of state_names) {
-		const state = normalized.states[state_name];
+		const state = grammar.states[state_name];
 
 		if (state.fallback !== undefined) {
 			if (!defined_states.has(state.fallback)) {

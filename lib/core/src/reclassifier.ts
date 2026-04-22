@@ -15,8 +15,8 @@ import type {
 	AnyOfPatternSpec,
 	BalancedPatternSpec,
 	CapturePatternSpec,
-	Claim,
 	ClaimFn,
+	ClaimSink,
 	ClaimingReclassifier,
 	CompiledGrammar,
 	EmbedEntry,
@@ -921,30 +921,82 @@ function precedence_for(type_name: string): number {
 	return p === undefined ? DEFAULT_PRECEDENCE : p;
 }
 
-// resolves a list of claims to one winner per token_idx. higher precedence
-// wins; on tie, the first-emitted claim wins (stable insertion preserved by
-// skipping non-strict-greater-than on later claims).
-function merge_claims(claims: Claim[]): Claim[] {
-	if (claims.length === 0) return claims;
-	const winners = new Map<number, Claim>();
-	for (let i = 0; i < claims.length; i++) {
-		const c = claims[i];
-		const existing = winners.get(c.token_idx);
-		if (existing === undefined || c.precedence > existing.precedence) {
-			winners.set(c.token_idx, c);
-		}
+// allocation-free claim collector. emit() stores (token_idx, type_id,
+// precedence) triplets in three parallel Int32Arrays. the same sink is
+// reused across all producers in a batch and across calls (see
+// shared_sink below) so no per-match allocation happens in the hot path.
+class ClaimBuffer implements ClaimSink {
+	count = 0;
+	capacity: number;
+	token_idx: Int32Array;
+	type_id: Int32Array;
+	precedence: Int32Array;
+
+	constructor(initial_capacity = 1024) {
+		this.capacity = initial_capacity;
+		this.token_idx = new Int32Array(initial_capacity);
+		this.type_id = new Int32Array(initial_capacity);
+		this.precedence = new Int32Array(initial_capacity);
 	}
-	return Array.from(winners.values());
+
+	emit(token_idx: number, type_id: number, precedence: number): void {
+		if (this.count >= this.capacity) this.grow();
+		this.token_idx[this.count] = token_idx;
+		this.type_id[this.count] = type_id;
+		this.precedence[this.count] = precedence;
+		this.count++;
+	}
+
+	reset(): void {
+		this.count = 0;
+	}
+
+	private grow(): void {
+		const cap = this.capacity * 2;
+		const new_token_idx = new Int32Array(cap);
+		const new_type_id = new Int32Array(cap);
+		const new_precedence = new Int32Array(cap);
+		new_token_idx.set(this.token_idx);
+		new_type_id.set(this.type_id);
+		new_precedence.set(this.precedence);
+		this.token_idx = new_token_idx;
+		this.type_id = new_type_id;
+		this.precedence = new_precedence;
+		this.capacity = cap;
+	}
 }
 
-// writes each claim's type_id into the token stream in place. the caller
-// typically runs merge_claims first so at most one claim touches each token,
-// but apply_claims accepts raw lists too — later writes simply overwrite
-// earlier ones when duplicates exist.
-function apply_claims(tokens: Uint32Array, claims: Claim[]): void {
-	for (let i = 0; i < claims.length; i++) {
-		const c = claims[i];
-		tokens[c.token_idx * 3] = c.type_id;
+// shared sink reused across reclassifier invocations — avoids reallocating
+// the parallel arrays every call. safe because reclassify is synchronous
+// and never nested (pipeline entries run sequentially).
+const shared_sink = new ClaimBuffer();
+
+// merge buffered claims into a dense per-token winner table and apply in
+// one pass. higher precedence wins; on tie, the first-emitted claim wins
+// (we use strict greater-than on later claims).
+function merge_and_apply_buffer(
+	tokens: Uint32Array,
+	buf: ClaimBuffer,
+): void {
+	if (buf.count === 0) return;
+	const token_count = tokens.length / 3;
+	// -1 sentinel marks "no winner yet" since valid type_ids are >= 0.
+	const winner_type = new Int32Array(token_count).fill(-1);
+	const winner_prec = new Int32Array(token_count);
+	const bti = buf.token_idx;
+	const btt = buf.type_id;
+	const btp = buf.precedence;
+	for (let i = 0; i < buf.count; i++) {
+		const idx = bti[i];
+		const prec = btp[i];
+		if (winner_type[idx] === -1 || prec > winner_prec[idx]) {
+			winner_type[idx] = btt[i];
+			winner_prec[idx] = prec;
+		}
+	}
+	for (let i = 0; i < token_count; i++) {
+		const t = winner_type[i];
+		if (t !== -1) tokens[i * 3] = t;
 	}
 }
 
@@ -954,7 +1006,9 @@ function apply_claims(tokens: Uint32Array, claims: Claim[]): void {
 
 interface CompiledRule {
 	anchor_id: number;
-	anchor_value_set: Set<string> | null;
+	// -1 means no value constraint; otherwise an id into the shared value
+	// pool (same layout as the bytecode matcher's value_set_matches).
+	anchor_value_id: number;
 	// anchor rewrite target (phase 1 form). -1 means no anchor rewrite.
 	anchor_target_id: number;
 	// capture rewrite targets (phase 3 form). null if no capture rewrites.
@@ -1059,18 +1113,17 @@ function compile_rewrite(
 			}
 		}
 
-		let anchor_value_set: Set<string> | null = null;
+		let anchor_value_id = -1;
 		if (anchor_spec.value !== undefined) {
-			anchor_value_set = new Set(
-				Array.isArray(anchor_spec.value)
-					? anchor_spec.value
-					: [anchor_spec.value],
-			);
+			const values = Array.isArray(anchor_spec.value)
+				? anchor_spec.value
+				: [anchor_spec.value];
+			anchor_value_id = compile_value_set(ctx, values);
 		}
 
 		compiled.push({
 			anchor_id,
-			anchor_value_set,
+			anchor_value_id,
 			anchor_target_id,
 			capture_targets,
 			before: rule.before ? compile_pattern(rule.before, name_to_id) : null,
@@ -1206,15 +1259,17 @@ export function rewrite_types(
 		tokens: Uint32Array,
 		token_types: string[],
 		state: CompiledRewriteState,
-	): Claim[] {
-		if (state.compiled.length === 0) return [];
+		sink: ClaimSink,
+	): void {
+		if (state.compiled.length === 0) return;
 		const remap = resolve_appended(state, token_types);
-		return run_rewrite_loop_claims(
+		run_rewrite_loop_claims(
 			input,
 			tokens,
 			token_types,
 			state,
 			remap,
+			sink,
 		);
 	}
 
@@ -1222,14 +1277,17 @@ export function rewrite_types(
 		const tokens = new Uint32Array(result.tokens);
 		const token_types = result.token_types.slice();
 		const state = get_state(result.token_types);
-		const claims = collect(input, tokens, token_types, state);
-		apply_claims(tokens, claims);
+		// local sink — apply_fn may be called reentrantly while the shared
+		// sink is in use by an outer batch.
+		const sink = new ClaimBuffer(256);
+		collect(input, tokens, token_types, state, sink);
+		merge_and_apply_buffer(tokens, sink);
 		return { tokens, token_types };
 	};
 
-	const claim_fn: ClaimFn = (input, tokens, token_types) => {
+	const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
 		const state = get_state(token_types);
-		return collect(input, tokens, token_types, state);
+		collect(input, tokens, token_types, state, sink);
 	};
 
 	const fn = apply_fn as ClaimingReclassifier;
@@ -1249,8 +1307,8 @@ function run_rewrite_loop_claims(
 	token_types: string[],
 	state: CompiledRewriteState,
 	remap: Int32Array,
-): Claim[] {
-	const claims: Claim[] = [];
+	sink: ClaimSink,
+): void {
 	const count = tokens.length / 3;
 	const {
 		anchor_offset,
@@ -1270,10 +1328,12 @@ function run_rewrite_loop_claims(
 
 		for (let r = 0; r < rcount; r++) {
 			const rule = rule_table[offset + r];
-			if (rule.anchor_value_set !== null) {
+			if (rule.anchor_value_id !== -1) {
 				const s = tokens[i * 3 + 1];
 				const e = tokens[i * 3 + 2];
-				if (!rule.anchor_value_set.has(input.slice(s, e))) continue;
+				if (!value_set_matches(value_pool, value_offsets, rule.anchor_value_id, input, s, e)) {
+					continue;
+				}
 			}
 			if (rule.before !== null) {
 				const behind = match_pattern_backward(
@@ -1305,11 +1365,7 @@ function run_rewrite_loop_claims(
 			// actually fired — optional captures may not).
 			if (rule.anchor_target_id !== -1) {
 				const target_id = runtime_target(rule.anchor_target_id, state, remap);
-				claims.push({
-					token_idx: i,
-					type_id: target_id,
-					precedence: precedence_for(token_types[target_id]),
-				});
+				sink.emit(i, target_id, precedence_for(token_types[target_id]));
 			}
 			if (rule.capture_targets !== null) {
 				for (let c = 0; c < rule.capture_targets.length; c++) {
@@ -1323,15 +1379,13 @@ function run_rewrite_loop_claims(
 					const target_id = runtime_target(target.target_id, state, remap);
 					const p = precedence_for(token_types[target_id]);
 					for (let t = s; t < e; t++) {
-						claims.push({ token_idx: t, type_id: target_id, precedence: p });
+						sink.emit(t, target_id, p);
 					}
 				}
 			}
 			break; // first-match-wins per position
 		}
 	}
-
-	return claims;
 }
 
 // ---------------------------------------------------------------------------
@@ -1926,13 +1980,13 @@ function flush_claim_batch(
 ): TokenizeResult {
 	const tokens = new Uint32Array(current.tokens);
 	const token_types = current.token_types.slice();
-	const all_claims: Claim[] = [];
+	// reuse the module-level sink. all batch producers emit into it
+	// sequentially; we apply the merged winners once at the end.
+	shared_sink.reset();
 	for (let i = 0; i < batch.length; i++) {
-		const claims = batch[i].__claim(input, tokens, token_types);
-		for (let k = 0; k < claims.length; k++) all_claims.push(claims[k]);
+		batch[i].__claim(input, tokens, token_types, shared_sink);
 	}
-	const merged = merge_claims(all_claims);
-	apply_claims(tokens, merged);
+	merge_and_apply_buffer(tokens, shared_sink);
 	return { tokens, token_types };
 }
 
@@ -1991,8 +2045,9 @@ export function as_claim_producer(claim_fn: ClaimFn): ClaimingReclassifier {
 	const apply_fn: Reclassifier = (input, result) => {
 		const tokens = new Uint32Array(result.tokens);
 		const token_types = result.token_types.slice();
-		const claims = claim_fn(input, tokens, token_types);
-		apply_claims(tokens, merge_claims(claims));
+		const sink = new ClaimBuffer(256);
+		claim_fn(input, tokens, token_types, sink);
+		merge_and_apply_buffer(tokens, sink);
 		return { tokens, token_types };
 	};
 	const fn = apply_fn as ClaimingReclassifier;
