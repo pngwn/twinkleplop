@@ -850,6 +850,12 @@ export const reclassifiers: LanguagePipeline = [
 	]),
 	tag(claim_property_scope, ["property"]),
 	tag(type_position_promoter, ["type"]),
+	// class_name_promoter retained for TS only — handles extends/implements
+	// comma lists (interface J extends K, L; class C implements Foo, Bar)
+	// and type-vs-class-name disambiguation inside generic constraints
+	// (function f<T extends Base>). the JS grammar's class_name_pos covers
+	// single-name and dotted-chain cases; this pass extends to lists and
+	// demotes grammar-emitted class_name that should be type in TS context.
 	tag(class_name_promoter, ["class_name"]),
 	always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
 ];

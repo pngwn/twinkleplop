@@ -123,6 +123,8 @@ const ts_keywords_literals = (
 	keyword(REGEX_PRECEDING_KEYWORDS, to(regex_dest)),
 	keyword(ALL_DIVISION_KEYWORDS, to(div_dest)),
 	keyword(SPECIAL_VALUES, to(div_dest)),
+	// grammar-native booleans (matches JS).
+	keyword(BOOLEAN_LITERALS, to(div_dest), "boolean"),
 ];
 
 // ---------------------------------------------------------------------------

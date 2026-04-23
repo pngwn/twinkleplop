@@ -1139,3 +1139,93 @@ describe("reclassifier — embed_interleaved", () => {
 		expect(runs[1]).toMatchObject({ value: "cd", start: 9, end: 11 });
 	});
 });
+
+// -----------------------------------------------------------------------------
+// fidelity downgrade — grammar-emitted extensions get remapped to base types
+// when fidelity excludes them. mirrors the reclassifier tagging system but
+// covers types the grammar state machine emits directly (boolean, function).
+// -----------------------------------------------------------------------------
+
+describe("create_language — fidelity downgrade for grammar extensions", () => {
+	// toy grammar already emits `boolean` directly for true/false. extend by
+	// adding a rule that also produces `function` so we can exercise both.
+	const fidelity_grammar: Grammar = {
+		name: "fidelity_toy",
+		states: {
+			root: {
+				rules: [
+					{ match: ["true", "false"], boundary: true, token: "boolean" },
+					{ match: ["fn"], boundary: true, token: "function" },
+					{
+						range: [
+							["a", "z"],
+							["A", "Z"],
+						],
+						token: "identifier",
+					},
+					{ match: [" ", "\t", "\n"] },
+				],
+			},
+		},
+	};
+	const fidelity_compiled = compile(fidelity_grammar);
+
+	function tokens_of(lang: LanguageFn, input: string) {
+		const result = lang(input);
+		const out: { type: string; value: string }[] = [];
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			out.push({
+				type: result.token_types[result.tokens[i * 3]],
+				value: input.slice(
+					result.tokens[i * 3 + 1],
+					result.tokens[i * 3 + 2],
+				),
+			});
+		}
+		return out;
+	}
+
+	const factory = create_language(fidelity_compiled, []);
+
+	test("fidelity undefined keeps grammar-emitted extensions", () => {
+		const lang = factory();
+		const t = tokens_of(lang, "true fn other");
+		expect(t.find((x) => x.value === "true")?.type).toBe("boolean");
+		expect(t.find((x) => x.value === "fn")?.type).toBe("function");
+		expect(t.find((x) => x.value === "other")?.type).toBe("identifier");
+	});
+
+	test("fidelity='high' keeps grammar-emitted extensions", () => {
+		const lang = factory({ fidelity: "high" });
+		const t = tokens_of(lang, "true fn other");
+		expect(t.find((x) => x.value === "true")?.type).toBe("boolean");
+		expect(t.find((x) => x.value === "fn")?.type).toBe("function");
+	});
+
+	test("fidelity='low' downgrades boolean and function to identifier", () => {
+		const lang = factory({ fidelity: "low" });
+		const t = tokens_of(lang, "true fn other");
+		expect(t.find((x) => x.value === "true")?.type).toBe("identifier");
+		expect(t.find((x) => x.value === "fn")?.type).toBe("identifier");
+		expect(t.find((x) => x.value === "other")?.type).toBe("identifier");
+	});
+
+	test("fidelity allowlist keeps listed extensions, downgrades the rest", () => {
+		const only_fn = factory({ fidelity: ["function"] });
+		let t = tokens_of(only_fn, "true fn other");
+		expect(t.find((x) => x.value === "true")?.type).toBe("identifier");
+		expect(t.find((x) => x.value === "fn")?.type).toBe("function");
+
+		const only_bool = factory({ fidelity: ["boolean"] });
+		t = tokens_of(only_bool, "true fn other");
+		expect(t.find((x) => x.value === "true")?.type).toBe("boolean");
+		expect(t.find((x) => x.value === "fn")?.type).toBe("identifier");
+	});
+
+	test("fidelity allowlist containing neither downgrades both", () => {
+		const lang = factory({ fidelity: ["type"] });
+		const t = tokens_of(lang, "true fn other");
+		expect(t.find((x) => x.value === "true")?.type).toBe("identifier");
+		expect(t.find((x) => x.value === "fn")?.type).toBe("identifier");
+	});
+});

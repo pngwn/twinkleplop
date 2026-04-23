@@ -95,7 +95,7 @@ export default [
 		"end": 61
 	},
 	{
-		"type": "identifier",
+		"type": "boolean",
 		"start": 62,
 		"end": 66
 	},

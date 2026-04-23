@@ -2138,6 +2138,59 @@ export function create_language(
 ): LanguageFactory {
 	return (options?: LanguageOptions): LanguageFn => {
 		const run = reclassify(select_pipeline(pipeline, options?.fidelity));
-		return (input: string) => run(input, tokenize(input, grammar));
+		const downgrade = build_downgrade(grammar.token_types, options?.fidelity);
+		return (input: string) => {
+			const result = run(input, tokenize(input, grammar));
+			if (downgrade !== null) apply_downgrade(result.tokens, downgrade);
+			return result;
+		};
 	};
+}
+
+// grammar-native token types that the grammar state machine emits directly
+// (without help from a reclassifier). when fidelity excludes them, the
+// language factory remaps them to their base type at the end of the
+// pipeline — preserves the "low fidelity = bare grammar tokens" contract
+// even though the grammar itself runs at full detail.
+const GRAMMAR_EXTENSION_DOWNGRADES: Record<string, string> = {
+	boolean: "identifier",
+	function: "identifier",
+};
+
+// build a dense per-type remap: remap[type_id] is the target id when
+// that type should be downgraded, or -1 to leave it alone. returns null
+// when no downgrade is needed (fidelity='high' or the allowlist already
+// covers every grammar extension).
+function build_downgrade(
+	token_types: string[],
+	fidelity: FidelitySpec | undefined,
+): Int32Array | null {
+	if (fidelity === undefined || fidelity === "high") return null;
+	const allow =
+		fidelity === "low" ? null : new Set<string>(fidelity as readonly string[]);
+	const remap = new Int32Array(token_types.length);
+	remap.fill(-1);
+	let has_any = false;
+	for (const [ext, base] of Object.entries(GRAMMAR_EXTENSION_DOWNGRADES)) {
+		if (allow !== null && allow.has(ext)) continue;
+		const src_id = token_types.indexOf(ext);
+		if (src_id < 0) continue;
+		const dst_id = token_types.indexOf(base);
+		if (dst_id < 0) continue;
+		remap[src_id] = dst_id;
+		has_any = true;
+	}
+	return has_any ? remap : null;
+}
+
+function apply_downgrade(tokens: Uint32Array, remap: Int32Array): void {
+	const n = tokens.length / 3;
+	const cap = remap.length;
+	for (let i = 0; i < n; i++) {
+		const t = tokens[i * 3];
+		if (t < cap) {
+			const m = remap[t];
+			if (m >= 0) tokens[i * 3] = m;
+		}
+	}
 }

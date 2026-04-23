@@ -1195,7 +1195,7 @@ export default [
 		"end": 898
 	},
 	{
-		"type": "identifier",
+		"type": "boolean",
 		"start": 899,
 		"end": 903
 	},
