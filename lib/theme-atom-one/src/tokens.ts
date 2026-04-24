@@ -30,10 +30,10 @@ export const light: theme_palette = {
 	// universal primitives
 	boolean: "#0184BC", // constant.language.json
 	comment: "#A0A1A7", // comment
-	identifier: "#383A42", // colors.editor.foreground / variable.parameter fallback
+	identifier: "#383A42", // variable.other.readwrite.js / foreground for common identifiers
 	keyword: "#A626A4", // keyword
 	number: "#986801", // constant.numeric
-	operator: "#383A42", // keyword.operator
+	operator: "#0184BC", // source.js keyword.operator / keyword.operator in common JS use
 	punctuation: "#383A42", // punctuation.definition.* / foreground
 	regex: "#0184BC", // string.regexp
 	string: "#50A14F", // string
@@ -44,10 +44,10 @@ export const light: theme_palette = {
 	builtin: "#0184BC", // support.function / support.type
 	class_name: "#C18401", // entity.name.class
 	constant: "#986801", // constant.variable / constant.numeric family
-	decorator: "#A626A4", // fallback to keyword; no explicit decorator scope
-	lifetime: "#383A42", // storage.modifier.lifetime.rust
+	decorator: "#986801", // meta.attribute.rust fallback to attribute
+	lifetime: "#986801", // entity.name.lifetime.rust
 	namespace: "#C18401", // fallback to entity.name.type; no explicit namespace scope
-	parameter: "#383A42", // variable.parameter
+	parameter: "#E45649", // variable parameter fallback to variable for JS/Rust-style params
 	property: "#383A42", // support.type.property-name
 	type: "#C18401", // entity.name.type
 	variable: "#E45649", // variable
@@ -65,7 +65,7 @@ export const light: theme_palette = {
 	selector: "#E45649", // entity.name.tag fallback
 	selector_class: "#986801", // entity.other.attribute-name fallback
 	selector_id: "#4078F2", // entity.other.attribute-name.id
-	selector_pseudo: "#0184BC", // fallback to support.type; no explicit pseudo scope
+	selector_pseudo: "#986801", // CSS pseudo selector as rendered by one-light
 	unit: "#986801", // keyword.other.unit
 
 	// diff
@@ -74,7 +74,7 @@ export const light: theme_palette = {
 	deleted: "#E45649", // markup.deleted
 	deleted_marker: "#E45649", // fallback to deleted
 	hash: "#A0A1A7", // fallback to comment; no explicit meta.diff.index
-	heading: "#4078F2", // entity.name.section / heading punctuation accent
+	heading: "#E45649", // markup.heading / entity.name.section.markdown
 	inserted: "#50A14F", // markup.inserted
 	inserted_marker: "#50A14F", // fallback to inserted
 	label: "#A0A1A7", // fallback to comment/muted
@@ -82,38 +82,38 @@ export const light: theme_palette = {
 	// markdown content
 	autolink: "#E45649", // string.other.link
 	bold: "#986801", // markup.bold
-	code: "#50A14F", // markup.inline.raw.markdown
+	code: "#383A42", // markup.raw.block.markdown wins for Markdown raw spans in this port
 	code_block: "#383A42", // markup.raw.block.markdown
 	code_language: "#4078F2", // fallback to entity.name.section / fence info
 	italic: "#A626A4", // markup.italic
-	link_text: "#A626A4", // markup.underline.link.markdown
+	link_text: "#4078F2", // source.gfm link entity / visible link text
 	strike: "#383A42", // fallback to foreground; no explicit strikethrough scope
-	url: "#E45649", // string.other.link
-	url_link: "#E45649", // string.other.link
-	url_title: "#4078F2", // string.other.link.title.markdown
+	url: "#A626A4", // punctuation.definition.metadata.markdown / link destination
+	url_link: "#A626A4", // punctuation.definition.metadata.markdown
+	url_title: "#383A42", // string.other.link.title.markdown token includes quotes in twinkleplop
 
 	// markdown open/close markers
 	autolink_open: "#E45649", // fallback to autolink
 	autolink_close: "#E45649", // fallback to autolink
 	bold_open: "#986801", // fallback to bold
 	bold_close: "#986801", // fallback to bold
-	code_open: "#50A14F", // fallback to code
-	code_close: "#50A14F", // fallback to code
+	code_open: "#383A42", // fallback to code
+	code_close: "#383A42", // fallback to code
 	italic_open: "#A626A4", // fallback to italic
 	italic_close: "#A626A4", // fallback to italic
-	link_text_open: "#A626A4", // fallback to link_text
-	link_text_close: "#A626A4", // fallback to link_text
+	link_text_open: "#986801", // link text bracket punctuation
+	link_text_close: "#986801", // link text bracket punctuation
 	strike_open: "#383A42", // fallback to strike
 	strike_close: "#383A42", // fallback to strike
 
 	// markdown block markers
 	blockquote_marker: "#A0A1A7", // markup.quote.markdown
-	code_fence: "#50A14F", // markup.raw fallback
+	code_fence: "#383A42", // markup.raw.block.markdown
 	front_matter_marker: "#A0A1A7", // fallback to comment/muted
-	heading_marker: "#4078F2", // punctuation.definition.heading
+	heading_marker: "#E45649", // punctuation.definition.heading.markdown
 	hr: "#383A42", // meta.separator
-	list_marker: "#E45649", // punctuation.definition.list.markdown
-	task_marker: "#50A14F", // fallback to inserted; no explicit checkbox scope
+	list_marker: "#383A42", // rendered markdown list marker in one-light
+	task_marker: "#986801", // rendered task checkbox marker in one-light
 
 	// markdown character-level
 	escape: "#0184BC", // constant.character.escape
@@ -140,7 +140,7 @@ export const light: theme_palette = {
 	// language-unique
 	string_escape: "#0184BC", // constant.character.escape
 	format: "#986801", // constant.character.format.placeholder.other.python storage
-	attr_sigil: "#383A42", // fallback to punctuation; no explicit rust # sigil
+	attr_sigil: "#986801", // meta.attribute.rust
 	bit: "#986801", // fallback to constant.numeric
 	array_table_header: "#E45649", // support.type.property-name.toml fallback
 	datetime: "#986801", // fallback to constant.numeric
@@ -158,12 +158,12 @@ export const dark: theme_palette = {
 	// universal primitives
 	boolean: "#56b6c2", // constant.language.json
 	comment: "#7f848e", // comment
-	identifier: "#abb2bf", // colors.editor.foreground / Text
+	identifier: "#e06c75", // variable.other.readwrite / variable
 	keyword: "#c678dd", // keyword
 	number: "#d19a66", // constant.numeric
 	operator: "#56b6c2", // keyword.operator.logical / keyword.operator.css
 	punctuation: "#abb2bf", // punctuation.separator.delimiter
-	regex: "#56b6c2", // string.regexp
+	regex: "#e06c75", // string.regexp final rule
 	string: "#98c379", // string
 	template: "#98c379", // fallback to string; no generic string.template rule
 
@@ -171,11 +171,11 @@ export const dark: theme_palette = {
 	attribute: "#d19a66", // entity.other.attribute-name
 	builtin: "#56b6c2", // support.function
 	class_name: "#e5c07b", // entity.name.class
-	constant: "#d19a66", // constant.numeric / variable.other.constant family
-	decorator: "#e5c07b", // fallback to class/type; no explicit decorator scope
-	lifetime: "#abb2bf", // storage.modifier.lifetime.rust
+	constant: "#d19a66", // constant
+	decorator: "#56b6c2", // support.token.decorator.python / meta.function.decorator.identifier.python
+	lifetime: "#e5c07b", // entity.name.lifetime.rust
 	namespace: "#e5c07b", // entity.name.namespace
-	parameter: "#abb2bf", // variable.parameter.function
+	parameter: "#e06c75", // variable.parameter.function.js / Rust parameter fallback
 	property: "#abb2bf", // support.type.property-name
 	type: "#e5c07b", // entity.name.type / support.class
 	variable: "#e06c75", // variable
@@ -202,7 +202,7 @@ export const dark: theme_palette = {
 	deleted: "#e06c75", // markup.deleted
 	deleted_marker: "#e06c75", // fallback to deleted
 	hash: "#7f848e", // fallback to comment/muted
-	heading: "#61afef", // entity.name.section / meta.diff.header
+	heading: "#e06c75", // markup.heading / entity.name.section.markdown
 	inserted: "#98c379", // markup.inserted
 	inserted_marker: "#98c379", // fallback to inserted
 	label: "#7f848e", // fallback to comment/muted
@@ -214,11 +214,11 @@ export const dark: theme_palette = {
 	code_block: "#98c379", // markup.raw fallback
 	code_language: "#61afef", // fallback to entity.name.section / fence info
 	italic: "#c678dd", // markup.italic
-	link_text: "#c678dd", // markup.underline.link.markdown
+	link_text: "#61afef", // visible link text as rendered by one-dark-pro
 	strike: "#abb2bf", // fallback to foreground; no explicit strikethrough scope
-	url: "#61afef", // string.other.link.title/description
-	url_link: "#61afef", // string.other.link.title/description
-	url_title: "#61afef", // string.other.link.title/description
+	url: "#c678dd", // markup.underline.link.markdown / link destination
+	url_link: "#e06c75", // punctuation.definition.metadata.markdown
+	url_title: "#e06c75", // title token includes quote punctuation in twinkleplop
 
 	// markdown open/close markers
 	autolink_open: "#61afef", // fallback to autolink
@@ -229,8 +229,8 @@ export const dark: theme_palette = {
 	code_close: "#e5c07b", // punctuation.definition.raw.markdown
 	italic_open: "#c678dd", // fallback to italic
 	italic_close: "#c678dd", // fallback to italic
-	link_text_open: "#c678dd", // fallback to link_text
-	link_text_close: "#c678dd", // fallback to link_text
+	link_text_open: "#abb2bf", // link text bracket punctuation
+	link_text_close: "#abb2bf", // link text bracket punctuation
 	strike_open: "#abb2bf", // fallback to strike
 	strike_close: "#abb2bf", // fallback to strike
 
@@ -238,10 +238,10 @@ export const dark: theme_palette = {
 	blockquote_marker: "#5c6370", // markup.quote.markdown
 	code_fence: "#e5c07b", // punctuation.definition.raw.markdown
 	front_matter_marker: "#7f848e", // fallback to comment/muted
-	heading_marker: "#61afef", // markup.heading punctuation.definition.heading
+	heading_marker: "#e06c75", // punctuation.definition.heading.markdown
 	hr: "#7f848e", // fallback to comment/muted
 	list_marker: "#e5c07b", // punctuation.definition.list.markdown
-	task_marker: "#98c379", // fallback to inserted; no explicit checkbox scope
+	task_marker: "#abb2bf", // rendered task checkbox marker in one-dark-pro
 
 	// markdown character-level
 	escape: "#56b6c2", // constant.character.escape
@@ -268,7 +268,7 @@ export const dark: theme_palette = {
 	// language-unique
 	string_escape: "#56b6c2", // constant.character.escape
 	format: "#d19a66", // constant.character.format.placeholder.other.python
-	attr_sigil: "#e06c75", // fallback to punctuation.section.embedded
+	attr_sigil: "#abb2bf", // rust attribute sigil punctuation fallback
 	bit: "#d19a66", // fallback to constant.numeric
 	array_table_header: "#e06c75", // support.type.property-name.toml
 	datetime: "#d19a66", // fallback to constant.numeric

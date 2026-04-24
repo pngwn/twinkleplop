@@ -7,11 +7,9 @@
 //
 // idiomatic Go prefers MixedCaps (`MaxSize`) over UPPER_SNAKE_CASE for
 // constants, but `const MAX_BYTES = 1024` is still common. the UPPER_SNAKE
-// promoter handles the latter. pascal_case and function-call promotion are
-// deliberately omitted: exported names in Go are PascalCase regardless of
-// whether they're types, functions, variables, or constants, so a blind
-// case-based promotion overfits. future contextual passes can tighten
-// this up.
+// promoter handles the latter. pascal_case promotion is deliberately omitted:
+// exported names in Go are PascalCase regardless of whether they're types,
+// functions, variables, or constants, so a blind case-based promotion overfits.
 
 import {
 	make_token_view,
@@ -24,6 +22,84 @@ export const promote_go_constants: Reclassifier = promote_by_upper_snake_case(
 	"identifier",
 	"constant",
 );
+
+// Function promotion:
+//   - declaration names: `func f(...)`, `func F[T any](...)`
+//   - call sites: `f(...)`, `pkg.F(...)`, `F[T](...)`
+// Go's square-bracket generic call syntax is lexically indistinguishable from
+// indexing followed by a call (`table[key](x)`), so the bracket+paren branch
+// intentionally favors useful highlighting over parser-level precision.
+export const promote_go_functions: Reclassifier = (input, result) => {
+	const { tokens, token_types } = result;
+	const identifier_id = token_types.indexOf("identifier");
+	const punctuation_id = token_types.indexOf("punctuation");
+	if (identifier_id < 0 || punctuation_id < 0) return result;
+	let function_id = token_types.indexOf("function");
+	if (function_id < 0) {
+		function_id = token_types.length;
+		token_types.push("function");
+	}
+	const view = make_token_view(input, tokens, token_types);
+	const n = view.count;
+
+	const matching_close = (
+		start_idx: number,
+		open: string,
+		close: string,
+	): { idx: number; offset: number } | null => {
+		if (start_idx < 0 || view.kind_of(start_idx) !== punctuation_id) {
+			return null;
+		}
+		const first = view.text_of(start_idx);
+		if (first[0] !== open) return null;
+		let depth = 0;
+		for (let k = start_idx; k < n; k++) {
+			if (view.is_trivia(k)) continue;
+			if (view.kind_of(k) !== punctuation_id) continue;
+			const text = view.text_of(k);
+			for (let offset = 0; offset < text.length; offset++) {
+				const ch = text[offset];
+				if (ch === open) depth++;
+				else if (ch === close) {
+					depth--;
+					if (depth === 0) return { idx: k, offset: offset + 1 };
+				}
+			}
+		}
+		return null;
+	};
+
+	const has_open_paren_after = (pos: {
+		idx: number;
+		offset: number;
+	}): boolean => {
+		const text = view.text_of(pos.idx);
+		if (pos.offset < text.length) return text[pos.offset] === "(";
+		const next = view.next_non_trivia(pos.idx + 1);
+		return (
+			next >= 0 &&
+			view.kind_of(next) === punctuation_id &&
+			view.text_of(next).startsWith("(")
+		);
+	};
+
+	const is_function_position = (idx: number): boolean => {
+		const next = view.next_non_trivia(idx + 1);
+		if (next < 0 || view.kind_of(next) !== punctuation_id) return false;
+		const text = view.text_of(next);
+		if (text.startsWith("(")) return true;
+		if (!text.startsWith("[")) return false;
+		const close = matching_close(next, "[", "]");
+		return close != null && has_open_paren_after(close);
+	};
+
+	for (let i = 0; i < n; i++) {
+		if (view.kind_of(i) !== identifier_id) continue;
+		if (is_function_position(i)) tokens[i * 3] = function_id;
+	}
+
+	return { tokens, token_types };
+};
 
 // namespace promotion for Go package declarations and aliased imports:
 //   - `package foo`               → foo = namespace
@@ -119,18 +195,16 @@ export const promote_go_namespaces: Reclassifier = (input, result) => {
 	return { tokens, token_types };
 };
 
-// parameter promotion: after `func name(...)` or `func (recv *R) name(...)`
-// tag identifiers in parameter position. the first identifier after `(` or
-// `,` at depth 1 is the param name; Go's `x, y int` syntax works because
-// each comma resets expect_param. method receivers (the `recv` in
-// `func (recv *R) Method(...)`) are also promoted since they are a
-// self-parameter semantically.
+// Parameter promotion: after `func name(...)`, `func name[T any](...)`, or
+// `func (recv *R) name(...)`, tag declared parameter names. Go permits
+// unnamed parameters (`func(T) U`) and shared types (`x, y int`), so this is
+// chunk-based rather than "first identifier after every comma".
 export const promote_go_parameters: Reclassifier = (input, result) => {
 	const { tokens, token_types } = result;
 	const identifier_id = token_types.indexOf("identifier");
+	const function_id = token_types.indexOf("function");
 	const keyword_id = token_types.indexOf("keyword");
 	const punctuation_id = token_types.indexOf("punctuation");
-	const operator_id = token_types.indexOf("operator");
 	if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0) {
 		return result;
 	}
@@ -142,48 +216,177 @@ export const promote_go_parameters: Reclassifier = (input, result) => {
 	const view = make_token_view(input, tokens, token_types);
 	const n = view.count;
 
-	const promote_paren_list = (open_idx: number): number => {
-		let depth = 1;
-		let expect_param = true;
-		let k = open_idx + 1;
-		while (k < n && depth > 0) {
+	const is_name_like = (idx: number): boolean =>
+		view.kind_of(idx) === identifier_id ||
+		(function_id >= 0 && view.kind_of(idx) === function_id);
+
+	const find_open_paren = (
+		from: number,
+	): { idx: number; offset: number } | null => {
+		if (from < 0) return null;
+		let bracket_depth = 0;
+		let brace_depth = 0;
+		for (let k = from; k < n; k++) {
+			if (view.is_trivia(k)) continue;
+			if (view.kind_of(k) !== punctuation_id) continue;
+			const text = view.text_of(k);
+			for (let offset = 0; offset < text.length; offset++) {
+				const ch = text[offset];
+				if (ch === "[") bracket_depth++;
+				else if (ch === "]") bracket_depth = Math.max(0, bracket_depth - 1);
+				else if (ch === "{") brace_depth++;
+				else if (ch === "}") brace_depth = Math.max(0, brace_depth - 1);
+				else if (ch === "(" && bracket_depth === 0 && brace_depth === 0) {
+					return { idx: k, offset };
+				}
+			}
+		}
+		return null;
+	};
+
+	const find_param_open_after_name = (
+		name_idx: number,
+	): { idx: number; offset: number } | null => {
+		const after = view.next_non_trivia(name_idx + 1);
+		if (after < 0 || view.kind_of(after) !== punctuation_id) return null;
+		return find_open_paren(after);
+	};
+
+	const square_has_trailing_type = (
+		chunk: number[],
+		start_pos: number,
+	): boolean => {
+		let depth = 0;
+		let seen_open = false;
+		for (let pos = start_pos; pos < chunk.length; pos++) {
+			const idx = chunk[pos];
+			if (view.kind_of(idx) !== punctuation_id) continue;
+			const text = view.text_of(idx);
+			for (let offset = 0; offset < text.length; offset++) {
+				const ch = text[offset];
+				if (ch === "[") {
+					depth++;
+					seen_open = true;
+				} else if (ch === "]" && depth > 0) {
+					depth--;
+					if (seen_open && depth === 0) {
+						for (let rest = offset + 1; rest < text.length; rest++) {
+							const trailing = text[rest];
+							if (trailing !== ")" && trailing !== ",") return true;
+						}
+						return pos < chunk.length - 1;
+					}
+				}
+			}
+		}
+		return true;
+	};
+
+	const has_type_after_first = (chunk: number[]): boolean => {
+		if (chunk.length < 2) return false;
+		const second = chunk[1];
+		if (view.kind_of(second) === punctuation_id) {
+			const text = view.text_of(second);
+			if (text.startsWith(".")) return false;
+			if (text.startsWith("[")) return square_has_trailing_type(chunk, 1);
+		}
+		return true;
+	};
+
+	const promote_parameter_chunks = (chunks: number[][]): void => {
+		let pending_names: number[] = [];
+		for (const chunk of chunks) {
+			if (chunk.length === 0) continue;
+			const first = chunk[0];
+			if (!is_name_like(first)) {
+				pending_names = [];
+				continue;
+			}
+			if (has_type_after_first(chunk)) {
+				for (const idx of pending_names) tokens[idx * 3] = parameter_id;
+				tokens[first * 3] = parameter_id;
+				pending_names = [];
+				continue;
+			}
+			if (chunk.length === 1) {
+				pending_names.push(first);
+			} else {
+				pending_names = [];
+			}
+		}
+	};
+
+	const promote_paren_list = (open: {
+		idx: number;
+		offset: number;
+	}): number => {
+		let paren_depth = 1;
+		let bracket_depth = 0;
+		let brace_depth = 0;
+		const chunks: number[][] = [];
+		let current: number[] = [];
+		let k = open.idx;
+		let offset = open.offset + 1;
+
+		while (k < n && paren_depth > 0) {
 			if (view.is_trivia(k)) {
 				k++;
+				offset = 0;
 				continue;
 			}
 			const kind = view.kind_of(k);
-			const t = view.text_of(k);
-			if (kind === punctuation_id) {
-				for (const ch of t) {
-					if (ch === "(" || ch === "[" || ch === "{") depth++;
-					else if (ch === ")" || ch === "]" || ch === "}") {
-						depth--;
-						if (depth === 0) break;
-					} else if (ch === "," && depth === 1) {
-						expect_param = true;
-					}
-				}
+			if (kind !== punctuation_id) {
+				current.push(k);
 				k++;
+				offset = 0;
 				continue;
 			}
-			if (depth === 1 && expect_param) {
-				// skip pointer `*` and variadic `...` qualifiers.
+
+			const text = view.text_of(k);
+			let include_punctuation = false;
+			for (; offset < text.length; offset++) {
+				const ch = text[offset];
 				if (
-					kind === operator_id &&
-					(t === "*" || t === "..." || t === "&")
+					ch === "," &&
+					paren_depth === 1 &&
+					bracket_depth === 0 &&
+					brace_depth === 0
 				) {
-					k++;
+					if (include_punctuation) current.push(k);
+					chunks.push(current);
+					current = [];
+					include_punctuation = false;
 					continue;
 				}
-				if (kind === identifier_id) {
-					tokens[k * 3] = parameter_id;
-					expect_param = false;
+				if (ch === "(") {
+					paren_depth++;
+					include_punctuation = true;
+				} else if (ch === ")") {
+					paren_depth--;
+					if (paren_depth === 0) break;
+					include_punctuation = true;
+				} else if (ch === "[") {
+					bracket_depth++;
+					include_punctuation = true;
+				} else if (ch === "]") {
+					bracket_depth = Math.max(0, bracket_depth - 1);
+					include_punctuation = true;
+				} else if (ch === "{") {
+					brace_depth++;
+					include_punctuation = true;
+				} else if (ch === "}") {
+					brace_depth = Math.max(0, brace_depth - 1);
+					include_punctuation = true;
 				} else {
-					expect_param = false;
+					include_punctuation = true;
 				}
 			}
+			if (include_punctuation) current.push(k);
 			k++;
+			offset = 0;
 		}
+		if (current.length > 0) chunks.push(current);
+		promote_parameter_chunks(chunks);
 		return k;
 	};
 
@@ -193,36 +396,39 @@ export const promote_go_parameters: Reclassifier = (input, result) => {
 		if (view.text_of(i) !== "func") continue;
 
 		let j = view.next_non_trivia(i + 1);
-		// optional method receiver `(recv *R)` — promote names inside, then
-		// advance past it.
-		if (
-			j >= 0 &&
-			view.kind_of(j) === punctuation_id &&
-			view.text_of(j).startsWith("(")
-		) {
-			j = promote_paren_list(j);
-			j = view.next_non_trivia(j);
+		if (j < 0) continue;
+
+		if (is_name_like(j)) {
+			const param_open = find_param_open_after_name(j);
+			if (param_open != null) {
+				j = promote_paren_list(param_open);
+				i = j - 1;
+			}
+			continue;
 		}
-		// optional function name.
-		if (j >= 0 && view.kind_of(j) === identifier_id) {
-			j = view.next_non_trivia(j + 1);
+
+		const first_open = find_open_paren(j);
+		if (first_open == null) continue;
+		j = promote_paren_list(first_open);
+
+		// If the list is followed by a name and another paren list, the first
+		// list was a method receiver and the second list holds real params.
+		j = view.next_non_trivia(j);
+		if (j >= 0 && is_name_like(j)) {
+			const param_open = find_param_open_after_name(j);
+			if (param_open != null) {
+				j = promote_paren_list(param_open);
+			}
 		}
-		// parameter list.
-		if (
-			j >= 0 &&
-			view.kind_of(j) === punctuation_id &&
-			view.text_of(j).startsWith("(")
-		) {
-			j = promote_paren_list(j);
-		}
-		i = j - 1;
+		if (j > i) i = j - 1;
 	}
 
 	return { tokens, token_types };
 };
 
 export const reclassifiers: LanguagePipeline = [
-	tag(promote_go_constants, ["constant"]),
 	tag(promote_go_namespaces, ["namespace"]),
 	tag(promote_go_parameters, ["parameter"]),
+	tag(promote_go_functions, ["function"]),
+	tag(promote_go_constants, ["constant"]),
 ];

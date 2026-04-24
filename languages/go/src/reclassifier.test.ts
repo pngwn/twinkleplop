@@ -1,24 +1,24 @@
 // Fidelity integration tests for the Go language factory.
 //
-// Go has no reclassifier pipeline: the grammar emits `function` for
-// predeclared builtins (`len`, `make`, `append`, ...) directly. Under
-// `fidelity: "low"` or an allowlist that excludes `function`, the core's
-// grammar-extension downgrade remaps those tokens to `identifier` — the
-// exit we previously flagged as "baked-in, cannot downgrade".
+// The grammar emits `function` for predeclared builtins (`len`, `make`,
+// `append`, ...) directly; the reclassifier promotes user-declared functions,
+// call sites, constants, namespaces, and parameters. Under `fidelity: "low"`
+// or an allowlist that excludes a promoted type, the output downgrades to the
+// base grammar stream.
 
 import { describe, expect, it } from "vitest";
 import { language as make_language } from "./index.js";
 
-function tokens_of(input: string, options?: Parameters<typeof make_language>[0]) {
+function tokens_of(
+	input: string,
+	options?: Parameters<typeof make_language>[0],
+) {
 	const result = make_language(options)(input);
 	const out: { type: string; value: string }[] = [];
 	for (let i = 0; i < result.tokens.length / 3; i++) {
 		out.push({
 			type: result.token_types[result.tokens[i * 3]],
-			value: input.slice(
-				result.tokens[i * 3 + 1],
-				result.tokens[i * 3 + 2],
-			),
+			value: input.slice(result.tokens[i * 3 + 1], result.tokens[i * 3 + 2]),
 		});
 	}
 	return out;
@@ -26,6 +26,10 @@ function tokens_of(input: string, options?: Parameters<typeof make_language>[0])
 
 function type_of(tokens: ReturnType<typeof tokens_of>, value: string) {
 	return tokens.find((t) => t.value === value)?.type;
+}
+
+function types_of(tokens: ReturnType<typeof tokens_of>, value: string) {
+	return tokens.filter((t) => t.value === value).map((t) => t.type);
 }
 
 describe("Go fidelity — predeclared-function downgrade", () => {
@@ -65,6 +69,40 @@ describe("Go fidelity — predeclared-function downgrade", () => {
 	});
 });
 
+describe("Go fidelity — function promotion", () => {
+	it("declared function names promote", () => {
+		const tokens = tokens_of("func add(x int, y int) int { return x + y }");
+		expect(type_of(tokens, "add")).toBe("function");
+	});
+
+	it("selector call targets promote but package names stay identifiers", () => {
+		const tokens = tokens_of('func demo() { fmt.Println("hi") }');
+		expect(type_of(tokens, "fmt")).toBe("identifier");
+		expect(type_of(tokens, "Println")).toBe("function");
+	});
+
+	it("generic function declarations and calls promote", () => {
+		const tokens = tokens_of(
+			"func Map[T any](xs []T) []T { return Map[T](xs) }",
+		);
+		expect(types_of(tokens, "Map")).toEqual(["function", "function"]);
+	});
+
+	it("fidelity='low' leaves user functions as identifiers", () => {
+		const tokens = tokens_of("func demo() { helper() }", {
+			fidelity: "low",
+		});
+		expect(type_of(tokens, "helper")).toBe("identifier");
+	});
+
+	it("fidelity allowlist including 'function' promotes user functions", () => {
+		const tokens = tokens_of("func demo() { helper() }", {
+			fidelity: ["function"],
+		});
+		expect(type_of(tokens, "helper")).toBe("function");
+	});
+});
+
 describe("Go fidelity — constant promotion", () => {
 	const src = "const MAX_SIZE = 1024";
 
@@ -90,7 +128,7 @@ describe("Go fidelity — namespace promotion", () => {
 		expect(type_of(tokens, "main")).toBe("namespace");
 	});
 
-	it("aliased single import `import f \"fmt\"` promotes f", () => {
+	it('aliased single import `import f "fmt"` promotes f', () => {
 		const tokens = tokens_of('import f "fmt"');
 		expect(type_of(tokens, "f")).toBe("namespace");
 	});
@@ -102,9 +140,7 @@ describe("Go fidelity — namespace promotion", () => {
 	});
 
 	it("grouped imports with aliases promote each alias", () => {
-		const tokens = tokens_of(
-			'import (\n\tf "fmt"\n\to "os"\n)',
-		);
+		const tokens = tokens_of('import (\n\tf "fmt"\n\to "os"\n)');
 		expect(type_of(tokens, "f")).toBe("namespace");
 		expect(type_of(tokens, "o")).toBe("namespace");
 	});
@@ -142,6 +178,42 @@ describe("Go fidelity — parameter promotion", () => {
 	it("variadic param promotes", () => {
 		const tokens = tokens_of("func f(xs ...int) { }");
 		expect(type_of(tokens, "xs")).toBe("parameter");
+	});
+
+	it("generic function params promote after type parameters", () => {
+		const tokens = tokens_of(
+			"func Map[T any, U any](xs []T, f func(T) U) []U { return nil }",
+		);
+		expect(type_of(tokens, "xs")).toBe("parameter");
+		expect(type_of(tokens, "f")).toBe("parameter");
+		expect(types_of(tokens, "T")).not.toContain("parameter");
+	});
+
+	it("method receivers with generic receiver types promote only the receiver name", () => {
+		const tokens = tokens_of("func (p Pair[A, B]) Swap(x int) { }");
+		expect(type_of(tokens, "p")).toBe("parameter");
+		expect(type_of(tokens, "Swap")).toBe("function");
+		expect(type_of(tokens, "x")).toBe("parameter");
+		expect(types_of(tokens, "Pair")).not.toContain("parameter");
+	});
+
+	it("unnamed function-type params stay identifiers", () => {
+		const tokens = tokens_of("var fn func(T, U) V");
+		expect(types_of(tokens, "T")).not.toContain("parameter");
+		expect(types_of(tokens, "U")).not.toContain("parameter");
+	});
+
+	it("named function-type params promote", () => {
+		const tokens = tokens_of("var fn func(x T, y U) V");
+		expect(type_of(tokens, "x")).toBe("parameter");
+		expect(type_of(tokens, "y")).toBe("parameter");
+	});
+
+	it("unnamed qualified, slice, and instantiated types do not promote", () => {
+		const tokens = tokens_of("var fn func(context.Context, []T, Box[int])");
+		expect(types_of(tokens, "context")).not.toContain("parameter");
+		expect(types_of(tokens, "T")).not.toContain("parameter");
+		expect(types_of(tokens, "Box")).not.toContain("parameter");
 	});
 
 	it("fidelity='low' leaves params as identifier", () => {
