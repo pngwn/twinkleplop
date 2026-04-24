@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "twinkleplop-site",
+  "compatibility_date": "2026-04-24",
+  "assets": {
+    "directory": "build",
+    "not_found_handling": "404-page",
+  },
+}

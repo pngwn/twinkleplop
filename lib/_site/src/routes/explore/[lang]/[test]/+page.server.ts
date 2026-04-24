@@ -53,3 +53,40 @@ export const load = async ({ params }) => {
     test,
   };
 };
+
+// enumerate every (lang, test) pair so the static prerender captures all
+// combinations. TestHeader navigates between them via goto(), so the
+// crawler on its own only reaches /explore/<lang>/demo.
+export const entries = () => {
+  const demo_langs = fs.existsSync(DEMOS_DIR)
+    ? fs.readdirSync(DEMOS_DIR).map((file) => file.replace(/\.[^.]+$/, ""))
+    : [];
+  const LANGUAGES_DIR = path.join(PROJECT_ROOT, "languages");
+  const language_dirs = fs.existsSync(LANGUAGES_DIR)
+    ? fs.readdirSync(LANGUAGES_DIR).filter((entry) => {
+        try {
+          return fs.statSync(path.join(LANGUAGES_DIR, entry)).isDirectory();
+        } catch {
+          return false;
+        }
+      })
+    : [];
+  const all_langs = new Set([...demo_langs, ...language_dirs]);
+
+  const pairs: Array<{ lang: string; test: string }> = [];
+  for (const lang of all_langs) {
+    const tests = new Set<string>();
+    if (demo_langs.includes(lang)) tests.add("demo");
+    try {
+      const lang_tests = fs
+        .readdirSync(path.join(LANGUAGES_DIR, lang, "test"))
+        .filter((file) => !file.endsWith(".js"))
+        .map((file) => file.replace(/\.[^.]+$/, ""));
+      for (const t of lang_tests) tests.add(t);
+    } catch {
+      // no test dir for this language — only the demo entry applies.
+    }
+    for (const t of tests) pairs.push({ lang, test: t });
+  }
+  return pairs;
+};
