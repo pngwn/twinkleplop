@@ -4,6 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
+		"prebench": "pnpm -w build",
 		"bench:internal": "vitest bench --run ",
 		"bench": "vitest  bench --run src/library/comparison-suite.bench.js",
 		"bench:ui": "vitest bench --ui"
