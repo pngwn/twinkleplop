@@ -123,8 +123,16 @@ import {
 	dark as github_dark,
 	light as github_light,
 } from "@twinkleplop/theme-github/tokens";
+import {
+	dark as atom_one_dark,
+	light as atom_one_light,
+} from "@twinkleplop/theme-atom-one/tokens";
 
-export type theme_name = "github-light" | "github-dark";
+export type theme_name =
+	| "github-light"
+	| "github-dark"
+	| "atom-one-light"
+	| "atom-one-dark";
 
 export interface theme_def {
 	palette: token_palette;
@@ -140,6 +148,8 @@ export interface theme_def {
 export const THEMES: Record<theme_name, theme_def> = {
 	"github-light": { palette: github_light, shiki_id: "github-light-default" },
 	"github-dark": { palette: github_dark, shiki_id: "github-dark-default" },
+	"atom-one-light": { palette: atom_one_light, shiki_id: "one-light" },
+	"atom-one-dark": { palette: atom_one_dark, shiki_id: "one-dark-pro" },
 };
 
 // kept for existing shiki preload calls that enumerate every id that

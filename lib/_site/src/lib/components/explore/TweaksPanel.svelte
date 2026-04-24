@@ -1,12 +1,16 @@
 <script lang="ts">
 	import {
 		FONTS,
-		THEMES,
 		type density_mode,
 		type flavor_name,
 		type theme_name,
 		type tweak_state,
 	} from "$lib/explore/themes";
+
+	const THEME_GROUPS: { label: string; themes: theme_name[] }[] = [
+		{ label: "GitHub", themes: ["github-light", "github-dark"] },
+		{ label: "Atom One", themes: ["atom-one-light", "atom-one-dark"] },
+	];
 
 	interface Props {
 		visible: boolean;
@@ -17,7 +21,6 @@
 
 	let { visible, state, on_update, on_close }: Props = $props();
 
-	const THEMES_LIST = Object.keys(THEMES) as theme_name[];
 	const DENSITIES: density_mode[] = ["compact", "comfortable", "relaxed"];
 	const FLAVORS_LIST: flavor_name[] = [
 		"phosphor",
@@ -37,16 +40,23 @@
 
 		<section class="tweaks__sec">
 			<div class="tweaks__label">Theme</div>
-			<div class="tweaks__chips">
-				{#each THEMES_LIST as t (t)}
-					<button
-						class="tweak-chip"
-						class:is-on={state.theme === t}
-						type="button"
-						onclick={() => on_update({ theme: t })}
-					>
-						{t}
-					</button>
+			<div class="tweaks__groups">
+				{#each THEME_GROUPS as group (group.label)}
+					<div class="tweak-group">
+						<div class="tweak-group__label">{group.label}</div>
+						<div class="tweaks__chips">
+							{#each group.themes as t (t)}
+								<button
+									class="tweak-chip"
+									class:is-on={state.theme === t}
+									type="button"
+									onclick={() => on_update({ theme: t })}
+								>
+									{t}
+								</button>
+							{/each}
+						</div>
+					</div>
 				{/each}
 			</div>
 		</section>

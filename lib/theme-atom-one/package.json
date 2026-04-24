@@ -1,0 +1,28 @@
+{
+	"name": "@twinkleplop/theme-atom-one",
+	"version": "0.1.0",
+	"type": "module",
+	"exports": {
+		".": "./dist/index.css",
+		"./light": "./dist/light.css",
+		"./dark": "./dist/dark.css",
+		"./tokens": {
+			"source": "./src/tokens.ts",
+			"import": "./src/tokens.ts",
+			"types": "./src/tokens.ts"
+		}
+	},
+	"files": ["dist", "src"],
+	"scripts": {
+		"build": "tsx src/build.ts",
+		"test": "vitest"
+	},
+	"dependencies": {
+		"@twinkleplop/core": "workspace:*"
+	},
+	"devDependencies": {
+		"tsx": "^4.19.0",
+		"typescript": "^5.8.3",
+		"vitest": "^2.1.0"
+	}
+}

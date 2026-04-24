@@ -41,6 +41,7 @@
 		"@twinkleplop/rust": "workspace:*",
 		"@twinkleplop/sql": "workspace:*",
 		"@twinkleplop/svelte": "workspace:*",
+		"@twinkleplop/theme-atom-one": "workspace:*",
 		"@twinkleplop/theme-github": "workspace:*",
 		"@twinkleplop/toml": "workspace:*",
 		"@twinkleplop/tsx": "workspace:*",
