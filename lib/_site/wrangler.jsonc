@@ -6,6 +6,6 @@
   "compatibility_flags": ["nodejs_als"],
   "assets": {
     "binding": "ASSETS",
-    "directory": ".svelte-kit/cloudflare"
-  }
+    "directory": ".svelte-kit/cloudflare",
+  },
 }
