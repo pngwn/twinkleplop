@@ -15,29 +15,34 @@ pnpm bench:ui
 ## Benchmark Categories
 
 ### 1. Character Scanning vs Regex (`char-vs-regex.bench.js`)
+
 - Compares regex-based tokenization with character code scanning
 - Tests keyword matching, number parsing, string extraction, and comment detection
 - Validates the assumption that character scanning is faster than regex
 
 ### 2. Lookup Table Performance (`lookup-tables.bench.js`)
+
 - Compares lookup tables vs range checks, Sets, and switch statements
 - Tests dense vs sparse lookup tables
 - Evaluates different table sizes (128 vs 256 entries)
 - Validates O(1) character-to-action mapping performance
 
 ### 3. Trie Matching (`trie-matching.bench.js`)
+
 - Compares trie data structure vs alternatives for string matching
 - Tests keyword recognition, CSS property matching, and prefix matching
 - Evaluates memory and construction overhead
 - Validates trie efficiency for multi-string matching
 
 ### 4. State Machine Overhead (`state-machine.bench.js`)
+
 - Compares stack-based state machines vs simpler approaches
 - Tests context switching performance
 - Evaluates different stack implementations
 - Validates state machine model efficiency
 
 ### 5. Maximal Munch Principle (`maximal-munch.bench.js`)
+
 - Tests greedy tokenization strategies
 - Compares different approaches to operator parsing
 - Evaluates ambiguity resolution performance

@@ -14,49 +14,41 @@ import { describe, expect, it } from "vitest";
 import * as TOKENS from "@twinkleplop/core/tokens";
 
 const ROOT = path.resolve(new URL("../../..", import.meta.url).pathname);
-const CSS_PATH = path.join(
-	ROOT,
-	"lib",
-	"_site",
-	"src",
-	"lib",
-	"styles",
-	"explore.css",
-);
+const CSS_PATH = path.join(ROOT, "lib", "_site", "src", "lib", "styles", "explore.css");
 
 // tokens whose colour is intentionally inherited from a compound rule (e.g.
 // markdown open/close markers styled as a pair) or which the explore pane
 // deliberately leaves unstyled. kept in sync with the comment blocks in
 // explore.css itself.
 const INHERITED_TOKENS = new Set([
-	// `raw_*` tokens are grammar placeholders that are replaced by sub-
-	// language tokens via embed_grammars before rendering — they should
-	// never reach to_html output, so the explore pane intentionally does
-	// not style them. see languages/TOKENS.md for the full list.
-	"raw_code_block",
-	"raw_front_matter",
-	"raw_script",
-	"raw_style",
-	"raw_svelte_expression",
+  // `raw_*` tokens are grammar placeholders that are replaced by sub-
+  // language tokens via embed_grammars before rendering — they should
+  // never reach to_html output, so the explore pane intentionally does
+  // not style them. see languages/TOKENS.md for the full list.
+  "raw_code_block",
+  "raw_front_matter",
+  "raw_script",
+  "raw_style",
+  "raw_svelte_expression",
 ]);
 
 function canonical_tokens(): string[] {
-	const names = new Set<string>();
-	for (const value of Object.values(TOKENS)) {
-		if (typeof value === "string") names.add(value);
-	}
-	return [...names].sort();
+  const names = new Set<string>();
+  for (const value of Object.values(TOKENS)) {
+    if (typeof value === "string") names.add(value);
+  }
+  return [...names].sort();
 }
 
 describe("explore.css freshness", () => {
-	const css = fs.readFileSync(CSS_PATH, "utf-8");
-	for (const token of canonical_tokens()) {
-		if (INHERITED_TOKENS.has(token)) continue;
-		it(`has a .tok.${token} rule`, () => {
-			expect(
-				css,
-				`lib/_site/src/lib/styles/explore.css is missing a rule for .tok.${token} — add \`.explore-app .tok.${token} { color: var(--twp-${token}); }\` to keep tokens styled in the explore pane`,
-			).toMatch(new RegExp(`\\.tok\\.${token}\\b`));
-		});
-	}
+  const css = fs.readFileSync(CSS_PATH, "utf-8");
+  for (const token of canonical_tokens()) {
+    if (INHERITED_TOKENS.has(token)) continue;
+    it(`has a .tok.${token} rule`, () => {
+      expect(
+        css,
+        `lib/_site/src/lib/styles/explore.css is missing a rule for .tok.${token} — add \`.explore-app .tok.${token} { color: var(--twp-${token}); }\` to keep tokens styled in the explore pane`,
+      ).toMatch(new RegExp(`\\.tok\\.${token}\\b`));
+    });
+  }
 });

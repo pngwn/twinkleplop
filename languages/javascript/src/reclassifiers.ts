@@ -16,27 +16,27 @@
 // get these reclassifiers applied automatically.
 
 import {
-	always,
-	any_of,
-	as_claim_producer,
-	balanced_parens,
-	embed_interleaved,
-	make_scope_stack,
-	make_token_view,
-	promote_by_text_set,
-	promote_by_upper_snake_case,
-	promote_function_calls,
-	promote_pascal_case,
-	rewrite_types,
-	seq,
-	tag,
-	type,
+  always,
+  any_of,
+  as_claim_producer,
+  balanced_parens,
+  embed_interleaved,
+  make_scope_stack,
+  make_token_view,
+  promote_by_text_set,
+  promote_by_upper_snake_case,
+  promote_function_calls,
+  promote_pascal_case,
+  rewrite_types,
+  seq,
+  tag,
+  type,
 } from "@twinkleplop/core";
 import type {
-	ClaimFn,
-	ClaimingReclassifier,
-	LanguagePipeline,
-	Reclassifier,
+  ClaimFn,
+  ClaimingReclassifier,
+  LanguagePipeline,
+  Reclassifier,
 } from "@twinkleplop/core";
 
 import { language as css_language } from "@twinkleplop/css";
@@ -80,25 +80,21 @@ const css_default: LanguageFn = (src) => (css_fn ??= css_language())(src);
 // `const foo /* wat */ = () => 1` still matches.
 
 const function_expression = any_of(
-	// `function(...)` or bare `function` keyword
-	type("keyword", "function"),
-	// `async function(...)`
-	seq(type("keyword", "async"), type("keyword", "function")),
+  // `function(...)` or bare `function` keyword
+  type("keyword", "function"),
+  // `async function(...)`
+  seq(type("keyword", "async"), type("keyword", "function")),
 );
 
 const arrow_function = any_of(
-	// `(...) => ...` — balanced param list followed by fat arrow
-	seq(balanced_parens("(", ")"), type("operator", "=>")),
-	// `async (...) => ...`
-	seq(
-		type("keyword", "async"),
-		balanced_parens("(", ")"),
-		type("operator", "=>"),
-	),
-	// `x => ...` — single unparenthesized parameter
-	seq(type("identifier"), type("operator", "=>")),
-	// `async x => ...`
-	seq(type("keyword", "async"), type("identifier"), type("operator", "=>")),
+  // `(...) => ...` — balanced param list followed by fat arrow
+  seq(balanced_parens("(", ")"), type("operator", "=>")),
+  // `async (...) => ...`
+  seq(type("keyword", "async"), balanced_parens("(", ")"), type("operator", "=>")),
+  // `x => ...` — single unparenthesized parameter
+  seq(type("identifier"), type("operator", "=>")),
+  // `async x => ...`
+  seq(type("keyword", "async"), type("identifier"), type("operator", "=>")),
 );
 
 // rules that recognize a function-valued binding and rewrite the anchor
@@ -115,14 +111,11 @@ const arrow_function = any_of(
 // to make the right decision in one claim. assignment `=` has no such
 // ambiguity: wherever `ident = arrow` appears, ident is a function binding.
 export const function_variable_rules = [
-	{
-		anchor: "identifier",
-		when: seq(
-			type("operator", ["="]),
-			any_of(function_expression, arrow_function),
-		),
-		rewrite: "function",
-	},
+  {
+    anchor: "identifier",
+    when: seq(type("operator", ["="]), any_of(function_expression, arrow_function)),
+    rewrite: "function",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -161,37 +154,24 @@ export const function_variable_rules = [
 //   bracket     — inside `[...]` — NEVER claim (arrays, computed keys).
 
 const MEMBER_MODIFIERS = new Set([
-	"readonly",
-	"public",
-	"private",
-	"protected",
-	"static",
-	"abstract",
-	"override",
-	"accessor",
-	"declare",
+  "readonly",
+  "public",
+  "private",
+  "protected",
+  "static",
+  "abstract",
+  "override",
+  "accessor",
+  "declare",
 ]);
 
 // a `:` whose next non-trivia is one of these keywords is a labeled
 // statement introducer, not an object-property separator.
-const LABEL_STATEMENT_KEYWORDS = new Set([
-	"for",
-	"while",
-	"do",
-	"if",
-	"switch",
-	"try",
-	"with",
-]);
+const LABEL_STATEMENT_KEYWORDS = new Set(["for", "while", "do", "if", "switch", "try", "with"]);
 
 // keywords / operators that, when they immediately precede a `{`, mark the
 // brace as opening a block rather than an object literal.
-const BLOCK_LEADING_KEYWORDS = new Set([
-	"do",
-	"try",
-	"else",
-	"finally",
-]);
+const BLOCK_LEADING_KEYWORDS = new Set(["do", "try", "else", "finally"]);
 
 type BraceClass = "class" | "interface" | "object" | "type_literal" | "block";
 
@@ -202,8 +182,8 @@ type BraceClass = "class" | "interface" | "object" | "type_literal" | "block";
 // point resets it to false. claim emission requires at_start && brace_class
 // in {object, interface, type_literal}.
 interface PropertyScopeData {
-	brace_class?: BraceClass;
-	at_start: boolean;
+  brace_class?: BraceClass;
+  at_start: boolean;
 }
 
 // step-6 precedence scheme. the goal is "one claim per token" — no two
@@ -226,328 +206,303 @@ const PROP_PREC = 20;
 const PROP_FN_PREC = 30; // matches the default `function` precedence.
 
 const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink) => {
-	const view = make_token_view(input, tokens, token_types);
-	if (view.count === 0) return;
+  const view = make_token_view(input, tokens, token_types);
+  if (view.count === 0) return;
 
-	const identifier_id = token_types.indexOf("identifier");
-	const keyword_id = token_types.indexOf("keyword");
-	const punctuation_id = token_types.indexOf("punctuation");
-	const operator_id = token_types.indexOf("operator");
+  const identifier_id = token_types.indexOf("identifier");
+  const keyword_id = token_types.indexOf("keyword");
+  const punctuation_id = token_types.indexOf("punctuation");
+  const operator_id = token_types.indexOf("operator");
 
-	if (
-		identifier_id < 0 ||
-		keyword_id < 0 ||
-		punctuation_id < 0 ||
-		operator_id < 0
-	) {
-		return;
-	}
+  if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0 || operator_id < 0) {
+    return;
+  }
 
-	let property_id = token_types.indexOf("property");
-	if (property_id < 0) {
-		property_id = token_types.length;
-		token_types.push("property");
-	}
-	let function_id = token_types.indexOf("function");
-	if (function_id < 0) {
-		function_id = token_types.length;
-		token_types.push("function");
-	}
+  let property_id = token_types.indexOf("property");
+  if (property_id < 0) {
+    property_id = token_types.length;
+    token_types.push("property");
+  }
+  let function_id = token_types.indexOf("function");
+  if (function_id < 0) {
+    function_id = token_types.length;
+    token_types.push("function");
+  }
 
-	const stack = make_scope_stack<PropertyScopeData>();
-	let expecting_class_body = false;
-	let expecting_interface_body = false;
-	// tracks generic-parameter angle-bracket depth between a `class` /
-	// `interface` keyword and its body `{`. without this, a type literal
-	// nested inside a type parameter constraint — e.g. `class C<T extends
-	// { id: V }> { ... }` — would be mistaken for the class body on its
-	// opening `{`, consuming expecting_class_body and leaving the real
-	// body misclassified as `object`. angle tracking is live outside of
-	// the class/interface-header window too, but the effect is only
-	// consulted by the `{` classifier; in pure JS (no TS generics) the
-	// counter gets incremented by comparison operators but never affects
-	// classification because no expecting_* flag is set.
-	let angle_depth = 0;
+  const stack = make_scope_stack<PropertyScopeData>();
+  let expecting_class_body = false;
+  let expecting_interface_body = false;
+  // tracks generic-parameter angle-bracket depth between a `class` /
+  // `interface` keyword and its body `{`. without this, a type literal
+  // nested inside a type parameter constraint — e.g. `class C<T extends
+  // { id: V }> { ... }` — would be mistaken for the class body on its
+  // opening `{`, consuming expecting_class_body and leaving the real
+  // body misclassified as `object`. angle tracking is live outside of
+  // the class/interface-header window too, but the effect is only
+  // consulted by the `{` classifier; in pure JS (no TS generics) the
+  // counter gets incremented by comparison operators but never affects
+  // classification because no expecting_* flag is set.
+  let angle_depth = 0;
 
-	// classify an opening `{` not already claimed by a pending class/interface
-	// header. returns the brace_class tag stored alongside the scope entry.
-	//
-	// `{` preceded by `:` is a type literal (annotation or return position):
-	// `let o: { k: V }`, `function f(): { k: V }`. keys inside behave like
-	// interface members (claim property, never function) because the braces
-	// describe a TYPE shape, not a runtime value.
-	const classify_open_brace = (open_idx: number): BraceClass => {
-		const prev = view.prev_non_trivia(open_idx - 1);
-		if (prev < 0) return "block";
-		const pk = view.kind_of(prev);
-		const pt = view.text_of(prev);
-		if (pk === operator_id && pt === "=>") return "block";
-		if (pk === operator_id && pt === ":") return "type_literal";
-		if (pk === keyword_id && BLOCK_LEADING_KEYWORDS.has(pt)) return "block";
-		if (pk === punctuation_id && pt.length > 0 && pt[pt.length - 1] === ")") {
-			return "block";
-		}
-		return "object";
-	};
+  // classify an opening `{` not already claimed by a pending class/interface
+  // header. returns the brace_class tag stored alongside the scope entry.
+  //
+  // `{` preceded by `:` is a type literal (annotation or return position):
+  // `let o: { k: V }`, `function f(): { k: V }`. keys inside behave like
+  // interface members (claim property, never function) because the braces
+  // describe a TYPE shape, not a runtime value.
+  const classify_open_brace = (open_idx: number): BraceClass => {
+    const prev = view.prev_non_trivia(open_idx - 1);
+    if (prev < 0) return "block";
+    const pk = view.kind_of(prev);
+    const pt = view.text_of(prev);
+    if (pk === operator_id && pt === "=>") return "block";
+    if (pk === operator_id && pt === ":") return "type_literal";
+    if (pk === keyword_id && BLOCK_LEADING_KEYWORDS.has(pt)) return "block";
+    if (pk === punctuation_id && pt.length > 0 && pt[pt.length - 1] === ")") {
+      return "block";
+    }
+    return "object";
+  };
 
-	// peek past `:` at idx (the colon itself) to decide whether the value
-	// is an arrow or function expression — i.e. whether the key of an
-	// OBJECT literal should be classified as `function` (method shorthand)
-	// rather than `property`. returns true when the value shape is any of
-	// `function`, `async function`, `(...) =>`, `async (...) =>`,
-	// `ident =>`, `async ident =>`. mirrors the patterns that
-	// `function_variable_rules` used to match for `:`.
-	const is_function_value = (colon_idx: number): boolean => {
-		let j = view.next_non_trivia(colon_idx + 1);
-		if (j < 0) return false;
-		// optional leading `async`.
-		if (view.kind_of(j) === keyword_id && view.text_of(j) === "async") {
-			j = view.next_non_trivia(j + 1);
-			if (j < 0) return false;
-		}
-		// `function` keyword → function expression.
-		if (view.kind_of(j) === keyword_id && view.text_of(j) === "function") {
-			return true;
-		}
-		// `ident =>` — single-param arrow without parens.
-		if (view.kind_of(j) === identifier_id) {
-			const after = view.next_non_trivia(j + 1);
-			if (
-				after >= 0 &&
-				view.kind_of(after) === operator_id &&
-				view.text_of(after) === "=>"
-			) {
-				return true;
-			}
-			return false;
-		}
-		// `(...) =>` — arrow with parameter list. walk balanced parens in
-		// punctuation tokens and look for `=>` after the matching `)`.
-		if (view.kind_of(j) === punctuation_id) {
-			const t = view.text_of(j);
-			if (t.length === 0 || t[0] !== "(") return false;
-			let depth = 0;
-			let end_idx = -1;
-			const max = Math.min(view.count, j + 200);
-			outer: for (let k = j; k < max; k++) {
-				if (view.kind_of(k) !== punctuation_id) continue;
-				const tt = view.text_of(k);
-				for (let c = 0; c < tt.length; c++) {
-					const ch = tt[c];
-					if (ch === "(") depth++;
-					else if (ch === ")") {
-						depth--;
-						if (depth === 0) {
-							end_idx = k;
-							break outer;
-						}
-					}
-				}
-			}
-			if (end_idx < 0) return false;
-			const after = view.next_non_trivia(end_idx + 1);
-			return (
-				after >= 0 &&
-				view.kind_of(after) === operator_id &&
-				view.text_of(after) === "=>"
-			);
-		}
-		return false;
-	};
+  // peek past `:` at idx (the colon itself) to decide whether the value
+  // is an arrow or function expression — i.e. whether the key of an
+  // OBJECT literal should be classified as `function` (method shorthand)
+  // rather than `property`. returns true when the value shape is any of
+  // `function`, `async function`, `(...) =>`, `async (...) =>`,
+  // `ident =>`, `async ident =>`. mirrors the patterns that
+  // `function_variable_rules` used to match for `:`.
+  const is_function_value = (colon_idx: number): boolean => {
+    let j = view.next_non_trivia(colon_idx + 1);
+    if (j < 0) return false;
+    // optional leading `async`.
+    if (view.kind_of(j) === keyword_id && view.text_of(j) === "async") {
+      j = view.next_non_trivia(j + 1);
+      if (j < 0) return false;
+    }
+    // `function` keyword → function expression.
+    if (view.kind_of(j) === keyword_id && view.text_of(j) === "function") {
+      return true;
+    }
+    // `ident =>` — single-param arrow without parens.
+    if (view.kind_of(j) === identifier_id) {
+      const after = view.next_non_trivia(j + 1);
+      if (after >= 0 && view.kind_of(after) === operator_id && view.text_of(after) === "=>") {
+        return true;
+      }
+      return false;
+    }
+    // `(...) =>` — arrow with parameter list. walk balanced parens in
+    // punctuation tokens and look for `=>` after the matching `)`.
+    if (view.kind_of(j) === punctuation_id) {
+      const t = view.text_of(j);
+      if (t.length === 0 || t[0] !== "(") return false;
+      let depth = 0;
+      let end_idx = -1;
+      const max = Math.min(view.count, j + 200);
+      outer: for (let k = j; k < max; k++) {
+        if (view.kind_of(k) !== punctuation_id) continue;
+        const tt = view.text_of(k);
+        for (let c = 0; c < tt.length; c++) {
+          const ch = tt[c];
+          if (ch === "(") depth++;
+          else if (ch === ")") {
+            depth--;
+            if (depth === 0) {
+              end_idx = k;
+              break outer;
+            }
+          }
+        }
+      }
+      if (end_idx < 0) return false;
+      const after = view.next_non_trivia(end_idx + 1);
+      return after >= 0 && view.kind_of(after) === operator_id && view.text_of(after) === "=>";
+    }
+    return false;
+  };
 
-	// apply a single punctuation character (part of a possibly-merged
-	// punctuation token at index `i`) to the scope stack and bookkeeping.
-	const process_punct_char = (ch: string, i: number): void => {
-		if (ch === "{") {
-			let brace_class: BraceClass;
-			// the class/interface body `{` is the one at the TOP LEVEL of
-			// the header — not nested inside generic angles or a paren/
-			// bracket expression. examples:
-			//   class C<T extends { id: V }> { ... }
-			//     inner `{` is at angle_depth=1 → type_literal.
-			//   class C extends f({ key: 1 }) { ... }
-			//     inner `{` is at paren_depth=1 → falls through to default
-			//     classification (object literal). expecting_class_body
-			//     survives; the outer `{` after `)` becomes the real body.
-			//   class C extends Base<U> { ... }
-			//     no `{` during the header; the `{` after `>` is top-level.
-			const nested_under_angles = angle_depth > 0;
-			const nested_under_structural =
-				stack.paren_depth > 0 || stack.bracket_depth > 0;
-			if (expecting_class_body && !nested_under_angles && !nested_under_structural) {
-				brace_class = "class";
-				expecting_class_body = false;
-			} else if (
-				expecting_interface_body &&
-				!nested_under_angles &&
-				!nested_under_structural
-			) {
-				brace_class = "interface";
-				expecting_interface_body = false;
-			} else if (
-				(expecting_class_body || expecting_interface_body) &&
-				nested_under_angles
-			) {
-				// `{` inside a generic parameter constraint during a class or
-				// interface header — always a type literal. expecting_* flags
-				// survive, waiting for the real body.
-				brace_class = "type_literal";
-			} else {
-				brace_class = classify_open_brace(i);
-			}
-			stack.push("{", { brace_class, at_start: true });
-			return;
-		}
-		if (ch === "}") {
-			stack.pop();
-			const top = stack.top();
-			if (top !== undefined) top.data.at_start = false;
-			return;
-		}
-		if (ch === "(") {
-			stack.push("(", { at_start: false });
-			return;
-		}
-		if (ch === ")") {
-			stack.pop();
-			const top = stack.top();
-			if (top !== undefined) top.data.at_start = false;
-			return;
-		}
-		if (ch === "[") {
-			stack.push("[", { at_start: false });
-			return;
-		}
-		if (ch === "]") {
-			stack.pop();
-			const top = stack.top();
-			if (top !== undefined) top.data.at_start = false;
-			return;
-		}
-		if (ch === "," || ch === ";") {
-			// member separators in object/interface/type-literal scope set
-			// at_start true again so the next identifier can be a key. in
-			// other scopes (block, paren, bracket) the flag is unused, so
-			// setting it true is harmless. leave expecting_* flags alone so
-			// they survive commas in class/interface headers (`class C<T, U>`,
-			// `implements A, B`).
-			const top = stack.top();
-			if (top !== undefined) top.data.at_start = true;
-			return;
-		}
-		// any other punctuation character (`.`, `@`, etc.) resets at_start.
-		const top = stack.top();
-		if (top !== undefined) top.data.at_start = false;
-	};
+  // apply a single punctuation character (part of a possibly-merged
+  // punctuation token at index `i`) to the scope stack and bookkeeping.
+  const process_punct_char = (ch: string, i: number): void => {
+    if (ch === "{") {
+      let brace_class: BraceClass;
+      // the class/interface body `{` is the one at the TOP LEVEL of
+      // the header — not nested inside generic angles or a paren/
+      // bracket expression. examples:
+      //   class C<T extends { id: V }> { ... }
+      //     inner `{` is at angle_depth=1 → type_literal.
+      //   class C extends f({ key: 1 }) { ... }
+      //     inner `{` is at paren_depth=1 → falls through to default
+      //     classification (object literal). expecting_class_body
+      //     survives; the outer `{` after `)` becomes the real body.
+      //   class C extends Base<U> { ... }
+      //     no `{` during the header; the `{` after `>` is top-level.
+      const nested_under_angles = angle_depth > 0;
+      const nested_under_structural = stack.paren_depth > 0 || stack.bracket_depth > 0;
+      if (expecting_class_body && !nested_under_angles && !nested_under_structural) {
+        brace_class = "class";
+        expecting_class_body = false;
+      } else if (expecting_interface_body && !nested_under_angles && !nested_under_structural) {
+        brace_class = "interface";
+        expecting_interface_body = false;
+      } else if ((expecting_class_body || expecting_interface_body) && nested_under_angles) {
+        // `{` inside a generic parameter constraint during a class or
+        // interface header — always a type literal. expecting_* flags
+        // survive, waiting for the real body.
+        brace_class = "type_literal";
+      } else {
+        brace_class = classify_open_brace(i);
+      }
+      stack.push("{", { brace_class, at_start: true });
+      return;
+    }
+    if (ch === "}") {
+      stack.pop();
+      const top = stack.top();
+      if (top !== undefined) top.data.at_start = false;
+      return;
+    }
+    if (ch === "(") {
+      stack.push("(", { at_start: false });
+      return;
+    }
+    if (ch === ")") {
+      stack.pop();
+      const top = stack.top();
+      if (top !== undefined) top.data.at_start = false;
+      return;
+    }
+    if (ch === "[") {
+      stack.push("[", { at_start: false });
+      return;
+    }
+    if (ch === "]") {
+      stack.pop();
+      const top = stack.top();
+      if (top !== undefined) top.data.at_start = false;
+      return;
+    }
+    if (ch === "," || ch === ";") {
+      // member separators in object/interface/type-literal scope set
+      // at_start true again so the next identifier can be a key. in
+      // other scopes (block, paren, bracket) the flag is unused, so
+      // setting it true is harmless. leave expecting_* flags alone so
+      // they survive commas in class/interface headers (`class C<T, U>`,
+      // `implements A, B`).
+      const top = stack.top();
+      if (top !== undefined) top.data.at_start = true;
+      return;
+    }
+    // any other punctuation character (`.`, `@`, etc.) resets at_start.
+    const top = stack.top();
+    if (top !== undefined) top.data.at_start = false;
+  };
 
-	for (let i = 0; i < view.count; i++) {
-		const k = view.kind_of(i);
-		if (view.is_trivia(i)) continue;
+  for (let i = 0; i < view.count; i++) {
+    const k = view.kind_of(i);
+    if (view.is_trivia(i)) continue;
 
-		if (k === keyword_id) {
-			const t = view.text_of(i);
-			if (t === "class") {
-				expecting_class_body = true;
-				continue;
-			}
-			if (t === "interface") {
-				expecting_interface_body = true;
-				continue;
-			}
-			if (MEMBER_MODIFIERS.has(t)) {
-				// transparent to at_start — next identifier is still a key.
-				continue;
-			}
-			// any other keyword consumes the member-start position.
-			const top = stack.top();
-			if (top !== undefined) top.data.at_start = false;
-			continue;
-		}
+    if (k === keyword_id) {
+      const t = view.text_of(i);
+      if (t === "class") {
+        expecting_class_body = true;
+        continue;
+      }
+      if (t === "interface") {
+        expecting_interface_body = true;
+        continue;
+      }
+      if (MEMBER_MODIFIERS.has(t)) {
+        // transparent to at_start — next identifier is still a key.
+        continue;
+      }
+      // any other keyword consumes the member-start position.
+      const top = stack.top();
+      if (top !== undefined) top.data.at_start = false;
+      continue;
+    }
 
-		if (k === punctuation_id) {
-			const t = view.text_of(i);
-			for (let c = 0; c < t.length; c++) {
-				process_punct_char(t[c], i);
-			}
-			continue;
-		}
+    if (k === punctuation_id) {
+      const t = view.text_of(i);
+      for (let c = 0; c < t.length; c++) {
+        process_punct_char(t[c], i);
+      }
+      continue;
+    }
 
-		if (k === operator_id) {
-			const t = view.text_of(i);
-			// update angle_depth for generic-parameter tracking. `<<`,
-			// `<=`, `>=`, etc. are comparison/shift operators — leave the
-			// counter alone for those; they don't appear in well-formed
-			// generic brackets.
-			if (t === "<") {
-				angle_depth++;
-			} else if (t === ">") {
-				if (angle_depth > 0) angle_depth--;
-			} else if (t === ">>") {
-				if (angle_depth >= 2) angle_depth -= 2;
-				else if (angle_depth > 0) angle_depth = 0;
-			} else if (t === ">>>") {
-				if (angle_depth >= 3) angle_depth -= 3;
-				else if (angle_depth > 0) angle_depth = 0;
-			}
-			// operators consume at_start like any other significant token.
-			const top = stack.top();
-			if (top !== undefined) top.data.at_start = false;
-			continue;
-		}
+    if (k === operator_id) {
+      const t = view.text_of(i);
+      // update angle_depth for generic-parameter tracking. `<<`,
+      // `<=`, `>=`, etc. are comparison/shift operators — leave the
+      // counter alone for those; they don't appear in well-formed
+      // generic brackets.
+      if (t === "<") {
+        angle_depth++;
+      } else if (t === ">") {
+        if (angle_depth > 0) angle_depth--;
+      } else if (t === ">>") {
+        if (angle_depth >= 2) angle_depth -= 2;
+        else if (angle_depth > 0) angle_depth = 0;
+      } else if (t === ">>>") {
+        if (angle_depth >= 3) angle_depth -= 3;
+        else if (angle_depth > 0) angle_depth = 0;
+      }
+      // operators consume at_start like any other significant token.
+      const top = stack.top();
+      if (top !== undefined) top.data.at_start = false;
+      continue;
+    }
 
-		if (k === identifier_id) {
-			const top = stack.top();
-			if (
-				top !== undefined &&
-				top.data.at_start &&
-				(top.data.brace_class === "object" ||
-					top.data.brace_class === "interface" ||
-					top.data.brace_class === "type_literal")
-			) {
-				const nxt = view.next_non_trivia(i + 1);
-				if (nxt >= 0 && view.kind_of(nxt) === operator_id) {
-					const nt = view.text_of(nxt);
-					if (nt === ":" || nt === "?:") {
-						// label exclusion: `ident : <stmt_keyword>` is a label.
-						const after = view.next_non_trivia(nxt + 1);
-						let is_label = false;
-						if (after >= 0 && view.kind_of(after) === keyword_id) {
-							is_label = LABEL_STATEMENT_KEYWORDS.has(view.text_of(after));
-						}
-						if (!is_label) {
-							// OBJECT literal keys whose value is an arrow or
-							// function expression are method shorthands — claim
-							// function (30). every other object/interface/type-
-							// literal key is a data property — claim property (20).
-							// class/paren/bracket scopes never reach here because
-							// of the brace_class filter above.
-							if (
-								top.data.brace_class === "object" &&
-								is_function_value(nxt)
-							) {
-								sink.emit(i, function_id, PROP_FN_PREC);
-							} else {
-								sink.emit(i, property_id, PROP_PREC);
-							}
-						}
-					}
-				}
-			}
-			// consuming the identifier retires the member-start marker.
-			if (top !== undefined) top.data.at_start = false;
-			continue;
-		}
+    if (k === identifier_id) {
+      const top = stack.top();
+      if (
+        top !== undefined &&
+        top.data.at_start &&
+        (top.data.brace_class === "object" ||
+          top.data.brace_class === "interface" ||
+          top.data.brace_class === "type_literal")
+      ) {
+        const nxt = view.next_non_trivia(i + 1);
+        if (nxt >= 0 && view.kind_of(nxt) === operator_id) {
+          const nt = view.text_of(nxt);
+          if (nt === ":" || nt === "?:") {
+            // label exclusion: `ident : <stmt_keyword>` is a label.
+            const after = view.next_non_trivia(nxt + 1);
+            let is_label = false;
+            if (after >= 0 && view.kind_of(after) === keyword_id) {
+              is_label = LABEL_STATEMENT_KEYWORDS.has(view.text_of(after));
+            }
+            if (!is_label) {
+              // OBJECT literal keys whose value is an arrow or
+              // function expression are method shorthands — claim
+              // function (30). every other object/interface/type-
+              // literal key is a data property — claim property (20).
+              // class/paren/bracket scopes never reach here because
+              // of the brace_class filter above.
+              if (top.data.brace_class === "object" && is_function_value(nxt)) {
+                sink.emit(i, function_id, PROP_FN_PREC);
+              } else {
+                sink.emit(i, property_id, PROP_PREC);
+              }
+            }
+          }
+        }
+      }
+      // consuming the identifier retires the member-start marker.
+      if (top !== undefined) top.data.at_start = false;
+      continue;
+    }
 
-		// any other token (operator, number, string, ...) consumes the
-		// member-start position.
-		const top = stack.top();
-		if (top !== undefined) top.data.at_start = false;
-	}
+    // any other token (operator, number, string, ...) consumes the
+    // member-start position.
+    const top = stack.top();
+    if (top !== undefined) top.data.at_start = false;
+  }
 };
 
-export const claim_property_scope: ClaimingReclassifier = as_claim_producer(
-	claim_property_scope_fn,
-);
+export const claim_property_scope: ClaimingReclassifier =
+  as_claim_producer(claim_property_scope_fn);
 
 // ---------------------------------------------------------------------------
 // Tagged template literal embedding
@@ -580,16 +535,16 @@ export const claim_property_scope: ClaimingReclassifier = as_claim_producer(
 const type_id_cache = new WeakMap();
 
 function get_type_ids(token_types) {
-	let ids = type_id_cache.get(token_types);
-	if (ids === undefined) {
-		ids = {
-			identifier_id: token_types.indexOf("identifier"),
-			template_id: token_types.indexOf("template"),
-			punctuation_id: token_types.indexOf("punctuation"),
-		};
-		type_id_cache.set(token_types, ids);
-	}
-	return ids;
+  let ids = type_id_cache.get(token_types);
+  if (ids === undefined) {
+    ids = {
+      identifier_id: token_types.indexOf("identifier"),
+      template_id: token_types.indexOf("template"),
+      punctuation_id: token_types.indexOf("punctuation"),
+    };
+    type_id_cache.set(token_types, ids);
+  }
+  return ids;
 }
 
 /**
@@ -603,132 +558,129 @@ function get_type_ids(token_types) {
  * @returns {import("@twinkleplop/core").GroupDescriptor | null}
  */
 export function scan_tagged_template(tokens, input, i, token_types) {
-	const { identifier_id, template_id, punctuation_id } =
-		get_type_ids(token_types);
-	if (identifier_id < 0 || template_id < 0 || punctuation_id < 0) return null;
-	const count = tokens.length / 3;
-	if (i >= count) return null;
+  const { identifier_id, template_id, punctuation_id } = get_type_ids(token_types);
+  if (identifier_id < 0 || template_id < 0 || punctuation_id < 0) return null;
+  const count = tokens.length / 3;
+  if (i >= count) return null;
 
-	// fast reject: trigger is an identifier. If the current token isn't an
-	// identifier, no work to do — this rejects 99% of positions on a typical
-	// token stream before any source-text comparison.
-	if (tokens[i * 3] !== identifier_id) return null;
-	const tag_start = tokens[i * 3 + 1];
-	const tag_end = tokens[i * 3 + 2];
-	const tag_name = input.slice(tag_start, tag_end);
-	let language: LanguageFn;
-	if (tag_name === "html") language = html_default;
-	else if (tag_name === "css") language = css_default;
-	else return null;
+  // fast reject: trigger is an identifier. If the current token isn't an
+  // identifier, no work to do — this rejects 99% of positions on a typical
+  // token stream before any source-text comparison.
+  if (tokens[i * 3] !== identifier_id) return null;
+  const tag_start = tokens[i * 3 + 1];
+  const tag_end = tokens[i * 3 + 2];
+  const tag_name = input.slice(tag_start, tag_end);
+  let language: LanguageFn;
+  if (tag_name === "html") language = html_default;
+  else if (tag_name === "css") language = css_default;
+  else return null;
 
-	const first_chunk = i + 1;
-	if (first_chunk >= count || tokens[first_chunk * 3] !== template_id)
-		return null;
-	const first_start = tokens[first_chunk * 3 + 1];
-	if (input[first_start] !== "`") return null;
+  const first_chunk = i + 1;
+  if (first_chunk >= count || tokens[first_chunk * 3] !== template_id) return null;
+  const first_start = tokens[first_chunk * 3 + 1];
+  if (input[first_start] !== "`") return null;
 
-	const regions = [];
-	// opening backtick as a synthetic template token (one char).
-	regions.push({
-		kind: "synthetic",
-		source_start: first_start,
-		source_end: first_start + 1,
-		type_name: "template",
-	});
+  const regions = [];
+  // opening backtick as a synthetic template token (one char).
+  regions.push({
+    kind: "synthetic",
+    source_start: first_start,
+    source_end: first_start + 1,
+    type_name: "template",
+  });
 
-	let k = first_chunk;
-	let in_hole = false;
-	let depth = 0;
-	let hole_tok_start = 0;
-	let hole_source_start = 0;
+  let k = first_chunk;
+  let in_hole = false;
+  let depth = 0;
+  let hole_tok_start = 0;
+  let hole_source_start = 0;
 
-	while (k < count) {
-		const tk = tokens[k * 3];
-		const ts = tokens[k * 3 + 1];
-		const te = tokens[k * 3 + 2];
+  while (k < count) {
+    const tk = tokens[k * 3];
+    const ts = tokens[k * 3 + 1];
+    const te = tokens[k * 3 + 2];
 
-		if (!in_hole) {
-			if (tk === template_id) {
-				// a content chunk. The first chunk has a leading backtick;
-				// the last chunk has a trailing backtick (marking end of
-				// group). Both can be the same chunk for a non-interpolated
-				// template like `html`<div></div>`` — in which case the
-				// single token contains both backticks. BUT for a 1-char
-				// first chunk (a bare opening backtick followed immediately
-				// by `${`, as in `html`${x}``), the single char is ONLY the
-				// opening — it is not simultaneously a closing. `start_offset`
-				// below guards against treating the same byte as both.
-				const is_first = k === first_chunk;
-				const start_offset = is_first ? 1 : 0;
-				const has_closing_backtick =
-					te - ts > start_offset && input[te - 1] === "`";
-				const content_start = ts + start_offset;
-				const content_end = has_closing_backtick ? te - 1 : te;
-				if (content_end > content_start) {
-					regions.push({
-						kind: "content",
-						source_start: content_start,
-						source_end: content_end,
-					});
-				}
-				k++;
-				if (has_closing_backtick) {
-					// closing backtick as a synthetic template token.
-					regions.push({
-						kind: "synthetic",
-						source_start: te - 1,
-						source_end: te,
-						type_name: "template",
-					});
-					// the trigger identifier (`html`/`css`) stays in the
-					// host stream — only the template chunks + interpolations
-					// are replaced.
-					return {
-						token_start: first_chunk,
-						token_end: k,
-						regions,
-						language,
-					};
-				}
-			} else if (tk === punctuation_id && input.slice(ts, te) === "${") {
-				// start of interpolation hole. Brace depth begins at 1.
-				in_hole = true;
-				hole_tok_start = k;
-				hole_source_start = ts;
-				depth = 1;
-				k++;
-			} else {
-				// unexpected token between template chunks → malformed. Bail.
-				return null;
-			}
-		} else {
-			// inside an interpolation. Track brace depth via any `{` / `}`
-			// chars that appear in punctuation tokens (object literals,
-			// function bodies, nested `${` all contribute).
-			if (tk === punctuation_id) {
-				const src = input.slice(ts, te);
-				for (let c = 0; c < src.length; c++) {
-					const ch = src.charCodeAt(c);
-					if (ch === 0x7b /* { */) depth++;
-					else if (ch === 0x7d /* } */) depth--;
-				}
-				if (depth === 0) {
-					// hole closes at this token. Record it and resume content.
-					regions.push({
-						kind: "hole",
-						source_start: hole_source_start,
-						source_end: te,
-						token_start: hole_tok_start,
-						token_end: k + 1,
-					});
-					in_hole = false;
-				}
-			}
-			k++;
-		}
-	}
-	// ran off the end without a closing backtick — malformed template.
-	return null;
+    if (!in_hole) {
+      if (tk === template_id) {
+        // a content chunk. The first chunk has a leading backtick;
+        // the last chunk has a trailing backtick (marking end of
+        // group). Both can be the same chunk for a non-interpolated
+        // template like `html`<div></div>`` — in which case the
+        // single token contains both backticks. BUT for a 1-char
+        // first chunk (a bare opening backtick followed immediately
+        // by `${`, as in `html`${x}``), the single char is ONLY the
+        // opening — it is not simultaneously a closing. `start_offset`
+        // below guards against treating the same byte as both.
+        const is_first = k === first_chunk;
+        const start_offset = is_first ? 1 : 0;
+        const has_closing_backtick = te - ts > start_offset && input[te - 1] === "`";
+        const content_start = ts + start_offset;
+        const content_end = has_closing_backtick ? te - 1 : te;
+        if (content_end > content_start) {
+          regions.push({
+            kind: "content",
+            source_start: content_start,
+            source_end: content_end,
+          });
+        }
+        k++;
+        if (has_closing_backtick) {
+          // closing backtick as a synthetic template token.
+          regions.push({
+            kind: "synthetic",
+            source_start: te - 1,
+            source_end: te,
+            type_name: "template",
+          });
+          // the trigger identifier (`html`/`css`) stays in the
+          // host stream — only the template chunks + interpolations
+          // are replaced.
+          return {
+            token_start: first_chunk,
+            token_end: k,
+            regions,
+            language,
+          };
+        }
+      } else if (tk === punctuation_id && input.slice(ts, te) === "${") {
+        // start of interpolation hole. Brace depth begins at 1.
+        in_hole = true;
+        hole_tok_start = k;
+        hole_source_start = ts;
+        depth = 1;
+        k++;
+      } else {
+        // unexpected token between template chunks → malformed. Bail.
+        return null;
+      }
+    } else {
+      // inside an interpolation. Track brace depth via any `{` / `}`
+      // chars that appear in punctuation tokens (object literals,
+      // function bodies, nested `${` all contribute).
+      if (tk === punctuation_id) {
+        const src = input.slice(ts, te);
+        for (let c = 0; c < src.length; c++) {
+          const ch = src.charCodeAt(c);
+          if (ch === 0x7b /* { */) depth++;
+          else if (ch === 0x7d /* } */) depth--;
+        }
+        if (depth === 0) {
+          // hole closes at this token. Record it and resume content.
+          regions.push({
+            kind: "hole",
+            source_start: hole_source_start,
+            source_end: te,
+            token_start: hole_tok_start,
+            token_end: k + 1,
+          });
+          in_hole = false;
+        }
+      }
+      k++;
+    }
+  }
+  // ran off the end without a closing backtick — malformed template.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -754,176 +706,159 @@ export function scan_tagged_template(tokens, input, i, token_types) {
 // tokens that sit in these positions.
 
 export const class_name_promoter: Reclassifier = (input, result) => {
-	const { tokens, token_types } = result;
-	const view = make_token_view(input, tokens, token_types);
-	const n = view.count;
-	if (n === 0) return result;
+  const { tokens, token_types } = result;
+  const view = make_token_view(input, tokens, token_types);
+  const n = view.count;
+  if (n === 0) return result;
 
-	const identifier_id = token_types.indexOf("identifier");
-	const keyword_id = token_types.indexOf("keyword");
-	const punctuation_id = token_types.indexOf("punctuation");
-	const operator_id = token_types.indexOf("operator");
-	const type_id = token_types.indexOf("type");
-	const function_id = token_types.indexOf("function");
+  const identifier_id = token_types.indexOf("identifier");
+  const keyword_id = token_types.indexOf("keyword");
+  const punctuation_id = token_types.indexOf("punctuation");
+  const operator_id = token_types.indexOf("operator");
+  const type_id = token_types.indexOf("type");
+  const function_id = token_types.indexOf("function");
 
-	if (identifier_id < 0 || keyword_id < 0) return result;
+  if (identifier_id < 0 || keyword_id < 0) return result;
 
-	let class_name_id = token_types.indexOf("class_name");
-	if (class_name_id < 0) {
-		class_name_id = token_types.length;
-		token_types.push("class_name");
-	}
+  let class_name_id = token_types.indexOf("class_name");
+  if (class_name_id < 0) {
+    class_name_id = token_types.length;
+    token_types.push("class_name");
+  }
 
-	// next-non-trivia convention for this pass matches the rest: returns
-	// the index of the first non-trivia at or after `from`, or -1. the old
-	// implementation returned `n` on failure; keep the same caller shape
-	// by checking `>= 0` instead of `< n`.
-	const skip_trivia = (from: number): number => view.next_non_trivia(from);
+  // next-non-trivia convention for this pass matches the rest: returns
+  // the index of the first non-trivia at or after `from`, or -1. the old
+  // implementation returned `n` on failure; keep the same caller shape
+  // by checking `>= 0` instead of `< n`.
+  const skip_trivia = (from: number): number => view.next_non_trivia(from);
 
-	// a name-shaped token: identifier, TS `type` (our own pass may have
-	// already promoted it), or `function` (the JS probe mis-classifies
-	// `new Foo(`, `instanceof Foo` as `function` because of the trailing
-	// `(`). all three are eligible for re-promotion to `class_name`.
-	const is_name_token = (i: number): boolean => {
-		if (i < 0 || i >= n) return false;
-		const k = view.kind_of(i);
-		return k === identifier_id || k === type_id || k === function_id;
-	};
+  // a name-shaped token: identifier, TS `type` (our own pass may have
+  // already promoted it), or `function` (the JS probe mis-classifies
+  // `new Foo(`, `instanceof Foo` as `function` because of the trailing
+  // `(`). all three are eligible for re-promotion to `class_name`.
+  const is_name_token = (i: number): boolean => {
+    if (i < 0 || i >= n) return false;
+    const k = view.kind_of(i);
+    return k === identifier_id || k === type_id || k === function_id;
+  };
 
-	// skip a balanced `<...>` angle group starting at `from` (which points at
-	// the opening `<`). returns the index after the closing `>`.
-	const skip_angles = (from: number): number => {
-		if (from < 0 || from >= n) return from;
-		if (view.kind_of(from) !== operator_id || view.text_of(from) !== "<") {
-			return from;
-		}
-		let depth = 1;
-		let j = from + 1;
-		while (j < n && depth > 0) {
-			if (!view.is_trivia(j) && view.kind_of(j) === operator_id) {
-				const t = view.text_of(j);
-				if (t === "<") depth++;
-				else if (t === ">") depth--;
-			}
-			j++;
-		}
-		return j;
-	};
+  // skip a balanced `<...>` angle group starting at `from` (which points at
+  // the opening `<`). returns the index after the closing `>`.
+  const skip_angles = (from: number): number => {
+    if (from < 0 || from >= n) return from;
+    if (view.kind_of(from) !== operator_id || view.text_of(from) !== "<") {
+      return from;
+    }
+    let depth = 1;
+    let j = from + 1;
+    while (j < n && depth > 0) {
+      if (!view.is_trivia(j) && view.kind_of(j) === operator_id) {
+        const t = view.text_of(j);
+        if (t === "<") depth++;
+        else if (t === ">") depth--;
+      }
+      j++;
+    }
+    return j;
+  };
 
-	// walk a dotted identifier chain (`foo.bar.Baz`), promote the LAST
-	// identifier to `class_name`. returns index after the chain.
-	const promote_chain_last = (from: number): number => {
-		let j = skip_trivia(from);
-		let last = -1;
-		while (j >= 0 && j < n) {
-			if (!is_name_token(j)) break;
-			last = j;
-			j = skip_trivia(j + 1);
-			if (
-				j >= 0 &&
-				view.kind_of(j) === punctuation_id &&
-				view.text_of(j) === "."
-			) {
-				j = skip_trivia(j + 1);
-				continue;
-			}
-			break;
-		}
-		if (last >= 0) tokens[last * 3] = class_name_id;
-		return j < 0 ? n : j;
-	};
+  // walk a dotted identifier chain (`foo.bar.Baz`), promote the LAST
+  // identifier to `class_name`. returns index after the chain.
+  const promote_chain_last = (from: number): number => {
+    let j = skip_trivia(from);
+    let last = -1;
+    while (j >= 0 && j < n) {
+      if (!is_name_token(j)) break;
+      last = j;
+      j = skip_trivia(j + 1);
+      if (j >= 0 && view.kind_of(j) === punctuation_id && view.text_of(j) === ".") {
+        j = skip_trivia(j + 1);
+        continue;
+      }
+      break;
+    }
+    if (last >= 0) tokens[last * 3] = class_name_id;
+    return j < 0 ? n : j;
+  };
 
-	// walk a comma-separated list of (chain [<generics>]) entries. returns
-	// index after the list.
-	const promote_list = (from: number): number => {
-		let j = skip_trivia(from);
-		while (j >= 0 && j < n) {
-			if (!is_name_token(j)) break;
-			j = promote_chain_last(j);
-			j = skip_trivia(j);
-			if (
-				j >= 0 &&
-				view.kind_of(j) === operator_id &&
-				view.text_of(j) === "<"
-			) {
-				j = skip_angles(j);
-				j = skip_trivia(j);
-			}
-			if (
-				j >= 0 &&
-				view.kind_of(j) === punctuation_id &&
-				view.text_of(j) === ","
-			) {
-				j = skip_trivia(j + 1);
-				continue;
-			}
-			break;
-		}
-		return j < 0 ? n : j;
-	};
+  // walk a comma-separated list of (chain [<generics>]) entries. returns
+  // index after the list.
+  const promote_list = (from: number): number => {
+    let j = skip_trivia(from);
+    while (j >= 0 && j < n) {
+      if (!is_name_token(j)) break;
+      j = promote_chain_last(j);
+      j = skip_trivia(j);
+      if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "<") {
+        j = skip_angles(j);
+        j = skip_trivia(j);
+      }
+      if (j >= 0 && view.kind_of(j) === punctuation_id && view.text_of(j) === ",") {
+        j = skip_trivia(j + 1);
+        continue;
+      }
+      break;
+    }
+    return j < 0 ? n : j;
+  };
 
-	for (let i = 0; i < n; i++) {
-		if (view.is_trivia(i)) continue;
-		if (view.kind_of(i) !== keyword_id) continue;
-		const kw = view.text_of(i);
+  for (let i = 0; i < n; i++) {
+    if (view.is_trivia(i)) continue;
+    if (view.kind_of(i) !== keyword_id) continue;
+    const kw = view.text_of(i);
 
-		if (kw === "class" || kw === "interface") {
-			// head: [name] [<...>] [extends LIST]* [implements LIST]?  {
-			let j = skip_trivia(i + 1);
-			if (is_name_token(j)) {
-				tokens[j * 3] = class_name_id;
-				j = skip_trivia(j + 1);
-			}
-			if (
-				j >= 0 &&
-				view.kind_of(j) === operator_id &&
-				view.text_of(j) === "<"
-			) {
-				j = skip_angles(j);
-				j = skip_trivia(j);
-			}
-			// extends / implements can appear in either order syntactically,
-			// but typescript only accepts extends-before-implements. allow
-			// both and iterate up to twice.
-			for (let iter = 0; iter < 2; iter++) {
-				j = skip_trivia(j);
-				if (
-					j >= 0 &&
-					view.kind_of(j) === keyword_id &&
-					(view.text_of(j) === "extends" || view.text_of(j) === "implements")
-				) {
-					j = promote_list(j + 1);
-					continue;
-				}
-				break;
-			}
-			continue;
-		}
+    if (kw === "class" || kw === "interface") {
+      // head: [name] [<...>] [extends LIST]* [implements LIST]?  {
+      let j = skip_trivia(i + 1);
+      if (is_name_token(j)) {
+        tokens[j * 3] = class_name_id;
+        j = skip_trivia(j + 1);
+      }
+      if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "<") {
+        j = skip_angles(j);
+        j = skip_trivia(j);
+      }
+      // extends / implements can appear in either order syntactically,
+      // but typescript only accepts extends-before-implements. allow
+      // both and iterate up to twice.
+      for (let iter = 0; iter < 2; iter++) {
+        j = skip_trivia(j);
+        if (
+          j >= 0 &&
+          view.kind_of(j) === keyword_id &&
+          (view.text_of(j) === "extends" || view.text_of(j) === "implements")
+        ) {
+          j = promote_list(j + 1);
+          continue;
+        }
+        break;
+      }
+      continue;
+    }
 
-		if (kw === "new" || kw === "instanceof") {
-			promote_chain_last(i + 1);
-			continue;
-		}
-	}
+    if (kw === "new" || kw === "instanceof") {
+      promote_chain_last(i + 1);
+      continue;
+    }
+  }
 
-	return result;
+  return result;
 };
 
 // restoration of distinctions the grammar no longer emits. the grammar
 // emits every call-site name and every "true"/"false" as `identifier`;
 // these two passes restore the `function` and `boolean` token types so
 // themes that rely on them keep working by default.
-export const promote_boolean_literals: Reclassifier = promote_by_text_set(
-	"identifier",
-	"boolean",
-	["true", "false"],
-);
+export const promote_boolean_literals: Reclassifier = promote_by_text_set("identifier", "boolean", [
+  "true",
+  "false",
+]);
 
 export const promote_call_site_functions: Reclassifier = promote_function_calls(
-	"identifier",
-	"function",
-	{ plain: true },
-	{ trivia: ["comment"] },
+  "identifier",
+  "function",
+  { plain: true },
+  { trivia: ["comment"] },
 );
 
 // UPPER_SNAKE_CASE identifiers read as convention-declared constants in JS
@@ -931,8 +866,8 @@ export const promote_call_site_functions: Reclassifier = promote_function_calls(
 // safe everywhere — pascal_case / function / property passes already work
 // on the `identifier` stream they observe post-promotion.
 export const promote_js_constants: Reclassifier = promote_by_upper_snake_case(
-	"identifier",
-	"constant",
+  "identifier",
+  "constant",
 );
 
 // PascalCase identifiers (Foo, MyWidget, Promise) read as type-like names by
@@ -943,10 +878,7 @@ export const promote_js_constants: Reclassifier = promote_by_upper_snake_case(
 // class_name_promoter in the pipeline so the positional classifier has
 // already claimed its targets — a no-op for those identifiers, a new
 // promotion for remaining plain PascalCase names.
-export const promote_js_pascal_case: Reclassifier = promote_pascal_case(
-	"identifier",
-	"class_name",
-);
+export const promote_js_pascal_case: Reclassifier = promote_pascal_case("identifier", "class_name");
 
 // parameter promotion: walk `function name(...)` / `function(...)` (named
 // and anonymous function declarations/expressions) and tag parameter-
@@ -955,115 +887,110 @@ export const promote_js_pascal_case: Reclassifier = promote_pascal_case(
 // forward-looking lookahead for `=>` and scope tracking for class bodies.
 // rest parameter (`...args`) is handled via a single skip.
 export const promote_js_parameters: Reclassifier = (input, result) => {
-	const { tokens, token_types } = result;
-	const identifier_id = token_types.indexOf("identifier");
-	const keyword_id = token_types.indexOf("keyword");
-	const punctuation_id = token_types.indexOf("punctuation");
-	const operator_id = token_types.indexOf("operator");
-	if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0) {
-		return result;
-	}
-	let parameter_id = token_types.indexOf("parameter");
-	if (parameter_id < 0) {
-		parameter_id = token_types.length;
-		token_types.push("parameter");
-	}
-	const view = make_token_view(input, tokens, token_types);
-	const n = view.count;
+  const { tokens, token_types } = result;
+  const identifier_id = token_types.indexOf("identifier");
+  const keyword_id = token_types.indexOf("keyword");
+  const punctuation_id = token_types.indexOf("punctuation");
+  const operator_id = token_types.indexOf("operator");
+  if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0) {
+    return result;
+  }
+  let parameter_id = token_types.indexOf("parameter");
+  if (parameter_id < 0) {
+    parameter_id = token_types.length;
+    token_types.push("parameter");
+  }
+  const view = make_token_view(input, tokens, token_types);
+  const n = view.count;
 
-	for (let i = 0; i < n; i++) {
-		if (view.is_trivia(i)) continue;
-		if (view.kind_of(i) !== keyword_id) continue;
-		if (view.text_of(i) !== "function") continue;
+  for (let i = 0; i < n; i++) {
+    if (view.is_trivia(i)) continue;
+    if (view.kind_of(i) !== keyword_id) continue;
+    if (view.text_of(i) !== "function") continue;
 
-		// skip optional function name and optional `*` (generator syntax:
-		// `function* name(`). the name may have been grammar-promoted to
-		// `function` via the identifier probe — accept both identifier and
-		// the existing function token as the name.
-		let j = view.next_non_trivia(i + 1);
-		if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "*") {
-			j = view.next_non_trivia(j + 1);
-		}
-		const function_id = token_types.indexOf("function");
-		if (
-			j >= 0 &&
-			(view.kind_of(j) === identifier_id ||
-				(function_id >= 0 && view.kind_of(j) === function_id))
-		) {
-			j = view.next_non_trivia(j + 1);
-		}
-		// TS-specific: skip a generic type-parameter list `<...>` that may
-		// appear between the name and `(`.
-		if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "<") {
-			let depth = 1;
-			j++;
-			while (j < n && depth > 0) {
-				if (view.is_trivia(j)) {
-					j++;
-					continue;
-				}
-				if (view.kind_of(j) === operator_id) {
-					const t = view.text_of(j);
-					if (t === "<") depth++;
-					else if (t === ">") depth--;
-					else if (t === ">>") depth = Math.max(0, depth - 2);
-				}
-				j++;
-			}
-			j = view.next_non_trivia(j);
-		}
-		if (
-			j < 0 ||
-			view.kind_of(j) !== punctuation_id ||
-			!view.text_of(j).startsWith("(")
-		) {
-			continue;
-		}
+    // skip optional function name and optional `*` (generator syntax:
+    // `function* name(`). the name may have been grammar-promoted to
+    // `function` via the identifier probe — accept both identifier and
+    // the existing function token as the name.
+    let j = view.next_non_trivia(i + 1);
+    if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "*") {
+      j = view.next_non_trivia(j + 1);
+    }
+    const function_id = token_types.indexOf("function");
+    if (
+      j >= 0 &&
+      (view.kind_of(j) === identifier_id || (function_id >= 0 && view.kind_of(j) === function_id))
+    ) {
+      j = view.next_non_trivia(j + 1);
+    }
+    // TS-specific: skip a generic type-parameter list `<...>` that may
+    // appear between the name and `(`.
+    if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "<") {
+      let depth = 1;
+      j++;
+      while (j < n && depth > 0) {
+        if (view.is_trivia(j)) {
+          j++;
+          continue;
+        }
+        if (view.kind_of(j) === operator_id) {
+          const t = view.text_of(j);
+          if (t === "<") depth++;
+          else if (t === ">") depth--;
+          else if (t === ">>") depth = Math.max(0, depth - 2);
+        }
+        j++;
+      }
+      j = view.next_non_trivia(j);
+    }
+    if (j < 0 || view.kind_of(j) !== punctuation_id || !view.text_of(j).startsWith("(")) {
+      continue;
+    }
 
-		// walk the parameter list. promote the first identifier after `(`
-		// or `,` at depth 1. treat `...` rest marker as transparent.
-		let depth = 1;
-		let expect_param = true;
-		let k = j + 1;
-		while (k < n && depth > 0) {
-			if (view.is_trivia(k)) {
-				k++;
-				continue;
-			}
-			const kind = view.kind_of(k);
-			const t = view.text_of(k);
-			if (kind === punctuation_id) {
-				for (const ch of t) {
-					if (ch === "(" || ch === "[" || ch === "{") depth++;
-					else if (ch === ")" || ch === "]" || ch === "}") {
-						depth--;
-						if (depth === 0) break;
-					} else if (ch === "," && depth === 1) {
-						expect_param = true;
-					}
-				}
-				k++;
-				continue;
-			}
-			if (depth === 1 && expect_param) {
-				// `...args` — skip spread operator, keep expect_param live.
-				if (kind === operator_id && t === "...") {
-					k++;
-					continue;
-				}
-				if (kind === identifier_id) {
-					tokens[k * 3] = parameter_id;
-					expect_param = false;
-				} else {
-					expect_param = false;
-				}
-			}
-			k++;
-		}
-		i = k - 1;
-	}
+    // walk the parameter list. promote the first identifier after `(`
+    // or `,` at depth 1. treat `...` rest marker as transparent.
+    let depth = 1;
+    let expect_param = true;
+    let k = j + 1;
+    while (k < n && depth > 0) {
+      if (view.is_trivia(k)) {
+        k++;
+        continue;
+      }
+      const kind = view.kind_of(k);
+      const t = view.text_of(k);
+      if (kind === punctuation_id) {
+        for (const ch of t) {
+          if (ch === "(" || ch === "[" || ch === "{") depth++;
+          else if (ch === ")" || ch === "]" || ch === "}") {
+            depth--;
+            if (depth === 0) break;
+          } else if (ch === "," && depth === 1) {
+            expect_param = true;
+          }
+        }
+        k++;
+        continue;
+      }
+      if (depth === 1 && expect_param) {
+        // `...args` — skip spread operator, keep expect_param live.
+        if (kind === operator_id && t === "...") {
+          k++;
+          continue;
+        }
+        if (kind === identifier_id) {
+          tokens[k * 3] = parameter_id;
+          expect_param = false;
+        } else {
+          expect_param = false;
+        }
+      }
+      k++;
+    }
+    i = k - 1;
+  }
 
-	return { tokens, token_types };
+  return { tokens, token_types };
 };
 
 // namespace promotion: targets positions where the syntax unambiguously
@@ -1075,60 +1002,52 @@ export const promote_js_parameters: Reclassifier = (input, result) => {
 // everything else (default imports, dotted property chains) is left alone
 // because identifying those as namespace would need scope tracking.
 export const promote_js_namespaces: Reclassifier = (input, result) => {
-	const { tokens, token_types } = result;
-	const identifier_id = token_types.indexOf("identifier");
-	const keyword_id = token_types.indexOf("keyword");
-	const operator_id = token_types.indexOf("operator");
-	if (identifier_id < 0 || keyword_id < 0) return result;
-	let namespace_id = token_types.indexOf("namespace");
-	if (namespace_id < 0) {
-		namespace_id = token_types.length;
-		token_types.push("namespace");
-	}
-	const view = make_token_view(input, tokens, token_types);
-	const n = view.count;
+  const { tokens, token_types } = result;
+  const identifier_id = token_types.indexOf("identifier");
+  const keyword_id = token_types.indexOf("keyword");
+  const operator_id = token_types.indexOf("operator");
+  if (identifier_id < 0 || keyword_id < 0) return result;
+  let namespace_id = token_types.indexOf("namespace");
+  if (namespace_id < 0) {
+    namespace_id = token_types.length;
+    token_types.push("namespace");
+  }
+  const view = make_token_view(input, tokens, token_types);
+  const n = view.count;
 
-	for (let i = 0; i < n; i++) {
-		if (view.is_trivia(i)) continue;
-		if (view.kind_of(i) !== keyword_id) continue;
-		const kw = view.text_of(i);
+  for (let i = 0; i < n; i++) {
+    if (view.is_trivia(i)) continue;
+    if (view.kind_of(i) !== keyword_id) continue;
+    const kw = view.text_of(i);
 
-		// `import * as X from "..."` — X is a namespace binding.
-		if (kw === "import") {
-			const j = view.next_non_trivia(i + 1);
-			if (
-				j < 0 ||
-				view.kind_of(j) !== operator_id ||
-				view.text_of(j) !== "*"
-			) {
-				continue;
-			}
-			const as = view.next_non_trivia(j + 1);
-			if (
-				as < 0 ||
-				view.kind_of(as) !== keyword_id ||
-				view.text_of(as) !== "as"
-			) {
-				continue;
-			}
-			const name = view.next_non_trivia(as + 1);
-			if (name >= 0 && view.kind_of(name) === identifier_id) {
-				tokens[name * 3] = namespace_id;
-			}
-			continue;
-		}
+    // `import * as X from "..."` — X is a namespace binding.
+    if (kw === "import") {
+      const j = view.next_non_trivia(i + 1);
+      if (j < 0 || view.kind_of(j) !== operator_id || view.text_of(j) !== "*") {
+        continue;
+      }
+      const as = view.next_non_trivia(j + 1);
+      if (as < 0 || view.kind_of(as) !== keyword_id || view.text_of(as) !== "as") {
+        continue;
+      }
+      const name = view.next_non_trivia(as + 1);
+      if (name >= 0 && view.kind_of(name) === identifier_id) {
+        tokens[name * 3] = namespace_id;
+      }
+      continue;
+    }
 
-		// TS `namespace Foo { ... }` and the deprecated `module Foo { ... }`.
-		if (kw === "namespace" || kw === "module") {
-			const name = view.next_non_trivia(i + 1);
-			if (name >= 0 && view.kind_of(name) === identifier_id) {
-				tokens[name * 3] = namespace_id;
-			}
-			continue;
-		}
-	}
+    // TS `namespace Foo { ... }` and the deprecated `module Foo { ... }`.
+    if (kw === "namespace" || kw === "module") {
+      const name = view.next_non_trivia(i + 1);
+      if (name >= 0 && view.kind_of(name) === identifier_id) {
+        tokens[name * 3] = namespace_id;
+      }
+      continue;
+    }
+  }
 
-	return { tokens, token_types };
+  return { tokens, token_types };
 };
 
 // pipeline entries are either fidelity-gated (wrapped with `tag(...)`) or
@@ -1138,34 +1057,32 @@ export const promote_js_namespaces: Reclassifier = (input, result) => {
 // tagged-template embedder is always-on — embeds are not an identifier
 // fidelity axis.
 export const reclassifiers: LanguagePipeline = [
-	// constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
-	// so subsequent passes see the promoted stream. function / property /
-	// class_name predicates all key on `identifier`, so converting an
-	// identifier to `constant` upstream simply removes it from their view.
-	tag(promote_js_constants, ["constant"]),
-	tag(rewrite_types(function_variable_rules, { trivia: ["comment"] }), [
-		"function",
-	]),
-	// claim_property_scope replaces three previous passes (property_rules,
-	// interface_member_promoter, class_field_demoter) with a single scope-
-	// aware claim producer. it batches with function_variable_rules above
-	// so both see the base stream and merge by precedence — interface
-	// members with function-type values resolve to property (prec 35 >
-	// function's 30), object method shorthands to function (prec 30 >
-	// object-property prec 20), and class fields never get a property
-	// claim at all, so no post-hoc fixup is needed.
-	tag(claim_property_scope, ["property"]),
-	tag(class_name_promoter, ["class_name"]),
-	// parameter promotion runs before pascal_case so PascalCase parameter
-	// names (rare in JS, but legal) end up tagged as parameter, not class.
-	tag(promote_js_parameters, ["parameter"]),
-	// namespace promotion (import * as X, TS `namespace X { ... }`) runs
-	// before pascal_case so `X` is tagged namespace, not class_name, when
-	// both predicates match.
-	tag(promote_js_namespaces, ["namespace"]),
-	// free-standing PascalCase → class_name. runs after class_name_promoter so
-	// its positional claims stay authoritative on overlapping positions;
-	// this pass only touches identifiers nothing else has promoted.
-	tag(promote_js_pascal_case, ["class_name"]),
-	always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
+  // constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
+  // so subsequent passes see the promoted stream. function / property /
+  // class_name predicates all key on `identifier`, so converting an
+  // identifier to `constant` upstream simply removes it from their view.
+  tag(promote_js_constants, ["constant"]),
+  tag(rewrite_types(function_variable_rules, { trivia: ["comment"] }), ["function"]),
+  // claim_property_scope replaces three previous passes (property_rules,
+  // interface_member_promoter, class_field_demoter) with a single scope-
+  // aware claim producer. it batches with function_variable_rules above
+  // so both see the base stream and merge by precedence — interface
+  // members with function-type values resolve to property (prec 35 >
+  // function's 30), object method shorthands to function (prec 30 >
+  // object-property prec 20), and class fields never get a property
+  // claim at all, so no post-hoc fixup is needed.
+  tag(claim_property_scope, ["property"]),
+  tag(class_name_promoter, ["class_name"]),
+  // parameter promotion runs before pascal_case so PascalCase parameter
+  // names (rare in JS, but legal) end up tagged as parameter, not class.
+  tag(promote_js_parameters, ["parameter"]),
+  // namespace promotion (import * as X, TS `namespace X { ... }`) runs
+  // before pascal_case so `X` is tagged namespace, not class_name, when
+  // both predicates match.
+  tag(promote_js_namespaces, ["namespace"]),
+  // free-standing PascalCase → class_name. runs after class_name_promoter so
+  // its positional claims stay authoritative on overlapping positions;
+  // this pass only touches identifiers nothing else has promoted.
+  tag(promote_js_pascal_case, ["class_name"]),
+  always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
 ];

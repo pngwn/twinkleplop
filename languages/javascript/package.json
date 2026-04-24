@@ -1,21 +1,21 @@
 {
-	"name": "@twinkleplop/javascript",
-	"version": "0.1.0",
-	"type": "module",
-	"main": "src/index.js",
-	"exports": {
-		".": {
-			"source": "./src/index.ts",
-			"import": "./dist/index.js"
-		},
-		"./test": "./test/index.js"
-	},
-	"dependencies": {
-		"@twinkleplop/core": "workspace:*",
-		"@twinkleplop/css": "workspace:*",
-		"@twinkleplop/html": "workspace:*"
-	},
-	"scripts": {
-		"test": "vitest"
-	}
+  "name": "@twinkleplop/javascript",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "import": "./dist/index.js"
+    },
+    "./test": "./test/index.js"
+  },
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@twinkleplop/core": "workspace:*",
+    "@twinkleplop/css": "workspace:*",
+    "@twinkleplop/html": "workspace:*"
+  }
 }

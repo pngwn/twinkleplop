@@ -25,12 +25,7 @@
 // braces by their own token type and does not depend on what the
 // expression body has become.
 
-import type {
-	LanguageFn,
-	LanguagePipeline,
-	Reclassifier,
-	TokenizeResult,
-} from "@twinkleplop/core";
+import type { LanguageFn, LanguagePipeline, Reclassifier, TokenizeResult } from "@twinkleplop/core";
 import { always, embed_grammars } from "@twinkleplop/core";
 import { language as css_language } from "@twinkleplop/css";
 import { language as js_language } from "@twinkleplop/javascript";
@@ -45,56 +40,55 @@ const css_default = (src: string) => (css_fn ??= css_language())(src);
 const BLOCK_OR_AT_SIGILS = new Set(["#", ":", "/", "@"]);
 
 const rewrite_block_braces: Reclassifier = (
-	input: string,
-	result: TokenizeResult,
+  input: string,
+  result: TokenizeResult,
 ): TokenizeResult => {
-	const { tokens, token_types } = result;
-	const n = tokens.length / 3;
-	if (n === 0) return result;
+  const { tokens, token_types } = result;
+  const n = tokens.length / 3;
+  if (n === 0) return result;
 
-	const expression_id = token_types.indexOf("expression");
-	const punctuation_id = token_types.indexOf("punctuation");
-	const comment_id = token_types.indexOf("comment");
-	if (expression_id < 0 || punctuation_id < 0) return result;
+  const expression_id = token_types.indexOf("expression");
+  const punctuation_id = token_types.indexOf("punctuation");
+  const comment_id = token_types.indexOf("comment");
+  if (expression_id < 0 || punctuation_id < 0) return result;
 
-	const text = (i: number): string =>
-		input.slice(tokens[i * 3 + 1], tokens[i * 3 + 2]);
+  const text = (i: number): string => input.slice(tokens[i * 3 + 1], tokens[i * 3 + 2]);
 
-	const next_non_trivia = (from: number): number => {
-		for (let i = from; i < n; i++) {
-			if (tokens[i * 3] !== comment_id) return i;
-		}
-		return -1;
-	};
+  const next_non_trivia = (from: number): number => {
+    for (let i = from; i < n; i++) {
+      if (tokens[i * 3] !== comment_id) return i;
+    }
+    return -1;
+  };
 
-	for (let i = 0; i < n; i++) {
-		if (tokens[i * 3] !== expression_id) continue;
-		if (text(i) !== "{") continue;
-		const sigil_idx = next_non_trivia(i + 1);
-		if (sigil_idx === -1) continue;
-		if (tokens[sigil_idx * 3] !== punctuation_id) continue;
-		if (!BLOCK_OR_AT_SIGILS.has(text(sigil_idx))) continue;
+  for (let i = 0; i < n; i++) {
+    if (tokens[i * 3] !== expression_id) continue;
+    if (text(i) !== "{") continue;
+    const sigil_idx = next_non_trivia(i + 1);
+    if (sigil_idx === -1) continue;
+    if (tokens[sigil_idx * 3] !== punctuation_id) continue;
+    if (!BLOCK_OR_AT_SIGILS.has(text(sigil_idx))) continue;
 
-		for (let j = sigil_idx + 1; j < n; j++) {
-			if (tokens[j * 3] !== expression_id) continue;
-			if (text(j) !== "}") continue;
-			tokens[i * 3] = punctuation_id;
-			tokens[j * 3] = punctuation_id;
-			i = j;
-			break;
-		}
-	}
-	return result;
+    for (let j = sigil_idx + 1; j < n; j++) {
+      if (tokens[j * 3] !== expression_id) continue;
+      if (text(j) !== "}") continue;
+      tokens[i * 3] = punctuation_id;
+      tokens[j * 3] = punctuation_id;
+      i = j;
+      break;
+    }
+  }
+  return result;
 };
 
 export const reclassifiers: LanguagePipeline = [
-	always(rewrite_block_braces, "type_claim"),
-	always(
-		embed_grammars({
-			raw_script: js_default,
-			raw_style: css_default,
-			raw_svelte_expression: js_default,
-		}),
-		"embed",
-	),
+  always(rewrite_block_braces, "type_claim"),
+  always(
+    embed_grammars({
+      raw_script: js_default,
+      raw_style: css_default,
+      raw_svelte_expression: js_default,
+    }),
+    "embed",
+  ),
 ];

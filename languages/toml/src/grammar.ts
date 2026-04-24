@@ -74,19 +74,19 @@
 //     because `:` is never valid after digits in TOML numbers.
 
 import {
-	ALNUM,
-	DIGIT,
-	HEX,
-	LETTER,
-	enter,
-	fallback,
-	goto,
-	keyword,
-	leave,
-	match,
-	on,
-	range,
-	within,
+  ALNUM,
+  DIGIT,
+  HEX,
+  LETTER,
+  enter,
+  fallback,
+  goto,
+  keyword,
+  leave,
+  match,
+  on,
+  range,
+  within,
 } from "@twinkleplop/core";
 
 import * as TOKENS from "@twinkleplop/core/tokens";
@@ -118,20 +118,12 @@ const COMMENT = within("#", "\n", TOKENS.comment, { multiline: false });
 // plain content char — no escape tokenisation to do.
 const BASIC_STRING = match('"', TOKENS.string, enter("basic_string_body"));
 const LITERAL_STRING = within("'", "'", TOKENS.string);
-const ML_BASIC_STRING = match(
-	'"""',
-	TOKENS.string,
-	enter("ml_basic_string_body"),
-);
+const ML_BASIC_STRING = match('"""', TOKENS.string, enter("ml_basic_string_body"));
 const ML_LITERAL_STRING = within("'''", "'''", TOKENS.string);
 
 const BASIC_KEY = match('"', TOKENS.property, enter("basic_key_body"));
 const LITERAL_KEY = within("'", "'", TOKENS.property);
-const ML_BASIC_KEY = match(
-	'"""',
-	TOKENS.property,
-	enter("ml_basic_key_body"),
-);
+const ML_BASIC_KEY = match('"""', TOKENS.property, enter("ml_basic_key_body"));
 const ML_LITERAL_KEY = within("'''", "'''", TOKENS.property);
 
 // Bare key characters: A-Z a-z 0-9 - _
@@ -139,12 +131,7 @@ const BARE_KEY_CHARS = [LETTER, DIGIT, "-", "_"];
 const BARE_KEY = match(BARE_KEY_CHARS, TOKENS.property);
 
 // All string types for value contexts (multi-line first for length sorting)
-const VALUE_STRINGS = [
-	ML_BASIC_STRING,
-	ML_LITERAL_STRING,
-	BASIC_STRING,
-	LITERAL_STRING,
-];
+const VALUE_STRINGS = [ML_BASIC_STRING, ML_LITERAL_STRING, BASIC_STRING, LITERAL_STRING];
 
 // Octal/binary digit ranges
 const OCT_DIGIT = range([["0", "7"]]);
@@ -163,99 +150,83 @@ const BIN_DIGIT = range([["0", "1"]]);
 // that takes the return-to state name.
 // ---------------------------------------------------------------------------
 const make_number_states = (return_to: string) => ({
-	// Main number state — entered after first digit or after sign+digit
-	// Stack discipline: the probe that entered this number chain pushed the
-	// parent state (value / value_array / value_inline_table_after_val) onto
-	// the stack. Inside the chain we use goto (sideways) so no further pushes
-	// accumulate; the terminal fallback uses leave() to pop that single frame
-	// and return control to the parent. Without this, every number would
-	// leak one stack frame and the 256-slot state_stack would silently
-	// overflow on documents with many values (manifesting as random later
-	// key-value pairs being dropped).
-	[`value_number_${return_to}`]: {
-		rules: [
-			match(DIGIT, TOKENS.number),
-			match("_", TOKENS.number),
-			// Hex/oct/bin prefix after 0 — emit prefix char as number so
-			// it coalesces with the leading 0 into one token
-			match(["x", "X"], TOKENS.number, goto(`value_hex_${return_to}`)),
-			match(["o", "O"], TOKENS.number, goto(`value_oct_${return_to}`)),
-			match(["b", "B"], TOKENS.number, goto(`value_bin_${return_to}`)),
-			// Decimal point
-			match(".", TOKENS.number, goto(`value_decimal_${return_to}`)),
-			// Exponent
-			match(["e", "E"], TOKENS.number, goto(`value_exp_sign_${return_to}`)),
-			fallback(leave()),
-		],
-	},
+  // Main number state — entered after first digit or after sign+digit
+  // Stack discipline: the probe that entered this number chain pushed the
+  // parent state (value / value_array / value_inline_table_after_val) onto
+  // the stack. Inside the chain we use goto (sideways) so no further pushes
+  // accumulate; the terminal fallback uses leave() to pop that single frame
+  // and return control to the parent. Without this, every number would
+  // leak one stack frame and the 256-slot state_stack would silently
+  // overflow on documents with many values (manifesting as random later
+  // key-value pairs being dropped).
+  [`value_number_${return_to}`]: {
+    rules: [
+      match(DIGIT, TOKENS.number),
+      match("_", TOKENS.number),
+      // Hex/oct/bin prefix after 0 — emit prefix char as number so
+      // it coalesces with the leading 0 into one token
+      match(["x", "X"], TOKENS.number, goto(`value_hex_${return_to}`)),
+      match(["o", "O"], TOKENS.number, goto(`value_oct_${return_to}`)),
+      match(["b", "B"], TOKENS.number, goto(`value_bin_${return_to}`)),
+      // Decimal point
+      match(".", TOKENS.number, goto(`value_decimal_${return_to}`)),
+      // Exponent
+      match(["e", "E"], TOKENS.number, goto(`value_exp_sign_${return_to}`)),
+      fallback(leave()),
+    ],
+  },
 
-	[`value_hex_${return_to}`]: {
-		rules: [
-			match(HEX, TOKENS.number),
-			match("_", TOKENS.number),
-			fallback(leave()),
-		],
-	},
+  [`value_hex_${return_to}`]: {
+    rules: [match(HEX, TOKENS.number), match("_", TOKENS.number), fallback(leave())],
+  },
 
-	[`value_oct_${return_to}`]: {
-		rules: [
-			match(OCT_DIGIT, TOKENS.number),
-			match("_", TOKENS.number),
-			fallback(leave()),
-		],
-	},
+  [`value_oct_${return_to}`]: {
+    rules: [match(OCT_DIGIT, TOKENS.number), match("_", TOKENS.number), fallback(leave())],
+  },
 
-	[`value_bin_${return_to}`]: {
-		rules: [
-			match(BIN_DIGIT, TOKENS.number),
-			match("_", TOKENS.number),
-			fallback(leave()),
-		],
-	},
+  [`value_bin_${return_to}`]: {
+    rules: [match(BIN_DIGIT, TOKENS.number), match("_", TOKENS.number), fallback(leave())],
+  },
 
-	[`value_decimal_${return_to}`]: {
-		rules: [
-			match(DIGIT, TOKENS.number),
-			match("_", TOKENS.number),
-			match(["e", "E"], TOKENS.number, goto(`value_exp_sign_${return_to}`)),
-			fallback(leave()),
-		],
-	},
+  [`value_decimal_${return_to}`]: {
+    rules: [
+      match(DIGIT, TOKENS.number),
+      match("_", TOKENS.number),
+      match(["e", "E"], TOKENS.number, goto(`value_exp_sign_${return_to}`)),
+      fallback(leave()),
+    ],
+  },
 
-	[`value_exp_sign_${return_to}`]: {
-		rules: [
-			match(["+", "-"], TOKENS.number, goto(`value_exp_digits_${return_to}`)),
-			match(DIGIT, TOKENS.number, goto(`value_exp_digits_${return_to}`)),
-			fallback(leave()),
-		],
-	},
+  [`value_exp_sign_${return_to}`]: {
+    rules: [
+      match(["+", "-"], TOKENS.number, goto(`value_exp_digits_${return_to}`)),
+      match(DIGIT, TOKENS.number, goto(`value_exp_digits_${return_to}`)),
+      fallback(leave()),
+    ],
+  },
 
-	[`value_exp_digits_${return_to}`]: {
-		rules: [
-			match(DIGIT, TOKENS.number),
-			match("_", TOKENS.number),
-			fallback(leave()),
-		],
-	},
+  [`value_exp_digits_${return_to}`]: {
+    rules: [match(DIGIT, TOKENS.number), match("_", TOKENS.number), fallback(leave())],
+  },
 
-	// -----------------------------------------------------------------
-	// Signed value state — after consuming +/- as operator in value pos.
-	//
-	// The sign was already emitted as an operator token. Now we check
-	// what follows:
-	//   - inf/nan -> keyword; leave() pops back to the parent
-	//   - digit -> goto value_number (same stack depth — value_signed was
-	//     entered via enter, which pushed the parent, so goto keeps that
-	//     frame and value_number's terminal leave() will pop it cleanly)
-	//   - anything else -> leave() pops back to the parent
-	// -----------------------------------------------------------------
-	[`value_signed_${return_to}`]: {
-		rules: [
-			keyword(["inf", "nan"], leave(), TOKENS.keyword),
-			match(DIGIT, TOKENS.number, goto(`value_number_${return_to}`)),
-			fallback(leave()),
-		],
-	},
+  // -----------------------------------------------------------------
+  // Signed value state — after consuming +/- as operator in value pos.
+  //
+  // The sign was already emitted as an operator token. Now we check
+  // what follows:
+  //   - inf/nan -> keyword; leave() pops back to the parent
+  //   - digit -> goto value_number (same stack depth — value_signed was
+  //     entered via enter, which pushed the parent, so goto keeps that
+  //     frame and value_number's terminal leave() will pop it cleanly)
+  //   - anything else -> leave() pops back to the parent
+  // -----------------------------------------------------------------
+  [`value_signed_${return_to}`]: {
+    rules: [
+      keyword(["inf", "nan"], leave(), TOKENS.keyword),
+      match(DIGIT, TOKENS.number, goto(`value_number_${return_to}`)),
+      fallback(leave()),
+    ],
+  },
 });
 
 // Generate number states for all three value contexts
@@ -272,139 +243,127 @@ const number_states_inline = make_number_states("value_inline_table_after_val");
 //   otherwise -> number
 // ---------------------------------------------------------------------------
 const make_datetime_probe = (return_to: string) => ({
-	// Phase 1: saw 1 digit, keep checking
-	[`digit_probe1_${return_to}`]: {
-		mode: "probe" as const,
-		fallback: `number_from_probe_${return_to}`,
-		rules: [
-			on(DIGIT, enter(`digit_probe2_${return_to}`)),
-			fallback(enter(`number_from_probe_${return_to}`)),
-		],
-	},
+  // Phase 1: saw 1 digit, keep checking
+  [`digit_probe1_${return_to}`]: {
+    mode: "probe" as const,
+    fallback: `number_from_probe_${return_to}`,
+    rules: [
+      on(DIGIT, enter(`digit_probe2_${return_to}`)),
+      fallback(enter(`number_from_probe_${return_to}`)),
+    ],
+  },
 
-	// Phase 2: saw 2 digits, check for HH:
-	// `:` routes to local_time. This MUST use enter (not goto) so the probe
-	// resolution pushes the parent state; without that push, the leave() at
-	// the end of local_time_body would pop an empty stack and cause an
-	// infinite loop.
-	[`digit_probe2_${return_to}`]: {
-		mode: "probe" as const,
-		fallback: `number_from_probe_${return_to}`,
-		rules: [
-			on(DIGIT, enter(`digit_probe3_${return_to}`)),
-			on(":", enter(`local_time_from_probe_${return_to}`)),
-			fallback(enter(`number_from_probe_${return_to}`)),
-		],
-	},
+  // Phase 2: saw 2 digits, check for HH:
+  // `:` routes to local_time. This MUST use enter (not goto) so the probe
+  // resolution pushes the parent state; without that push, the leave() at
+  // the end of local_time_body would pop an empty stack and cause an
+  // infinite loop.
+  [`digit_probe2_${return_to}`]: {
+    mode: "probe" as const,
+    fallback: `number_from_probe_${return_to}`,
+    rules: [
+      on(DIGIT, enter(`digit_probe3_${return_to}`)),
+      on(":", enter(`local_time_from_probe_${return_to}`)),
+      fallback(enter(`number_from_probe_${return_to}`)),
+    ],
+  },
 
-	// Phase 3: saw 3 digits, keep going for potential YYYY
-	[`digit_probe3_${return_to}`]: {
-		mode: "probe" as const,
-		fallback: `number_from_probe_${return_to}`,
-		rules: [
-			on(DIGIT, enter(`digit_probe4_${return_to}`)),
-			fallback(enter(`number_from_probe_${return_to}`)),
-		],
-	},
+  // Phase 3: saw 3 digits, keep going for potential YYYY
+  [`digit_probe3_${return_to}`]: {
+    mode: "probe" as const,
+    fallback: `number_from_probe_${return_to}`,
+    rules: [
+      on(DIGIT, enter(`digit_probe4_${return_to}`)),
+      fallback(enter(`number_from_probe_${return_to}`)),
+    ],
+  },
 
-	// Phase 4: saw 4 digits (potential year), check for YYYY-
-	[`digit_probe4_${return_to}`]: {
-		mode: "probe" as const,
-		fallback: `number_from_probe_${return_to}`,
-		rules: [
-			on("-", enter(`datetime_from_probe_${return_to}`)),
-			on(".", enter(`number_from_probe_${return_to}`)),
-			fallback(enter(`number_from_probe_${return_to}`)),
-		],
-	},
+  // Phase 4: saw 4 digits (potential year), check for YYYY-
+  [`digit_probe4_${return_to}`]: {
+    mode: "probe" as const,
+    fallback: `number_from_probe_${return_to}`,
+    rules: [
+      on("-", enter(`datetime_from_probe_${return_to}`)),
+      on(".", enter(`number_from_probe_${return_to}`)),
+      fallback(enter(`number_from_probe_${return_to}`)),
+    ],
+  },
 
-	// After probe rewind: re-consume digits as number
-	[`number_from_probe_${return_to}`]: {
-		rules: [
-			match(DIGIT, TOKENS.number, goto(`value_number_${return_to}`)),
-		],
-	},
+  // After probe rewind: re-consume digits as number
+  [`number_from_probe_${return_to}`]: {
+    rules: [match(DIGIT, TOKENS.number, goto(`value_number_${return_to}`))],
+  },
 
-	// After probe rewind: re-consume 2 digits as local time
-	[`local_time_from_probe_${return_to}`]: {
-		rules: [
-			match(DIGIT, "datetime", goto(`local_time_body_${return_to}`)),
-		],
-	},
+  // After probe rewind: re-consume 2 digits as local time
+  [`local_time_from_probe_${return_to}`]: {
+    rules: [match(DIGIT, "datetime", goto(`local_time_body_${return_to}`))],
+  },
 
-	[`local_time_body_${return_to}`]: {
-		rules: [
-			match(DIGIT, "datetime"),
-			match(":", TOKENS.punctuation),
-			match(".", TOKENS.punctuation),
-			// any other char (whitespace, comma, bracket, comment, newline) is
-			// a terminator — leave() pops the parent frame that the probe
-			// pushed during resolution so control returns cleanly without a
-			// stack leak.
-			fallback(leave()),
-		],
-	},
+  [`local_time_body_${return_to}`]: {
+    rules: [
+      match(DIGIT, "datetime"),
+      match(":", TOKENS.punctuation),
+      match(".", TOKENS.punctuation),
+      // any other char (whitespace, comma, bracket, comment, newline) is
+      // a terminator — leave() pops the parent frame that the probe
+      // pushed during resolution so control returns cleanly without a
+      // stack leak.
+      fallback(leave()),
+    ],
+  },
 
-	// After probe rewind: re-consume 4 digits as datetime year
-	[`datetime_from_probe_${return_to}`]: {
-		rules: [
-			match(DIGIT, "datetime", goto(`dt_year_${return_to}`)),
-		],
-	},
+  // After probe rewind: re-consume 4 digits as datetime year
+  [`datetime_from_probe_${return_to}`]: {
+    rules: [match(DIGIT, "datetime", goto(`dt_year_${return_to}`))],
+  },
 
-	[`dt_year_${return_to}`]: {
-		rules: [
-			match(DIGIT, "datetime"),
-			match("-", TOKENS.punctuation, goto(`dt_month_${return_to}`)),
-			fallback(leave()),
-		],
-	},
+  [`dt_year_${return_to}`]: {
+    rules: [
+      match(DIGIT, "datetime"),
+      match("-", TOKENS.punctuation, goto(`dt_month_${return_to}`)),
+      fallback(leave()),
+    ],
+  },
 
-	[`dt_month_${return_to}`]: {
-		rules: [
-			match(DIGIT, "datetime"),
-			match("-", TOKENS.punctuation, goto(`dt_day_${return_to}`)),
-			fallback(leave()),
-		],
-	},
+  [`dt_month_${return_to}`]: {
+    rules: [
+      match(DIGIT, "datetime"),
+      match("-", TOKENS.punctuation, goto(`dt_day_${return_to}`)),
+      fallback(leave()),
+    ],
+  },
 
-	// dt_day: accepts T/t/space as the time separator. Emitting the
-	// separator as datetime keeps the whole `2024-01-01T17:00:00` span
-	// rendering as one datetime token. The fallback exits on any other
-	// char (e.g. newline, comma, `]`, `#`) without consuming it so the
-	// parent (pushed by the probe resolution) can emit it correctly.
-	[`dt_day_${return_to}`]: {
-		rules: [
-			match(DIGIT, "datetime"),
-			match(["T", "t", " "], "datetime", goto(`dt_time_${return_to}`)),
-			fallback(leave()),
-		],
-	},
+  // dt_day: accepts T/t/space as the time separator. Emitting the
+  // separator as datetime keeps the whole `2024-01-01T17:00:00` span
+  // rendering as one datetime token. The fallback exits on any other
+  // char (e.g. newline, comma, `]`, `#`) without consuming it so the
+  // parent (pushed by the probe resolution) can emit it correctly.
+  [`dt_day_${return_to}`]: {
+    rules: [
+      match(DIGIT, "datetime"),
+      match(["T", "t", " "], "datetime", goto(`dt_time_${return_to}`)),
+      fallback(leave()),
+    ],
+  },
 
-	[`dt_time_${return_to}`]: {
-		rules: [
-			match(DIGIT, "datetime"),
-			match(":", TOKENS.punctuation),
-			match(".", TOKENS.punctuation),
-			match(["Z", "z"], "datetime", goto(`dt_tz_${return_to}`)),
-			match(["+", "-"], TOKENS.punctuation, goto(`dt_offset_${return_to}`)),
-			fallback(leave()),
-		],
-	},
+  [`dt_time_${return_to}`]: {
+    rules: [
+      match(DIGIT, "datetime"),
+      match(":", TOKENS.punctuation),
+      match(".", TOKENS.punctuation),
+      match(["Z", "z"], "datetime", goto(`dt_tz_${return_to}`)),
+      match(["+", "-"], TOKENS.punctuation, goto(`dt_offset_${return_to}`)),
+      fallback(leave()),
+    ],
+  },
 
-	[`dt_tz_${return_to}`]: {
-		rules: [
-			fallback(leave()),
-		],
-	},
+  [`dt_tz_${return_to}`]: {
+    rules: [fallback(leave())],
+  },
 
-	[`dt_offset_${return_to}`]: {
-		rules: [
-			match(DIGIT, "datetime"),
-			match(":", TOKENS.punctuation),
-			fallback(leave()),
-		],
-	},
+  [`dt_offset_${return_to}`]: {
+    rules: [match(DIGIT, "datetime"), match(":", TOKENS.punctuation), fallback(leave())],
+  },
 });
 
 const datetime_probe_value = make_datetime_probe("value");
@@ -418,332 +377,289 @@ const datetime_probe_inline = make_datetime_probe("value_inline_table_after_val"
 // EOL-driven state transition (e.g. goto("root") at the top level).
 // ---------------------------------------------------------------------------
 const make_value_rules = (return_to: string, allow_eol: boolean) => [
-	WS,
-	...(allow_eol ? [EOL, COMMENT] : []),
-	...VALUE_STRINGS,
-	keyword(["true", "false"], {}, TOKENS.boolean),
-	keyword(["inf", "nan"], {}, TOKENS.keyword),
-	// +/- in value position: emit as operator, then check if followed by
-	// inf/nan (keyword) or digit (number) in value_signed state
-	match(["+", "-"], TOKENS.operator, enter(`value_signed_${return_to}`)),
-	on(DIGIT, enter(`digit_probe1_${return_to}`)),
-	match("[", TOKENS.punctuation, enter("value_array")),
-	match("{", TOKENS.punctuation, enter("value_inline_table")),
+  WS,
+  ...(allow_eol ? [EOL, COMMENT] : []),
+  ...VALUE_STRINGS,
+  keyword(["true", "false"], {}, TOKENS.boolean),
+  keyword(["inf", "nan"], {}, TOKENS.keyword),
+  // +/- in value position: emit as operator, then check if followed by
+  // inf/nan (keyword) or digit (number) in value_signed state
+  match(["+", "-"], TOKENS.operator, enter(`value_signed_${return_to}`)),
+  on(DIGIT, enter(`digit_probe1_${return_to}`)),
+  match("[", TOKENS.punctuation, enter("value_array")),
+  match("{", TOKENS.punctuation, enter("value_inline_table")),
 ];
 
 // Merge all generated states into one object
 const all_number_states = {
-	...number_states_value,
-	...number_states_array,
-	...number_states_inline,
+  ...number_states_value,
+  ...number_states_array,
+  ...number_states_inline,
 };
 
 const all_datetime_states = {
-	...datetime_probe_value,
-	...datetime_probe_array,
-	...datetime_probe_inline,
+  ...datetime_probe_value,
+  ...datetime_probe_array,
+  ...datetime_probe_inline,
 };
 
 export default define_grammar({
-	name: "toml",
-	states: {
-		// -----------------------------------------------------------------
-		// root — scanning for keys, table headers, comments.
-		// -----------------------------------------------------------------
-		root: {
-			rules: [
-				WS,
-				EOL,
-				COMMENT,
+  name: "toml",
+  states: {
+    // -----------------------------------------------------------------
+    // root — scanning for keys, table headers, comments.
+    // -----------------------------------------------------------------
+    root: {
+      rules: [
+        WS,
+        EOL,
+        COMMENT,
 
-				// Table headers: [key] or [[key]]
-				on("[", enter("bracket_probe")),
+        // Table headers: [key] or [[key]]
+        on("[", enter("bracket_probe")),
 
-				// Quoted keys in key position — emit `property`, not `string`,
-				// so `"name".first` and `name.first` tokenize uniformly.
-				ML_BASIC_KEY,
-				ML_LITERAL_KEY,
-				BASIC_KEY,
-				LITERAL_KEY,
+        // Quoted keys in key position — emit `property`, not `string`,
+        // so `"name".first` and `name.first` tokenize uniformly.
+        ML_BASIC_KEY,
+        ML_LITERAL_KEY,
+        BASIC_KEY,
+        LITERAL_KEY,
 
-				// Bare key characters
-				BARE_KEY,
+        // Bare key characters
+        BARE_KEY,
 
-				// = key-value separator
-				match("=", TOKENS.operator, goto("value")),
+        // = key-value separator
+        match("=", TOKENS.operator, goto("value")),
 
-				// . dotted key separator
-				match(".", TOKENS.punctuation),
-			],
-		},
+        // . dotted key separator
+        match(".", TOKENS.punctuation),
+      ],
+    },
 
-		// -----------------------------------------------------------------
-		// bracket_probe — disambiguate [ vs [[.
-		//
-		// A probe in "probe" mode that does not have an explicit rule for the
-		// current char scans FORWARD looking for a disambiguating match. With
-		// only the `on("[", ...)` rule here, an input like `[a]\n[b]` would
-		// cause the probe to scan past `a]\n` and wrongly match the second
-		// `[` as the second bracket of `[[`. We need an immediate fallback
-		// that routes any non-`[` char to the plain table_header state.
-		// -----------------------------------------------------------------
-		bracket_probe: {
-			mode: "probe",
-			fallback: "table_header",
-			rules: [
-				on("[", enter("array_table_header")),
-				fallback(enter("table_header")),
-			],
-		},
+    // -----------------------------------------------------------------
+    // bracket_probe — disambiguate [ vs [[.
+    //
+    // A probe in "probe" mode that does not have an explicit rule for the
+    // current char scans FORWARD looking for a disambiguating match. With
+    // only the `on("[", ...)` rule here, an input like `[a]\n[b]` would
+    // cause the probe to scan past `a]\n` and wrongly match the second
+    // `[` as the second bracket of `[[`. We need an immediate fallback
+    // that routes any non-`[` char to the plain table_header state.
+    // -----------------------------------------------------------------
+    bracket_probe: {
+      mode: "probe",
+      fallback: "table_header",
+      rules: [on("[", enter("array_table_header")), fallback(enter("table_header"))],
+    },
 
-		// -----------------------------------------------------------------
-		// table_header — [key]
-		// -----------------------------------------------------------------
-		table_header: {
-			rules: [
-				match("[", TOKENS.punctuation, goto("table_header_key")),
-			],
-		},
+    // -----------------------------------------------------------------
+    // table_header — [key]
+    // -----------------------------------------------------------------
+    table_header: {
+      rules: [match("[", TOKENS.punctuation, goto("table_header_key"))],
+    },
 
-		table_header_key: {
-			rules: [
-				WS,
-				COMMENT,
-				BASIC_KEY,
-				LITERAL_KEY,
-				BARE_KEY,
-				match(".", TOKENS.punctuation),
-				match("]", TOKENS.punctuation, leave()),
-			],
-		},
+    table_header_key: {
+      rules: [
+        WS,
+        COMMENT,
+        BASIC_KEY,
+        LITERAL_KEY,
+        BARE_KEY,
+        match(".", TOKENS.punctuation),
+        match("]", TOKENS.punctuation, leave()),
+      ],
+    },
 
-		// -----------------------------------------------------------------
-		// array_table_header — [[key]]
-		// -----------------------------------------------------------------
-		array_table_header: {
-			rules: [
-				match("[[", TOKENS.array_table_header, goto("array_table_header_key")),
-			],
-		},
+    // -----------------------------------------------------------------
+    // array_table_header — [[key]]
+    // -----------------------------------------------------------------
+    array_table_header: {
+      rules: [match("[[", TOKENS.array_table_header, goto("array_table_header_key"))],
+    },
 
-		array_table_header_key: {
-			rules: [
-				WS,
-				COMMENT,
-				BASIC_KEY,
-				LITERAL_KEY,
-				BARE_KEY,
-				match(".", TOKENS.punctuation),
-				// closing `]]` matches the opening `[[` token type so a theme
-				// that styles array-of-tables delimiters can target both ends.
-				match("]]", TOKENS.array_table_header, leave()),
-			],
-		},
+    array_table_header_key: {
+      rules: [
+        WS,
+        COMMENT,
+        BASIC_KEY,
+        LITERAL_KEY,
+        BARE_KEY,
+        match(".", TOKENS.punctuation),
+        // closing `]]` matches the opening `[[` token type so a theme
+        // that styles array-of-tables delimiters can target both ends.
+        match("]]", TOKENS.array_table_header, leave()),
+      ],
+    },
 
-		// -----------------------------------------------------------------
-		// value — scanning for a value after =
-		//
-		// newline at top level terminates the keyval and returns to root.
-		// the `on([\n, \r], goto("root"))` rule must come before anything
-		// that could claim those chars, and replaces the passive EOL rule
-		// that make_value_rules would otherwise insert (the filter below
-		// strips make_value_rules's EOL so we don't have a duplicate rule
-		// that silently consumes the newline).
-		//
-		// fallback(goto("root")) handles recovery: any char that did not
-		// match a value start (e.g. a stray letter after the value already
-		// ended, an empty value before a newline) hands control back to
-		// root WITHOUT consuming, so root can re-interpret it as the start
-		// of a new key or table header.
-		// -----------------------------------------------------------------
-		value: {
-			rules: [
-				on(["\n", "\r"], goto("root")),
-				...make_value_rules("value", true).filter((r) => r !== EOL),
-				fallback(goto("root")),
-			],
-		},
+    // -----------------------------------------------------------------
+    // value — scanning for a value after =
+    //
+    // newline at top level terminates the keyval and returns to root.
+    // the `on([\n, \r], goto("root"))` rule must come before anything
+    // that could claim those chars, and replaces the passive EOL rule
+    // that make_value_rules would otherwise insert (the filter below
+    // strips make_value_rules's EOL so we don't have a duplicate rule
+    // that silently consumes the newline).
+    //
+    // fallback(goto("root")) handles recovery: any char that did not
+    // match a value start (e.g. a stray letter after the value already
+    // ended, an empty value before a newline) hands control back to
+    // root WITHOUT consuming, so root can re-interpret it as the start
+    // of a new key or table header.
+    // -----------------------------------------------------------------
+    value: {
+      rules: [
+        on(["\n", "\r"], goto("root")),
+        ...make_value_rules("value", true).filter((r) => r !== EOL),
+        fallback(goto("root")),
+      ],
+    },
 
-		// -----------------------------------------------------------------
-		// value_array — inside [...] in value position
-		// -----------------------------------------------------------------
-		value_array: {
-			rules: [
-				...make_value_rules("value_array", true),
-				match(",", TOKENS.punctuation),
-				match("]", TOKENS.punctuation, leave()),
-			],
-		},
+    // -----------------------------------------------------------------
+    // value_array — inside [...] in value position
+    // -----------------------------------------------------------------
+    value_array: {
+      rules: [
+        ...make_value_rules("value_array", true),
+        match(",", TOKENS.punctuation),
+        match("]", TOKENS.punctuation, leave()),
+      ],
+    },
 
-		// -----------------------------------------------------------------
-		// value_inline_table — inside {...} in value position
-		// Keys and values, comma-separated, no newlines in v1.0.0.
-		// -----------------------------------------------------------------
-		value_inline_table: {
-			rules: [
-				WS,
-				ML_BASIC_KEY,
-				ML_LITERAL_KEY,
-				BASIC_KEY,
-				LITERAL_KEY,
-				BARE_KEY,
-				match("=", TOKENS.operator, goto("value_inline_table_after_val")),
-				match(",", TOKENS.punctuation),
-				match(".", TOKENS.punctuation),
-				match("}", TOKENS.punctuation, leave()),
-			],
-		},
+    // -----------------------------------------------------------------
+    // value_inline_table — inside {...} in value position
+    // Keys and values, comma-separated, no newlines in v1.0.0.
+    // -----------------------------------------------------------------
+    value_inline_table: {
+      rules: [
+        WS,
+        ML_BASIC_KEY,
+        ML_LITERAL_KEY,
+        BASIC_KEY,
+        LITERAL_KEY,
+        BARE_KEY,
+        match("=", TOKENS.operator, goto("value_inline_table_after_val")),
+        match(",", TOKENS.punctuation),
+        match(".", TOKENS.punctuation),
+        match("}", TOKENS.punctuation, leave()),
+      ],
+    },
 
-		// After = inside inline table — same as value but no EOL/COMMENT,
-		// and number/datetime states return to inline table context.
-		value_inline_table_after_val: {
-			rules: [
-				...make_value_rules("value_inline_table_after_val", false),
-				// Comma and } terminate the value
-				on(",", goto("value_inline_table")),
-				on("}", goto("value_inline_table")),
-			],
-		},
+    // After = inside inline table — same as value but no EOL/COMMENT,
+    // and number/datetime states return to inline table context.
+    value_inline_table_after_val: {
+      rules: [
+        ...make_value_rules("value_inline_table_after_val", false),
+        // Comma and } terminate the value
+        on(",", goto("value_inline_table")),
+        on("}", goto("value_inline_table")),
+      ],
+    },
 
-		// -----------------------------------------------------------------
-		// Basic string / key body states.
-		//
-		// Two emit tokens (`string` vs `property`) for the container chars
-		// but share the `string_escape` sub-machine via enter("…_start").
-		// For ML variants, `"""` as the first rule wins over fallback so
-		// embedded `"` or `""` inside the body pass through as content
-		// (spec allows up to 2 adjacent quotes before the terminator).
-		// -----------------------------------------------------------------
-		basic_string_body: {
-			rules: [
-				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
-				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
-				match("\\", TOKENS.string_escape, enter("esc_simple")),
-				match('"', TOKENS.string, leave()),
-				fallback({ token: TOKENS.string }),
-			],
-		},
+    // -----------------------------------------------------------------
+    // Basic string / key body states.
+    //
+    // Two emit tokens (`string` vs `property`) for the container chars
+    // but share the `string_escape` sub-machine via enter("…_start").
+    // For ML variants, `"""` as the first rule wins over fallback so
+    // embedded `"` or `""` inside the body pass through as content
+    // (spec allows up to 2 adjacent quotes before the terminator).
+    // -----------------------------------------------------------------
+    basic_string_body: {
+      rules: [
+        match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+        match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+        match("\\", TOKENS.string_escape, enter("esc_simple")),
+        match('"', TOKENS.string, leave()),
+        fallback({ token: TOKENS.string }),
+      ],
+    },
 
-		ml_basic_string_body: {
-			rules: [
-				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
-				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
-				match("\\", TOKENS.string_escape, enter("esc_simple")),
-				match('"""', TOKENS.string, leave()),
-				fallback({ token: TOKENS.string }),
-			],
-		},
+    ml_basic_string_body: {
+      rules: [
+        match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+        match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+        match("\\", TOKENS.string_escape, enter("esc_simple")),
+        match('"""', TOKENS.string, leave()),
+        fallback({ token: TOKENS.string }),
+      ],
+    },
 
-		basic_key_body: {
-			rules: [
-				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
-				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
-				match("\\", TOKENS.string_escape, enter("esc_simple")),
-				match('"', TOKENS.property, leave()),
-				fallback({ token: TOKENS.property }),
-			],
-		},
+    basic_key_body: {
+      rules: [
+        match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+        match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+        match("\\", TOKENS.string_escape, enter("esc_simple")),
+        match('"', TOKENS.property, leave()),
+        fallback({ token: TOKENS.property }),
+      ],
+    },
 
-		ml_basic_key_body: {
-			rules: [
-				match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
-				match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
-				match("\\", TOKENS.string_escape, enter("esc_simple")),
-				match('"""', TOKENS.property, leave()),
-				fallback({ token: TOKENS.property }),
-			],
-		},
+    ml_basic_key_body: {
+      rules: [
+        match("\\u", TOKENS.string_escape, enter("esc_u4_d1")),
+        match("\\U", TOKENS.string_escape, enter("esc_u8_d1")),
+        match("\\", TOKENS.string_escape, enter("esc_simple")),
+        match('"""', TOKENS.property, leave()),
+        fallback({ token: TOKENS.property }),
+      ],
+    },
 
-		// -----------------------------------------------------------------
-		// Shared escape sub-machine — used by both string and key bodies.
-		//
-		// TOML v1.0.0 recognises short escapes (\b \t \n \f \r \" \\) and
-		// two structured forms: \uNNNN (4 hex) and \UNNNNNNNN (8 hex).
-		// Line-ending `\` in ML basic strings trims whitespace per spec;
-		// for the tokenizer we emit the `\<newline>` pair as a single
-		// `string_escape` and leave following whitespace as plain
-		// `string` / `property` — enough for themeable contrast.
-		// -----------------------------------------------------------------
-		esc_simple: {
-			rules: [fallback({ token: TOKENS.string_escape, exit: true })],
-		},
+    // -----------------------------------------------------------------
+    // Shared escape sub-machine — used by both string and key bodies.
+    //
+    // TOML v1.0.0 recognises short escapes (\b \t \n \f \r \" \\) and
+    // two structured forms: \uNNNN (4 hex) and \UNNNNNNNN (8 hex).
+    // Line-ending `\` in ML basic strings trims whitespace per spec;
+    // for the tokenizer we emit the `\<newline>` pair as a single
+    // `string_escape` and leave following whitespace as plain
+    // `string` / `property` — enough for themeable contrast.
+    // -----------------------------------------------------------------
+    esc_simple: {
+      rules: [fallback({ token: TOKENS.string_escape, exit: true })],
+    },
 
-		esc_u4_d1: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u4_d2")),
-				fallback(leave()),
-			],
-		},
-		esc_u4_d2: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u4_d3")),
-				fallback(leave()),
-			],
-		},
-		esc_u4_d3: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u4_d4")),
-				fallback(leave()),
-			],
-		},
-		esc_u4_d4: {
-			rules: [
-				match(HEX, TOKENS.string_escape, leave()),
-				fallback(leave()),
-			],
-		},
+    esc_u4_d1: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u4_d2")), fallback(leave())],
+    },
+    esc_u4_d2: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u4_d3")), fallback(leave())],
+    },
+    esc_u4_d3: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u4_d4")), fallback(leave())],
+    },
+    esc_u4_d4: {
+      rules: [match(HEX, TOKENS.string_escape, leave()), fallback(leave())],
+    },
 
-		esc_u8_d1: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u8_d2")),
-				fallback(leave()),
-			],
-		},
-		esc_u8_d2: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u8_d3")),
-				fallback(leave()),
-			],
-		},
-		esc_u8_d3: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u8_d4")),
-				fallback(leave()),
-			],
-		},
-		esc_u8_d4: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u8_d5")),
-				fallback(leave()),
-			],
-		},
-		esc_u8_d5: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u8_d6")),
-				fallback(leave()),
-			],
-		},
-		esc_u8_d6: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u8_d7")),
-				fallback(leave()),
-			],
-		},
-		esc_u8_d7: {
-			rules: [
-				match(HEX, TOKENS.string_escape, goto("esc_u8_d8")),
-				fallback(leave()),
-			],
-		},
-		esc_u8_d8: {
-			rules: [
-				match(HEX, TOKENS.string_escape, leave()),
-				fallback(leave()),
-			],
-		},
+    esc_u8_d1: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u8_d2")), fallback(leave())],
+    },
+    esc_u8_d2: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u8_d3")), fallback(leave())],
+    },
+    esc_u8_d3: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u8_d4")), fallback(leave())],
+    },
+    esc_u8_d4: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u8_d5")), fallback(leave())],
+    },
+    esc_u8_d5: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u8_d6")), fallback(leave())],
+    },
+    esc_u8_d6: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u8_d7")), fallback(leave())],
+    },
+    esc_u8_d7: {
+      rules: [match(HEX, TOKENS.string_escape, goto("esc_u8_d8")), fallback(leave())],
+    },
+    esc_u8_d8: {
+      rules: [match(HEX, TOKENS.string_escape, leave()), fallback(leave())],
+    },
 
-		// Merge all generated number and datetime states
-		...all_number_states,
-		...all_datetime_states,
-	},
+    // Merge all generated number and datetime states
+    ...all_number_states,
+    ...all_datetime_states,
+  },
 });

@@ -18,6 +18,7 @@ Drafted 2026-04-16 against live sources.
 - Go `go:build` / `//go:generate` line-directive docs: https://pkg.go.dev/cmd/go#hdr-Build_constraints
 
 **Note on language version.** This research targets Go as specified by go1.26 (January 2026). The lexical grammar has been essentially stable since Go 1 (2012). The only lexical additions since then, each noted inline below:
+
 - Go 1.13 (2019): binary literals (`0b`), explicit-octal prefix (`0o`), hex-exponent floats (`0x1p-2`), underscore digit separators (`1_000`), imaginary-suffix unification (any int or float may take an `i` suffix).
 - Go 1.18 (2022): the `~` type-constraint approximation operator and the predeclared identifiers `any`, `comparable`. Generics also make `[` and `]` usable as type-parameter delimiters, but that is a parser concern, not a lexer one — the tokens are the same brackets.
 - Go 1.21 (2023): predeclared `min`, `max`, `clear`.
@@ -25,6 +26,7 @@ Drafted 2026-04-16 against live sources.
 Go 1.18+ is the baseline assumption; a pre-1.13 mode would need to reject `0b`/`0o`/`_` separators but nothing else.
 
 **Where highlighters differ from the spec**:
+
 - Prism: omits `0o` octal (only matches leading-zero octals and hex), misses the bare `0` decimal, treats `_`, `nil`, `iota`, `true`, `false` all as one "boolean" class. The `operator` regex lumps in punctuation. No rune escape detail.
 - highlight.js: matches APOS strings (`'foo'`) as string literals — **wrong** in Go, a single-quoted sequence containing more than one character is a syntax error, not a string. Also lists `float` as a builtin type, which Go does not have (`float32`/`float64` only). Does not distinguish rune literals from strings.
 - Pygments: uses plain `0[0-7]+` for octals, so it will not match `0o755` (bare-prefix form) nor `0O755`; lexes `0123i` as integer `0123` + identifier `i` rather than imaginary literal; treats `float` as a type. Good on escape sequences.
@@ -52,12 +54,12 @@ The Go spec gives a complete EBNF for the lexical grammar in the "Lexical elemen
 
 ### Cross-reference: existing highlighters
 
-| Highlighter    | Keywords | Types/Builtins | Raw strings | Escape sequences | Number forms | Imaginary `i` | Rune vs string | Semicolon insertion |
-|---|---|---|---|---|---|---|---|---|
-| tree-sitter-go | 25 (full) | full | yes         | full (token immediate) | all 4 + hex float | yes          | distinct       | yes (via scanner)    |
-| Pygments       | 25 (full) | superset (incl. `float`) | yes | detailed       | missing `0o`, `0O` as bare-form | partial (decimal only) | distinct (`String.Char`) | no |
-| Prism          | 25 (full) | subset (types lumped into "builtin") | yes | not detailed   | all 4 (regexes loose) | yes | `char` distinct | no |
-| highlight.js   | 24 (no `go` vs `goto` collapsed) | subset + `float` (wrong) | yes | not detailed | all 4 | yes | **not distinct** (matches `'x'` as string) | no |
+| Highlighter    | Keywords                         | Types/Builtins                       | Raw strings | Escape sequences       | Number forms                    | Imaginary `i`          | Rune vs string                             | Semicolon insertion |
+| -------------- | -------------------------------- | ------------------------------------ | ----------- | ---------------------- | ------------------------------- | ---------------------- | ------------------------------------------ | ------------------- |
+| tree-sitter-go | 25 (full)                        | full                                 | yes         | full (token immediate) | all 4 + hex float               | yes                    | distinct                                   | yes (via scanner)   |
+| Pygments       | 25 (full)                        | superset (incl. `float`)             | yes         | detailed               | missing `0o`, `0O` as bare-form | partial (decimal only) | distinct (`String.Char`)                   | no                  |
+| Prism          | 25 (full)                        | subset (types lumped into "builtin") | yes         | not detailed           | all 4 (regexes loose)           | yes                    | `char` distinct                            | no                  |
+| highlight.js   | 24 (no `go` vs `goto` collapsed) | subset + `float` (wrong)             | yes         | not detailed           | all 4                           | yes                    | **not distinct** (matches `'x'` as string) | no                  |
 
 The table shows why most highlighter references are not safe to copy wholesale. The spec is the authoritative source; other highlighters are useful mainly for their numeric regexes and escape-sequence inventories after cross-checking.
 
@@ -89,6 +91,7 @@ hex_digits     = hex_digit     { [ "_" ] hex_digit } .
 4. **Hexadecimal**: `0x`/`0X` prefix, digits `0-9 a-f A-F`. `0xBadFace`, `0xBad_Face`, `0x_67_7a_2f_cc_40_c6`.
 
 **Underscore placement rules** (all apply equally across bases):
+
 - A single `_` may appear immediately after the base prefix: `0x_FF` OK, `0_x1` NOT OK (underscore before `x`).
 - Interior `_` must have digits on both sides: `1_000` OK, `1__000`, `1_` NOT OK, `_1` NOT OK (that's an identifier).
 - Trailing `_` always invalid: `42_` is a syntax error.
@@ -158,22 +161,22 @@ interpreted_string_lit = `"` { unicode_value | byte_value } `"` .
 
 #### Escape sequences (shared between interpreted strings and runes)
 
-| Escape | Meaning | Valid in rune | Valid in interp. string |
-|---|---|---|---|
-| `\a` | U+0007 bell | yes | yes |
-| `\b` | U+0008 backspace | yes | yes |
-| `\f` | U+000C form feed | yes | yes |
-| `\n` | U+000A newline | yes | yes |
-| `\r` | U+000D carriage return | yes | yes |
-| `\t` | U+0009 tab | yes | yes |
-| `\v` | U+000B vertical tab | yes | yes |
-| `\\` | U+005C backslash | yes | yes |
-| `\'` | U+0027 single quote | yes | **NO** |
-| `\"` | U+0022 double quote | **NO** | yes |
-| `\xHH` | byte value, exactly 2 hex digits | yes | yes |
-| `\NNN` | byte value, **exactly** 3 octal digits, value ≤ 255 | yes | yes |
-| `\uHHHH` | Unicode BMP, exactly 4 hex digits | yes | yes |
-| `\UHHHHHHHH` | full Unicode, exactly 8 hex digits, ≤ U+10FFFF, not a surrogate half | yes | yes |
+| Escape       | Meaning                                                              | Valid in rune | Valid in interp. string |
+| ------------ | -------------------------------------------------------------------- | ------------- | ----------------------- |
+| `\a`         | U+0007 bell                                                          | yes           | yes                     |
+| `\b`         | U+0008 backspace                                                     | yes           | yes                     |
+| `\f`         | U+000C form feed                                                     | yes           | yes                     |
+| `\n`         | U+000A newline                                                       | yes           | yes                     |
+| `\r`         | U+000D carriage return                                               | yes           | yes                     |
+| `\t`         | U+0009 tab                                                           | yes           | yes                     |
+| `\v`         | U+000B vertical tab                                                  | yes           | yes                     |
+| `\\`         | U+005C backslash                                                     | yes           | yes                     |
+| `\'`         | U+0027 single quote                                                  | yes           | **NO**                  |
+| `\"`         | U+0022 double quote                                                  | **NO**        | yes                     |
+| `\xHH`       | byte value, exactly 2 hex digits                                     | yes           | yes                     |
+| `\NNN`       | byte value, **exactly** 3 octal digits, value ≤ 255                  | yes           | yes                     |
+| `\uHHHH`     | Unicode BMP, exactly 4 hex digits                                    | yes           | yes                     |
+| `\UHHHHHHHH` | full Unicode, exactly 8 hex digits, ≤ U+10FFFF, not a surrogate half | yes           | yes                     |
 
 Any other backslash-character pair is **illegal** (not silently passed through). Examples of illegal escapes the spec calls out: `'\k'`, `'\0'` (too few digits), `'\xa'` (too few hex), `'\400'` (value > 255), `'\uDFFF'` (surrogate half), `'\U00110000'` (> max code point).
 
@@ -205,6 +208,7 @@ All lowercase. Go is case-sensitive. `Break` is an identifier, not a keyword.
 **No contextual / soft keywords.** Every keyword is always a keyword.
 
 **Predeclared identifiers** (not keywords but conventionally highlighted as such):
+
 - Types: `any` `bool` `byte` `comparable` `complex64` `complex128` `error` `float32` `float64` `int` `int8` `int16` `int32` `int64` `rune` `string` `uint` `uint8` `uint16` `uint32` `uint64` `uintptr`
 - Constants: `true` `false` `iota`
 - Zero value: `nil`
@@ -233,6 +237,7 @@ Complete list from the spec:
 - **1 char**: `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `<`, `>`, `=`, `!`, `,`, `;`, `.`, `:`, `(`, `)`, `[`, `]`, `{`, `}`, `~`
 
 Notes:
+
 - `&^` is bit-clear (AND NOT); `&^=` is its compound-assign. These only exist in Go.
 - `<-` is the channel send/receive operator. It's a single token.
 - `:=` is short-variable-declaration. Single token.
@@ -322,14 +327,14 @@ Included in the operator table above. The delimiters `(` `)` `[` `]` `{` `}` and
 
 ### 3.4 Numeric forms — complete prefix/suffix matrix
 
-| Prefix | Digit set | Exponent | Suffix | Meaning |
-|---|---|---|---|---|
-| (none) or `+`/`-` | `0-9` | `e`/`E` opt | none | decimal int (if no `.`/exp) or decimal float |
-| `0` + following digits `0-7` | `0-7` | none | none | legacy octal int |
-| `0o` / `0O` | `0-7` | none | none | explicit octal int (Go 1.13+) |
-| `0b` / `0B` | `0-1` | none | none | binary int (Go 1.13+) |
-| `0x` / `0X` | `0-9 a-f A-F` | `p`/`P` required for float | none | hex int (no exp) or hex float (with `p`) |
-| any of the above | same | same | `i` | imaginary (Go 1.13+ for all forms) |
+| Prefix                       | Digit set     | Exponent                   | Suffix | Meaning                                      |
+| ---------------------------- | ------------- | -------------------------- | ------ | -------------------------------------------- |
+| (none) or `+`/`-`            | `0-9`         | `e`/`E` opt                | none   | decimal int (if no `.`/exp) or decimal float |
+| `0` + following digits `0-7` | `0-7`         | none                       | none   | legacy octal int                             |
+| `0o` / `0O`                  | `0-7`         | none                       | none   | explicit octal int (Go 1.13+)                |
+| `0b` / `0B`                  | `0-1`         | none                       | none   | binary int (Go 1.13+)                        |
+| `0x` / `0X`                  | `0-9 a-f A-F` | `p`/`P` required for float | none   | hex int (no exp) or hex float (with `p`)     |
+| any of the above             | same          | same                       | `i`    | imaginary (Go 1.13+ for all forms)           |
 
 Exponent sign is optional in decimal exponents (`e+10`, `e-10`, `e10` all legal). Same for hex `p`.
 
@@ -434,61 +439,62 @@ func main() {
 
 Char-by-char trace (one entry per token; whitespace and newlines collapsed into context notes):
 
-| Context | Input | Token | Transition |
-|---|---|---|---|
-| top | `package` | keyword `package` | stay |
-| top | ` ` | (whitespace) | |
-| top | `main` | identifier `main` | |
-| top | `\n` | **auto `;` inserted** (last token is an identifier) | |
-| top | `\n` | blank line | |
-| top | `import` | keyword `import` | |
-| top | ` ` | | |
-| top | `"` | enter interpreted-string | push interp-str |
-| interp-str | `fmt` | string content | |
-| interp-str | `"` | exit interpreted-string | pop |
-| top | `\n` | **auto `;`** (last token is a string literal) | |
-| top | (blank line) | | |
-| top | `func` | keyword | |
-| top | ` ` | | |
-| top | `main` | identifier | |
-| top | `(` | punctuation | |
-| top | `)` | punctuation | |
-| top | ` ` | | |
-| top | `{` | punctuation | |
-| top | `\n` | no `;` (last token `{`) | |
-| top | `s` | identifier | |
-| top | ` ` | | |
-| top | `:=` | operator (2-char longest match) | |
-| top | ` ` | | |
-| top | `"` | enter interp-str | push |
-| interp-str | `hello` | string content | |
-| interp-str | `\t` | escape `\t` | |
-| interp-str | `world` | string content | |
-| interp-str | `\n` | escape `\n` (not a literal newline) | |
-| interp-str | `"` | exit | pop |
-| top | `\n` | **auto `;`** | |
-| top | `r` | identifier | |
-| top | ` ` | | |
-| top | `:=` | operator | |
-| top | ` ` | | |
-| top | `'` | enter rune | push rune |
-| rune | `\u00e4` | escape `\uHHHH` (exactly 4 hex) | |
-| rune | `'` | exit rune | pop |
-| top | `\n` | **auto `;`** | |
-| top | `fmt` | identifier | |
-| top | `.` | punctuation (selector) | |
-| top | `Println` | identifier | |
-| top | `(` | punctuation | |
-| top | `s` | identifier | |
-| top | `,` | punctuation | |
-| top | ` ` | | |
-| top | `r` | identifier | |
-| top | `)` | punctuation | |
-| top | `\n` | **auto `;`** (last token `)`) | |
-| top | `}` | punctuation | |
-| top | EOF | **auto `;`** (last token `}`) | |
+| Context    | Input        | Token                                               | Transition      |
+| ---------- | ------------ | --------------------------------------------------- | --------------- |
+| top        | `package`    | keyword `package`                                   | stay            |
+| top        | ` `          | (whitespace)                                        |                 |
+| top        | `main`       | identifier `main`                                   |                 |
+| top        | `\n`         | **auto `;` inserted** (last token is an identifier) |                 |
+| top        | `\n`         | blank line                                          |                 |
+| top        | `import`     | keyword `import`                                    |                 |
+| top        | ` `          |                                                     |                 |
+| top        | `"`          | enter interpreted-string                            | push interp-str |
+| interp-str | `fmt`        | string content                                      |                 |
+| interp-str | `"`          | exit interpreted-string                             | pop             |
+| top        | `\n`         | **auto `;`** (last token is a string literal)       |                 |
+| top        | (blank line) |                                                     |                 |
+| top        | `func`       | keyword                                             |                 |
+| top        | ` `          |                                                     |                 |
+| top        | `main`       | identifier                                          |                 |
+| top        | `(`          | punctuation                                         |                 |
+| top        | `)`          | punctuation                                         |                 |
+| top        | ` `          |                                                     |                 |
+| top        | `{`          | punctuation                                         |                 |
+| top        | `\n`         | no `;` (last token `{`)                             |                 |
+| top        | `s`          | identifier                                          |                 |
+| top        | ` `          |                                                     |                 |
+| top        | `:=`         | operator (2-char longest match)                     |                 |
+| top        | ` `          |                                                     |                 |
+| top        | `"`          | enter interp-str                                    | push            |
+| interp-str | `hello`      | string content                                      |                 |
+| interp-str | `\t`         | escape `\t`                                         |                 |
+| interp-str | `world`      | string content                                      |                 |
+| interp-str | `\n`         | escape `\n` (not a literal newline)                 |                 |
+| interp-str | `"`          | exit                                                | pop             |
+| top        | `\n`         | **auto `;`**                                        |                 |
+| top        | `r`          | identifier                                          |                 |
+| top        | ` `          |                                                     |                 |
+| top        | `:=`         | operator                                            |                 |
+| top        | ` `          |                                                     |                 |
+| top        | `'`          | enter rune                                          | push rune       |
+| rune       | `\u00e4`     | escape `\uHHHH` (exactly 4 hex)                     |                 |
+| rune       | `'`          | exit rune                                           | pop             |
+| top        | `\n`         | **auto `;`**                                        |                 |
+| top        | `fmt`        | identifier                                          |                 |
+| top        | `.`          | punctuation (selector)                              |                 |
+| top        | `Println`    | identifier                                          |                 |
+| top        | `(`          | punctuation                                         |                 |
+| top        | `s`          | identifier                                          |                 |
+| top        | `,`          | punctuation                                         |                 |
+| top        | ` `          |                                                     |                 |
+| top        | `r`          | identifier                                          |                 |
+| top        | `)`          | punctuation                                         |                 |
+| top        | `\n`         | **auto `;`** (last token `)`)                       |                 |
+| top        | `}`          | punctuation                                         |                 |
+| top        | EOF          | **auto `;`** (last token `}`)                       |                 |
 
 Key observations from this sample:
+
 - `:=` wins over `:`+`=` by longest match.
 - `\u00e4` is one escape token of length 6 inside the rune, not a backslash plus `u00e4`.
 - Every newline after an identifier, literal, `)`, or `}` auto-inserts a semicolon.
@@ -525,6 +531,7 @@ Trace notes (abbreviated; focus on edge cases):
 - `}` → no auto-semi before it (spec says `;` may be omitted before `}`). Then newline after `}` → auto-semi.
 
 Key observations:
+
 - A raw-string can contain `"` freely — the double quotes are just bytes.
 - A raw-string containing newlines would be legal (this one doesn't).
 - Block comments that contain newlines affect semicolon logic but do not produce any token themselves.
@@ -545,6 +552,7 @@ q := .25i + 0x1p-2i
 Line-by-line trace:
 
 **`x := 0x15e-2`**
+
 - `x` identifier
 - `:=` operator
 - `0x15e` — hex integer literal (value 350). The scanner reads `0x`, then as many hex digits and underscores as possible. It reaches `e`, which is a hex digit, and consumes it. Then it sees `-`, which is **not** a hex digit and is **not** `p` or `P`, so the literal ends here. This is an **integer**, not a float.
@@ -554,21 +562,25 @@ Line-by-line trace:
 So `x := 0x15e-2` is the expression `0x15e - 2 == 348`. The spec explicitly calls out `0x15e-2` as an example of this trap.
 
 **`y := 0x1.Fp+0`**
+
 - `y` identifier
 - `:=` operator
 - `0x1.Fp+0` — hex float literal. Scanner reads `0x`, then hex mantissa `1.F`, then `p`, optional sign `+`, exponent `0`. One token.
 
 **`z := 1_000_000i`**
+
 - `z` identifier
 - `:=` operator
 - `1_000_000i` — imaginary integer literal. Scanner reads digits and interior underscores (rules satisfied), reaches `i`, consumes it as the imaginary suffix. One token.
 
 **`w := 0123i`**
+
 - `w` identifier
 - `:=` operator
 - `0123i` — imaginary literal. **Crucial**: although `0123` looks like a legacy-octal integer, the imaginary-literal back-compat rule says the integer part of an imaginary literal that's all digits-and-underscores starting with `0` is treated as **decimal**. Value is `123i`, not `83i` (= 0o123). One token.
 
 **`q := .25i + 0x1p-2i`**
+
 - `q` identifier
 - `:=` operator
 - `.25i` — imaginary decimal-float. Scanner sees `.`, peeks and finds digit, consumes `25`, then `i`. One token.
@@ -580,6 +592,7 @@ So `x := 0x15e-2` is the expression `0x15e - 2 == 348`. The spec explicitly call
 End of line: newline after `.25i + 0x1p-2i` — last token is imaginary literal → auto-semi.
 
 Key observations:
+
 - The lexer is **greedy** within a literal but only consumes chars that belong to the current base. The `e` in a hex integer is a digit; in a decimal integer it's an exponent marker; outside a literal it's an identifier character. Which state the lexer is in determines the tokenization.
 - The imaginary back-compat rule (`0123i == 123i`) is easy to miss.
 - `.25` and `0.25` are both valid decimal floats; `.` at the start is fine.

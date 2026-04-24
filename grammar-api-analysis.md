@@ -8,7 +8,7 @@
 
 Twinkleplop implements a **pushdown automaton**: a `Uint8Array(256)` state stack (`tokenizer.ts:50`) driven by a single `while (pos < len)` loop. Each iteration, the current character is looked up in a compiled character map (`charMaps: Uint8Array`, `tokenizer.ts:187`) to get a rule index, then that rule's action triple `[nextState, tokenType, stackOp]` is fetched from a flat transition array (`transitions: Uint8Array`, `tokenizer.ts:215–218`). State IDs and token type IDs are both stored as single bytes, with `255` used as the "no value" sentinel throughout.
 
-Compilation (`compiler.ts:compile()`) transforms the JSON grammar through three pipeline stages: `normalizeGrammar()` (groups/extend resolution, lines 35–141) → `preprocessGrammar()` (match\_within expansion, lines 159–241) → transition table build (lines 243–579). The output is a `CompiledGrammar` with dense typed arrays: `transitions: Uint8Array(stateCount × 256 × 3)`, `charMaps: Uint8Array(stateCount × 128)`. State and token identifiers are 8-bit integers; the sentinel `255` means "no rule / no transition" at every lookup site.
+Compilation (`compiler.ts:compile()`) transforms the JSON grammar through three pipeline stages: `normalizeGrammar()` (groups/extend resolution, lines 35–141) → `preprocessGrammar()` (match_within expansion, lines 159–241) → transition table build (lines 243–579). The output is a `CompiledGrammar` with dense typed arrays: `transitions: Uint8Array(stateCount × 256 × 3)`, `charMaps: Uint8Array(stateCount × 128)`. State and token identifiers are 8-bit integers; the sentinel `255` means "no rule / no transition" at every lookup site.
 
 ---
 
@@ -25,6 +25,7 @@ However, a **structural ceiling** exists. Context-switching via sideways transit
 A second gap: there is **no mechanism to embed a foreign language grammar**. JavaScript template literals that contain arbitrary JS expressions are handled in the existing grammar by manually recreating JS states inside `template_literal`, `template_expression`, etc. — a full manual language-within-language reconstruction. There is no `grammar: "javascript"` rule type.
 
 **Key evidence:**
+
 - `packages/javascript/src/grammar.js:146–346`: `main`, `division`, `regex_allow` states with extensive rule duplication
 - `compiler.ts:120–121`: `extend` only prepends inherited rules; no override mechanism
 
@@ -41,6 +42,7 @@ There is **no overflow guard in production builds.** `tokenizer.ts:115–118` co
 In practice, CSS and JS reach at most 5–8 levels of nesting, so 255 is comfortably safe for any realistic grammar.
 
 **Key evidence:**
+
 - `tokenizer.ts:50`: `const stateStack = new Uint8Array(256)`
 - `tokenizer.ts:115–118`: overflow guard gated on `INTROSPECTION`
 - `tokenizer.ts:339`: `stateStack[stackPtr++] = currentState`
@@ -58,6 +60,7 @@ The recursion is bounded by the stack depth (255 levels). Since state names are 
 The one subtle risk: a grammar with `exit: true` in every rule of a recursive state but no base case will pop faster than it pushes, eventually reaching an empty stack and silently staying in the root state (see C5 below).
 
 **Key evidence:**
+
 - `css/src/grammar.js:236–239`: `declaration` state pushing itself
 - `css/src/grammar.js:676–688`: `parentheses` state pushing itself
 - `compiler.ts:248–249`: all state names registered in `stateMap` before any rule processing
@@ -75,6 +78,7 @@ However, this mechanism is **purely static composition** — groups are inlined 
 The `Grammar` interface has no `inject` or `embed` field. To embed JavaScript inside a Markdown code fence, a grammar author must manually define all the JS states inside the Markdown grammar. This is what the JavaScript grammar does for template literals: `template_literal`, `template_expression`, `tmpl_main`, `tmpl_division`, `tmpl_regex_allow` etc. are hand-rolled JS-inside-template states, not a reference to the outer JS grammar. For a language like HTML (which must embed CSS in `<style>` and JS in `<script>`), this approach becomes unmanageable.
 
 **Concrete evidence of the limit:**
+
 - The JS grammar uses `template_literal` state which manually reimplements JS expression rules rather than re-entering the JS grammar
 - `compiler.ts:120–121`: `rules: [...inheritedRules, ...cloneRules(rules)]` — prepend only, no override
 
@@ -91,6 +95,7 @@ nextState = stateMap.get(rule.state) || 255;
 ```
 
 If `rule.state` (e.g., `"identifier_probe"`) is not present in `stateMap`, `stateMap.get(...)` returns `undefined`, and `undefined || 255` evaluates to `255` — the no-transition sentinel. The rule compiles successfully. At runtime:
+
 - The character is matched (the rule fires)
 - The token is emitted if `token` is set
 - The state **never changes** — `transition === 255` is treated as "stay in current state"
@@ -100,6 +105,7 @@ The author observing incorrect highlighting output would have no way to distingu
 The same pattern appears for probe fallback states (`compiler.ts:299–303`): if `state.fallback` references a non-existent state, `stateMap.get(state.fallback)` returns `undefined`, `probeFallbacks` gets no entry for the probe state, and the probe silently has no fallback — causing the behavior documented in M4 below.
 
 **Key evidence:**
+
 - `compiler.ts:317`: `nextState = stateMap.get(rule.state) || 255`
 - `compiler.ts:299–303`: fallback lookup with no error on miss
 
@@ -111,18 +117,19 @@ The same pattern appears for probe fallback states (`compiler.ts:299–303`): if
 
 The cursor advance behavior is:
 
-| Rule type | Cursor behavior |
-|-----------|----------------|
-| Rule with `token` (any `stackOp`) | Advances to `pos + matchedLength` (`tokenizer.ts:321`) |
-| Rule without `token`, `stackOp !== 2` (push or stay) | Advances by `matchedLength || 1` (`tokenizer.ts:329`) |
-| Rule without `token`, `stackOp === 2`, sideways (`transition !== 255`), explicit pattern (`matchedLength > 0`) | Advances by `matchedLength` (`tokenizer.ts:332`) |
-| Rule without `token`, `stackOp === 2`, no sideways OR `matchedLength === 0` | **Does not advance** (`tokenizer.ts:334`) |
+| Rule type                                                                                                      | Cursor behavior                                        |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | --- | ----------------------- |
+| Rule with `token` (any `stackOp`)                                                                              | Advances to `pos + matchedLength` (`tokenizer.ts:321`) |
+| Rule without `token`, `stackOp !== 2` (push or stay)                                                           | Advances by `matchedLength                             |     | 1` (`tokenizer.ts:329`) |
+| Rule without `token`, `stackOp === 2`, sideways (`transition !== 255`), explicit pattern (`matchedLength > 0`) | Advances by `matchedLength` (`tokenizer.ts:332`)       |
+| Rule without `token`, `stackOp === 2`, no sideways OR `matchedLength === 0`                                    | **Does not advance** (`tokenizer.ts:334`)              |
 
 The last row — "exit without token, no sideways target" — is what `{ any: true, exit: true }` exploits in the CSS and JS grammars. This pattern is the standard "end-of-identifier" mechanism: the identifier state uses `{ any: true, exit: true }` to pop back to the parent state without consuming the non-identifier character. The parent state then reprocesses it.
 
-`grammar.md:51` states: *"If `token` is not present then the pointer will not be progressed and no token will be generated."* This is **incorrect** for all non-exit rules. A rule `{ match: "//", state: "comment" }` (no `token`) still advances the cursor by 2.
+`grammar.md:51` states: _"If `token` is not present then the pointer will not be progressed and no token will be generated."_ This is **incorrect** for all non-exit rules. A rule `{ match: "//", state: "comment" }` (no `token`) still advances the cursor by 2.
 
 **Key evidence:**
+
 - `tokenizer.ts:318–334`: complete cursor advance logic
 - `grammar.md:51`: incorrect documentation
 
@@ -136,7 +143,7 @@ The last row — "exit without token, no sideways target" — is what `{ any: tr
 
 **What probe mode cannot do:**
 
-1. **Check for a matching closer.** Markdown emphasis (`*text*` vs `x * y`) requires knowing whether there is a matching `*` ahead that is not separated by whitespace. Probe mode can detect the first disambiguating character it encounters, but cannot express "only succeed if you find `*` before finding whitespace." It would need to distinguish *matched* from *unmatched* occurrences of the closer.
+1. **Check for a matching closer.** Markdown emphasis (`*text*` vs `x * y`) requires knowing whether there is a matching `*` ahead that is not separated by whitespace. Probe mode can detect the first disambiguating character it encounters, but cannot express "only succeed if you find `*` before finding whitespace." It would need to distinguish _matched_ from _unmatched_ occurrences of the closer.
 
 2. **Nested probes with separate fallbacks.** If a probe state transitions to another probe state, the outer probe's entry is never replaced — the `probeEntry` variable is set once on entry and only cleared on exit. `tokenizer.ts:234` triggers probe resolution when `isInProbeState && !isTargetProbeState` — if both states are probe states, this condition is never true. The inner probe effectively runs inside the outer probe with no resolution path for the outer one.
 
@@ -147,6 +154,7 @@ The last row — "exit without token, no sideways target" — is what `{ any: tr
 **Markdown emphasis as a case study:** The closest approximation would be a probe state that exits on `*` (success → emphasis state) or on whitespace (failure → operator state). This would work for `*text*` (finds `*` before whitespace) but fail for `text *in* text` (the scan before the first `*` would see whitespace and fallback to operator). A correct emphasis tokenizer requires PEG-style backtracking or a separate delimiter-pairing pass — neither of which the current probe model supports.
 
 **Key evidence:**
+
 - `tokenizer.ts:70`: `probeEntry: ProbeEntry | null` — single-entry tracking
 - `tokenizer.ts:234`: probe resolution condition: `isInProbeState && !isTargetProbeState`
 - `tokenizer.ts:443–481`: probe success reset
@@ -159,6 +167,7 @@ The last row — "exit without token, no sideways target" — is what `{ any: tr
 **Score: 5/10.** The declarative format is genuinely readable, but documentation gaps are severe enough that a capable LLM following `grammar.md` alone would write broken grammars for non-trivial cases.
 
 **What works for LLMs:**
+
 - The `Grammar` / `GrammarState` / `GrammarRule` structure is clear and minimal
 - `match`, `range`, `token`, `state`, `exit` cover the common 80% of cases
 - Existing grammars (CSS, JS) serve as strong reference examples
@@ -166,20 +175,21 @@ The last row — "exit without token, no sideways target" — is what `{ any: tr
 
 **What trips up LLMs (documented gaps in `grammar.md`):**
 
-| Feature | Documented? | Note |
-|---------|-------------|------|
-| `match_within` property names | **Wrong** — docs say `begin`/`end`, code uses `start`/`end` | Will write broken rules |
-| `any: true` | Not documented | Missing a critical fallback mechanism |
-| `boundary: true` | Not documented | Can't write keyword-safe grammars |
-| Sideways transitions (`state + exit`) | Not documented | Will write broken state transitions |
-| Cursor advance rules (no token) | Wrong — docs say cursor doesn't advance | Misunderstanding causes infinite loops |
-| Character class constants (`DIGIT`, `LETTER`, etc.) | Not documented | Will use verbose `range` arrays instead |
-| 255-state limit | Not documented | Will hit it unknowingly on complex grammars |
-| `match_within` spawns hidden states | Not documented | Unexpected state count inflation |
-| Probe mode `fallback` is mandatory | Not documented | Will create broken probe states |
-| Nested probe limitation | Not documented | Will create subtly broken grammars |
+| Feature                                             | Documented?                                                 | Note                                        |
+| --------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------- |
+| `match_within` property names                       | **Wrong** — docs say `begin`/`end`, code uses `start`/`end` | Will write broken rules                     |
+| `any: true`                                         | Not documented                                              | Missing a critical fallback mechanism       |
+| `boundary: true`                                    | Not documented                                              | Can't write keyword-safe grammars           |
+| Sideways transitions (`state + exit`)               | Not documented                                              | Will write broken state transitions         |
+| Cursor advance rules (no token)                     | Wrong — docs say cursor doesn't advance                     | Misunderstanding causes infinite loops      |
+| Character class constants (`DIGIT`, `LETTER`, etc.) | Not documented                                              | Will use verbose `range` arrays instead     |
+| 255-state limit                                     | Not documented                                              | Will hit it unknowingly on complex grammars |
+| `match_within` spawns hidden states                 | Not documented                                              | Unexpected state count inflation            |
+| Probe mode `fallback` is mandatory                  | Not documented                                              | Will create broken probe states             |
+| Nested probe limitation                             | Not documented                                              | Will create subtly broken grammars          |
 
 An LLM using `grammar.md` as its sole reference would likely:
+
 1. Write `{ match_within: { begin: "'", end: "'" } }` (wrong key — C1)
 2. Forget `{ any: true, exit: true }` as the end-of-token pattern (undocumented)
 3. Be confused about when the cursor advances for tokenless rules (M3)
@@ -201,11 +211,13 @@ An LLM using `grammar.md` as its sole reference would likely:
 **Evidence:**
 
 `grammar.md:44` documents:
+
 ```json
 { "match_within": { "begin": "'", "end": "'", "escape": "\\" }, "token": "string" }
 ```
 
 `types.ts:14–18` defines:
+
 ```typescript
 match_within?: {
   start: string;
@@ -219,14 +231,15 @@ match_within?: {
 **Impact:** Any grammar author following the documentation will write a rule using `begin` instead of `start`. The compiler processes it without error. `rule.match_within.start` evaluates to `undefined`, which becomes `match: undefined` in the generated state entry rule. This generates a state with no entry character — the state is created but never entered. The author gets no string highlighting and no error message.
 
 **Proposed fix:**
+
 1. Update `grammar.md` to use `start` (not `begin`).
 2. Add a runtime check in `preprocessGrammar()`:
    ```typescript
    if ((rule.match_within as any).begin !== undefined) {
      throw new Error(
        `Grammar error in state "${stateName}" rule ${ruleIdx}: ` +
-       `match_within uses "start" not "begin". ` +
-       `Change { begin: "..." } to { start: "..." }.`
+         `match_within uses "start" not "begin". ` +
+         `Change { begin: "..." } to { start: "..." }.`,
      );
    }
    ```
@@ -240,6 +253,7 @@ match_within?: {
 **Evidence:**
 
 The JavaScript grammar defines strings as:
+
 ```javascript
 const STRING_DOUBLE = {
   match_within: { start: '"', end: '"', escape: "\\", multiline: true },
@@ -255,9 +269,9 @@ The generated content state uses `range: [0, 127]` as its fallback rule (`compil
 
 **Proposed fix (two options):**
 
-*Option A (add semantics):* Add `multiline?: boolean` to `types.ts`. In `preprocessGrammar()`, when `multiline === false`, use `range: [32, 127]` (excludes control characters including `\n` at code 10) for the fallback rule. Default is `true` (current behavior).
+_Option A (add semantics):_ Add `multiline?: boolean` to `types.ts`. In `preprocessGrammar()`, when `multiline === false`, use `range: [32, 127]` (excludes control characters including `\n` at code 10) for the fallback rule. Default is `true` (current behavior).
 
-*Option B (remove the flag):* Delete `multiline: true` from the JS grammar with a comment: "match_within content spans newlines by default." This is a one-line fix that eliminates the false expectation.
+_Option B (remove the flag):_ Delete `multiline: true` from the JS grammar with a comment: "match_within content spans newlines by default." This is a one-line fix that eliminates the false expectation.
 
 ---
 
@@ -276,6 +290,7 @@ if (rule.state && rule.exit) {
 If `rule.state` is `"identifier_prbe"` (typo for `"identifier_probe"`), `stateMap.get("identifier_prbe")` returns `undefined`. `undefined || 255` = `255`, which is the no-transition sentinel. The grammar compiles. The token is emitted. The state never changes.
 
 The same pattern at `compiler.ts:319–321` (push transitions) and at `compiler.ts:299–303` (probe fallbacks):
+
 ```typescript
 if (state.fallback) {
   const fallbackStateId = stateMap.get(state.fallback);
@@ -284,6 +299,7 @@ if (state.fallback) {
   }
 }
 ```
+
 A typo in `state.fallback` silently creates a probe with no fallback entry.
 
 **Impact:** Grammar debugging becomes extremely difficult. A single-character typo produces subtly wrong highlighting with no error. This is the most dangerous silent failure in the API.
@@ -297,14 +313,13 @@ for (const [stateName, state] of Object.entries(processedGrammar.states)) {
     if (rule.state && !stateMap.has(rule.state)) {
       throw new Error(
         `Grammar: unknown state reference "${rule.state}" ` +
-        `in state "${stateName}" rule ${ruleIdx}`
+          `in state "${stateName}" rule ${ruleIdx}`,
       );
     }
   });
-  if (state.mode === 'probe' && state.fallback && !stateMap.has(state.fallback)) {
+  if (state.mode === "probe" && state.fallback && !stateMap.has(state.fallback)) {
     throw new Error(
-      `Grammar: unknown fallback state "${state.fallback}" ` +
-      `in probe state "${stateName}"`
+      `Grammar: unknown fallback state "${state.fallback}" ` + `in probe state "${stateName}"`,
     );
   }
 }
@@ -334,11 +349,12 @@ State IDs are indices into this array and stored as bytes (values 0–255). The 
 **Proposed fix:**
 
 Immediate guard in `compile()`:
+
 ```typescript
 if (stateNames.length > 254) {
   throw new Error(
     `Grammar exceeds state limit: ${stateNames.length} states ` +
-    `(max 254, including states generated by match_within).`
+      `(max 254, including states generated by match_within).`,
   );
 }
 ```
@@ -382,8 +398,8 @@ rootState.rules.forEach((rule, ruleIdx) => {
   if (rule.exit && !rule.state) {
     console.warn(
       `Grammar warning: rule ${ruleIdx} in root state "${rootStateName}" ` +
-      `has exit:true but there is no parent state to return to. ` +
-      `This exit will be a no-op.`
+        `has exit:true but there is no parent state to return to. ` +
+        `This exit will be a no-op.`,
     );
   }
 });
@@ -420,11 +436,12 @@ interface GrammarState {
   mode?: "probe" | "tokenise";
   fallback?: string;
   extend?: string | string[];
-  override?: GrammarRule[];  // NEW: replace specific rules from extended group
+  override?: GrammarRule[]; // NEW: replace specific rules from extended group
 }
 ```
 
 Usage:
+
 ```javascript
 groups: {
   js_common: { rules: [
@@ -457,8 +474,8 @@ states: {
 // In types.ts
 interface GrammarRule {
   // ... existing fields ...
-  grammar?: string;          // ID of a pre-compiled grammar to delegate to
-  grammar_end?: string;      // Token that ends the embedded language
+  grammar?: string; // ID of a pre-compiled grammar to delegate to
+  grammar_end?: string; // Token that ends the embedded language
 }
 ```
 
@@ -475,9 +492,11 @@ This is a significant runtime change, but the API surface is minimal — one new
 **Evidence:**
 
 `grammar.md:51`:
+
 > "If `token` is not present then the pointer will not be progressed and no token will be generated."
 
 Actual behavior from `tokenizer.ts:318–334`:
+
 - **Token emitted:** `pos = pos + matchedLength` (line 321) — cursor always advances
 - **No token, `stackOp !== 2`:** `pos += matchedLength || 1` (line 329) — cursor advances
 - **No token, `stackOp === 2`, sideways + explicit match:** `pos += matchedLength` (line 332) — cursor advances
@@ -500,6 +519,7 @@ The docs claim applies only to the last case — a rule with `exit: true` and no
 **Evidence:**
 
 `compiler.ts:298–303`:
+
 ```typescript
 if (state.fallback) {
   const fallbackStateId = stateMap.get(state.fallback);
@@ -508,9 +528,11 @@ if (state.fallback) {
   }
 }
 ```
+
 If `state.fallback` is absent or misspelled, no entry is added to `probeFallbacks`.
 
 At runtime (`tokenizer.ts:524–554`), when the probe reaches EOF with no resolution:
+
 ```typescript
 } else {
   // No fallback - probe failed, mark and reset
@@ -532,10 +554,10 @@ The probe is marked as failed. On the next iteration, `pos === probeEntry.pos` a
 **Proposed fix:** In `compile()`, after detecting `state.mode === 'probe'`, require `state.fallback`:
 
 ```typescript
-if (state.mode === 'probe' && !state.fallback) {
+if (state.mode === "probe" && !state.fallback) {
   throw new Error(
     `Grammar: probe state "${stateName}" must have a "fallback" property. ` +
-    `Probe states that reach EOF without resolving will fail silently otherwise.`
+      `Probe states that reach EOF without resolving will fail silently otherwise.`,
   );
 }
 ```
@@ -553,6 +575,7 @@ if (state.mode === 'probe' && !state.fallback) {
 **Evidence:**
 
 Probe resolution triggers at `tokenizer.ts:234`:
+
 ```typescript
 if (isInProbeState && probeEntry && !isTargetProbeState) {
   probeEntry.resolvedState = targetState;
@@ -564,18 +587,20 @@ if (isInProbeState && probeEntry && !isTargetProbeState) {
 **Proposed fix:**
 
 Either:
+
 - **Block at compile time:** Detect in `compile()` that a probe state's rules transition to another probe state, and throw.
 - **Stack probeEntry:** Change `probeEntry` to a stack of `ProbeEntry` objects, allowing nested probes. This is a significant runtime change.
 
 Blocking at compile time is simpler and safer:
+
 ```typescript
-if (state.mode === 'probe') {
+if (state.mode === "probe") {
   state.rules.forEach((rule, ruleIdx) => {
-    if (rule.state && processedGrammar.states[rule.state]?.mode === 'probe') {
+    if (rule.state && processedGrammar.states[rule.state]?.mode === "probe") {
       throw new Error(
         `Grammar: probe state "${stateName}" rule ${ruleIdx} ` +
-        `transitions to another probe state "${rule.state}". ` +
-        `Nested probes are not supported.`
+          `transitions to another probe state "${rule.state}". ` +
+          `Nested probes are not supported.`,
       );
     }
   });
@@ -607,7 +632,8 @@ if (state.mode === 'probe') {
 if (INTROSPECTION && introspector) {
   // ...
   if (stackPtr > 100) {
-    pos = len; continue;
+    pos = len;
+    continue;
   }
 }
 // INTROSPECTION_END
@@ -616,6 +642,7 @@ if (INTROSPECTION && introspector) {
 The guard is inside the `INTROSPECTION` block — dead in production. A grammar with a rule that pushes a state from within itself without a matching exit could push indefinitely until `stateStack[256]` is written, which V8 silently ignores. The tokenizer then continues with `stackPtr = 257, 258, ...` and would read `0` from any `stateStack[n > 255]`, which maps to the first state (index 0) — corrupting parent-state restores silently.
 
 **Proposed fix:** Add a production guard before the push:
+
 ```typescript
 if (stackOp === 1) {
   if (stackPtr >= 254) {
@@ -634,15 +661,18 @@ if (stackOp === 1) {
 **Location:** `compiler.ts:121`
 
 **Evidence:**
+
 ```typescript
-rules: [...inheritedRules, ...cloneRules(rules)]
+rules: [...inheritedRules, ...cloneRules(rules)];
 ```
+
 Inherited rules have unconditional priority. If a group defines `{ range: ["a","z"], token: "identifier" }` and a state extending it wants to add a keyword check for `"set"` before the range matches, it cannot — the range rule in the inherited group will fire first.
 
 **Proposed fix:** Add `extend_after?: string | string[]` to `GrammarState` for appending inherited rules at the end (lower priority):
+
 ```typescript
 // Rules defined on the state take priority; then inherited rules
-rules: [...cloneRules(rules), ...inheritedRules]
+rules: [...cloneRules(rules), ...inheritedRules];
 ```
 
 ---
@@ -654,9 +684,11 @@ rules: [...cloneRules(rules), ...inheritedRules]
 **Evidence:**
 
 `grammar.md:11`:
+
 > "The first state defined in the states object is implicitly the initial state."
 
 `compiler.ts:247–249`:
+
 ```typescript
 const stateNames = Object.keys(processedGrammar.states);
 const stateMap = new Map<string, number>();
@@ -678,8 +710,13 @@ A new export from `packages/core/src/compiler.ts` that runs all compile-time che
 ```typescript
 // In types.ts
 export interface ValidationError {
-  type: 'UNKNOWN_STATE_REF' | 'PROBE_MISSING_FALLBACK' | 'NESTED_PROBE'
-      | 'MATCH_WITHIN_USES_BEGIN' | 'STATE_LIMIT_EXCEEDED' | 'UNKNOWN_FALLBACK_REF';
+  type:
+    | "UNKNOWN_STATE_REF"
+    | "PROBE_MISSING_FALLBACK"
+    | "NESTED_PROBE"
+    | "MATCH_WITHIN_USES_BEGIN"
+    | "STATE_LIMIT_EXCEEDED"
+    | "UNKNOWN_FALLBACK_REF";
   stateName: string;
   ruleIndex?: number;
   ref?: string;
@@ -687,7 +724,7 @@ export interface ValidationError {
 }
 
 export interface ValidationWarning {
-  type: 'EXIT_IN_ROOT_STATE' | 'STATE_COUNT_NEAR_LIMIT' | 'MULTILINE_IGNORED';
+  type: "EXIT_IN_ROOT_STATE" | "STATE_COUNT_NEAR_LIMIT" | "MULTILINE_IGNORED";
   stateName: string;
   ruleIndex?: number;
   message: string;
@@ -714,9 +751,10 @@ Add `override?: GrammarRule[]` to `GrammarState`. In `normalizeGrammar()`, after
 // In normalizeGrammar():
 if (state.override) {
   for (const overrideRule of state.override) {
-    const idx = resolvedRules.findIndex(r =>
-      JSON.stringify(r.match) === JSON.stringify(overrideRule.match) ||
-      JSON.stringify(r.range) === JSON.stringify(overrideRule.range)
+    const idx = resolvedRules.findIndex(
+      (r) =>
+        JSON.stringify(r.match) === JSON.stringify(overrideRule.match) ||
+        JSON.stringify(r.range) === JSON.stringify(overrideRule.range),
     );
     if (idx !== -1) {
       resolvedRules[idx] = overrideRule;
@@ -743,16 +781,16 @@ Replace `Uint8Array` with `Uint16Array` for `transitions`, `charMaps`, `fallback
 
 2. **Add a "Complete Rule Reference" table** to `grammar.md`:
 
-   | Property | Type | Required | Description | If omitted |
-   |----------|------|----------|-------------|------------|
-   | `match` | string \| string[] \| Symbol | One of `match`/`range`/`any` | Exact string(s) to match | — |
-   | `range` | [string,string] \| [string,string][] | One of... | Character range(s) | — |
-   | `any` | boolean | One of... | Matches any character | — |
-   | `match_within` | object | One of... | Scans between start/end delimiters | — |
-   | `token` | string | No | Token type to emit | No token emitted |
-   | `state` | string | No | Push named state (or sideways if with `exit`) | No state change |
-   | `exit` | boolean | No | Pop to parent state (set `state` for sideways) | No pop |
-   | `boundary` | boolean | No | Require word boundary after match | No boundary check |
+   | Property       | Type                                 | Required                     | Description                                    | If omitted        |
+   | -------------- | ------------------------------------ | ---------------------------- | ---------------------------------------------- | ----------------- |
+   | `match`        | string \| string[] \| Symbol         | One of `match`/`range`/`any` | Exact string(s) to match                       | —                 |
+   | `range`        | [string,string] \| [string,string][] | One of...                    | Character range(s)                             | —                 |
+   | `any`          | boolean                              | One of...                    | Matches any character                          | —                 |
+   | `match_within` | object                               | One of...                    | Scans between start/end delimiters             | —                 |
+   | `token`        | string                               | No                           | Token type to emit                             | No token emitted  |
+   | `state`        | string                               | No                           | Push named state (or sideways if with `exit`)  | No state change   |
+   | `exit`         | boolean                              | No                           | Pop to parent state (set `state` for sideways) | No pop            |
+   | `boundary`     | boolean                              | No                           | Require word boundary after match              | No boundary check |
 
 3. **Document cursor advance rules** explicitly (M3). A single sentence per case is enough.
 
@@ -770,36 +808,36 @@ Replace `Uint8Array` with `Uint16Array` for `transitions`, `charMaps`, `fallback
 
 The companion test file `packages/core/src/grammar-api-edge-cases.test.ts` contains 10 diagnostic tests. Each test documents **current behavior** — they pass against the current implementation. Comments within each test show the **desired post-fix behavior**.
 
-| Test | Issue | What it documents |
-|------|-------|-------------------|
-| Dangling state reference | C3 | Silent no-op when `state:` name is wrong |
-| exit on root state | C5 | No-op when `stackPtr === 0` |
-| State count limit | C4 | Behavior approaching and at 254-state limit |
-| `match_within` begin vs start | C1 | `begin` key is silently ignored |
-| `any: true` without token | M3 | Cursor still advances (contradicts docs) |
-| Probe without fallback | M4 | Probe fails silently at EOF |
-| Nested probe | m1 | Probe-to-probe transition behavior |
-| Sideways transition cursor | Q6 | `any: true` sideways doesn't advance |
-| `match_within` multiline | C2 | `multiline: true` has no effect |
-| Markdown emphasis limitation | Q7 | Probe cannot pair delimiters |
+| Test                          | Issue | What it documents                           |
+| ----------------------------- | ----- | ------------------------------------------- |
+| Dangling state reference      | C3    | Silent no-op when `state:` name is wrong    |
+| exit on root state            | C5    | No-op when `stackPtr === 0`                 |
+| State count limit             | C4    | Behavior approaching and at 254-state limit |
+| `match_within` begin vs start | C1    | `begin` key is silently ignored             |
+| `any: true` without token     | M3    | Cursor still advances (contradicts docs)    |
+| Probe without fallback        | M4    | Probe fails silently at EOF                 |
+| Nested probe                  | m1    | Probe-to-probe transition behavior          |
+| Sideways transition cursor    | Q6    | `any: true` sideways doesn't advance        |
+| `match_within` multiline      | C2    | `multiline: true` has no effect             |
+| Markdown emphasis limitation  | Q7    | Probe cannot pair delimiters                |
 
 ---
 
 ## Summary Table
 
-| ID | Severity | File | Compile-Detectable? | Impact | Fix |
-|----|----------|------|---------------------|--------|-----|
-| C1 | Critical | `grammar.md:44`, `compiler.ts:181` | Yes (with validation) | Broken string rules | Fix docs; add compile check for `begin` key |
-| C2 | Critical | `javascript/src/grammar.js:125` | Yes (warn) | Confusing API surface | Add `multiline` semantics or remove the flag |
-| C3 | Critical | `compiler.ts:317` | Yes | Silent wrong highlighting | Validate all state refs in `compile()` |
-| C4 | Critical | `compiler.ts:267` | Yes (at 254+) | Silent tokenizer corruption | Guard at 254; upgrade to Uint16Array |
-| C5 | Critical | `tokenizer.ts:407–409` | Yes (warn) | Silent no-op | Warn on `exit` in root state |
-| M1 | Moderate | `javascript/src/grammar.js:146–346` | No | Grammar duplication debt | Add `override` to `extend` |
-| M2 | Moderate | `types.ts` (absent) | No | Can't embed grammars | Add `grammar` rule type |
-| M3 | Moderate | `grammar.md:51` | No | Incorrect mental model | Fix docs |
-| M4 | Moderate | `compiler.ts:298` | Yes | Silent wrong highlighting | Require `fallback` on probe states |
-| m1 | Minor | `tokenizer.ts:234` | Yes (with validation) | Undefined probe behavior | Block nested probes at compile time |
-| m2 | Minor | `grammar.md` (absent) | No | Missing API surface for LLMs | Document constants |
-| m3 | Minor | `tokenizer.ts:115` | No | Silent stack corruption | Add production guard |
-| m4 | Minor | `compiler.ts:121` | No | Can't lower-priority extend | Add `extend_after` |
-| m5 | Minor | `compiler.ts:247` | No | Fragile initial-state selection | Add `initial?: string` to `Grammar` |
+| ID  | Severity | File                                | Compile-Detectable?   | Impact                          | Fix                                          |
+| --- | -------- | ----------------------------------- | --------------------- | ------------------------------- | -------------------------------------------- |
+| C1  | Critical | `grammar.md:44`, `compiler.ts:181`  | Yes (with validation) | Broken string rules             | Fix docs; add compile check for `begin` key  |
+| C2  | Critical | `javascript/src/grammar.js:125`     | Yes (warn)            | Confusing API surface           | Add `multiline` semantics or remove the flag |
+| C3  | Critical | `compiler.ts:317`                   | Yes                   | Silent wrong highlighting       | Validate all state refs in `compile()`       |
+| C4  | Critical | `compiler.ts:267`                   | Yes (at 254+)         | Silent tokenizer corruption     | Guard at 254; upgrade to Uint16Array         |
+| C5  | Critical | `tokenizer.ts:407–409`              | Yes (warn)            | Silent no-op                    | Warn on `exit` in root state                 |
+| M1  | Moderate | `javascript/src/grammar.js:146–346` | No                    | Grammar duplication debt        | Add `override` to `extend`                   |
+| M2  | Moderate | `types.ts` (absent)                 | No                    | Can't embed grammars            | Add `grammar` rule type                      |
+| M3  | Moderate | `grammar.md:51`                     | No                    | Incorrect mental model          | Fix docs                                     |
+| M4  | Moderate | `compiler.ts:298`                   | Yes                   | Silent wrong highlighting       | Require `fallback` on probe states           |
+| m1  | Minor    | `tokenizer.ts:234`                  | Yes (with validation) | Undefined probe behavior        | Block nested probes at compile time          |
+| m2  | Minor    | `grammar.md` (absent)               | No                    | Missing API surface for LLMs    | Document constants                           |
+| m3  | Minor    | `tokenizer.ts:115`                  | No                    | Silent stack corruption         | Add production guard                         |
+| m4  | Minor    | `compiler.ts:121`                   | No                    | Can't lower-priority extend     | Add `extend_after`                           |
+| m5  | Minor    | `compiler.ts:247`                   | No                    | Fragile initial-state selection | Add `initial?: string` to `Grammar`          |

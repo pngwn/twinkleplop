@@ -13,12 +13,7 @@
 // because they frequently add new type entries.
 
 import { rewrite_types, seq, type, any_of, balanced_parens } from "./reclassifier";
-import type {
-	Reclassifier,
-	RewriteOptions,
-	TokenizeResult,
-	TokenPatternSpec,
-} from "./types";
+import type { Reclassifier, RewriteOptions, TokenizeResult, TokenPatternSpec } from "./types";
 
 // ---------------------------------------------------------------------------
 // promote_by_text_set
@@ -34,31 +29,31 @@ import type {
 // literals → boolean.
 
 export function promote_by_text_set(
-	source_type: string,
-	target_type: string,
-	text_set: Iterable<string>,
+  source_type: string,
+  target_type: string,
+  text_set: Iterable<string>,
 ): Reclassifier {
-	const set = text_set instanceof Set ? text_set : new Set(text_set);
-	return (input: string, result: TokenizeResult): TokenizeResult => {
-		const { tokens, token_types } = result;
-		const source_id = token_types.indexOf(source_type);
-		if (source_id < 0) return result;
-		let target_id = token_types.indexOf(target_type);
-		if (target_id < 0) {
-			target_id = token_types.length;
-			token_types.push(target_type);
-		}
-		const n = tokens.length / 3;
-		for (let i = 0; i < n; i++) {
-			if (tokens[i * 3] !== source_id) continue;
-			const s = tokens[i * 3 + 1];
-			const e = tokens[i * 3 + 2];
-			if (set.has(input.slice(s, e))) {
-				tokens[i * 3] = target_id;
-			}
-		}
-		return result;
-	};
+  const set = text_set instanceof Set ? text_set : new Set(text_set);
+  return (input: string, result: TokenizeResult): TokenizeResult => {
+    const { tokens, token_types } = result;
+    const source_id = token_types.indexOf(source_type);
+    if (source_id < 0) return result;
+    let target_id = token_types.indexOf(target_type);
+    if (target_id < 0) {
+      target_id = token_types.length;
+      token_types.push(target_type);
+    }
+    const n = tokens.length / 3;
+    for (let i = 0; i < n; i++) {
+      if (tokens[i * 3] !== source_id) continue;
+      const s = tokens[i * 3 + 1];
+      const e = tokens[i * 3 + 2];
+      if (set.has(input.slice(s, e))) {
+        tokens[i * 3] = target_id;
+      }
+    }
+    return result;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -76,47 +71,44 @@ export function promote_by_text_set(
 const ASCII_UPPER_MIN = 0x41;
 const ASCII_UPPER_MAX = 0x5a;
 
-export function promote_pascal_case(
-	source_type: string,
-	target_type: string,
-): Reclassifier {
-	return (input: string, result: TokenizeResult): TokenizeResult => {
-		const { tokens, token_types } = result;
-		const source_id = token_types.indexOf(source_type);
-		if (source_id < 0) return result;
-		let target_id = token_types.indexOf(target_type);
-		if (target_id < 0) {
-			target_id = token_types.length;
-			token_types.push(target_type);
-		}
-		const n = tokens.length / 3;
-		for (let i = 0; i < n; i++) {
-			if (tokens[i * 3] !== source_id) continue;
-			const s = tokens[i * 3 + 1];
-			const e = tokens[i * 3 + 2];
-			const first = input.charCodeAt(s);
-			if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) continue;
-			// reject all-upper multi-char names (`MAX_SIZE`, `PI`). these are
-			// UPPER_SNAKE constants by convention, not PascalCase types. the
-			// constant promoter (promote_by_upper_snake_case) is the right
-			// home for them. single-char uppercase (generic params `T`, `X`)
-			// still promote so languages that treat them as types don't lose
-			// coverage.
-			if (e - s > 1) {
-				let has_lower = false;
-				for (let k = s; k < e; k++) {
-					const c = input.charCodeAt(k);
-					if (c >= 0x61 && c <= 0x7a) {
-						has_lower = true;
-						break;
-					}
-				}
-				if (!has_lower) continue;
-			}
-			tokens[i * 3] = target_id;
-		}
-		return result;
-	};
+export function promote_pascal_case(source_type: string, target_type: string): Reclassifier {
+  return (input: string, result: TokenizeResult): TokenizeResult => {
+    const { tokens, token_types } = result;
+    const source_id = token_types.indexOf(source_type);
+    if (source_id < 0) return result;
+    let target_id = token_types.indexOf(target_type);
+    if (target_id < 0) {
+      target_id = token_types.length;
+      token_types.push(target_type);
+    }
+    const n = tokens.length / 3;
+    for (let i = 0; i < n; i++) {
+      if (tokens[i * 3] !== source_id) continue;
+      const s = tokens[i * 3 + 1];
+      const e = tokens[i * 3 + 2];
+      const first = input.charCodeAt(s);
+      if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) continue;
+      // reject all-upper multi-char names (`MAX_SIZE`, `PI`). these are
+      // UPPER_SNAKE constants by convention, not PascalCase types. the
+      // constant promoter (promote_by_upper_snake_case) is the right
+      // home for them. single-char uppercase (generic params `T`, `X`)
+      // still promote so languages that treat them as types don't lose
+      // coverage.
+      if (e - s > 1) {
+        let has_lower = false;
+        for (let k = s; k < e; k++) {
+          const c = input.charCodeAt(k);
+          if (c >= 0x61 && c <= 0x7a) {
+            has_lower = true;
+            break;
+          }
+        }
+        if (!has_lower) continue;
+      }
+      tokens[i * 3] = target_id;
+    }
+    return result;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -139,45 +131,45 @@ const ASCII_DIGIT_MAX = 0x39;
 const ASCII_UNDERSCORE = 0x5f;
 
 function is_upper_snake_char(code: number): boolean {
-	return (
-		(code >= ASCII_UPPER_MIN && code <= ASCII_UPPER_MAX) ||
-		(code >= ASCII_DIGIT_MIN && code <= ASCII_DIGIT_MAX) ||
-		code === ASCII_UNDERSCORE
-	);
+  return (
+    (code >= ASCII_UPPER_MIN && code <= ASCII_UPPER_MAX) ||
+    (code >= ASCII_DIGIT_MIN && code <= ASCII_DIGIT_MAX) ||
+    code === ASCII_UNDERSCORE
+  );
 }
 
 export function promote_by_upper_snake_case(
-	source_type: string,
-	target_type: string,
+  source_type: string,
+  target_type: string,
 ): Reclassifier {
-	return (input: string, result: TokenizeResult): TokenizeResult => {
-		const { tokens, token_types } = result;
-		const source_id = token_types.indexOf(source_type);
-		if (source_id < 0) return result;
-		let target_id = token_types.indexOf(target_type);
-		if (target_id < 0) {
-			target_id = token_types.length;
-			token_types.push(target_type);
-		}
-		const n = tokens.length / 3;
-		for (let i = 0; i < n; i++) {
-			if (tokens[i * 3] !== source_id) continue;
-			const s = tokens[i * 3 + 1];
-			const e = tokens[i * 3 + 2];
-			if (e - s < 2) continue;
-			const first = input.charCodeAt(s);
-			if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) continue;
-			let all_ok = true;
-			for (let k = s + 1; k < e; k++) {
-				if (!is_upper_snake_char(input.charCodeAt(k))) {
-					all_ok = false;
-					break;
-				}
-			}
-			if (all_ok) tokens[i * 3] = target_id;
-		}
-		return result;
-	};
+  return (input: string, result: TokenizeResult): TokenizeResult => {
+    const { tokens, token_types } = result;
+    const source_id = token_types.indexOf(source_type);
+    if (source_id < 0) return result;
+    let target_id = token_types.indexOf(target_type);
+    if (target_id < 0) {
+      target_id = token_types.length;
+      token_types.push(target_type);
+    }
+    const n = tokens.length / 3;
+    for (let i = 0; i < n; i++) {
+      if (tokens[i * 3] !== source_id) continue;
+      const s = tokens[i * 3 + 1];
+      const e = tokens[i * 3 + 2];
+      if (e - s < 2) continue;
+      const first = input.charCodeAt(s);
+      if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) continue;
+      let all_ok = true;
+      for (let k = s + 1; k < e; k++) {
+        if (!is_upper_snake_char(input.charCodeAt(k))) {
+          all_ok = false;
+          break;
+        }
+      }
+      if (all_ok) tokens[i * 3] = target_id;
+    }
+    return result;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -199,52 +191,43 @@ export function promote_by_upper_snake_case(
 // means the call-site rewrite is a single rewrite_types pass.
 
 export interface FunctionCallVariants {
-	plain?: boolean;
-	macro?: boolean;
-	generic_fn?: boolean;
-	turbofish?: boolean;
+  plain?: boolean;
+  macro?: boolean;
+  generic_fn?: boolean;
+  turbofish?: boolean;
 }
 
 export function promote_function_calls(
-	source_type = "identifier",
-	target_type = "function",
-	variants: FunctionCallVariants = { plain: true },
-	options?: RewriteOptions,
+  source_type = "identifier",
+  target_type = "function",
+  variants: FunctionCallVariants = { plain: true },
+  options?: RewriteOptions,
 ): Reclassifier {
-	const when_branches: TokenPatternSpec[] = [];
-	const paren_call = balanced_parens("(", ")");
-	if (variants.plain) {
-		when_branches.push(paren_call);
-	}
-	if (variants.macro) {
-		when_branches.push(seq(type("builtin", ["!"]), paren_call));
-	}
-	if (variants.generic_fn) {
-		when_branches.push(seq(balanced_parens("<", ">"), paren_call));
-	}
-	if (variants.turbofish) {
-		when_branches.push(
-			seq(
-				type("punctuation", ["::"]),
-				balanced_parens("<", ">"),
-				paren_call,
-			),
-		);
-	}
-	if (when_branches.length === 0) {
-		return (_input, result) => result;
-	}
-	return rewrite_types(
-		[
-			{
-				anchor: source_type,
-				when:
-					when_branches.length === 1
-						? when_branches[0]
-						: any_of(...when_branches),
-				rewrite: target_type,
-			},
-		],
-		options,
-	);
+  const when_branches: TokenPatternSpec[] = [];
+  const paren_call = balanced_parens("(", ")");
+  if (variants.plain) {
+    when_branches.push(paren_call);
+  }
+  if (variants.macro) {
+    when_branches.push(seq(type("builtin", ["!"]), paren_call));
+  }
+  if (variants.generic_fn) {
+    when_branches.push(seq(balanced_parens("<", ">"), paren_call));
+  }
+  if (variants.turbofish) {
+    when_branches.push(seq(type("punctuation", ["::"]), balanced_parens("<", ">"), paren_call));
+  }
+  if (when_branches.length === 0) {
+    return (_input, result) => result;
+  }
+  return rewrite_types(
+    [
+      {
+        anchor: source_type,
+        when: when_branches.length === 1 ? when_branches[0] : any_of(...when_branches),
+        rewrite: target_type,
+      },
+    ],
+    options,
+  );
 }

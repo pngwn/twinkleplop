@@ -15,13 +15,13 @@ pipeline into progressive stages for mediumJS, largeJS, complexJS, plainJS
 (a no-template LinkedList implementation), and taggedTemplatesJS (a lit-html
 style component with many interpolated tagged templates):
 
-| Stage | What's added |
-|---|---|
-| 0. raw tokenize | `tokenize(src, grammar)` — baseline |
-| 1. + empty pipeline | `reclassify([])(src, rawResult)` — wrapper cost only |
-| 2. + rewriteTypes | `reclassify([rewriteTypes(functionVariableRules)])(...)` |
-| 3. + embedInterleaved | Full JS pipeline including tagged-template embedding |
-| 3b. `language(src)` | Convenience entry point — should match stage 3 |
+| Stage                 | What's added                                             |
+| --------------------- | -------------------------------------------------------- |
+| 0. raw tokenize       | `tokenize(src, grammar)` — baseline                      |
+| 1. + empty pipeline   | `reclassify([])(src, rawResult)` — wrapper cost only     |
+| 2. + rewriteTypes     | `reclassify([rewriteTypes(functionVariableRules)])(...)` |
+| 3. + embedInterleaved | Full JS pipeline including tagged-template embedding     |
+| 3b. `language(src)`   | Convenience entry point — should match stage 3           |
 
 Plus end-to-end HTML tokenization for `htmlLanguage(embeddedHTML)`, which
 exercises `embedGrammars` sub-tokenizing `<script>` and `<style>` content
@@ -136,13 +136,13 @@ the cache is automatically garbage-collected.
 
 Impact on isolated pipeline cost (pre-tokenized, 1:1 comparison):
 
-| Sample | Before | After | Δ |
-|---|---|---|---|
-| mediumJS full | 62,697 | 86,130 | **+37%** |
-| largeJS full | 20,523 | 28,586 | **+39%** |
-| complexJS full | 16,682 | 24,227 | **+45%** |
-| plainJS (scan, no match) | 20,473 | 28,487 | **+39%** |
-| taggedTemplatesJS (heavy embed) | 11,539 | 11,579 | +0.3% |
+| Sample                          | Before | After  | Δ        |
+| ------------------------------- | ------ | ------ | -------- |
+| mediumJS full                   | 62,697 | 86,130 | **+37%** |
+| largeJS full                    | 20,523 | 28,586 | **+39%** |
+| complexJS full                  | 16,682 | 24,227 | **+45%** |
+| plainJS (scan, no match)        | 20,473 | 28,487 | **+39%** |
+| taggedTemplatesJS (heavy embed) | 11,539 | 11,579 | +0.3%    |
 
 As expected, the memoization only affected scans — the heavy-embed case
 was already dominated by sub-tokenization work, so it saw no improvement.

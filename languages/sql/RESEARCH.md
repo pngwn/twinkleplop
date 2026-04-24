@@ -9,6 +9,7 @@ superset rather than reject.
 ## sources consulted
 
 primary (official specs / references):
+
 - https://www.postgresql.org/docs/current/sql-syntax-lexical.html — postgresql lexical structure (closest to sql standard, most complete public doc)
 - https://dev.mysql.com/doc/refman/8.4/en/language-structure.html — mysql 8.4 language structure
 - https://www.sqlite.org/lang_keywords.html — sqlite keyword list
@@ -19,6 +20,7 @@ primary (official specs / references):
 - https://learn.microsoft.com/en-us/sql/t-sql/data-types/constants-transact-sql — t-sql constants (character, unicode, binary, money, guid, datetime)
 
 cross-reference (existing highlighters):
+
 - https://unpkg.com/prismjs@1.29.0/components/prism-sql.js — prism permissive sql grammar (keywords, regex patterns)
 - derekstride/tree-sitter-sql on github (referenced, page load failed; grammar noted in web search)
 - highlight.js sql language (referenced via web search; page fetch failed twice)
@@ -30,6 +32,7 @@ gaps: the iso/iec 9075 (sql:2016) pdf is paywalled; i used postgresql's doc as t
 ## 1. primary sources
 
 see above. when sources disagreed, the rule i followed:
+
 - lexical forms in the sql standard (comments `--`/`/* */`, `'...'` strings with doubled-quote escape, `"..."` delimited identifiers, numeric forms without prefixes) are authoritative.
 - dialect-only forms (dollar quotes, backtick identifiers, `$tag$`, hex/bit prefixes, `E'...'`, `N'...'`, square-bracket identifiers, `#` line comments, `:=` assignment, compound assignment `+=` etc., `@var`, `@@var`, `::` cast, jsonb operators, parameter markers `$n` / `?n` / `:n` / `@n`) are additive — a permissive highlighter should accept them but the grammar author should know which dialect each belongs to.
 - prism / highlight.js are not authoritative; their shortcuts are noted where i avoid following them (e.g. prism treats `//` as a line comment; no major sql dialect does).
@@ -41,51 +44,62 @@ see above. when sources disagreed, the rule i followed:
 ### 2.1 literals
 
 **strings (single-quoted, standard)**
+
 - form: `'...'`, content is any character except unescaped `'` and (per spec) the null character.
 - escape: doubled single quote `''` inside the string represents one literal quote.
 - no backslash escapes by default (standard, sqlite).
 - line continuation: two single-quoted literals separated only by whitespace containing at least one newline are implicitly concatenated into one string (postgresql, standard sql).
 
 **strings (double-quoted, as strings — dialect-specific)**
+
 - mysql (when `ANSI_QUOTES` sql mode is off): `"..."` is a string literal, with `""` as the escape.
 - t-sql (when `QUOTED_IDENTIFIER` is off): same behaviour.
 - in postgresql, sqlite, and mysql-ansi / t-sql default: `"..."` is an identifier, not a string.
 - a permissive highlighter should assume identifier by default and only treat `"..."` as a string when context clearly indicates it (rare in practice — highlighters usually pick identifier).
 
 **c-style escape strings (postgresql)**
+
 - form: `E'...'` or `e'...'`. backslash begins an escape sequence.
 - escapes: `\b \f \n \r \t`, octal `\o`, `\oo`, `\ooo`, hex `\xh`, `\xhh`, 16-bit unicode `\uXXXX`, 32-bit unicode `\UXXXXXXXX`, `\\`, `\'`, and `\<any>` → `<any>` (literal).
 - requires `E` to be upper/lowercase immediately before the opening `'`.
 
 **unicode escape strings (postgresql, sql standard)**
+
 - form: `U&'...'` or `u&'...'`. 4-digit `\XXXX` and 6-digit `\+XXXXXX` unicode escapes.
 - optional `UESCAPE 'c'` clause to change escape character (`c` may not be a hex digit, `+`, `'`, `"`, or whitespace).
 
 **national / unicode strings (t-sql, sql-92)**
+
 - form: `N'...'` (uppercase n required in t-sql; sql-92 allows either case).
 - follows plain-string escape rules (doubled quote only; no backslash escapes).
 
 **mysql character-set introducers**
+
 - form: `_charset'...'` — e.g. `_utf8'...'`, `_latin1'...'`, `_ucs2'...'`.
 - the introducer `_charset` is an identifier-like prefix immediately before a string literal.
 
 **mysql backslash-escaped strings**
+
 - whether `'...'` supports backslash escapes depends on sql mode (`NO_BACKSLASH_ESCAPES`). default: yes.
 - escapes: `\0 \' \" \b \n \r \t \Z \\ \% \_` and `\<any>` → `<any>`.
 
 **bit-string constants (postgresql, sql standard)**
+
 - binary: `B'0101'` / `b'0101'` — content restricted to `0` and `1`.
 - hex: `X'1FF'` / `x'1FF'` — content restricted to `[0-9a-fA-F]`.
 - may span lines like regular strings.
 
 **hex / bit literals (mysql, t-sql)**
+
 - mysql: `x'48656C'`, `X'...'`, `0x48656C` (no quotes) for hex; `b'1010'`, `B'...'`, `0b1010` for binary.
 - t-sql: `0xAE12` (no quotes) as binary constant.
 
 **blob literals (sqlite)**
+
 - `x'AB12'` / `X'AB12'` — hex pairs only.
 
 **dollar-quoted strings (postgresql only, non-standard)**
+
 - form: `$$...$$` or `$tag$...$tag$`.
 - tag rules: optional; if present, same rules as unquoted identifier but may not contain `$`; case-sensitive.
 - no internal escaping whatsoever — backslashes, quotes, dollar signs, newlines are literal.
@@ -93,6 +107,7 @@ see above. when sources disagreed, the rule i followed:
 - must be separated from a preceding keyword/identifier by whitespace (to disambiguate `$1` positional param vs dollar quote).
 
 **numeric literals — decimal**
+
 - integer: `[0-9]+` with optional `_` separator between digits (not at start/end, not adjacent to `.` or `e`, no doubled `__`).
 - decimal: `[0-9]+\.[0-9]*` | `\.[0-9]+` | `[0-9]+\.` — at least one digit on one side of the dot.
 - exponent: `[eE][+-]?[0-9]+` appended to integer or decimal; at least one digit required after `e`.
@@ -100,6 +115,7 @@ see above. when sources disagreed, the rule i followed:
 - leading `+`/`-` is a unary operator, not part of the constant.
 
 **numeric literals — non-decimal bases (postgresql 16+)**
+
 - hex: `0x[0-9a-fA-F_]+` / `0X...` (underscores allowed inside).
 - octal: `0o[0-7_]+` / `0O...`.
 - binary: `0b[01_]+` / `0B...`.
@@ -108,21 +124,26 @@ see above. when sources disagreed, the rule i followed:
 - sqlite accepts `0x...` hex for integer literals.
 
 **money constants (t-sql only)**
+
 - form: `$` followed by optional sign and digits with optional decimal point, e.g. `$12`, `$542023.14`, `$-23`, `+$423456.99`.
 - not quoted. other currency symbols also accepted by the server but `$` is the example. commas are ignored inside.
 
 **date / time constants**
+
 - sql standard `DATE 'yyyy-mm-dd'`, `TIME 'hh:mm:ss'`, `TIMESTAMP '...'`, `INTERVAL '...' DAY TO HOUR` — these are a type-name keyword followed by a string literal; lex as keyword + string.
 - t-sql has no separate date literal syntax; dates are ordinary character strings.
 
 **guid constants (t-sql)**
+
 - no distinct token; written as a character string `'6F9619FF-...-...'` or as binary `0x...`.
 
 **boolean and null**
+
 - `TRUE`, `FALSE`, `NULL` (case-insensitive) — keywords, not literals at the lexical level, but typically tokenized as `builtin` / `constant.language`.
 - `UNKNOWN` (sql standard ternary logic) — keyword.
 
 **standard constant-like keywords (lex as builtin/constant)**
+
 - `CURRENT_DATE`, `CURRENT_TIME`, `CURRENT_TIMESTAMP`, `CURRENT_USER`, `SESSION_USER`, `SYSTEM_USER`, `USER`, `LOCALTIME`, `LOCALTIMESTAMP`.
 
 ### 2.2 comments
@@ -141,39 +162,47 @@ see above. when sources disagreed, the rule i followed:
 sql keywords are case-insensitive in all dialects.
 
 **approach**: twinkleplop grammar should use a single flattened keyword set for case-insensitive lookup. the union of keyword sets across dialects is large (~500+ words). the practical baseline is the prism list (see source); i recommend starting from that and adding:
+
 - missing ansi/iso reserved words from the t-sql odbc list (e.g. `ALLOCATE`, `CASCADED`, `CORRESPONDING`, `DEFERRABLE`, `ONLY`, `OVERLAPS`, `SIMILAR`, `TRANSLATION`, etc.).
 - missing postgres-specific (`ILIKE`, `RETURNING`, `DO`, `LATERAL`, `RECURSIVE`, `WINDOW`).
 - missing sqlite-specific from the 147-keyword list (`ABORT`, `AFTER`, `ATTACH`, `AUTOINCREMENT`, `CONFLICT`, `DEFERRABLE`, `DETACH`, `EXCLUSIVE`, `FAIL`, `GLOB`, `INDEXED`, `INSTEAD`, `MATERIALIZED`, `REINDEX`, `VACUUM`, `VIRTUAL`, `WITHOUT`, `WINDOW`, …).
 - t-sql-specific (`DBCC`, `DENY`, `ERRLVL`, `HOLDLOCK`, `NOCHECK`, `NONCLUSTERED`, `OPENDATASOURCE`, `OPENQUERY`, `OPENROWSET`, `OPENXML`, `PIVOT`, `RAISERROR`, `RECONFIGURE`, `REVERT`, `ROWGUIDCOL`, `SEMANTICKEYPHRASETABLE`, `TABLESAMPLE`, `TRY_CONVERT`, `TSEQUAL`, `UNPIVOT`, `WAITFOR`).
 
 **contextual / soft keywords** (usable as identifiers in certain positions; the grammar author can decide whether to still highlight them):
+
 - sqlite: most of its 147 keywords are usable as identifiers in most contexts; only a handful (e.g. `SELECT`, `FROM`, `WHERE`) are strictly reserved. a highlighter usually still colours all of them.
 - postgresql: reserved vs non-reserved distinction documented in appendix c; lex both the same.
 - mysql: reserved vs non-reserved; reserved must be backtick-quoted to be identifiers.
 - t-sql: reserved list + future list.
 
 **literal-valued keywords** (highlight separately from ordinary keywords):
+
 - `TRUE`, `FALSE`, `NULL`, `UNKNOWN`, `DEFAULT`.
 - `CURRENT_DATE`, `CURRENT_TIME`, `CURRENT_TIMESTAMP`, `CURRENT_USER`, `CURRENT_ROLE`, `SESSION_USER`, `SYSTEM_USER`, `LOCALTIME`, `LOCALTIMESTAMP`, `USER`.
 
 **type keywords** (highlight separately in typical themes):
+
 - standard: `INT`, `INTEGER`, `SMALLINT`, `BIGINT`, `TINYINT`, `DECIMAL`, `NUMERIC`, `REAL`, `FLOAT`, `DOUBLE`, `DOUBLE PRECISION`, `CHAR`, `VARCHAR`, `NCHAR`, `NVARCHAR`, `TEXT`, `CLOB`, `BLOB`, `DATE`, `TIME`, `TIMESTAMP`, `TIMESTAMPTZ`, `INTERVAL`, `BOOLEAN`, `BIT`, `VARBIT`, `BYTEA`, `JSON`, `JSONB`, `UUID`, `XML`, `SERIAL`, `BIGSERIAL`, `MONEY`, `ARRAY`.
 
 ### 2.4 operators
 
 **single-character**
+
 - `+` `-` `*` `/` `%` `^` `=` `<` `>` `!` `~` `&` `|` `:` `?` `@` `#` `.` `,` `;` `(` `)` `[` `]` `{` `}`
 
 **multi-character (standard)**
+
 - `<>` not equal
 - `<=` `>=` comparison
 - `||` string concatenation (standard; in mysql-default mode `||` is logical OR instead, configurable via `PIPES_AS_CONCAT` sql mode)
 
 **multi-character (common across dialects)**
+
 - `!=` not equal (non-standard synonym of `<>`)
 - `**` exponent (some dialects)
 
 **postgresql additions**
+
 - `::` typecast
 - `->`, `->>` json/composite access
 - `#>`, `#>>` json path access
@@ -182,9 +211,10 @@ sql keywords are case-insensitive in all dialects.
 - `?`, `?|`, `?&` json key existence tests (jsonb)
 - `||/`, `|/` cube/square root operators
 - `#`, `@`, `^` user-definable operators (lexed as operator, not punctuation)
-- user-defined operators may be any sequence of `+ - * / < > = ~ ! @ # % ^ & | ? \`` up to 63 chars, with restrictions: may not contain `--` or `/*`; if ends in `+` or `-` must also contain `~ ! @ # % ^ & | ? \``.
+- user-defined operators may be any sequence of `+ - * / < > = ~ ! @ # % ^ & | ? \`` up to 63 chars, with restrictions: may not contain `--`or`/\*`; if ends in `+`or`-`must also contain`~ ! @ # % ^ & | ? \``.
 
 **mysql additions**
+
 - `<=>` null-safe equality
 - `&&` logical AND (synonym of `AND`)
 - `||` logical OR (synonym of `OR`) — conflicts with standard concat
@@ -193,12 +223,14 @@ sql keywords are case-insensitive in all dialects.
 - `<<`, `>>` bit shift
 
 **t-sql additions**
+
 - `::` scope resolution (different from postgres cast)
 - compound assignment: `+=` `-=` `*=` `/=` `%=` `&=` `|=` `^=`
 - `!<`, `!>` comparison (not less than, not greater than)
 - string concat: `+` (not `||`)
 
 **sqlite additions**
+
 - `==` equality (synonym of `=`)
 - `->`, `->>` json access (3.38+)
 - bit shift `<<`, `>>`, bitwise `&`, `|`, `~`
@@ -206,6 +238,7 @@ sql keywords are case-insensitive in all dialects.
 **length-sort note for grammar author**: the multi-char operators `<=>`, `!~*`, `!=`, `<=`, `>=`, `<>`, `::`, `->`, `->>`, `#>`, `#>>`, `@>`, `<@`, `||`, `&&`, `!~`, `~*`, `?|`, `?&`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `!<`, `!>`, `==`, `**`, `<<`, `>>`, `:=` must be tried before their single-char prefixes. longest-match first.
 
 **keyword operators** (operator semantics, keyword token shape — standard unless noted):
+
 - `AND`, `OR`, `NOT`, `XOR` (mysql)
 - `BETWEEN`, `IN`, `LIKE`, `ILIKE` (pg), `SIMILAR TO`, `IS`, `IS NOT`, `IS DISTINCT FROM`, `IS NOT DISTINCT FROM`, `ISNULL`, `NOTNULL`
 - `GLOB`, `MATCH`, `REGEXP`, `RLIKE` (sqlite/mysql)
@@ -219,6 +252,7 @@ sql keywords are case-insensitive in all dialects.
 ### 2.5 identifiers
 
 **unquoted**
+
 - ascii start: letter `[a-zA-Z]` or underscore `_`.
 - postgresql extends to any letter (including non-latin) and diacritical marks.
 - continuation: letters, digits, underscore; additionally `$` in postgresql and mysql (not standard).
@@ -226,24 +260,29 @@ sql keywords are case-insensitive in all dialects.
 - length limits are implementation-specific (63 bytes in pg, 64 chars in mysql, longer in t-sql); not relevant to lexing.
 
 **delimited identifiers (double quote — standard)**
+
 - `"foo"`, `"foo bar"`, `"select"` (use keyword as identifier).
 - case-sensitive (contents preserved).
 - escape embedded `"` by doubling: `"foo""bar"` → identifier `foo"bar`.
 - no backslash escapes.
 
 **delimited identifiers (backticks — mysql, sqlite-compat)**
+
 - `` `foo` ``, `` `foo``bar` `` (doubled backtick escapes).
 - case-sensitive.
 
 **delimited identifiers (square brackets — t-sql, sqlite-compat, ms access)**
+
 - `[foo]`, `[foo]]bar]` (doubled `]` escapes `]`). no escape for `[`.
 - case-sensitivity depends on collation.
 - note: square brackets are also used in pg for array subscript and in json path operators. context-disambiguated.
 
 **unicode-quoted identifiers (postgresql, sql standard)**
+
 - `U&"foo\0061"` with optional `UESCAPE 'c'`.
 
 **sigils**
+
 - `$n` positional parameter (postgresql, prepared statements; n is digits).
 - `?`, `?NNN` parameter marker (jdbc, sqlite, mysql).
 - `:name` named parameter (sqlite, oracle-style).
@@ -284,6 +323,7 @@ sql keywords are case-insensitive in all dialects.
 ## 3. edge case inventory
 
 **ambiguous tokens**
+
 - `--` starts a comment — except:
   - in mysql, `--` without trailing whitespace is the double-negation operator `- -` (e.g. `5---1` → `5 - -1 = 6`). permissive highlighter may ignore.
   - inside a string, `--` is content.
@@ -333,6 +373,7 @@ sql keywords are case-insensitive in all dialects.
 - `1e` alone is not valid; `1e5` is; `1e` followed by identifier is tokenised as integer `1` then identifier `e...` by spec. some highlighters greedily accept `1e`. spec-compliant tokenisers reject partial exponents.
 
 **nesting edge cases**
+
 - dollar-quoted strings can contain dollar signs as long as the closing tag is not matched. `$$a$b$$` is a valid dollar-quoted string with content `a$b`.
 - nested dollar quotes: `$outer$ ... $inner$ x $inner$ ... $outer$` requires tracking the opening tag and only closing on that exact tag.
 - nested block comments: depth counter required. `/* a /* b */ c */` — at the first `*/`, decrement; still in comment.
@@ -340,12 +381,14 @@ sql keywords are case-insensitive in all dialects.
 - single-quoted strings may not cross dollar-quote boundaries; dollar-quoted strings may contain any characters including single quotes.
 
 **case sensitivity**
+
 - keywords: case-insensitive in every dialect.
 - unquoted identifiers: case-insensitive in pg (folded to lower), mysql (default, file-system-dependent on some platforms), sqlite, t-sql (collation-dependent). in practice, highlighting treats unquoted identifiers case-insensitively for keyword lookup.
 - quoted identifiers: case-sensitive in pg (exact case preserved and compared); in mysql backticks preserve case but comparison depends on collation; t-sql brackets preserve case, comparison collation-dependent.
 - prefix letters `E`, `N`, `B`, `X`, `U&` etc. are case-insensitive.
 
 **whitespace significance**
+
 - sql has no indentation-based syntax.
 - newline separation matters only for:
   - adjacent single-quoted strings (auto-concatenation requires intervening newline + whitespace);
@@ -355,6 +398,7 @@ sql keywords are case-insensitive in all dialects.
 - in most other contexts, any whitespace sequence is equivalent.
 
 **contextual tokenisation**
+
 - `*` → wildcard after `SELECT`, `table.*`, `count(*)`; otherwise multiplication. lex the same, let renderer decide from context (or use a post-pass).
 - `E`, `N`, `B`, `X` prefixes: a quote must immediately follow.
 - `$` dollar-quote vs positional parameter:
@@ -613,6 +657,7 @@ trace:
 ```
 
 key lessons:
+
 - `@@version` is one token, not `@` + `@version`. longest-match sigil rule.
 - `<=>` must be tried before `<=`, which must be tried before `<`.
 - `:=` vs `:` vs `::` — all must be tried in length order.
@@ -702,6 +747,7 @@ trace:
 ```
 
 key lessons:
+
 - `$100.00` is a money constant in t-sql but would be a syntax error in pg (since `$` expects a digit-only positional parameter or a dollar-quoted string). dialect-aware or permissive-permissive choice for grammar author.
 - `+=` needs to be tried before `+`.
 - inside an n-prefixed unicode string, the only escape is `''`; all other characters (including `é` or any unicode) are content.

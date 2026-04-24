@@ -5,6 +5,7 @@ This document describes the introspectable tokenizer system that allows debuggin
 ## Overview
 
 The introspectable tokenizer provides a way to understand:
+
 - How each token was tokenized
 - What state the tokenizer was in at each position
 - What rules were matched
@@ -85,14 +86,14 @@ console.log(report);  // Human-readable tokenization report
 
 ```javascript
 // WITHOUT mapper - cryptic output:
-"Matched rule_5 in state_0"
-"Push: state_0 → state_3"
-"Token: token_2 at [10:15]"
+"Matched rule_5 in state_0";
+"Push: state_0 → state_3";
+"Token: token_2 at [10:15]";
 
 // WITH mapper - readable output:
-"Matched /\w+/ → identifier in main"
-"Push: main → string_content"
-"Token: string.delimiter at [10:15]"
+"Matched /\w+/ → identifier in main";
+"Push: main → string_content";
+"Token: string.delimiter at [10:15]";
 ```
 
 ## Usage
@@ -111,9 +112,9 @@ const { tokenize, TokenizerIntrospector } = await import("./tokenizer.debug.js")
 
 // Create introspector with custom logging
 const introspector = new TokenizerIntrospector({
-  log: null,            // Custom logging function (null = no logging)
+  log: null, // Custom logging function (null = no logging)
   collectHistory: true,
-  maxHistorySize: 10000
+  maxHistorySize: 10000,
 });
 
 // Examples of different logging options:
@@ -123,7 +124,7 @@ const introspector1 = new TokenizerIntrospector();
 
 // 2. Console logging
 const introspector2 = new TokenizerIntrospector({
-  log: console.log
+  log: console.log,
 });
 
 // 3. Custom logger with filtering
@@ -133,7 +134,7 @@ const introspector3 = new TokenizerIntrospector({
     if (type.includes("TOKEN")) {
       console.log(`${type}: ${data.tokenName || data.tokenType}`);
     }
-  }
+  },
 });
 
 // 4. File logging
@@ -142,30 +143,32 @@ const logStream = fs.createWriteStream("tokenizer.log");
 const introspector4 = new TokenizerIntrospector({
   log: (type, data) => {
     logStream.write(`[${new Date().toISOString()}] ${type}: ${JSON.stringify(data)}\n`);
-  }
+  },
 });
 
 // 5. Structured logging with a logger library
 import winston from "winston";
-const logger = winston.createLogger({ /* config */ });
+const logger = winston.createLogger({
+  /* config */
+});
 const introspector5 = new TokenizerIntrospector({
   log: (type, data) => {
     logger.debug("tokenizer", { type, ...data });
-  }
+  },
 });
 
 // Backwards compatibility - logToConsole still works
 const introspector6 = new TokenizerIntrospector({
-  logToConsole: true  // Equivalent to log: console.log
+  logToConsole: true, // Equivalent to log: console.log
 });
 
 // Tokenize with introspection
 const result = tokenize(input, compiledGrammar, introspector);
 
 // Access collected data
-console.log(introspector.tokens);           // All emitted tokens
+console.log(introspector.tokens); // All emitted tokens
 console.log(introspector.stateTransitions); // State changes
-console.log(introspector.ruleMatches);      // Matched rules
+console.log(introspector.ruleMatches); // Matched rules
 ```
 
 ### Introspector API
@@ -219,6 +222,7 @@ console.log(`State transitions: ${report.stateTransitions.length}`);
 ## Performance
 
 The production build has **zero performance overhead** because all introspection code is completely removed at build time. The debug build adds overhead for:
+
 - Event collection
 - History tracking
 - Method calls

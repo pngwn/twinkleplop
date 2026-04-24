@@ -22,11 +22,13 @@ forward references, lazy continuation across blockquote + setext) wrong.
 ## sources consulted
 
 primary (official specs):
+
 - https://spec.commonmark.org/0.31.2/ — commonmark 0.31.2 specification (the canonical source)
 - https://github.com/commonmark/commonmark-spec/blob/master/spec.txt — commonmark spec.txt (raw source with numbered examples)
 - https://github.github.com/gfm/ — github flavored markdown spec (gfm extensions to commonmark)
 
 cross-reference (existing highlighters and parsers):
+
 - https://github.com/PrismJS/prism/blob/master/components/prism-markdown.js — prism markdown grammar (regex-based, permissive)
 - https://github.com/MDeiml/tree-sitter-markdown — tree-sitter-markdown (block + inline separate parsers, external scanner for indent)
 - https://github.com/micromark/micromark — micromark (reference-quality commonmark + gfm implementation in js)
@@ -38,6 +40,7 @@ cross-reference (existing highlighters and parsers):
 - https://talk.commonmark.org/t/delimiter-run-definitions-need-clarification/2134 — emphasis delimiter run clarification
 
 gaps and policy calls:
+
 - the commonmark spec explicitly uses a two-pass algorithm (block then inline).
   twinkleplop tokenizes in a single forward pass. this means certain
   commonmark tests cannot pass:
@@ -56,15 +59,15 @@ gaps and policy calls:
   not italicizing it matches user expectation everywhere except ancient
   markdown dialects.
 - the 0.31.2 spec changed "unicode whitespace" and "unicode punctuation" to
-  use unicode general categories (zs/zl/zp for whitespace, p* for
+  use unicode general categories (zs/zl/zp for whitespace, p\* for
   punctuation) rather than the older ascii-only rule. we should use
   category-based tests for the `preceded-by-whitespace` / `followed-by-
-  punctuation` emphasis-flanking checks. an ascii-only approximation is a
+punctuation` emphasis-flanking checks. an ascii-only approximation is a
   common shortcut and loses correctness for non-english text (fine for v1,
   flag it).
 - html in markdown: commonmark defines seven block types and six inline tag
   shapes. we should emit html-shaped tokens but not try to validate html.
-  gfm's disallowed-raw-html extension is a *render-time* filter (rewrites
+  gfm's disallowed-raw-html extension is a _render-time_ filter (rewrites
   `<script>` to `&lt;script>` in output); it has no lexical effect. do NOT
   treat `<script>` differently at tokenization time.
 - front matter: commonmark does not define front matter. jekyll / hugo /
@@ -133,12 +136,13 @@ its "literals" are inlined text runs and code spans. the only quoted form is
 a link title (see 2.7).
 
 **code span** (inline backtick string)
+
 - opens with a run of 1+ backticks not preceded by `` ` ``.
 - closes with a run of backticks of equal length not followed by `` ` ``.
 - content is opaque (no inline parsing, no entity expansion, no escape).
 - a run longer than the delimiter length is content, e.g. ``` ``a `b` c`` ```
-  has outer delimiter `` `` ``, inner content `` a `b` c``.
-- spaces at the very start/end of content are trimmed *if* the content
+  has outer delimiter ` ` `, inner content ` a `b` c``.
+- spaces at the very start/end of content are trimmed _if_ the content
   starts AND ends with a space AND is not all whitespace. this is a
   render-time normalization; the lexer should emit the span including
   any outer spaces as content.
@@ -146,6 +150,7 @@ a link title (see 2.7).
   line terminates inline parsing first).
 
 **text** (the default inline content)
+
 - any run of characters that is not part of another inline construct.
 - no escape sequences at the text level (escapes are a separate construct,
   see 2.10).
@@ -153,6 +158,7 @@ a link title (see 2.7).
 ### 2.2 string-shaped constructs
 
 **link title** (quoted metadata after a link destination)
+
 - three forms: `"..."`, `'...'`, `(...)`. matching quote / paren required.
 - inside double or single: backslash escapes apply (any ascii punctuation).
 - inside parens: literal `(` and `)` are not allowed unless backslash-escaped
@@ -160,6 +166,7 @@ a link title (see 2.7).
 - blank lines are NOT allowed inside a title (terminates).
 
 **link destination**
+
 - two forms:
   - angle-bracketed: `<...>`, containing no spaces, no newlines, no
     unescaped `<` or `>`. backslash escapes apply.
@@ -216,7 +223,7 @@ markdown has no operators. what plays an operator-like role:
 
 - emphasis delimiters: `*`, `_`, `**`, `__`, `***`, `___` (and gfm's
   `~`, `~~`).
-- inline code delimiters: `` ` ``, `` `` ``, `` ``` ``, etc.
+- inline code delimiters: `` ` ``, ` ` `, ` `` `, etc.
 - link / image punctuation: `[`, `]`, `(`, `)`, `!`.
 - autolink delimiters: `<`, `>`.
 - hard line break: `\<newline>` or `<two-or-more-spaces><newline>`.
@@ -246,7 +253,7 @@ block-level delimiters (at most 3 spaces of leading indent, per spec):
 - `-` (1+) under text — setext h2 marker / thematic break / list marker.
 - `*` (1+) alone on a line — thematic break / list marker.
 - `_` (1+) alone on a line — thematic break.
-- `` ``` `` (3+) and `~~~` (3+) — fenced code delimiters.
+- ` ``` ` (3+) and `~~~` (3+) — fenced code delimiters.
 - `>` — blockquote marker.
 - `+`, `-`, `*` — bullet list marker (with trailing space).
 - `<digits>.` and `<digits>)` — ordered list marker (1-9 digits).
@@ -258,7 +265,7 @@ inline delimiters:
 
 - `*` `**` `***` — emphasis / strong / both.
 - `_` `__` `___` — emphasis / strong / both (with intraword restriction).
-- `` ` `` `` `` `` — code span (any run length).
+- `` ` `` ` ` `` — code span (any run length).
 - `~` `~~` — strikethrough (gfm; two tildes per spec).
 - `[` `]` — link text / image alt / reference label brackets.
 - `(` `)` — link destination / title wrappers (destination flavor).
@@ -272,15 +279,16 @@ inline delimiters:
 
 commonmark inline html shapes (per §6.6):
 
-- **open tag**: `<` tagname (attribute)* space? `/`? `>`. tagname starts
+- **open tag**: `<` tagname (attribute)\* space? `/`? `>`. tagname starts
   with ascii letter, followed by letters, digits, `-`.
-- **close tag**: `</` tagname space* `>`.
+- **close tag**: `</` tagname space\* `>`.
 - **comment**: `<!-- ... -->` (per 2.4).
 - **processing instruction**: `<? ... ?>`.
 - **declaration**: `<!` uppercase-ascii-letter+ `... >`.
 - **cdata**: `<![CDATA[ ... ]]>`.
 
 attribute shapes:
+
 - name: ascii letter or `_` / `:`, then any of `[A-Za-z0-9_.:-]*`.
 - value: unquoted (no spaces, no `"`, no `'`, no `=`, no `<`, no `>`, no `` ` ``),
   single-quoted, or double-quoted. escape sequences are not expanded inside
@@ -321,7 +329,7 @@ brackets and label; leave the dangling reference to the renderer.
 
 the destination follows the same rules as an inline link destination. the
 title is optional and can be on the same line or the next line (at most
-one line break between destination and title). a title *cannot* be on a
+one line break between destination and title). a title _cannot_ be on a
 line by itself without a destination.
 
 leading indent: 0-3 spaces. the label is case-insensitive and cannot be
@@ -437,13 +445,13 @@ practical tokenizer still must get right.
 - **right-flanking**: the run is not preceded by unicode whitespace AND
   (not preceded by unicode punctuation OR followed by unicode whitespace
   or punctuation).
-- **rule 1 (* can open)**: left-flanking.
-- **rule 2 (_ can open)**: left-flanking AND (not right-flanking OR
+- **rule 1 (\* can open)**: left-flanking.
+- **rule 2 (\_ can open)**: left-flanking AND (not right-flanking OR
   preceded by punctuation). this is the intraword underscore rule:
   `foo_bar_baz` does not open because `_` is right-flanking and not
   preceded by punctuation.
-- **rule 3 (* can close)**: right-flanking.
-- **rule 4 (_ can close)**: right-flanking AND (not left-flanking OR
+- **rule 3 (\* can close)**: right-flanking.
+- **rule 4 (\_ can close)**: right-flanking AND (not left-flanking OR
   followed by punctuation). symmetric intraword rule.
 - **rule 9/10**: special case for mixed-length runs; the sum of open and
   close delimiter lengths must not be a multiple of 3 unless both
@@ -457,6 +465,7 @@ matching run on the same logical line, and give up on exact rule-9 fidelity.
 the output is "almost right" for 99% of real input.
 
 intraword examples:
+
 - `foo*bar*baz` → emphasis match (rule 1 and 3 both pass).
 - `foo_bar_baz` → no emphasis (rules 2 and 4 both fail).
 - `5*6 = 30*2 / 60` → no emphasis (rule 1 open fails due to digit-flanking
@@ -475,7 +484,7 @@ delimiters before deciding on emphasis matching.
 - `` `a`b` `` — open is 1 backtick, close is the FIRST run of 1 backtick
   not preceded/followed by `` ` ``. so this parses as `` `a` `` code span
   followed by `b` ` text and a dangling backtick.
-- ``` ``a`b`` ``` — open is 2, close is 2, content is `` a`b ``.
+- ``` ``a`b`` ``` — open is 2, close is 2, content is ``a`b``.
 - always pick the first matching run of the same length. if no match,
   the opening run is literal text (not a code span at all).
 
@@ -491,12 +500,14 @@ delimiters before deciding on emphasis matching.
 ### 3.5 setext heading vs thematic break vs list item
 
 a line of `---` at column 0-3 can be any of:
+
 - setext h2 underline (if preceded by a non-blank paragraph line).
 - thematic break (if not following a paragraph, and not otherwise blocked).
 - a list item beginning (if followed by a space and inline content: `- x`).
 - yaml front-matter boundary (at top of file, before any content).
 
 precedence (spec):
+
 - inside a paragraph: setext wins over thematic break.
 - a line like `- - -` (with internal spaces) is a thematic break, not a list.
 - a single `-` with no content is a bullet list marker, not a thematic
@@ -969,6 +980,7 @@ push/pop at the grammar-author's discretion.
 ### trace 1: mixed paragraph with emphasis, code span, link, and autolink
 
 input:
+
 ```
 A link to [example](https://example.com "Ex") uses *emphasis* and `inline
 code` with a <https://foo.bar> autolink.
@@ -988,20 +1000,20 @@ trace:
   - `Ex` → title content
   - `"` → exit title
 - `)` → exit link (end of inline link)
-- ` uses ` → text
+- `uses` → text
 - `*` → potential emphasis open. check flanking: preceded by space
   (whitespace), followed by `e` (not whitespace, not punctuation) →
   left-flanking. rule 1 satisfied. → enter emphasis (depth 1)
 - `emphasis` → text inside emphasis
 - `*` → potential close. preceded by `s` (not ws, not punct), followed by
   space (ws) → right-flanking. rule 3 satisfied. → exit emphasis
-- ` and ` → text
+- `and` → text
 - `` ` `` → enter code span (delimiter length 1)
 - `inline` → code content
 - `\n` → code content (code spans allow newlines)
 - `code` → code content
 - `` ` `` → exit code span (same length, not followed by `` ` ``)
-- ` with a ` → text
+- `with a` → text
 - `<` → potential autolink open. scan ahead: `https://foo.bar` is a valid
   uri (scheme `https`, colon, `//foo.bar`). next char after is `>`. → enter
   autolink
@@ -1011,6 +1023,7 @@ trace:
 - end of paragraph
 
 key observations:
+
 - code span delimiter scanning must happen BEFORE emphasis matching
   (precedence).
 - link destinations are ambiguous — a parenthesis inside the destination
@@ -1022,19 +1035,21 @@ key observations:
 ### trace 2: fenced code block with language, inside a list item, followed by task list
 
 input:
-```
+
+````
 - First item
 
   ```js
   console.log("hi");
-  ```
+````
 
 - [ ] unchecked task
 - [x] done task that references [foo][ref]
-  (continuation line)
+      (continuation line)
 
 [ref]: https://example.com
-```
+
+````
 
 trace:
 
@@ -1091,11 +1106,12 @@ key observations:
 ### trace 3: gfm table with escapes and code, then html block
 
 input:
-```
-| Feature       | Syntax      | Notes                 |
-| :------------ | :---------: | --------------------: |
-| bold          | `**text**`  | pipes in code: \|     |
-| link          | [x](y)      | x has \| escaped      |
+````
+
+| Feature |   Syntax   |             Notes |
+| :------ | :--------: | ----------------: |
+| bold    | `**text**` | pipes in code: \| |
+| link    |   [x](y)   |  x has \| escaped |
 
 <div class="note">
 This is an **html block** type 6.
@@ -1103,6 +1119,7 @@ No markdown here.
 </div>
 
 After the block.
+
 ```
 
 trace:
@@ -1209,3 +1226,4 @@ key observations:
 - do not try to match the full html5 entity list; match `&[A-Za-z][A-Za-z0-9]*;`
   as `entity` and be done. if a theme wants to distinguish valid vs invalid
   entities, that's a render step.
+```

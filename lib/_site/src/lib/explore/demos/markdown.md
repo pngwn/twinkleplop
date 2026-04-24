@@ -20,7 +20,7 @@ const greet = (name) => `hi, ${name}`;
     const x = 1 + 2;
 
 - [x] ship demo
-  second line after a hard break
+      second line after a hard break
 - [ ] celebrate
 
 Escapes: \* not italic, \# not a heading.

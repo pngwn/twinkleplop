@@ -36,7 +36,7 @@ This shapes the solution space significantly:
   JS function to decide") are **out** — they break the compiled,
   declarative model.
 - Solutions that require a full parse tree (tree-sitter-style) are **out**
-  as the core mechanism, though I'm open to hearing how their *ideas*
+  as the core mechanism, though I'm open to hearing how their _ideas_
   could be adapted into a compiled state-machine model.
 - Solutions that require unbounded lookahead or unbounded lookbehind are
   **out**. Bounded is fine.
@@ -55,7 +55,7 @@ What I'm willing to spend:
   lot here if it buys real disambiguation power. This is the budget
   I'm most willing to blow.
 - **State count**: bounded explosion is OK if it's bounded by the
-  *grammar*, not by the *input*. State counts that grow with nesting
+  _grammar_, not by the _input_. State counts that grow with nesting
   depth or document size are not OK.
 
 ## The concrete problem
@@ -64,17 +64,17 @@ Consider TypeScript. The token sequence `identifier : Type` (or `identifier :`
 followed by something) appears in at least these constructs, all of which
 should ideally highlight differently:
 
-- Object literal property:        `{ foo: bar }`
-- Labelled statement:             `foo: while (...) { ... }`
-- Class field with annotation:    `class C { foo: string = "x" }`
-- Interface/type member:          `interface I { foo: string }`
-- Typed function parameter:       `function f(foo: string) { ... }`
-- Typed destructuring:            `const { foo }: T = ...`
-- Type predicate / return type:   `function f(): foo is Bar`
-- Conditional/ternary tail:       `cond ? a : b`
+- Object literal property: `{ foo: bar }`
+- Labelled statement: `foo: while (...) { ... }`
+- Class field with annotation: `class C { foo: string = "x" }`
+- Interface/type member: `interface I { foo: string }`
+- Typed function parameter: `function f(foo: string) { ... }`
+- Typed destructuring: `const { foo }: T = ...`
+- Type predicate / return type: `function f(): foo is Bar`
+- Conditional/ternary tail: `cond ? a : b`
 
 A shallow context stack (e.g. "inside class body", "inside object literal")
-gets you partway. The failures I keep hitting are *systematic*, not isolated:
+gets you partway. The failures I keep hitting are _systematic_, not isolated:
 
 - Nested labelled statements where outer and inner highlight differently
 - The second typed field in a class is classified differently than the first
@@ -99,7 +99,7 @@ highlighters/lexers that sit in this middle ground. For each approach,
 I want to understand:
 
 1. **What state it tracks** beyond a context stack — and crucially, what
-   it deliberately *doesn't* track.
+   it deliberately _doesn't_ track.
 2. **How it avoids state explosion.** Naively encoding "second field of a
    class with a prior annotated field" as a distinct state is a dead end.
    What's the trick that keeps the state space bounded?
@@ -110,7 +110,7 @@ I want to understand:
    incremental re-lex behavior on edits.
 6. **Compatibility with my constraints** — specifically: can it be
    expressed declaratively and compiled statically, without runtime
-   regex or host-language callbacks? If not directly, can the *idea*
+   regex or host-language callbacks? If not directly, can the _idea_
    be adapted to a compiled state-machine model, and how?
 
 ## Specific avenues worth investigating
@@ -125,18 +125,18 @@ Don't limit yourself to these, but make sure you cover them:
   in practice for TS-like languages. If Sublime's TypeScript syntax has
   known failure cases in this exact area, I want to see them.
 - **TextMate grammars and vscode-textmate** — mostly as a baseline of
-  what *doesn't* work, and to understand which Sublime extensions exist
+  what _doesn't_ work, and to understand which Sublime extensions exist
   specifically because TextMate couldn't handle this.
 - **Pygments' RegexLexer** with state stack, `bygroups`, `using`,
   `combined`, and `LexerContext` — the practical ceiling of "stack of
   states + small extensions," even though it relies on regex.
 - **Tree-sitter's external scanners** — not the parser itself, but the
   contract between the scanner and the parser. The interesting question
-  is whether the *kind of state* an external scanner maintains (it's a
+  is whether the _kind of state_ an external scanner maintains (it's a
   bounded C struct, serializable, no unbounded lookahead) is a model I
   could adapt.
 - **Lexer hacks** — the C `typedef` lexer hack and its TS analogue. What
-  is the *minimum* sidecar state needed, and can that sidecar be
+  is the _minimum_ sidecar state needed, and can that sidecar be
   expressed declaratively rather than as imperative code?
 - **Two-pass / semantic highlighting** (LSP semantic tokens). Probably
   not directly applicable since I want a single-pass streaming
@@ -145,7 +145,7 @@ Don't limit yourself to these, but make sure you cover them:
   (Moonen, van Deursen, Koppler, etc.) — parsing only the constructs
   you care about and skipping the rest. Could a "tiny island grammar"
   ride alongside the lexer state machine?
-- **Bounded-lookahead disambiguation** — LL(k)/LR(k) at the *token*
+- **Bounded-lookahead disambiguation** — LL(k)/LR(k) at the _token_
   level, or follow-set-based disambiguation. Anything that says
   "decide this token's class based on the next N tokens, where N is
   small and known at grammar-compile time."
@@ -153,8 +153,8 @@ Don't limit yourself to these, but make sure you cover them:
   but include them so I know why they're too heavy.
 - **Roslyn, rust-analyzer, IntelliJ PSI, Volar.js** — production parsers
   built for IDE use. Mostly out of scope as implementations, but I want
-  to know what they do at the lex/parse boundary that's *qualitatively
-  different* from a stack-based lexer, in case any of those qualitative
+  to know what they do at the lex/parse boundary that's _qualitatively
+  different_ from a stack-based lexer, in case any of those qualitative
   ideas can be ported.
 - **Academic work** on context-sensitive lexing, scannerless parsing
   with disambiguation filters (SDF/Rascal), and any work explicitly on
@@ -165,7 +165,7 @@ Don't limit yourself to these, but make sure you cover them:
 For each approach you find:
 
 - One-paragraph summary of the technique.
-- The state model it uses — be precise. What's the *shape* of its state?
+- The state model it uses — be precise. What's the _shape_ of its state?
   How big is it per active lex context? What grows with input vs. with
   grammar?
 - How it would handle the TS `identifier :` ambiguity above, walked
@@ -180,8 +180,8 @@ Then, a synthesis section:
 
 - A taxonomy of the approaches along axes like: amount of lookahead,
   amount of lookbehind, structural state granularity, incremental
-  friendliness, implementation complexity, *expressibility in a
-  declarative compiled grammar*.
+  friendliness, implementation complexity, _expressibility in a
+  declarative compiled grammar_.
 - Your assessment of which approach(es) are most promising **specifically
   for a regex-free, statically compiled, declarative state-machine
   highlighter**. Rule things in and out against my constraints
@@ -208,7 +208,7 @@ Then, a synthesis section:
 - Be skeptical of techniques that work on the first example and
   quietly fail on the Nth. The whole reason I'm asking is that those
   are the ones I keep hitting.
-- Be skeptical of techniques that *technically* work but would require
+- Be skeptical of techniques that _technically_ work but would require
   rewriting my grammar spec around them. The bar for new grammar
   concepts is high; the bar for runtime mechanisms is lower.
 - Concrete code or pseudocode beats hand-waving. If a technique exists

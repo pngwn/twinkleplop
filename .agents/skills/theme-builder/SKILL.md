@@ -52,37 +52,37 @@ The palette is therefore a `Record<token_name, string>` plus one extra key, `bac
 
 For each token, pick the upstream theme color that semantically matches. VSCode `tokenColors` entries map via their `scope` field. Common mappings:
 
-| twinkleplop token | typical VSCode scope(s) |
-|---|---|
-| `keyword` | `keyword`, `keyword.control`, `storage.type` |
-| `type` | `entity.name.type`, `support.type`, `support.class` |
-| `string` | `string`, `string.quoted` |
-| `number` | `constant.numeric` |
-| `comment` | `comment` |
-| `function` | `entity.name.function`, `support.function` |
-| `identifier` / `variable` | `variable`, `variable.other` |
-| `builtin` | `support.function`, `support.class` |
-| `boolean` / `null` | `constant.language` |
-| `operator` | `keyword.operator`, `punctuation.separator.operator` |
-| `punctuation` | `punctuation` (often falls back to `text`/foreground) |
-| `property` | `support.type.property-name`, `variable.other.property` |
-| `decorator` | `meta.decorator`, `entity.name.decorator` |
-| `tag_name` / `tag` | `entity.name.tag` |
-| `attribute` / `attr_name` | `entity.other.attribute-name` |
-| `lifetime` | `storage.modifier.lifetime` (Rust) — fall back to `keyword` |
-| `selector` / `selector_class` / `selector_id` / `selector_pseudo` | `entity.other.attribute-name.class.css`, `entity.name.tag.css` |
-| `unit` / `css_variable` | `support.type.property-name`, `variable.other` |
-| `regex` | `string.regexp` |
-| `template` | `string.template` |
-| `class_name` | `entity.name.class` |
-| `bold` / `italic` / `strike` (markdown) | `markup.bold`, `markup.italic`, `markup.strikethrough` |
-| `heading` / `heading_marker` | `markup.heading` |
-| `link_text` / `url` / `url_link` / `url_title` | `markup.underline.link`, `string.other.link` |
-| `code` / `code_block` / `code_fence` / `code_language` | `markup.inline.raw`, `markup.fenced_code` |
-| `inserted` / `deleted` / `changed` (diff) | `markup.inserted`, `markup.deleted`, `markup.changed` |
-| `*_marker`, `*_open`, `*_close` | delimiter punctuation — fall back to the matching content token or `punctuation` |
-| whitespace (`space`, `tab`, `newline`, `carriage_return`) | always `"inherit"` |
-| `raw_*` | reclassifier placeholders — fall back to `text` |
+| twinkleplop token                                                 | typical VSCode scope(s)                                                          |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `keyword`                                                         | `keyword`, `keyword.control`, `storage.type`                                     |
+| `type`                                                            | `entity.name.type`, `support.type`, `support.class`                              |
+| `string`                                                          | `string`, `string.quoted`                                                        |
+| `number`                                                          | `constant.numeric`                                                               |
+| `comment`                                                         | `comment`                                                                        |
+| `function`                                                        | `entity.name.function`, `support.function`                                       |
+| `identifier` / `variable`                                         | `variable`, `variable.other`                                                     |
+| `builtin`                                                         | `support.function`, `support.class`                                              |
+| `boolean` / `null`                                                | `constant.language`                                                              |
+| `operator`                                                        | `keyword.operator`, `punctuation.separator.operator`                             |
+| `punctuation`                                                     | `punctuation` (often falls back to `text`/foreground)                            |
+| `property`                                                        | `support.type.property-name`, `variable.other.property`                          |
+| `decorator`                                                       | `meta.decorator`, `entity.name.decorator`                                        |
+| `tag_name` / `tag`                                                | `entity.name.tag`                                                                |
+| `attribute` / `attr_name`                                         | `entity.other.attribute-name`                                                    |
+| `lifetime`                                                        | `storage.modifier.lifetime` (Rust) — fall back to `keyword`                      |
+| `selector` / `selector_class` / `selector_id` / `selector_pseudo` | `entity.other.attribute-name.class.css`, `entity.name.tag.css`                   |
+| `unit` / `css_variable`                                           | `support.type.property-name`, `variable.other`                                   |
+| `regex`                                                           | `string.regexp`                                                                  |
+| `template`                                                        | `string.template`                                                                |
+| `class_name`                                                      | `entity.name.class`                                                              |
+| `bold` / `italic` / `strike` (markdown)                           | `markup.bold`, `markup.italic`, `markup.strikethrough`                           |
+| `heading` / `heading_marker`                                      | `markup.heading`                                                                 |
+| `link_text` / `url` / `url_link` / `url_title`                    | `markup.underline.link`, `string.other.link`                                     |
+| `code` / `code_block` / `code_fence` / `code_language`            | `markup.inline.raw`, `markup.fenced_code`                                        |
+| `inserted` / `deleted` / `changed` (diff)                         | `markup.inserted`, `markup.deleted`, `markup.changed`                            |
+| `*_marker`, `*_open`, `*_close`                                   | delimiter punctuation — fall back to the matching content token or `punctuation` |
+| whitespace (`space`, `tab`, `newline`, `carriage_return`)         | always `"inherit"`                                                               |
+| `raw_*`                                                           | reclassifier placeholders — fall back to `text`                                  |
 
 When the upstream theme does not define a scope for a token, fall back to the most visually appropriate sibling color. Record every fallback as an inline comment on the palette line so reviewers can see the provenance. When in doubt between two plausible mappings, prefer the one that preserves the palette's color balance on a realistic sample (render the sample with the grammar-researcher's manual traces open, not a one-liner).
 
@@ -245,7 +245,7 @@ Three sections: light vars at `:root`, dark vars at `.dark`, token-binding rules
 /* @twinkleplop/theme-<name> — generated from src/tokens.ts, do not edit */
 
 :root {
-  --twp-background: #...;    /* exposed, not applied */
+  --twp-background: #...; /* exposed, not applied */
   --twp-keyword: #...;
   --twp-string: #...;
   /* ...every key from light, including background_color as --twp-background... */
@@ -258,12 +258,22 @@ Three sections: light vars at `:root`, dark vars at `.dark`, token-binding rules
   /* ...every key from dark, including background_color as --twp-background... */
 }
 
-.twinkleplop .keyword { color: var(--twp-keyword); }
-.twinkleplop .string { color: var(--twp-string); }
+.twinkleplop .keyword {
+  color: var(--twp-keyword);
+}
+.twinkleplop .string {
+  color: var(--twp-string);
+}
 /* ...one rule per palette key EXCEPT background_color and whitespace tokens... */
-.twinkleplop .space { white-space: pre; }
-.twinkleplop .tab { white-space: pre; }
-.twinkleplop .newline { white-space: pre; }
+.twinkleplop .space {
+  white-space: pre;
+}
+.twinkleplop .tab {
+  white-space: pre;
+}
+.twinkleplop .newline {
+  white-space: pre;
+}
 ```
 
 Two rules about the binding block:
@@ -283,8 +293,12 @@ Same token-binding rules, but variables declared directly at `:root` with no `.d
   /* ...light only... */
 }
 
-.twinkleplop .tok { color: var(--twp-text); }
-.twinkleplop .tok--keyword { color: var(--twp-keyword); }
+.twinkleplop .tok {
+  color: var(--twp-text);
+}
+.twinkleplop .tok--keyword {
+  color: var(--twp-keyword);
+}
 /* ...same binding rules... */
 ```
 
@@ -296,7 +310,9 @@ Same token-binding rules, but variables declared directly at `:root` with no `.d
   /* ...dark only... */
 }
 
-.twinkleplop .tok { color: var(--twp-text); }
+.twinkleplop .tok {
+  color: var(--twp-text);
+}
 /* ...same binding rules... */
 ```
 
@@ -343,10 +359,10 @@ const bindings = binding_block(light);
 
 writeFileSync("dist/light.css", var_block(":root", light) + "\n" + bindings);
 writeFileSync("dist/dark.css", var_block(":root", dark) + "\n" + bindings);
-writeFileSync("dist/index.css",
-  var_block(":root", light) + "\n" +
-  var_block(".dark", dark) + "\n" +
-  bindings);
+writeFileSync(
+  "dist/index.css",
+  var_block(":root", light) + "\n" + var_block(".dark", dark) + "\n" + bindings,
+);
 ```
 
 Key rule: `background_color` MUST appear in every `:root { ... }` and `.dark { ... }` block as `--twp-background`, but MUST NOT appear in any binding selector. The variable is the theme's offer; the consumer decides where (if anywhere) to apply it.
@@ -415,6 +431,7 @@ The skill is complete when:
 - The Tweaks panel in the running dev site can toggle into BOTH variants and each token category renders with the color you recorded.
 
 Report back to the user with:
+
 - Which family shipped (always both variants, but name them explicitly).
 - Any scope mappings that had to fall back (which tokens, to what, and why).
 - Any sources that disagreed with upstream and which one won.

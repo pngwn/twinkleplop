@@ -1,132 +1,132 @@
 /* Twinkleplop Syntax Highlighting Styles */
 
 .highlight {
-	background: #1e1e1e;
-	color: #d4d4d4;
-	padding: 1rem;
-	border-radius: 6px;
-	overflow-x: auto;
-	font-family: "Fira Code", "Monaco", "Consolas", monospace;
-	font-size: 14px;
-	line-height: 1.5;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: "Fira Code", "Monaco", "Consolas", monospace;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .highlight code {
-	display: block;
+  display: block;
 }
 
 /* Line numbers */
 .line-number {
-	display: inline-block;
-	width: 3em;
-	text-align: right;
-	padding-right: 1em;
-	color: #858585;
-	user-select: none;
+  display: inline-block;
+  width: 3em;
+  text-align: right;
+  padding-right: 1em;
+  color: #858585;
+  user-select: none;
 }
 
 .line-content {
-	display: inline-block;
-	white-space: pre;
+  display: inline-block;
+  white-space: pre;
 }
 
 /* CSS Token styles */
 .comment {
-	color: #6a9955;
-	font-style: italic;
+  color: #6a9955;
+  font-style: italic;
 }
 
 .string {
-	color: #ce9178;
+  color: #ce9178;
 }
 
 .string-delimiter {
-	color: #ce9178;
+  color: #ce9178;
 }
 
 .keyword {
-	color: #569cd6;
-	font-weight: bold;
+  color: #569cd6;
+  font-weight: bold;
 }
 
 .number {
-	color: #b5cea8;
+  color: #b5cea8;
 }
 
 .unit {
-	color: #b5cea8;
+  color: #b5cea8;
 }
 
 .property {
-	color: #9cdcfe;
+  color: #9cdcfe;
 }
 
 .selector-class {
-	color: #d7ba7d;
+  color: #d7ba7d;
 }
 
 .selector-id {
-	color: #d7ba7d;
+  color: #d7ba7d;
 }
 
 .at-rule {
-	color: #c586c0;
+  color: #c586c0;
 }
 
 .punctuation {
-	color: #d4d4d4;
+  color: #d4d4d4;
 }
 
 .whitespace {
-	/* Whitespace is typically invisible */
+  /* Whitespace is typically invisible */
 }
 
 .identifier {
-	color: #dcdcaa;
+  color: #dcdcaa;
 }
 
 /* Light theme variant */
 .highlight-light {
-	background: #ffffff;
-	color: #000000;
-	border: 1px solid #e1e4e8;
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid #e1e4e8;
 }
 
 .highlight-light .comment {
-	color: #008000;
+  color: #008000;
 }
 
 .highlight-light .string,
 .highlight-light .string-delimiter {
-	color: #a31515;
+  color: #a31515;
 }
 
 .highlight-light .keyword {
-	color: #0000ff;
+  color: #0000ff;
 }
 
 .highlight-light .number,
 .highlight-light .unit {
-	color: #098658;
+  color: #098658;
 }
 
 .highlight-light .property {
-	color: #001080;
+  color: #001080;
 }
 
 .highlight-light .selector-class,
 .highlight-light .selector-id {
-	color: #795e26;
+  color: #795e26;
 }
 
 .highlight-light .at-rule {
-	color: #af00db;
+  color: #af00db;
 }
 
 .highlight-light .punctuation {
-	color: #000000;
+  color: #000000;
 }
 
 .highlight-light .identifier {
-	color: #001080;
+  color: #001080;
 }

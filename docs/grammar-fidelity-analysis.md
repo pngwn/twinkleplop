@@ -1,8 +1,8 @@
 # Grammar fidelity analysis
 
 This document complements [`reclassifiers.md`](./reclassifiers.md). That doc
-catalogues the reclassifier pipelines and splits them into *correctness* and
-*fidelity* buckets. This one asks the inverse question:
+catalogues the reclassifier pipelines and splits them into _correctness_ and
+_fidelity_ buckets. This one asks the inverse question:
 
 > If we ignore correctness work, what fidelity does each grammar have on its
 > own? Which identifier distinctions are baked into the state machine, which
@@ -48,15 +48,15 @@ state structure and rule ordering; only emitted token names change.
 
 Equivalence was verified on real samples before benchmarking:
 
-| Sample | Tokens | Diffs |
-|---|---|---|
-| `medium_js` | 258 | 0 |
-| `large_js` | 791 | 1 (stringified `if` inside a template) |
-| `complex_js` | 1036 | 0 |
-| `python_medium` | 336 | 0 |
-| `python_large` | 3420 | 0 |
-| `rust_medium` | 387 | 0 |
-| `rust_large` | 3860 | 0 |
+| Sample          | Tokens | Diffs                                  |
+| --------------- | ------ | -------------------------------------- |
+| `medium_js`     | 258    | 0                                      |
+| `large_js`      | 791    | 1 (stringified `if` inside a template) |
+| `complex_js`    | 1036   | 0                                      |
+| `python_medium` | 336    | 0                                      |
+| `python_large`  | 3420   | 0                                      |
+| `rust_medium`   | 387    | 0                                      |
+| `rust_large`    | 3860   | 0                                      |
 
 The single `large_js` diff is an acknowledged artefact of reclassifier
 pattern matching being state-blind: a dead `if` token the grammar
@@ -76,41 +76,41 @@ Rating scale:
   context or case-based dispatch.
 - **High** — adds `property`/`type`/method call as well.
 
-| Language | Native fidelity | Grammar machinery | Identifier types the grammar emits |
-|---|---|---|---|
-| Markdown | Bare | Minimal | — (structure only) |
-| SQL | Bare | Light | `identifier`, `variable` |
-| YAML | Bare | Medium (dash/question probes) | `identifier`, `variable` (anchor/alias) |
-| Bash | Bare | Light | `identifier`, `variable` (sigil + 1 char) |
-| HTML | Low | Minimal | `tag_name`, `attr_name` |
-| JavaScript | Low | Light | `identifier`, `function`, `keyword`, `boolean` |
-| TypeScript | Low–Medium | Light | + `type` (builtins only), `decorator` |
-| TSX | Medium | Light | TS + `tag_name`, `attr_name` |
-| Svelte | Medium | Light | `tag_name`, `attr_name`, `svelte_block`, `svelte_directive` |
-| CSS | Medium–High | Medium (prop/selector probe) | `property`, `selector`, `selector_class`, `selector_id`, `selector_pseudo`, `unit`, `css_variable`, `identifier` |
-| Rust | Medium | Medium (lifetime/char probe + case dispatch) | `identifier`, `class_name` (case+primitives), `builtin` (macro `!`), `lifetime`, `keyword`, `boolean`, `number` |
-| Python | Medium–High | Light | `identifier`, `class_name` (PascalCase), `builtin` (type set), `boolean`, `keyword`, `number`, `format` |
+| Language   | Native fidelity | Grammar machinery                            | Identifier types the grammar emits                                                                               |
+| ---------- | --------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Markdown   | Bare            | Minimal                                      | — (structure only)                                                                                               |
+| SQL        | Bare            | Light                                        | `identifier`, `variable`                                                                                         |
+| YAML       | Bare            | Medium (dash/question probes)                | `identifier`, `variable` (anchor/alias)                                                                          |
+| Bash       | Bare            | Light                                        | `identifier`, `variable` (sigil + 1 char)                                                                        |
+| HTML       | Low             | Minimal                                      | `tag_name`, `attr_name`                                                                                          |
+| JavaScript | Low             | Light                                        | `identifier`, `function`, `keyword`, `boolean`                                                                   |
+| TypeScript | Low–Medium      | Light                                        | + `type` (builtins only), `decorator`                                                                            |
+| TSX        | Medium          | Light                                        | TS + `tag_name`, `attr_name`                                                                                     |
+| Svelte     | Medium          | Light                                        | `tag_name`, `attr_name`, `svelte_block`, `svelte_directive`                                                      |
+| CSS        | Medium–High     | Medium (prop/selector probe)                 | `property`, `selector`, `selector_class`, `selector_id`, `selector_pseudo`, `unit`, `css_variable`, `identifier` |
+| Rust       | Medium          | Medium (lifetime/char probe + case dispatch) | `identifier`, `class_name` (case+primitives), `builtin` (macro `!`), `lifetime`, `keyword`, `boolean`, `number`  |
+| Python     | Medium–High     | Light                                        | `identifier`, `class_name` (PascalCase), `builtin` (type set), `boolean`, `keyword`, `number`, `format`          |
 
 ## Classification per distinction
 
-| Distinction | Language(s) | Bucket | Notes |
-|---|---|---|---|
-| Keyword promotion by exact text | all with `keyword()` | inherent | Word-boundary checks are easier at lex time; keeping them there also avoids re-tokenizing to detect them. |
-| `class_name` via PascalCase | Python, Rust | relocatable | Trivial post-hoc (check first-char case). |
-| `class_name` via `class`/`new`/`instanceof` | JavaScript, TypeScript | already-reclassifier | `class_name_promoter` does this today. |
-| `builtin` type set (`int`, `str`, …) | Python | relocatable | Set lookup against identifier text. |
-| `class_name` for primitive set (`i32`, `u64`, …) | Rust | relocatable | Same. |
-| `boolean` literal text | JavaScript, Python, Rust, SQL, YAML | relocatable | Set lookup. |
-| `function` via `(` probe | JavaScript | relocatable | Already relocated for Python, Rust, CSS. |
-| `function` via `=` + arrow | JavaScript | already-reclassifier | `function_variable_rules`. |
-| `property` after `.` / before `:` | JavaScript, YAML | already-reclassifier | `interface_member_promoter`, `promote_keys`. |
-| `type` in type-position | TypeScript | already-reclassifier | `type_position_promoter`; inherent to correctness. |
-| `<>` as punctuation (generics) | Rust | already-reclassifier | `reclassify_generics`; depth-tracking walk. |
-| `!` macro marker | Rust | inherent | Collapsing to `identifier` merges `vec!` into one token (tokenizer coalesces same-typed spans); the grammar-time distinctness is load-bearing. |
-| `$foo` lexeme scope | Bash | inherent | Grammar cannot extend beyond 2 chars without leaking nested states; reclassifier owns the rest. |
-| `0xff` / `16#ff` numeric assembly | Bash | inherent | State machine would require multi-token lookahead; reclassifier merges post-hoc. |
-| SQL keyword/type/boolean text | SQL | already-reclassifier | Case-insensitive set lookup; grammar couldn't enumerate case variants cheaply. |
-| YAML scalar type (bool/null/number) | YAML | already-reclassifier | Spec-driven pattern match on identifier text. |
+| Distinction                                      | Language(s)                         | Bucket               | Notes                                                                                                                                          |
+| ------------------------------------------------ | ----------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Keyword promotion by exact text                  | all with `keyword()`                | inherent             | Word-boundary checks are easier at lex time; keeping them there also avoids re-tokenizing to detect them.                                      |
+| `class_name` via PascalCase                      | Python, Rust                        | relocatable          | Trivial post-hoc (check first-char case).                                                                                                      |
+| `class_name` via `class`/`new`/`instanceof`      | JavaScript, TypeScript              | already-reclassifier | `class_name_promoter` does this today.                                                                                                         |
+| `builtin` type set (`int`, `str`, …)             | Python                              | relocatable          | Set lookup against identifier text.                                                                                                            |
+| `class_name` for primitive set (`i32`, `u64`, …) | Rust                                | relocatable          | Same.                                                                                                                                          |
+| `boolean` literal text                           | JavaScript, Python, Rust, SQL, YAML | relocatable          | Set lookup.                                                                                                                                    |
+| `function` via `(` probe                         | JavaScript                          | relocatable          | Already relocated for Python, Rust, CSS.                                                                                                       |
+| `function` via `=` + arrow                       | JavaScript                          | already-reclassifier | `function_variable_rules`.                                                                                                                     |
+| `property` after `.` / before `:`                | JavaScript, YAML                    | already-reclassifier | `interface_member_promoter`, `promote_keys`.                                                                                                   |
+| `type` in type-position                          | TypeScript                          | already-reclassifier | `type_position_promoter`; inherent to correctness.                                                                                             |
+| `<>` as punctuation (generics)                   | Rust                                | already-reclassifier | `reclassify_generics`; depth-tracking walk.                                                                                                    |
+| `!` macro marker                                 | Rust                                | inherent             | Collapsing to `identifier` merges `vec!` into one token (tokenizer coalesces same-typed spans); the grammar-time distinctness is load-bearing. |
+| `$foo` lexeme scope                              | Bash                                | inherent             | Grammar cannot extend beyond 2 chars without leaking nested states; reclassifier owns the rest.                                                |
+| `0xff` / `16#ff` numeric assembly                | Bash                                | inherent             | State machine would require multi-token lookahead; reclassifier merges post-hoc.                                                               |
+| SQL keyword/type/boolean text                    | SQL                                 | already-reclassifier | Case-insensitive set lookup; grammar couldn't enumerate case variants cheaply.                                                                 |
+| YAML scalar type (bool/null/number)              | YAML                                | already-reclassifier | Spec-driven pattern match on identifier text.                                                                                                  |
 
 ## Feasibility ranking
 
@@ -143,30 +143,30 @@ for one macOS run; repeat trials land within the reported RME (±1-1.5%).
 
 ### Raw tokenize (grammar only)
 
-| Sample | full (hz) | stripped (hz) | stripped Δ |
-|---|---|---|---|
-| js medium | 28,434 | 28,423 | ±0% |
-| js large | 8,700 | 8,745 | +0.5% |
-| js complex | 6,883 | 6,852 | -0.5% |
-| py medium | 24,667 | 24,448 | -0.9% |
-| py large | 2,533 | 2,547 | +0.5% |
-| rs medium | 26,922 | 27,009 | +0.3% |
-| rs large | 2,675 | 2,695 | +0.7% |
+| Sample     | full (hz) | stripped (hz) | stripped Δ |
+| ---------- | --------- | ------------- | ---------- |
+| js medium  | 28,434    | 28,423        | ±0%        |
+| js large   | 8,700     | 8,745         | +0.5%      |
+| js complex | 6,883     | 6,852         | -0.5%      |
+| py medium  | 24,667    | 24,448        | -0.9%      |
+| py large   | 2,533     | 2,547         | +0.5%      |
+| rs medium  | 26,922    | 27,009        | +0.3%      |
+| rs large   | 2,675     | 2,695         | +0.7%      |
 
 Every delta is within run-to-run noise. The grammar-time identifier
 classification work is effectively free.
 
 ### End-to-end (grammar + reclassifier pipeline)
 
-| Sample | full (hz) | stripped (hz) | stripped Δ |
-|---|---|---|---|
-| js medium | 18,056 | 15,372 | **-14.9%** |
-| js large | 5,530 | 4,999 | **-9.6%** |
-| js complex | 4,295 | 3,882 | **-9.6%** |
-| py medium | 20,395 | 18,746 | **-8.1%** |
-| py large | 2,225 | 2,031 | **-8.7%** |
-| rs medium | 18,921 | 17,826 | **-5.8%** |
-| rs large | 2,073 | 1,966 | **-5.2%** |
+| Sample     | full (hz) | stripped (hz) | stripped Δ |
+| ---------- | --------- | ------------- | ---------- |
+| js medium  | 18,056    | 15,372        | **-14.9%** |
+| js large   | 5,530     | 4,999         | **-9.6%**  |
+| js complex | 4,295     | 3,882         | **-9.6%**  |
+| py medium  | 20,395    | 18,746        | **-8.1%**  |
+| py large   | 2,225     | 2,031         | **-8.7%**  |
+| rs medium  | 18,921    | 17,826        | **-5.8%**  |
+| rs large   | 2,073     | 1,966         | **-5.2%**  |
 
 The stripped pipeline is 5–15% slower end-to-end. The extra cost is the
 restoration pass walking the token stream, inspecting identifier text,
@@ -178,7 +178,7 @@ and mutating the token array.
    word-boundary checks, and short probe states compile to indexed
    lookups on the same hot path as lexing. Collapsing them to a single
    identifier emission measures the same throughput. This means a
-   consumer who wants *less* fidelity — a bare-identifier stream —
+   consumer who wants _less_ fidelity — a bare-identifier stream —
    doesn't get a perf win from the grammar; the grammar does the same
    work regardless.
 
@@ -207,14 +207,14 @@ and mutating the token array.
      cannot be simplified further.
    - Rust generic `<>` rewriting: depth-tracking already lives in a
      reclassifier.
-   These are the irreducible core; a fidelity API should treat them as
-   always-on.
+     These are the irreducible core; a fidelity API should treat them as
+     always-on.
 
 5. **What the benchmark does not cover.** The stripping rewrites token
    names but does not remove rules. A more aggressive variant that
    actually merges identifier entry states (eliminating the
    case-dispatch rule entirely) could in principle run faster in the
-   compiled table, at which point stripped could be *faster* than full.
+   compiled table, at which point stripped could be _faster_ than full.
    Our raw-tokenize numbers suggest the headroom is small — the
    grammar is already spending most of its time on lexing work (string
    bodies, number continuation, operators), not identifier dispatch —
@@ -251,8 +251,8 @@ Not a design, just what the benchmark implies is feasible:
 
 ```js
 // coarse
-language(src, { fidelity: "low" })          // correctness passes only
-language(src, { fidelity: "high" })         // current default
+language(src, { fidelity: "low" }); // correctness passes only
+language(src, { fidelity: "high" }); // current default
 
 // fine
 language(src, {
@@ -262,7 +262,7 @@ language(src, {
     properties: false,
     builtins: true,
   },
-})
+});
 ```
 
 Each flag corresponds to one or a small group of reclassifier passes
@@ -293,12 +293,12 @@ and compare outputs.
 Results on realistic + adversarial samples (script at
 `lib/bench/src/commutativity/check.js`):
 
-| Language | Fidelity passes | Commutative? |
-|---|---|---|
+| Language   | Fidelity passes                                                                            | Commutative?                                        |
+| ---------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
 | JavaScript | function_variable_rules, interface_member_promoter, class_name_promoter, embed_interleaved | ✓ yes (65 subset×permutation combinations verified) |
-| Python | function_rules | trivial (1 pass) |
-| Rust | function_call_rules, extend_lifetime_over_type | ✗ **no** |
-| Svelte | block_brace_open, block_brace_close, embed_grammars | ✗ **no** |
+| Python     | function_rules                                                                             | trivial (1 pass)                                    |
+| Rust       | function_call_rules, extend_lifetime_over_type                                             | ✗ **no**                                            |
+| Svelte     | block_brace_open, block_brace_close, embed_grammars                                        | ✗ **no**                                            |
 
 Two real order-dependencies exist:
 

@@ -1,5 +1,5 @@
 // hover, error, error-line, highlight, completion, tag, query
-import type { NodeCompletion, NodeError, TwoslashOptions } from 'twoslash'
+import type { NodeCompletion, NodeError, TwoslashOptions } from "twoslash";
 
 export interface HighlightOptions {
   lang?: "ts" | "tsx" | "js" | "jsx";
@@ -13,32 +13,29 @@ interface BaseWrapper {
   kind: string;
 }
 interface HoverWrapper extends BaseWrapper {
-  kind: "hover",
+  kind: "hover";
   text: string;
   docs?: string;
 }
 
 interface ErrorWrapper extends BaseWrapper {
   kind: "error";
-  code?: string |number ;
+  code?: string | number;
   level: NodeError["level"];
 }
 
 interface HighlightWrapper extends BaseWrapper {
-  kind: "highlight",
-	text?: string,
+  kind: "highlight";
+  text?: string;
 }
-
 
 interface CompletionWrapper extends BaseWrapper {
-  kind: "completion",
-	prefix: string,
-	completions: NodeCompletion["completions"],
+  kind: "completion";
+  prefix: string;
+  completions: NodeCompletion["completions"];
 }
 
-
 export type Wrapper = HoverWrapper | ErrorWrapper | HighlightWrapper | CompletionWrapper;
-
 
 interface ErrorLineAnnotation {
   kind: "error-line";
@@ -54,9 +51,9 @@ interface QueryLineAnnotation {
 }
 
 interface TagLineAnnotation {
- 	kind: "tag",
-	name:string,
-	text?: string,
+  kind: "tag";
+  name: string;
+  text?: string;
 }
 
 export type LineAnnotation = ErrorLineAnnotation | QueryLineAnnotation | TagLineAnnotation;

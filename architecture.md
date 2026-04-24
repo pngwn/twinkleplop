@@ -196,9 +196,9 @@ In some cases it isn't possible to know what you are dealing with until you ente
 
 ```css
 div {
-	a:hover one two three {
-		a: hover one two three;
-	}
+  a:hover one two three {
+    a: hover one two three;
+  }
 }
 ```
 

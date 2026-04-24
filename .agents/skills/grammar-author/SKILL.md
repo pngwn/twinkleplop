@@ -40,12 +40,14 @@ Keep this phase tight — one focused pass producing a state-by-state map. You w
 ## Phase 2: Twinkleplop Grammar API
 
 Read these files for full type signatures and the complete API reference:
+
 - `grammar.md` — the language definition guide (start here)
 - `lib/core/src/dsl.ts` — all helper implementations
 - `lib/core/src/types.ts` — Grammar, GrammarRule, GrammarState types
 - `lib/core/src/tokens.ts` — standard token names
 
 Study these existing grammars for pattern reference:
+
 - `languages/json/src/grammar.ts` — minimal worked example: within, keyword, match, enter/leave, fallback, shared rules (~140 lines)
 - `languages/html/src/grammar.ts` — embedded languages (raw tokens + reclassifier), shared rule arrays, known-limitations comment format (~184 lines)
 - `languages/css/src/grammar.ts` — probe states for disambiguating selectors vs properties, shared constants (~477 lines)
@@ -118,23 +120,26 @@ Custom token types are any string: `match("@media", "at_rule")`. Custom names be
 ### 2.6 Character classes
 
 ```js
-range([["a", "z"], ["A", "Z"]])  // letter range
+range([
+  ["a", "z"],
+  ["A", "Z"],
+]); // letter range
 ```
 
 Pre-built: LETTER, DIGIT, ALNUM, HEX, LOWER, UPPER. Mix exact strings and ranges in one match():
 
 ```js
-match(["_", "$", LETTER], TOKENS.identifier)
+match(["_", "$", LETTER], TOKENS.identifier);
 // one rule with both match and range fields
 ```
 
 ### 2.7 Strings and bounded matches
 
 ```js
-within("//", "\n", TOKENS.comment)                         // single-line comment
-within("/*", "*/", TOKENS.comment)                         // block comment
-within('"', '"', TOKENS.string, { escape: "\\" })          // string with escapes
-within("'", "'", TOKENS.string, { escape: "\\", multiline: false })  // single-line string
+within("//", "\n", TOKENS.comment); // single-line comment
+within("/*", "*/", TOKENS.comment); // block comment
+within('"', '"', TOKENS.string, { escape: "\\" }); // string with escapes
+within("'", "'", TOKENS.string, { escape: "\\", multiline: false }); // single-line string
 ```
 
 ### 2.8 Reclassifiers (post-pass token enrichment)
@@ -144,6 +149,7 @@ The core grammar should produce correct, complete tokenization on its own. Recla
 Reclassifiers are pure functions `(input, TokenizeResult) -> TokenizeResult` composed into a pipeline. They never mutate the input. Consumers who import `grammar` get base tokens; consumers who import `language` get the enriched version.
 
 **When to use a reclassifier instead of a grammar rule:**
+
 - The distinction requires looking at tokens AFTER the current one (the grammar only looks forward character by character, but a reclassifier sees the whole token stream)
 - Encoding the distinction in the state machine would require duplicating many states (e.g., tracking "are we in a declaration context?" across every sub-state)
 - The base token type is correct enough for highlighting — the enrichment is a refinement, not a correction
@@ -158,22 +164,22 @@ import { rewrite_types, type, seq, any_of, balanced_parens } from "@twinkleplop/
 // detect function variables: `const foo = () => ...` -> foo becomes `function`
 const rules = [
   {
-    anchor: "identifier",           // token type to look for
-    when: seq(                      // pattern that must follow the anchor
-      type("operator", "="),        // match operator token with value "="
-      balanced_parens("(", ")"),    // match balanced parens (any depth)
-      type("operator", "=>"),       // match fat arrow
+    anchor: "identifier", // token type to look for
+    when: seq(
+      // pattern that must follow the anchor
+      type("operator", "="), // match operator token with value "="
+      balanced_parens("(", ")"), // match balanced parens (any depth)
+      type("operator", "=>"), // match fat arrow
     ),
-    rewrite: "function",            // new type for the anchor token
+    rewrite: "function", // new type for the anchor token
   },
 ];
 
-export const reclassifiers = [
-  rewrite_types(rules, { trivia: ["comment"] }),
-];
+export const reclassifiers = [rewrite_types(rules, { trivia: ["comment"] })];
 ```
 
 Pattern combinators:
+
 - `type(type_name, value?)` — match a single token by type, optionally constrained by source text value
 - `seq(...patterns)` — sequential match (skips trivia between elements)
 - `any_of(...branches)` — first-match-wins branching
@@ -209,6 +215,7 @@ See `languages/html/src/reclassifiers.ts` for the pattern. Skip this for grammar
 ### 2.9 Known-limitations comment
 
 Every grammar MUST start with a block comment documenting:
+
 - **Scope**: what the grammar covers
 - **Known limitations**: what it intentionally omits or handles incorrectly, and why
 - **Edge cases**: behaviors that differ from the language spec
@@ -240,9 +247,9 @@ A single probe entered from the `'` position scans characters one at a time. Non
 
 #### Approaches that do not work
 
-**Intermediate dispatch state + probe**: use a non-probe state to check the first character, then enter a probe for the letter/_ case. Problem: the probe rewinds to `probe_entry.pos`, which is the position of the character that triggered probe entry (the letter in the dispatch state), NOT the `'`. The `'` was consumed by `on()` in main before the dispatch state, so the probe cannot rewind past it. The `'` ends up un-tokenized.
+**Intermediate dispatch state + probe**: use a non-probe state to check the first character, then enter a probe for the letter/\_ case. Problem: the probe rewinds to `probe_entry.pos`, which is the position of the character that triggered probe entry (the letter in the dispatch state), NOT the `'`. The `'` was consumed by `on()` in main before the dispatch state, so the probe cannot rewind past it. The `'` ends up un-tokenized.
 
-**Single probe with all disambiguation rules**: put letter/_, `\`, `'`, space, digits, operators, etc. all in one probe. Problem: `' '` (space char literal) triggers the "non-identifier = lifetime" rule on the first character, misclassifying it.
+**Single probe with all disambiguation rules**: put letter/\_, `\`, `'`, space, digits, operators, etc. all in one probe. Problem: `' '` (space char literal) triggers the "non-identifier = lifetime" rule on the first character, misclassifying it.
 
 #### The solution: chained probes
 
@@ -367,6 +374,7 @@ Follow the exact patterns from `languages/json/` for: package.json, src/index.ts
 ### 3.2 Grammar file structure
 
 Write `src/grammar.ts` in this order:
+
 1. Known-limitations comment block (section 2.9)
 2. Imports from `@twinkleplop/core` and `@twinkleplop/core/tokens`
 3. Import `define_grammar` from `@twinkleplop/core/compile`
@@ -379,6 +387,7 @@ Write `src/grammar.ts` in this order:
 ### 3.3 Test fixtures
 
 Create test files in `test/` covering every token category from your Phase 1 inventory. At minimum:
+
 - Strings (every quote style, escape sequences, edge cases)
 - Numbers (every numeric form the language supports)
 - Comments (every comment style)
@@ -390,6 +399,7 @@ Generate snapshots: `npx tsx generate-snapshots.js`
 ### 3.4 Verification
 
 Run in order:
+
 1. `verify(raw_grammar)` returns `[]` — catches undefined state references and orphan states (this is the first test in grammar.test.ts)
 2. `pnpm --filter @twinkleplop/{name} test` — runs all snapshot tests
 3. If token output looks wrong: copy `lib/core/debug-grammar-template.js` into your package, configure it with your grammar and a failing input, and run it for character-level tracing
@@ -397,6 +407,7 @@ Run in order:
 ### 3.5 Iterate
 
 Compare your snapshot output against your Phase 1 manual traces. If they diverge:
+
 1. Identify which state transition is wrong
 2. Check your enter/goto/leave choice (section 2.1)
 3. Check your rule ordering (section 2.2)

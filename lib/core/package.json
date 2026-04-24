@@ -1,69 +1,69 @@
 {
-	"name": "@twinkleplop/core",
-	"version": "0.1.0",
-	"type": "module",
-	"types": "./dist/types.d.ts",
-	"exports": {
-		".": {
-			"source": "./src/index.ts",
-			"types": "./dist/types.d.ts",
-			"import": "./dist/twinkleplop.production.js",
-			"default": "./dist/twinkleplop.production.js"
-		},
-		"./debug": {
-			"source": "./src/index.ts",
-			"types": "./dist/types.d.ts",
-			"import": "./dist/twinkleplop.debug.js",
-			"default": "./dist/twinkleplop.debug.js"
-		},
-		"./compile": {
-			"source": "./src/compiler_index.ts",
-			"types": "./dist/types.d.ts",
-			"import": "./dist/twinkleplop.compiler.js"
-		},
-		"./tokens": {
-			"source": "./src/tokens.ts",
-			"types": "./dist/types.d.ts",
-			"import": "./dist/twinkleplop.tokens.js"
-		},
-		"./introspector": {
-			"source": "./src/introspector.ts",
-			"types": "./dist/types.d.ts",
-			"import": "./dist/twinkleplop.introspector.js"
-		},
-		"./grammar-mapper": {
-			"source": "./src/grammar-mapper.ts",
-			"types": "./dist/types.d.ts",
-			"import": "./dist/twinkleplop.grammar-mapper.js"
-		},
-		"./types": {
-			"source": "./src/types.ts",
-			"types": "./dist/types.d.ts",
-			"import": "./dist/twinkleplop.types.js"
-		}
-	},
-	"files": [
-		"dist",
-		"src"
-	],
-	"scripts": {
-		"build": "vite build --mode=debug && vite build",
-		"ts": "tsc --noEmit",
-		"types": "node dts.js",
-		"build:watch": "tsc --watch",
-		"clean": "rm -rf dist",
-		"prebuild": "npm run clean",
-		"build:tokenizer": "node build-tokenizer.js",
-		"build:tokenizer:debug": "node build-tokenizer.js --debug",
-		"build:tokenizer:prod": "node build-tokenizer.js",
-		"test": "vitest",
-		"typecheck": "tsc --noEmit"
-	},
-	"devDependencies": {
-		"@rollup/plugin-terser": "^0.4.4",
-		"@types/node": "^20.19.17",
-		"terser": "^5.44.0",
-		"typescript": "^5.8.3",
-		"vite": "^8.0.10"
-	}
+  "name": "@twinkleplop/core",
+  "version": "0.1.0",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "types": "./dist/types.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/twinkleplop.production.js",
+      "default": "./dist/twinkleplop.production.js"
+    },
+    "./debug": {
+      "source": "./src/index.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/twinkleplop.debug.js",
+      "default": "./dist/twinkleplop.debug.js"
+    },
+    "./compile": {
+      "source": "./src/compiler_index.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/twinkleplop.compiler.js"
+    },
+    "./tokens": {
+      "source": "./src/tokens.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/twinkleplop.tokens.js"
+    },
+    "./introspector": {
+      "source": "./src/introspector.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/twinkleplop.introspector.js"
+    },
+    "./grammar-mapper": {
+      "source": "./src/grammar-mapper.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/twinkleplop.grammar-mapper.js"
+    },
+    "./types": {
+      "source": "./src/types.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/twinkleplop.types.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build --mode=debug && vite build",
+    "ts": "tsc --noEmit",
+    "types": "node dts.js",
+    "build:watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "build:tokenizer": "node build-tokenizer.js",
+    "build:tokenizer:debug": "node build-tokenizer.js --debug",
+    "build:tokenizer:prod": "node build-tokenizer.js",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "@types/node": "^20.19.17",
+    "terser": "^5.44.0",
+    "typescript": "^5.8.3",
+    "vite": "^8.0.10"
+  }
 }

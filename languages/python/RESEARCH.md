@@ -6,8 +6,9 @@ all string and bytes prefix combinations, all numeric literal forms,
 arbitrary f-string nesting (including quote reuse and backslashes), soft
 keywords as identifiers (the parser, not the tokenizer, decides if `match` is
 a keyword), and unicode identifiers at a practical level (accept ascii letters
-+ underscore + any non-ascii code point in id-continue/id-start, skip the full
-xid_* closure and nfkc normalization since those are parser concerns).
+
+- underscore + any non-ascii code point in id-continue/id-start, skip the full
+  xid\_\* closure and nfkc normalization since those are parser concerns).
 
 indentation-sensitive indent/dedent tokens are a parser concept; a character-
 scanning highlighter does not need to emit them. the highlighter should color
@@ -17,10 +18,11 @@ the leading whitespace on each line as plain whitespace and let `:` / `def` /
 ## sources consulted
 
 primary (official):
+
 - https://docs.python.org/3/reference/lexical_analysis.html — python 3.14.4 language reference, chapter 2 (the canonical lexical spec). local copy /tmp/python_lex.html
 - https://peps.python.org/pep-0498/ — original f-string pep (3.6). local copy /tmp/pep498.html
 - https://peps.python.org/pep-0701/ — syntactic formalization of f-strings (3.12). local copy /tmp/pep701.html
-- https://peps.python.org/pep-3131/ — non-ascii identifiers (unicode xid_* + nfkc)
+- https://peps.python.org/pep-3131/ — non-ascii identifiers (unicode xid\_\* + nfkc)
 - https://peps.python.org/pep-0515/ — underscores in numeric literals (3.6)
 - https://peps.python.org/pep-0526/ — variable annotations (syntax, no new tokens)
 - https://peps.python.org/pep-0634/ — structural pattern matching (3.10, introduces soft keywords)
@@ -29,6 +31,7 @@ primary (official):
 - https://peps.python.org/pep-0414/ — re-added `u` prefix (3.3)
 
 cross-reference (existing highlighters):
+
 - https://github.com/tree-sitter/tree-sitter-python — tree-sitter grammar, models f-strings as a proper nested construct
 - https://github.com/PrismJS/prism/blob/master/components/prism-python.js — prism grammar (regex-based, pragmatic)
 - https://github.com/pygments/pygments/blob/master/pygments/lexers/python.py — pygments `PythonLexer` (the de-facto reference for docs.python.org's own code blocks)
@@ -36,6 +39,7 @@ cross-reference (existing highlighters):
 - https://github.com/MagicStack/MagicPython — textmate grammar used by vscode's bundled python language support
 
 gaps and calls:
+
 - pep 701's grammar for f-strings is formalized as context-sensitive (the
   closing quote set depends on the opening prefix) and assumes a pda-style
   mode stack. a character-scanning tokenizer can still get this right by
@@ -124,21 +128,25 @@ for highlighting, the categories we actually color are:
 ### 2.1 literals
 
 **single-quoted string** `'...'`
+
 - delimiters: `'` ... `'`
 - no newline in content (unless escaped with `\<newline>` or raw ends the string unexpectedly)
 - backslash escapes processed unless raw prefix
 - may be prefixed with any allowed combination (see 2.1.7)
 
 **double-quoted string** `"..."`
+
 - same as single but with `"` delimiters
 
 **triple-single-quoted string** `'''...'''`
+
 - delimiters: `'''` ... `'''`
 - newlines preserved as literal content
 - a single or double `'` inside is literal, only `'''` terminates
 - may contain `"` freely
 
 **triple-double-quoted string** `"""..."""`
+
 - delimiters: `"""` ... `"""`
 - newlines preserved
 - `"` and `""` (fewer than three) are literal content
@@ -147,21 +155,22 @@ for highlighting, the categories we actually color are:
 
 spec lists these allowed combinations (any case mix permitted):
 
-| prefix | meaning                                                  |
-| ------ | -------------------------------------------------------- |
-| `b`    | bytes literal (ascii only in source, non-ascii via escape) |
-| `r`    | raw string (backslashes are literal)                     |
-| `u`    | unicode (no-op, allowed for py2 compat since pep 414)    |
-| `f`    | formatted string literal (f-string) (3.6+)               |
-| `t`    | template string literal (t-string) (3.14+)               |
-| `rb`, `br` | raw bytes (equivalent orderings)                    |
-| `rf`, `fr` | raw f-string (no escape processing outside `{...}`) |
-| `rt`, `tr` | raw t-string (3.14+)                                |
+| prefix     | meaning                                                    |
+| ---------- | ---------------------------------------------------------- |
+| `b`        | bytes literal (ascii only in source, non-ascii via escape) |
+| `r`        | raw string (backslashes are literal)                       |
+| `u`        | unicode (no-op, allowed for py2 compat since pep 414)      |
+| `f`        | formatted string literal (f-string) (3.6+)                 |
+| `t`        | template string literal (t-string) (3.14+)                 |
+| `rb`, `br` | raw bytes (equivalent orderings)                           |
+| `rf`, `fr` | raw f-string (no escape processing outside `{...}`)        |
+| `rt`, `tr` | raw t-string (3.14+)                                       |
 
 case-insensitivity means `Fr`, `FR`, `fR`, `BR`, `bR`, etc. are all valid.
 all 16 case combinations of each 2-letter prefix are valid lexically.
 
 **invalid prefix combinations** (reject):
+
 - `ur` / `ru` / `uf` / `ut` / `ub` — `u` cannot combine with any other prefix
 - `bf` / `fb` / `bt` / `tb` / `ft` / `tf` — `b`, `f`, `t` are mutually exclusive
 - `rrb`, `frf`, etc. — no triple combinations
@@ -316,24 +325,24 @@ imagnumber: (floatnumber | digitpart) ("j" | "J")
 
 from spec §2.5.4:
 
-| escape         | meaning                                |
-| -------------- | -------------------------------------- |
-| `\<newline>`   | ignored (line continuation in strings) |
-| `\\`           | backslash                              |
-| `\'`           | single quote                           |
-| `\"`           | double quote                           |
-| `\a`           | BEL U+0007                             |
-| `\b`           | BS U+0008                              |
-| `\f`           | FF U+000C                              |
-| `\n`           | LF U+000A                              |
-| `\r`           | CR U+000D                              |
-| `\t`           | TAB U+0009                             |
-| `\v`           | VT U+000B                              |
-| `\ooo`         | octal (1-3 digits, 0-7)                |
-| `\xhh`         | hex (exactly 2 digits)                 |
-| `\N{name}`     | named unicode char (str only)          |
-| `\uxxxx`       | 16-bit unicode (str only; exactly 4)   |
-| `\Uxxxxxxxx`   | 32-bit unicode (str only; exactly 8)   |
+| escape       | meaning                                |
+| ------------ | -------------------------------------- |
+| `\<newline>` | ignored (line continuation in strings) |
+| `\\`         | backslash                              |
+| `\'`         | single quote                           |
+| `\"`         | double quote                           |
+| `\a`         | BEL U+0007                             |
+| `\b`         | BS U+0008                              |
+| `\f`         | FF U+000C                              |
+| `\n`         | LF U+000A                              |
+| `\r`         | CR U+000D                              |
+| `\t`         | TAB U+0009                             |
+| `\v`         | VT U+000B                              |
+| `\ooo`       | octal (1-3 digits, 0-7)                |
+| `\xhh`       | hex (exactly 2 digits)                 |
+| `\N{name}`   | named unicode char (str only)          |
+| `\uxxxx`     | 16-bit unicode (str only; exactly 4)   |
+| `\Uxxxxxxxx` | 32-bit unicode (str only; exactly 8)   |
 
 notes:
 
@@ -390,41 +399,51 @@ spec §2.3.2:
 from spec §2.7 (the `OP` category):
 
 assignment (compound):
+
 ```
 += -= *= /= //= %= **= &= |= ^= <<= >>= @= :=
 ```
+
 note `:=` (walrus operator) introduced in 3.8 (pep 572).
 
 bitwise:
+
 ```
 & | ^ ~ << >>
 ```
 
 comparison:
+
 ```
 < > <= >= == !=
 ```
 
 arithmetic:
+
 ```
 + - * / // % ** @
 ```
+
 note `@` is matrix multiplication (3.5+, pep 465) AND decorator prefix.
 
 brackets (enclosing delimiters, trigger implicit line joining):
+
 ```
 ( ) [ ] { }
 ```
 
 other delimiters:
+
 ```
 , : ! ; = -> .
 ```
 
 the ellipsis:
+
 ```
 ...
 ```
+
 (three consecutive periods — a single token, not three `.` tokens)
 
 **multi-character operators that need longest-match ordering** (longest first):
@@ -459,11 +478,12 @@ name_continue: name_start | "0"..."9" | <non-ASCII character in xid_continue>
 - practical approximation: accept ascii `[A-Za-z_]` followed by
   `[A-Za-z0-9_]*`, and additionally accept any non-ascii code point (>=
   U+0080) in either position. this over-accepts some code points that would
-  be rejected by a strict xid_* test (emoji, math symbols), but lexers like
+  be rejected by a strict xid\_\* test (emoji, math symbols), but lexers like
   pygments and tree-sitter use the same approximation.
 - case-sensitive.
 
 **reserved classes by underscore convention** (no lexical impact, theme convention):
+
 - `_single` — conventionally "private" (not imported by `from mod import *`)
 - `__dunder__` — system/protocol name
 - `__mangled` — name-mangled in class scope
@@ -539,9 +559,11 @@ name_continue: name_start | "0"..."9" | <non-ASCII character in xid_continue>
 ### 3.3 number underscore positions
 
 valid:
+
 - `1_000_000`, `0x_ff`, `0b_1010`, `1_000.5`, `1.5_0e1_0`, `1_000j`
 
 invalid:
+
 - `_1` (starts with underscore → this is an identifier, not a number)
 - `1_` (trailing underscore)
 - `1__0` (double underscore)
@@ -711,7 +733,7 @@ permits `0+ ([_] 0)*`.
   (both strings). but `"abc" b"def"` → TypeError at parse time (cannot mix
   bytes and str).
 - `f"abc" "def"` works; `f"abc" f"def"` works.
-- lexically, each literal is its own STRING / FSTRING_* token. the parser
+- lexically, each literal is its own STRING / FSTRING\_\* token. the parser
   performs concatenation.
 
 ### 3.19 case sensitivity summary
@@ -960,6 +982,7 @@ f-string mode" to concrete state operations.
 ### trace 1: decorator, class, method with type annotations, docstring
 
 input:
+
 ```
 @dataclass(frozen=True)
 class Circle:
@@ -1028,6 +1051,7 @@ trace:
 - `\n` → NEWLINE.
 
 observations:
+
 - no lexical distinction between decorator names, type names, function names,
   argument names, or variable references. all emit as `name`. themes
   reclassify using surrounding tokens.
@@ -1040,6 +1064,7 @@ observations:
 ### trace 2: f-string edge cases (3.12+ quote reuse, backslash, comment, nested)
 
 input:
+
 ```
 name = "Ada"
 items = ["x", "y"]
@@ -1139,6 +1164,7 @@ trace (condensed; per-token for the tricky f-strings):
   - `"""` → FSTRING_END (matches opening triple quote).
 
 observations:
+
 - the `"<<"` nested string with same quote as outer f-string ONLY works
   since 3.12. a pre-3.12-aware highlighter would have to emit this as an
   error. we target 3.12+, so accept it.
@@ -1156,6 +1182,7 @@ observations:
 ### trace 3: numeric and string literal edge cases, match statement
 
 input:
+
 ```
 x = 0x_1f_ff
 y = 1_000_000.5e-3j
@@ -1231,7 +1258,7 @@ trace:
   - `unicode_id` name. `=` op. ` ` ws.
   - `π_1` → name. `π` is xid_start (greek pi, small letter, category Ll).
     `_1` is xid_continue.
-  - `=` op.  `"pi subscript one"` string.
+  - `=` op. `"pi subscript one"` string.
 - `match command:`:
   - `match` → emit as `name` (soft keyword — NOT a keyword at the lexer
     level). in a post-pass, a reclassifier may promote to `keyword` if a
@@ -1264,6 +1291,7 @@ trace:
   - `list` name. `[` bracket. `T` name. `]` bracket.
 
 observations from trace 3:
+
 - numeric underscores require a small state machine per digit: between two
   digit characters only.
 - hex, octal, binary each have their own digit-class check.
@@ -1272,7 +1300,7 @@ observations from trace 3:
 - soft keywords (`match`, `case`, `_`, `type`) require reclassification, not
   lexical keyword treatment.
 - non-ascii identifiers work if the identifier continuation loop accepts
-  any codepoint >= U+0080 (not bothering with full xid_* validation).
+  any codepoint >= U+0080 (not bothering with full xid\_\* validation).
 - `\U0001F40D` is 8 hex digits; careful: after `\U` exactly 8 hex digits
   must be consumed.
 - `\N{SNAKE}` consumes up to the closing `}`; the name inside is uppercase

@@ -105,7 +105,7 @@ Semantics: the rule fires only when **all** of the following hold:
 1. The existing matcher (`match` / `range` / `match_within` / `any` / `boundary`) matches.
 2. For every `(name, comparator)` entry in `slot_when`, the current value of the named slot satisfies the comparator.
 
-Multiple keys in one `slot_when` object are a **conjunction** (logical AND). There is no built-in disjunction in v1 — use multiple rules with different `slot_when` blocks to express OR. The existing rule-evaluation model is **first-match-wins** (rules iterated in declaration order; the first whose matcher matches *and* whose `slot_when` passes fires), so ordered alternation is already expressible without any new syntax.
+Multiple keys in one `slot_when` object are a **conjunction** (logical AND). There is no built-in disjunction in v1 — use multiple rules with different `slot_when` blocks to express OR. The existing rule-evaluation model is **first-match-wins** (rules iterated in declaration order; the first whose matcher matches _and_ whose `slot_when` passes fires), so ordered alternation is already expressible without any new syntax.
 
 Two implementation consequences of `slot_when` inheriting first-match-wins semantics:
 
@@ -126,9 +126,9 @@ export type SlotUpdate =
   | number
   | string
   | { set: boolean | number | string }
-  | { inc: number }     // u8 only; wraps on overflow with compile-time warning
-  | { dec: number }     // u8 only
-  | "toggle";           // bool only
+  | { inc: number } // u8 only; wraps on overflow with compile-time warning
+  | { dec: number } // u8 only
+  | "toggle"; // bool only
 
 export interface GrammarRule {
   // existing fields...
@@ -147,13 +147,13 @@ Shorthand: a bare value is sugar for `{ set: value }`.
 Add two `Partial<GrammarRule>` factories in `lib/core/src/dsl.ts`:
 
 ```ts
-export const when_slots = (
-  conditions: Record<string, SlotComparator>,
-): Partial<GrammarRule> => ({ slot_when: conditions });
+export const when_slots = (conditions: Record<string, SlotComparator>): Partial<GrammarRule> => ({
+  slot_when: conditions,
+});
 
-export const set_slots = (
-  updates: Record<string, SlotUpdate>,
-): Partial<GrammarRule> => ({ slot_set: updates });
+export const set_slots = (updates: Record<string, SlotUpdate>): Partial<GrammarRule> => ({
+  slot_set: updates,
+});
 ```
 
 Usage spreads the same way `enter` / `goto` / `leave` already do:
@@ -163,7 +163,7 @@ match(":", TOKENS.field_colon, {
   ...enter("type_annotation"),
   ...when_slots({ kind: "class" }),
   ...set_slots({ seen_field: true }),
-})
+});
 ```
 
 ---
@@ -196,7 +196,7 @@ This rules out shadowing, which is the single largest hazard of dynamic scoping.
 - Inside the owning state itself: may be unqualified (`"slot_name"`).
 - Anywhere else in the grammar: must be qualified as `"owner_state.slot_name"`.
 
-Both forms compile to the same global slot ID. Qualification is a *readability and intent* requirement, not a semantic one. The benefit is that any cross-frame write — the spookiest kind of slot access — is visible at the site without having to look up where the slot lives. The compiler enforces the rule and errors on unqualified cross-frame access or on a qualified access where the named owner doesn't actually declare that slot.
+Both forms compile to the same global slot ID. Qualification is a _readability and intent_ requirement, not a semantic one. The benefit is that any cross-frame write — the spookiest kind of slot access — is visible at the site without having to look up where the slot lives. The compiler enforces the rule and errors on unqualified cross-frame access or on a qualified access where the named owner doesn't actually declare that slot.
 
 **Visibility at runtime.** A rule in state Y may read or write slot S only when Y's owning state is guaranteed to be on the stack whenever Y is active. The compiler verifies this with a reachability analysis over the state graph (§5.3). If the analysis can't prove it, compilation fails with a clear message naming the offending rule and a reachable path where the owner isn't on the stack.
 
@@ -207,7 +207,7 @@ Probe states (`mode: "probe"`) already snapshot position, stack, and token count
 - On **probe entry**: snapshot the current value of every slot (full `Uint8Array` copy — `slot_count` is small, this is cheap). v1 deliberately snapshots all slots rather than running a compile-time touched-slot analysis; see below.
 - **Nested probes are not a concern.** The existing tokenizer does not support nested probes — `probe_entry` in `lib/core/src/tokenizer.ts:69-75` is a single optional variable, not a stack, and the "probe target reached while in probe state" path at `tokenizer.ts:269-292` updates the existing entry's resolved fields rather than allocating a new one. A single snapshot buffer is therefore sufficient. If a future change introduces nested probes, the snapshot must be promoted to a stack in lockstep.
 - **Reads inside a probe** see live values, including writes made earlier in the same probe. Reads are never rolled back.
-- **Writes inside a probe** are applied live to `slot_values` as they happen. They are visible to later reads *within the same probe*.
+- **Writes inside a probe** are applied live to `slot_values` as they happen. They are visible to later reads _within the same probe_.
 - On **probe success** (control transfers to the resolved state): writes made during the probe persist. The snapshot is discarded; nothing extra to do.
 - On **probe fallback**: restore from the snapshot. The save stack is rewound to its probe-entry length, undoing any push/pop activity inside the probe with the same discipline `stack_ptr` already uses.
 
@@ -247,7 +247,7 @@ The compiler must warn on:
 
 ## 4. Runtime representation
 
-Tokenizer state gains two arrays, both sized by the *compiled grammar*:
+Tokenizer state gains two arrays, both sized by the _compiled grammar_:
 
 ```ts
 // number of distinct slot declarations in the grammar.
@@ -369,7 +369,7 @@ For every state Y and every slot S read or written by a rule in Y, verify the fo
 
 > On every path from a grammar root to Y, the most recent push of the state X that owns S has not been popped before Y is entered.
 
-This is *not* a simple predecessor-intersection on the rule graph. The grammar is a pushdown system — rules push and pop states — and the property talks about the stack contents at the point Y is entered, not merely about which states were visited. A path that pushes X, later pops X, and then enters Y does not satisfy the property even though both states appear on the path.
+This is _not_ a simple predecessor-intersection on the rule graph. The grammar is a pushdown system — rules push and pop states — and the property talks about the stack contents at the point Y is entered, not merely about which states were visited. A path that pushes X, later pops X, and then enters Y does not satisfy the property even though both states appear on the path.
 
 The correct analysis walks the state transition graph while tracking, symbolically, whether each slot's owning state is currently on the stack. For every enter edge into Y, we need the set of possible "owner-on-stack" predicates to all be true; any path that reaches Y with the owner popped is a violation.
 
@@ -379,7 +379,7 @@ A clean implementation is pushdown-reachability on the state graph:
 - Edges: enter pushes an owner; leave pops; the goto-style `state: X, exit: true` pops and pushes.
 - For each rule accessing slot S in state Y, check that every reachable `(Y, owners)` node has S's owner in `owners`.
 
-Worst case is `O(states × 2^slots)`, pruned in practice by the sparsity of slot-declaring states. For grammars with tens of slots across hundreds of states this is still fast, but the algorithm is *more involved than a one-liner* and the implementation should be a small dedicated pass with its own tests.
+Worst case is `O(states × 2^slots)`, pruned in practice by the sparsity of slot-declaring states. For grammars with tens of slots across hundreds of states this is still fast, but the algorithm is _more involved than a one-liner_ and the implementation should be a small dedicated pass with its own tests.
 
 On failure, the compiler should emit the offending rule, slot, and a reachable path that witnesses the violation ("enter class_body → enter member_body → leave member_body → enter Y reads member_body.kind").
 
@@ -461,16 +461,16 @@ Slots are a lex-time mechanism. The reclassifier remains a post-pass over the to
 
 ### 7.1 Runtime cost per operation
 
-| Operation | With slots | Without slots |
-|---|---|---|
-| State push | +1 array read and 1 write per declared slot (usually 0-2) | 0 |
-| State pop | +1 array read and 1 write per declared slot | 0 |
-| Rule predicate eval (no slot conditions) | 0 | 0 |
-| Rule predicate eval (with slot conditions) | +1-3 byte reads + compares | n/a |
-| Rule action (no slot updates) | 0 | 0 |
-| Rule action (with slot updates) | +1-3 byte writes | n/a |
-| Probe entry | +Uint8Array copy (O(slot_count), typically ≤ 16 bytes) | +nothing |
-| Probe fallback | +Uint8Array copy | +nothing |
+| Operation                                  | With slots                                                | Without slots |
+| ------------------------------------------ | --------------------------------------------------------- | ------------- |
+| State push                                 | +1 array read and 1 write per declared slot (usually 0-2) | 0             |
+| State pop                                  | +1 array read and 1 write per declared slot               | 0             |
+| Rule predicate eval (no slot conditions)   | 0                                                         | 0             |
+| Rule predicate eval (with slot conditions) | +1-3 byte reads + compares                                | n/a           |
+| Rule action (no slot updates)              | 0                                                         | 0             |
+| Rule action (with slot updates)            | +1-3 byte writes                                          | n/a           |
+| Probe entry                                | +Uint8Array copy (O(slot_count), typically ≤ 16 bytes)    | +nothing      |
+| Probe fallback                             | +Uint8Array copy                                          | +nothing      |
 
 For a grammar with 10 slots and average stack depth 8, a typical 1 MB tokenization:
 
@@ -497,7 +497,7 @@ Slots restore bit-for-bit on pop and can be byte-compared for equality. This giv
 
 **Today.** The class-field-vs-interface-member rule is commented out at `languages/javascript/src/reclassifiers.ts:104-134` because the reclassifier can't tell "am I in a class body or an interface body" from the token stream alone — both contain `identifier : Type` sequences.
 
-**With slots.** Declare `kind` on a shared `member_body` state with *no default* — there is no naturally-correct value; whichever parent pushes `member_body` is responsible for setting it. The compiler enforces this (§3.5): any rule that enters `member_body` must include `slot_set` for `member_body.kind`, else compilation fails. All references to `kind` from outside `member_body` use the qualified form `"member_body.kind"`.
+**With slots.** Declare `kind` on a shared `member_body` state with _no default_ — there is no naturally-correct value; whichever parent pushes `member_body` is responsible for setting it. The compiler enforces this (§3.5): any rule that enters `member_body` must include `slot_set` for `member_body.kind`, else compilation fails. All references to `kind` from outside `member_body` use the qualified form `"member_body.kind"`.
 
 ```ts
 // in grammar.ts
@@ -553,7 +553,7 @@ interface_body_open: {
 },
 ```
 
-Every cross-frame access is qualified. A reader scanning `class_body_open` can see at a glance that `member_body` is being poked, not some implicit nearest frame. The compiler checks that `member_body` is the actual owner of `kind`, that it is on the stack at the point of access (it is, by virtue of `enter("member_body")` happening first in the same rule), and — crucially — that the pusher *sets* `kind`, since `kind` has no default. If `interface_body_open` forgets the `slot_set`, compilation fails with a clear error rather than silently tagging interface members with whatever byte happened to be in the slot.
+Every cross-frame access is qualified. A reader scanning `class_body_open` can see at a glance that `member_body` is being poked, not some implicit nearest frame. The compiler checks that `member_body` is the actual owner of `kind`, that it is on the stack at the point of access (it is, by virtue of `enter("member_body")` happening first in the same rule), and — crucially — that the pusher _sets_ `kind`, since `kind` has no default. If `interface_body_open` forgets the `slot_set`, compilation fails with a clear error rather than silently tagging interface members with whatever byte happened to be in the slot.
 
 `member_body` is **one state**, not two. Adding a third context (type literal, tuple, mapped type) is one line of `set_slots({ "member_body.kind": "…" })` in the new parent's open rule plus one rule in `member_name` for the new token — not a duplicate state tree.
 
@@ -582,7 +582,7 @@ class_body: {
 },
 ```
 
-One detail worth naming because it's easy to get wrong: `seen_field` lives on `class_body`, not on `member_name`. When a field is parsed, `enter("member_name")` pushes `member_name`; when that state pops at the end of the field, `class_body` is still on the stack and `seen_field` retains its `true` value. If the slot were declared on `member_name` instead, popping would restore it to the pre-push value and every field would look like the first. Slots live with the state that *owns* them, not with the state that last wrote them.
+One detail worth naming because it's easy to get wrong: `seen_field` lives on `class_body`, not on `member_name`. When a field is parsed, `enter("member_name")` pushes `member_name`; when that state pops at the end of the field, `class_body` is still on the stack and `seen_field` retains its `true` value. If the slot were declared on `member_name` instead, popping would restore it to the pre-push value and every field would look like the first. Slots live with the state that _owns_ them, not with the state that last wrote them.
 
 No state explosion; the "first vs subsequent" distinction is a single bool.
 
@@ -638,8 +638,8 @@ Slots are a narrow escape hatch. The primary structural encoding of a grammar is
 
 The rule of thumb, restated:
 
-- Slots encode *which of these identical-shaped contexts am I in*.
-- States encode *what rules apply here*.
+- Slots encode _which of these identical-shaped contexts am I in_.
+- States encode _what rules apply here_.
 
 If the answer is genuinely "both," you want a small number of states with at most a small number of slot-gated rules. The compiler's warning on §3.5 ("a state whose rules all gate on different constant values of some slot") is meant to catch this class of mistake before it spreads.
 
