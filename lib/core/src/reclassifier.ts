@@ -2152,10 +2152,20 @@ export function create_language(
 // language factory remaps them to their base type at the end of the
 // pipeline — preserves the "low fidelity = bare grammar tokens" contract
 // even though the grammar itself runs at full detail.
-const GRAMMAR_EXTENSION_DOWNGRADES: Record<string, string> = {
+export const GRAMMAR_EXTENSION_DOWNGRADES: Record<string, string> = {
 	boolean: "identifier",
 	function: "identifier",
+	decorator: "identifier",
 };
+
+// categories that the grammar layer can emit directly (outside the
+// reclassifier pipeline) and which the fidelity system knows how to
+// downgrade. useful for UI layers that build toggle lists — a language
+// offers any of these as opt-out categories when its compiled grammar's
+// `token_types` includes the name.
+export const GRAMMAR_EXTENSION_CATEGORIES: readonly string[] = Object.keys(
+	GRAMMAR_EXTENSION_DOWNGRADES,
+);
 
 // build a dense per-type remap: remap[type_id] is the target id when
 // that type should be downgraded, or -1 to leave it alone. returns null

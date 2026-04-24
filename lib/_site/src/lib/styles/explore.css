@@ -986,11 +986,15 @@
 .explore-app .tok.attribute { color: var(--twp-attribute); }
 .explore-app .tok.builtin { color: var(--twp-builtin); }
 .explore-app .tok.class_name { color: var(--twp-class_name); }
+.explore-app .tok.constant { color: var(--twp-constant); }
 .explore-app .tok.decorator { color: var(--twp-decorator); }
 .explore-app .tok.lifetime { color: var(--twp-lifetime); }
+.explore-app .tok.namespace { color: var(--twp-namespace); }
+.explore-app .tok.parameter { color: var(--twp-parameter); }
 .explore-app .tok.property { color: var(--twp-property); }
 .explore-app .tok.type { color: var(--twp-type); }
 .explore-app .tok.variable { color: var(--twp-variable); }
+.explore-app .tok.variant { color: var(--twp-variant); }
 .explore-app .tok.function { color: var(--twp-function); }
 
 /* markup */

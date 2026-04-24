@@ -498,7 +498,7 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 404,
 		"end": 407,
 		"match": "bar"

@@ -2,11 +2,6 @@ export default [
 	{
 		"type": "decorator",
 		"start": 0,
-		"end": 1
-	},
-	{
-		"type": "function",
-		"start": 1,
 		"end": 10
 	},
 	{
@@ -72,11 +67,6 @@ export default [
 	{
 		"type": "decorator",
 		"start": 92,
-		"end": 93
-	},
-	{
-		"type": "function",
-		"start": 93,
 		"end": 98
 	},
 	{
@@ -107,11 +97,6 @@ export default [
 	{
 		"type": "decorator",
 		"start": 118,
-		"end": 119
-	},
-	{
-		"type": "function",
-		"start": 119,
 		"end": 125
 	},
 	{
@@ -147,11 +132,6 @@ export default [
 	{
 		"type": "decorator",
 		"start": 161,
-		"end": 162
-	},
-	{
-		"type": "function",
-		"start": 162,
 		"end": 174
 	},
 	{
@@ -227,11 +207,6 @@ export default [
 	{
 		"type": "decorator",
 		"start": 230,
-		"end": 231
-	},
-	{
-		"type": "function",
-		"start": 231,
 		"end": 241
 	},
 	{
@@ -257,11 +232,6 @@ export default [
 	{
 		"type": "decorator",
 		"start": 266,
-		"end": 267
-	},
-	{
-		"type": "function",
-		"start": 267,
 		"end": 273
 	},
 	{

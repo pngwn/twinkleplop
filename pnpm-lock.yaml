@@ -277,6 +277,12 @@ importers:
 
   lib/bench:
     dependencies:
+      '@twinkleplop/bash':
+        specifier: workspace:*
+        version: link:../../languages/bash
+      '@twinkleplop/go':
+        specifier: workspace:*
+        version: link:../../languages/go
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript
@@ -286,12 +292,24 @@ importers:
       '@twinkleplop/rust':
         specifier: workspace:*
         version: link:../../languages/rust
+      '@twinkleplop/sql':
+        specifier: workspace:*
+        version: link:../../languages/sql
       '@twinkleplop/svelte':
         specifier: workspace:*
         version: link:../../languages/svelte
+      '@twinkleplop/toml':
+        specifier: workspace:*
+        version: link:../../languages/toml
+      '@twinkleplop/tsx':
+        specifier: workspace:*
+        version: link:../../languages/tsx
       '@twinkleplop/typescript':
         specifier: workspace:*
         version: link:../../languages/typescript
+      '@twinkleplop/yaml':
+        specifier: workspace:*
+        version: link:../../languages/yaml
       '@wooorm/starry-night':
         specifier: ^3.8.0
         version: 3.9.0

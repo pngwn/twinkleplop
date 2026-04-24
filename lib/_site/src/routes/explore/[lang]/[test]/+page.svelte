@@ -14,7 +14,10 @@
 		THEMES,
 		type tweak_state,
 	} from "$lib/explore/themes";
-	import { to_html } from "@twinkleplop/core";
+	import {
+		GRAMMAR_EXTENSION_CATEGORIES,
+		to_html,
+	} from "@twinkleplop/core";
 
 	// core ships no .d.ts yet so we redeclare the result shape locally.
 	interface tokenize_result {
@@ -76,6 +79,7 @@
 		}
 		const mod = (await loader()) as {
 			language?: (options?: unknown) => (src: string) => tokenize_result;
+			grammar?: { token_types?: string[] };
 			reclassifiers?: Array<
 				| ((...a: unknown[]) => unknown)
 				| { reclassifier: unknown; produces: string[] }
@@ -83,6 +87,19 @@
 		};
 		const tags: string[] = [];
 		const seen = new Set<string>();
+		// grammar-baked categories (boolean, function, decorator) come first
+		// so the UI presents them alongside reclassifier-driven categories.
+		// only categories whose token type actually appears in the compiled
+		// grammar are surfaced — no dangling toggles for categories the
+		// language never emits. these downgrade via the core's
+		// GRAMMAR_EXTENSION_DOWNGRADES table when unchecked.
+		const grammar_types = new Set(mod.grammar?.token_types ?? []);
+		for (const cat of GRAMMAR_EXTENSION_CATEGORIES) {
+			if (grammar_types.has(cat) && !seen.has(cat)) {
+				seen.add(cat);
+				tags.push(cat);
+			}
+		}
 		for (const entry of mod.reclassifiers ?? []) {
 			if (typeof entry === "function") continue;
 			for (const p of entry.produces) {

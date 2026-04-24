@@ -10,7 +10,7 @@
 // the sets below are a permissive union across postgresql, mysql, sqlite,
 // and transact-sql. see RESEARCH.md for the dialect-by-dialect breakdown.
 
-import { tag } from "@twinkleplop/core";
+import { promote_function_calls, tag } from "@twinkleplop/core";
 import type { LanguagePipeline, Reclassifier } from "@twinkleplop/core";
 
 const TYPE_TOKEN = "type";
@@ -188,6 +188,18 @@ const keyword_reclassifier: Reclassifier = (input, result) => {
 	return result;
 };
 
+// call-site function promotion: SQL builtins like `COUNT`, `SUM`, `LOWER`,
+// `UPPER`, `NOW` are not in the keyword set (they differ across dialects),
+// so the `ident(` predicate picks them up here. runs after the keyword pass
+// so any keyword-position `ident(` (e.g. `SELECT(...)`) is already promoted
+// to keyword and won't be re-caught.
+const promote_sql_function_calls: Reclassifier = promote_function_calls(
+	"identifier",
+	"function",
+	{ plain: true },
+);
+
 export const reclassifiers: LanguagePipeline = [
 	tag(keyword_reclassifier, ["keyword", "boolean", "type"]),
+	tag(promote_sql_function_calls, ["function"]),
 ];

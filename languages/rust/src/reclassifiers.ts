@@ -23,6 +23,7 @@ import {
 	balanced_parens,
 	make_token_view,
 	promote_by_text_set,
+	promote_by_upper_snake_case,
 	promote_pascal_case,
 	rewrite_types,
 	seq,
@@ -60,6 +61,268 @@ export const promote_rust_pascal_case: Reclassifier = promote_pascal_case(
 	"identifier",
 	"class_name",
 );
+
+// UPPER_SNAKE_CASE identifiers are Rust `const` / `static` convention
+// (`MAX_SIZE`, `PI`). runs before pascal_case so multi-char all-upper
+// names resolve to constant, not class_name. single-uppercase names
+// (`T`, `U`) are left for pascal_case.
+export const promote_rust_constants: Reclassifier = promote_by_upper_snake_case(
+	"identifier",
+	"constant",
+);
+
+// variant promotion: `Name :: Name` OUTSIDE a `use` statement promotes the
+// trailing name to `variant`. this catches the common enum access shape
+// (`Color::Red`, `Option::Some`) at value positions. excluded from `use`
+// statements because there the trailing segment is a plain import
+// (`use std::collections::HashMap;` — HashMap is a type, not a variant).
+//
+// the PascalCase check is done here rather than relying on a pre-existing
+// `class_name` tag so this pass works independently of whether
+// promote_rust_pascal_case also ran (e.g. under `fidelity: ["variant"]`
+// alone, class_name promotion is excluded but variants must still work).
+// accepted source token kinds are `identifier`, `class_name`, and
+// `namespace` — any name-shape the earlier promoters might have assigned.
+export const promote_rust_variants: Reclassifier = (input, result) => {
+	const { tokens, token_types } = result;
+	const identifier_id = token_types.indexOf("identifier");
+	const class_name_id = token_types.indexOf("class_name");
+	const namespace_id = token_types.indexOf("namespace");
+	const keyword_id = token_types.indexOf("keyword");
+	const punctuation_id = token_types.indexOf("punctuation");
+	if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0) {
+		return result;
+	}
+	let variant_id = token_types.indexOf("variant");
+	if (variant_id < 0) {
+		variant_id = token_types.length;
+		token_types.push("variant");
+	}
+	const view = make_token_view(input, tokens, token_types);
+	const n = view.count;
+
+	// accept identifier / class_name / namespace as "name-shape" tokens.
+	const is_name = (k: number): boolean =>
+		k === identifier_id ||
+		k === class_name_id ||
+		(namespace_id >= 0 && k === namespace_id);
+
+	// PascalCase predicate on the source-text first char — [A-Z].
+	const is_pascal = (idx: number): boolean => {
+		const s = tokens[idx * 3 + 1];
+		const e = tokens[idx * 3 + 2];
+		if (e <= s) return false;
+		const c = input.charCodeAt(s);
+		return c >= 0x41 && c <= 0x5a;
+	};
+
+	// pre-scan to find ranges covered by `use` statements so we can skip
+	// them during the main pass. every `use` runs until the next `;` at
+	// the top level.
+	const in_use = new Uint8Array(n);
+	for (let i = 0; i < n; i++) {
+		if (view.is_trivia(i)) continue;
+		if (view.kind_of(i) !== keyword_id) continue;
+		if (view.text_of(i) !== "use") continue;
+		for (let j = i; j < n; j++) {
+			in_use[j] = 1;
+			if (
+				view.kind_of(j) === punctuation_id &&
+				view.text_of(j) === ";"
+			) {
+				break;
+			}
+		}
+	}
+
+	for (let i = 0; i < n - 2; i++) {
+		if (in_use[i]) continue;
+		if (view.is_trivia(i)) continue;
+		const lk = view.kind_of(i);
+		if (!is_name(lk) || !is_pascal(i)) continue;
+		const sep = view.next_non_trivia(i + 1);
+		if (
+			sep < 0 ||
+			view.kind_of(sep) !== punctuation_id ||
+			!view.text_of(sep).startsWith("::")
+		) {
+			continue;
+		}
+		const trailing = view.next_non_trivia(sep + 1);
+		if (trailing < 0) continue;
+		const tk = view.kind_of(trailing);
+		if (!is_name(tk) || !is_pascal(trailing)) continue;
+		tokens[trailing * 3] = variant_id;
+	}
+
+	return { tokens, token_types };
+};
+
+// parameter promotion: after `fn name(...)` tag identifiers in parameter
+// position as `parameter`. skips `self` receivers and the `mut`/`&`
+// qualifiers that precede the parameter name. misses destructuring and
+// closure parameters (|x, y| ...), consistent with the plan's scope.
+export const promote_rust_parameters: Reclassifier = (input, result) => {
+	const { tokens, token_types } = result;
+	const identifier_id = token_types.indexOf("identifier");
+	const keyword_id = token_types.indexOf("keyword");
+	const punctuation_id = token_types.indexOf("punctuation");
+	const operator_id = token_types.indexOf("operator");
+	if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0) {
+		return result;
+	}
+	let parameter_id = token_types.indexOf("parameter");
+	if (parameter_id < 0) {
+		parameter_id = token_types.length;
+		token_types.push("parameter");
+	}
+	const view = make_token_view(input, tokens, token_types);
+	const n = view.count;
+
+	for (let i = 0; i < n; i++) {
+		if (view.is_trivia(i)) continue;
+		if (view.kind_of(i) !== keyword_id) continue;
+		if (view.text_of(i) !== "fn") continue;
+
+		// walk forward past optional generic `<...>` and the function name
+		// until we find the parameter-list `(`.
+		let j = view.next_non_trivia(i + 1);
+		// function name (optional — e.g. `fn()` in closure types, rare)
+		if (j >= 0 && view.kind_of(j) === identifier_id) {
+			j = view.next_non_trivia(j + 1);
+		}
+		// skip generic params `<...>` by brace depth on angle operators.
+		if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "<") {
+			let depth = 1;
+			j++;
+			while (j < n && depth > 0) {
+				if (view.is_trivia(j)) {
+					j++;
+					continue;
+				}
+				if (view.kind_of(j) === operator_id) {
+					const t = view.text_of(j);
+					if (t === "<") depth++;
+					else if (t === ">") depth--;
+					else if (t === ">>") depth = Math.max(0, depth - 2);
+				}
+				j++;
+			}
+		}
+		j = view.next_non_trivia(j);
+		if (
+			j < 0 ||
+			view.kind_of(j) !== punctuation_id ||
+			!view.text_of(j).startsWith("(")
+		) {
+			continue;
+		}
+
+		// walk parameter list. track `(...)`, `[...]`, `<...>` depth (for
+		// generic types inside param type position). promote identifier
+		// that appears at depth 1 as the FIRST non-trivia token after `(`
+		// or `,`, skipping `self` and leading `&`/`mut`.
+		let depth = 1;
+		let expect_param = true;
+		let k = j + 1;
+		while (k < n && depth > 0) {
+			if (view.is_trivia(k)) {
+				k++;
+				continue;
+			}
+			const kind = view.kind_of(k);
+			const t = view.text_of(k);
+			if (kind === punctuation_id) {
+				for (const ch of t) {
+					if (ch === "(" || ch === "[" || ch === "{") depth++;
+					else if (ch === ")" || ch === "]" || ch === "}") {
+						depth--;
+						if (depth === 0) break;
+					} else if (ch === "," && depth === 1) {
+						expect_param = true;
+					}
+				}
+				k++;
+				continue;
+			}
+			if (depth === 1 && expect_param) {
+				if (kind === keyword_id && (t === "self" || t === "mut")) {
+					k++;
+					continue;
+				}
+				if (kind === operator_id && t === "&") {
+					k++;
+					continue;
+				}
+				if (kind === identifier_id) {
+					tokens[k * 3] = parameter_id;
+					expect_param = false;
+				} else {
+					expect_param = false;
+				}
+			}
+			k++;
+		}
+		i = k - 1;
+	}
+
+	return { tokens, token_types };
+};
+
+// namespace promotion: walk `use` statements and promote every name-shaped
+// segment that is followed by `::` to `namespace`. confined to `use`
+// statements (not arbitrary `Foo::bar` expressions elsewhere) because
+// outside imports the left-of-`::` position is commonly a type (`String::
+// from`), a variant (`Color::Red`), `Self::`, or an enum path. import
+// contexts are unambiguous: every path segment is a module or crate name.
+export const promote_rust_namespaces: Reclassifier = (input, result) => {
+	const { tokens, token_types } = result;
+	const identifier_id = token_types.indexOf("identifier");
+	const keyword_id = token_types.indexOf("keyword");
+	const punctuation_id = token_types.indexOf("punctuation");
+	const class_name_id = token_types.indexOf("class_name");
+	if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0) {
+		return result;
+	}
+	let namespace_id = token_types.indexOf("namespace");
+	if (namespace_id < 0) {
+		namespace_id = token_types.length;
+		token_types.push("namespace");
+	}
+	const view = make_token_view(input, tokens, token_types);
+	const n = view.count;
+
+	for (let i = 0; i < n; i++) {
+		if (view.is_trivia(i)) continue;
+		if (view.kind_of(i) !== keyword_id) continue;
+		if (view.text_of(i) !== "use") continue;
+
+		// scan forward until `;` (top level) or end of use statement. promote
+		// any identifier / class_name whose immediate next non-trivia token
+		// is `::`. braces `{...}` and nested paths are handled by the same
+		// predicate — inside `use a::{b::c, d::e}` we promote `a`, `b`, `d`
+		// (each followed by `::`), leaving `c` and `e` alone.
+		for (let j = i + 1; j < n; j++) {
+			if (view.is_trivia(j)) continue;
+			const k = view.kind_of(j);
+			if (k === punctuation_id && view.text_of(j) === ";") break;
+			if (k !== identifier_id && k !== class_name_id) continue;
+			const next = view.next_non_trivia(j + 1);
+			// `::` at the punctuation boundary — the tokenizer coalesces
+			// adjacent punctuation (`::` + `{` becomes `::{`), so match on
+			// the prefix rather than the whole string.
+			if (
+				next >= 0 &&
+				view.kind_of(next) === punctuation_id &&
+				view.text_of(next).startsWith("::")
+			) {
+				tokens[j * 3] = namespace_id;
+			}
+		}
+	}
+
+	return { tokens, token_types };
+};
 
 // an identifier immediately followed by `(` is a function call. using
 // balanced_parens for the trailing `(` lets the rule tolerate punctuation
@@ -267,7 +530,14 @@ const extend_lifetime_over_type = (): Reclassifier => {
 export const reclassifiers: LanguagePipeline = [
 	tag(promote_rust_booleans, ["boolean"]),
 	tag(promote_rust_primitive_types, ["class_name"]),
+	tag(promote_rust_constants, ["constant"]),
 	tag(promote_rust_pascal_case, ["class_name"]),
+	tag(promote_rust_namespaces, ["namespace"]),
+	// variant promotion runs AFTER namespaces so its `in_use` pre-scan sees
+	// the final class_name state before use-path segments were rewritten,
+	// and only touches non-use occurrences.
+	tag(promote_rust_variants, ["variant"]),
+	tag(promote_rust_parameters, ["parameter"]),
 	always(reclassify_generics(), "type_claim"),
 	tag(rewrite_types(function_call_rules, { trivia: ["comment"] }), [
 		"function",

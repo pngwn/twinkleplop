@@ -29,7 +29,7 @@
 //    keyword classification to a post-pass that only inspects whole
 //    identifier tokens sidesteps every mid-word false-positive.
 
-import { always, tag } from "@twinkleplop/core";
+import { always, promote_function_calls, tag } from "@twinkleplop/core";
 import type {
 	LanguagePipeline,
 	Reclassifier,
@@ -265,8 +265,21 @@ export const merge_numbers: Reclassifier = (
 // reshape the stream in ways that downstream consumers and grammars assume,
 // so they run at every fidelity. promote_keywords is the identifier-fidelity
 // pass and can be dropped via `fidelity: 'low'`.
+// function-definition detection: shell syntax `name() { ... }` is the only
+// position where `ident(` reliably signals a function in bash. call sites
+// (`foo arg1 arg2`) are indistinguishable from external commands without
+// scope tracking, so this pass only catches the `(` form. runs AFTER
+// promote_keywords so reserved words (e.g. `if`) aren't promoted if they
+// ever appear in a parenthesized context.
+export const promote_bash_function_calls: Reclassifier = promote_function_calls(
+	"identifier",
+	"function",
+	{ plain: true },
+);
+
 export const reclassifiers: LanguagePipeline = [
 	always(extend_variables, "shape"),
 	always(merge_numbers, "shape"),
 	tag(promote_keywords, ["keyword", "builtin", "boolean"]),
+	tag(promote_bash_function_calls, ["function"]),
 ];

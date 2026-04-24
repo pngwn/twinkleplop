@@ -183,3 +183,179 @@ describe("Rust reclassifier — lifetimes", () => {
 		expect(types_of(tokens, "b")).toEqual(["lifetime"]);
 	});
 });
+
+describe("Rust reclassifier — constant promotion", () => {
+	it("UPPER_SNAKE_CASE names promote to constant", () => {
+		const tokens = enrich("const MAX_SIZE: usize = 1024;");
+		expect(type_of(tokens, "MAX_SIZE")).toBe("constant");
+	});
+
+	it("PascalCase names still promote to class_name, not constant", () => {
+		const tokens = enrich("struct Foo { x: i32 }");
+		expect(type_of(tokens, "Foo")).toBe("class_name");
+	});
+
+	it("primitive type names keep class_name (not caught as constant)", () => {
+		const tokens = enrich("let x: i32 = 0;");
+		expect(type_of(tokens, "i32")).toBe("class_name");
+	});
+
+	it("fidelity='low' leaves UPPER_SNAKE_CASE as identifier", () => {
+		const lang = make_language({ fidelity: "low" });
+		const result = lang("const MAX_SIZE: usize = 1024;");
+		let found;
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			const s = result.tokens[i * 3 + 1];
+			const e = result.tokens[i * 3 + 2];
+			if ("const MAX_SIZE: usize = 1024;".slice(s, e) === "MAX_SIZE") {
+				found = result.token_types[result.tokens[i * 3]];
+			}
+		}
+		expect(found).toBe("identifier");
+	});
+});
+
+describe("Rust reclassifier — namespace promotion", () => {
+	it("`use std::fs;` tags std as namespace", () => {
+		const tokens = enrich("use std::fs;");
+		expect(type_of(tokens, "std")).toBe("namespace");
+	});
+
+	it("multi-segment path promotes every segment before `::`", () => {
+		const tokens = enrich("use std::collections::HashMap;");
+		expect(type_of(tokens, "std")).toBe("namespace");
+		expect(type_of(tokens, "collections")).toBe("namespace");
+		// last segment stays as class_name (via pascal_case)
+		expect(type_of(tokens, "HashMap")).toBe("class_name");
+	});
+
+	it("braced import group promotes parent segments only", () => {
+		const tokens = enrich("use std::fs::{File, Read};");
+		expect(type_of(tokens, "std")).toBe("namespace");
+		expect(type_of(tokens, "fs")).toBe("namespace");
+		expect(type_of(tokens, "File")).toBe("class_name");
+		expect(type_of(tokens, "Read")).toBe("class_name");
+	});
+
+	it("non-`use` `::` chains are left alone (no namespace coloring)", () => {
+		// `String::from("x")` — String is a type, not a namespace. blanket
+		// ::-preceded promotion would be wrong here.
+		const tokens = enrich('fn main() { String::from("x"); }');
+		expect(type_of(tokens, "String")).toBe("class_name");
+	});
+
+	it("fidelity='low' leaves namespace names as identifier", () => {
+		const lang = make_language({ fidelity: "low" });
+		const src = "use std::fs;";
+		const result = lang(src);
+		let found;
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			const s = result.tokens[i * 3 + 1];
+			const e = result.tokens[i * 3 + 2];
+			if (src.slice(s, e) === "std") {
+				found = result.token_types[result.tokens[i * 3]];
+			}
+		}
+		expect(found).toBe("identifier");
+	});
+});
+
+describe("Rust reclassifier — variant promotion", () => {
+	it("`Color::Red` at value position promotes Red to variant", () => {
+		const tokens = enrich("let x = Color::Red;");
+		expect(type_of(tokens, "Color")).toBe("class_name");
+		expect(type_of(tokens, "Red")).toBe("variant");
+	});
+
+	it("`Option::Some(x)` promotes Some to variant (call-site still matches)", () => {
+		const tokens = enrich("let x = Option::Some(1);");
+		expect(type_of(tokens, "Some")).toBe("variant");
+	});
+
+	it("`match` pattern arms promote variants", () => {
+		const tokens = enrich(
+			"match c { Color::Red => 1, Color::Green => 2, _ => 0 }",
+		);
+		expect(type_of(tokens, "Red")).toBe("variant");
+		expect(type_of(tokens, "Green")).toBe("variant");
+	});
+
+	it("inside `use` the trailing segment is not variant", () => {
+		// use std::collections::HashMap — HashMap is a type being imported,
+		// not a variant, so it stays as class_name.
+		const tokens = enrich("use std::collections::HashMap;");
+		expect(type_of(tokens, "HashMap")).toBe("class_name");
+	});
+
+	it("method call `String::from(x)` promotes from to function, not variant", () => {
+		// variant requires trailing class_name (PascalCase). camelCase call
+		// targets get the function tag from promote_rust_function_calls, so
+		// the variant pass doesn't fire.
+		const tokens = enrich('let s = String::from("x");');
+		expect(type_of(tokens, "from")).toBe("function");
+	});
+
+	it("fidelity='low' leaves variants as identifier", () => {
+		const lang = make_language({ fidelity: "low" });
+		const src = "let x = Color::Red;";
+		const result = lang(src);
+		let found;
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			const s = result.tokens[i * 3 + 1];
+			const e = result.tokens[i * 3 + 2];
+			if (src.slice(s, e) === "Red") {
+				found = result.token_types[result.tokens[i * 3]];
+			}
+		}
+		expect(found).toBe("identifier");
+	});
+});
+
+describe("Rust reclassifier — parameter promotion", () => {
+	it("fn params promote to parameter", () => {
+		const tokens = enrich("fn f(x: i32, y: i32) -> i32 { x + y }");
+		expect(type_of(tokens, "x")).toBe("parameter");
+		expect(type_of(tokens, "y")).toBe("parameter");
+		// type annotation stays as class_name (i32 is a primitive type)
+		expect(type_of(tokens, "i32")).toBe("class_name");
+	});
+
+	it("method `&self` is skipped; other params promote", () => {
+		const tokens = enrich("fn method(&self, x: i32) { }");
+		expect(type_of(tokens, "x")).toBe("parameter");
+		// self stays as its grammar token (keyword)
+		expect(type_of(tokens, "self")).not.toBe("parameter");
+	});
+
+	it("generic params in `<...>` are NOT treated as parameters", () => {
+		// `<T, U>` after `fn name` is a generic list; my walker skips it.
+		// T, U stay as class_name (pascal_case).
+		const tokens = enrich("fn f<T, U>(x: T, y: U) { }");
+		expect(type_of(tokens, "T")).toBe("class_name");
+		expect(type_of(tokens, "U")).toBe("class_name");
+		expect(type_of(tokens, "x")).toBe("parameter");
+		expect(type_of(tokens, "y")).toBe("parameter");
+	});
+
+	it("call-site arguments stay as identifier", () => {
+		const tokens = enrich("fn main() { f(a, b); }");
+		// a and b are call-site; only parameters (at declaration) get promoted.
+		expect(type_of(tokens, "a")).toBe("identifier");
+		expect(type_of(tokens, "b")).toBe("identifier");
+	});
+
+	it("fidelity='low' leaves params as identifier", () => {
+		const lang = make_language({ fidelity: "low" });
+		const src = "fn f(x: i32) { }";
+		const result = lang(src);
+		let x_type;
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			const s = result.tokens[i * 3 + 1];
+			const e = result.tokens[i * 3 + 2];
+			if (src.slice(s, e) === "x") {
+				x_type = result.token_types[result.tokens[i * 3]];
+			}
+		}
+		expect(x_type).toBe("identifier");
+	});
+});

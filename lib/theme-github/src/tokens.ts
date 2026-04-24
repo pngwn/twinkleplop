@@ -42,11 +42,15 @@ export const light: theme_palette = {
 	attribute: "#0550ae", // scale.blue[6] — support / meta.property-name
 	builtin: "#0550ae", // scale.blue[6] — support
 	class_name: "#953800", // scale.orange[6] — entity.name
+	constant: "#0550ae", // scale.blue[6] — constant.other / variable.other.constant
 	decorator: "#8250df", // scale.purple[5] — entity.name.function fallback
 	lifetime: "#cf222e", // scale.red[5] — storage.modifier.lifetime fallback to keyword
+	namespace: "#953800", // scale.orange[6] — entity.name.namespace → entity.name
+	parameter: "#953800", // scale.orange[6] — variable.parameter → variable family accent
 	property: "#0550ae", // scale.blue[6] — meta.property-name / support
 	type: "#0550ae", // scale.blue[6] — entity.name.type / support.type
 	variable: "#1f2328", // fg.default — variable.other
+	variant: "#0550ae", // scale.blue[6] — constant.other.enum.member → constant family
 	function: "#8250df", // scale.purple[5] — entity.name.function
 
 	// markup (html, svelte)
@@ -167,11 +171,15 @@ export const dark: theme_palette = {
 	attribute: "#79c0ff", // scale.blue[2] — support / meta.property-name
 	builtin: "#79c0ff",
 	class_name: "#ffa657", // scale.orange[2] — entity.name
+	constant: "#79c0ff", // scale.blue[2] — constant.other / variable.other.constant
 	decorator: "#d2a8ff", // scale.purple[2] — entity.name.function fallback
 	lifetime: "#ff7b72", // scale.red[3] — storage.modifier.lifetime fallback
+	namespace: "#ffa657", // scale.orange[2] — entity.name.namespace → entity.name
+	parameter: "#ffa657", // scale.orange[2] — variable.parameter → variable family accent
 	property: "#79c0ff", // scale.blue[2] — meta.property-name
 	type: "#79c0ff", // scale.blue[2] — entity.name.type / support.type
 	variable: "#e6edf3", // fg.default — variable.other
+	variant: "#79c0ff", // scale.blue[2] — constant.other.enum.member → constant family
 	function: "#d2a8ff", // scale.purple[2] — entity.name.function
 
 	// markup (html, svelte)

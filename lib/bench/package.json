@@ -19,11 +19,17 @@
 		"vitest": "^4.1.5"
 	},
 	"dependencies": {
+		"@twinkleplop/bash": "workspace:*",
+		"@twinkleplop/go": "workspace:*",
 		"@twinkleplop/javascript": "workspace:*",
 		"@twinkleplop/python": "workspace:*",
 		"@twinkleplop/rust": "workspace:*",
+		"@twinkleplop/sql": "workspace:*",
 		"@twinkleplop/svelte": "workspace:*",
+		"@twinkleplop/toml": "workspace:*",
+		"@twinkleplop/tsx": "workspace:*",
 		"@twinkleplop/typescript": "workspace:*",
+		"@twinkleplop/yaml": "workspace:*",
 		"@wooorm/starry-night": "^3.8.0",
 		"highlight.js": "^11.11.1",
 		"kleur": "^4.1.5",

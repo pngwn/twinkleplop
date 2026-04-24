@@ -150,7 +150,7 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 154,
 		"end": 163,
 		"match": "log_error"
@@ -342,7 +342,7 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 258,
 		"end": 270,
 		"match": "process_file"
@@ -684,7 +684,7 @@ export const test = [
 		"match": "}"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 558,
 		"end": 562,
 		"match": "main"

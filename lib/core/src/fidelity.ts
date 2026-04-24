@@ -92,10 +92,89 @@ export function promote_pascal_case(
 		const n = tokens.length / 3;
 		for (let i = 0; i < n; i++) {
 			if (tokens[i * 3] !== source_id) continue;
-			const first = input.charCodeAt(tokens[i * 3 + 1]);
-			if (first >= ASCII_UPPER_MIN && first <= ASCII_UPPER_MAX) {
-				tokens[i * 3] = target_id;
+			const s = tokens[i * 3 + 1];
+			const e = tokens[i * 3 + 2];
+			const first = input.charCodeAt(s);
+			if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) continue;
+			// reject all-upper multi-char names (`MAX_SIZE`, `PI`). these are
+			// UPPER_SNAKE constants by convention, not PascalCase types. the
+			// constant promoter (promote_by_upper_snake_case) is the right
+			// home for them. single-char uppercase (generic params `T`, `X`)
+			// still promote so languages that treat them as types don't lose
+			// coverage.
+			if (e - s > 1) {
+				let has_lower = false;
+				for (let k = s; k < e; k++) {
+					const c = input.charCodeAt(k);
+					if (c >= 0x61 && c <= 0x7a) {
+						has_lower = true;
+						break;
+					}
+				}
+				if (!has_lower) continue;
 			}
+			tokens[i * 3] = target_id;
+		}
+		return result;
+	};
+}
+
+// ---------------------------------------------------------------------------
+// promote_by_upper_snake_case
+// ---------------------------------------------------------------------------
+//
+// rewrites tokens of `source_type` whose source text is UPPER_SNAKE_CASE to
+// `target_type`. the predicate is: first char in [A-Z], every char in
+// [A-Z0-9_], length >= 2. single-char uppercase identifiers (like generic
+// type parameters `T`) are left alone so the pascal_case pass can claim them
+// as class_name.
+//
+// common use: promoting convention-declared constants — `MAX_VALUE`, `PI`,
+// `HTTP_STATUS` — to `constant`. pair with pascal_case ordering so the two
+// predicates don't overlap: this pass claims `MAX_VALUE`, pascal_case then
+// claims `MaxValue`.
+
+const ASCII_DIGIT_MIN = 0x30;
+const ASCII_DIGIT_MAX = 0x39;
+const ASCII_UNDERSCORE = 0x5f;
+
+function is_upper_snake_char(code: number): boolean {
+	return (
+		(code >= ASCII_UPPER_MIN && code <= ASCII_UPPER_MAX) ||
+		(code >= ASCII_DIGIT_MIN && code <= ASCII_DIGIT_MAX) ||
+		code === ASCII_UNDERSCORE
+	);
+}
+
+export function promote_by_upper_snake_case(
+	source_type: string,
+	target_type: string,
+): Reclassifier {
+	return (input: string, result: TokenizeResult): TokenizeResult => {
+		const { tokens, token_types } = result;
+		const source_id = token_types.indexOf(source_type);
+		if (source_id < 0) return result;
+		let target_id = token_types.indexOf(target_type);
+		if (target_id < 0) {
+			target_id = token_types.length;
+			token_types.push(target_type);
+		}
+		const n = tokens.length / 3;
+		for (let i = 0; i < n; i++) {
+			if (tokens[i * 3] !== source_id) continue;
+			const s = tokens[i * 3 + 1];
+			const e = tokens[i * 3 + 2];
+			if (e - s < 2) continue;
+			const first = input.charCodeAt(s);
+			if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) continue;
+			let all_ok = true;
+			for (let k = s + 1; k < e; k++) {
+				if (!is_upper_snake_char(input.charCodeAt(k))) {
+					all_ok = false;
+					break;
+				}
+			}
+			if (all_ok) tokens[i * 3] = target_id;
 		}
 		return result;
 	};

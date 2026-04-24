@@ -7,6 +7,10 @@ import {
 	function_variable_rules,
 	promote_boolean_literals,
 	promote_call_site_functions,
+	promote_js_constants,
+	promote_js_namespaces,
+	promote_js_parameters,
+	promote_js_pascal_case,
 	reclassifiers,
 	scan_tagged_template,
 } from "./reclassifiers.js";
@@ -38,6 +42,10 @@ export {
 	function_variable_rules,
 	promote_boolean_literals,
 	promote_call_site_functions,
+	promote_js_constants,
+	promote_js_namespaces,
+	promote_js_parameters,
+	promote_js_pascal_case,
 	scan_tagged_template,
 };
 

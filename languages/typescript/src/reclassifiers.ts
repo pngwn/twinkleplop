@@ -29,6 +29,10 @@ import {
 	function_variable_rules,
 	promote_boolean_literals,
 	promote_call_site_functions,
+	promote_js_constants,
+	promote_js_namespaces,
+	promote_js_parameters,
+	promote_js_pascal_case,
 	scan_tagged_template,
 } from "@twinkleplop/javascript";
 
@@ -832,6 +836,14 @@ export const type_position_promoter: ClaimingReclassifier = as_claim_producer(
 );
 
 export const reclassifiers: LanguagePipeline = [
+	// constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
+	// so subsequent passes see the promoted stream (same ordering as JS).
+	tag(promote_js_constants, ["constant"]),
+	// namespace promotion runs BEFORE type_position_promoter: the `as`
+	// keyword in `import * as X from ...` otherwise reads as a TS type-
+	// assertion cast, and X gets tagged as `type`. claiming it as
+	// `namespace` first forecloses the false positive.
+	tag(promote_js_namespaces, ["namespace"]),
 	// boolean and call-site function are emitted directly by the shared JS
 	// grammar now. builtin type promotion stays as a reclassifier — a
 	// simple text-set that runs after the grammar.
@@ -857,5 +869,14 @@ export const reclassifiers: LanguagePipeline = [
 	// single-name and dotted-chain cases; this pass extends to lists and
 	// demotes grammar-emitted class_name that should be type in TS context.
 	tag(class_name_promoter, ["class_name"]),
+	// parameter promotion runs before pascal_case so `function f<T>(x: T)`
+	// style params are `parameter`, not class_name.
+	tag(promote_js_parameters, ["parameter"]),
+	// free-standing PascalCase → class_name, as a final catch-all for names
+	// that neither type_position_promoter (caught as `type`) nor
+	// class_name_promoter (positional) reached. runs LAST among the
+	// identifier-level rewriters so type annotations stay as `type` and
+	// positional cases stay as whatever the specific promoters claimed.
+	tag(promote_js_pascal_case, ["class_name"]),
 	always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
 ];

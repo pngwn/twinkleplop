@@ -178,10 +178,17 @@ describe("JavaScript reclassifier — class_name promoter", () => {
 		expect(type_of(tokens, "Bar")).toBe("class_name");
 	});
 
-	it("plain identifier in value position is NOT class_name", () => {
+	it("plain PascalCase identifier in value position promotes to class_name", () => {
 		const tokens = enrich("const x = Foo + 1;");
-		// Foo here is just a value reference, not a class anchor
-		expect(type_of(tokens, "Foo")).not.toBe("class_name");
+		// the promote_js_pascal_case catch-all runs after class_name_promoter
+		// and picks up free-standing PascalCase references class/new/
+		// instanceof/extends positions don't cover.
+		expect(type_of(tokens, "Foo")).toBe("class_name");
+	});
+
+	it("camelCase identifier in value position stays identifier", () => {
+		const tokens = enrich("const x = foo + 1;");
+		expect(type_of(tokens, "foo")).toBe("identifier");
 	});
 
 	it("function call does not get class_name", () => {
@@ -356,11 +363,11 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
 		expect(
 			tokens.some((t) => t.type === "punctuation" && t.value === "</"),
 		).toBe(true);
-		// Interpolations passed through as JS.
-		const identifiers = tokens.filter(
-			(t) => t.type === "identifier" && t.value === "Tag",
-		);
-		expect(identifiers).toHaveLength(2);
+		// Interpolations passed through as JS. PascalCase `Tag` is promoted
+		// to class_name by the JS pipeline, not left as identifier.
+		const tag_tokens = tokens.filter((t) => t.value === "Tag");
+		expect(tag_tokens).toHaveLength(2);
+		expect(tag_tokens.every((t) => t.type === "class_name")).toBe(true);
 	});
 
 	it("multiple interpolations: html`<p>${a}<br>${b}</p>`", () => {
@@ -523,5 +530,242 @@ describe("JavaScript reclassifier — class field exclusion", () => {
 		const tokens = enrich("class Foo { bar: T = 1; method() { return 1; } }");
 		expect(type_of(tokens, "bar")).toBe("identifier");
 		expect(type_of(tokens, "method")).toBe("function");
+	});
+});
+
+describe("JavaScript reclassifier — constant promotion", () => {
+	function tokens_of(input, options) {
+		const result = make_language(options)(input);
+		const out = [];
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			out.push({
+				type: result.token_types[result.tokens[i * 3]],
+				value: input.slice(
+					result.tokens[i * 3 + 1],
+					result.tokens[i * 3 + 2],
+				),
+			});
+		}
+		return out;
+	}
+	const pick = (tokens, value) =>
+		tokens.find((t) => t.value === value)?.type;
+
+	it("multi-char UPPER_SNAKE_CASE names promote to constant", () => {
+		const tokens = tokens_of("const MAX_SIZE = 100; const PI = 3.14;");
+		expect(pick(tokens, "MAX_SIZE")).toBe("constant");
+		expect(pick(tokens, "PI")).toBe("constant");
+	});
+
+	it("single uppercase char is not constant (left for pascal_case)", () => {
+		const tokens = tokens_of("const X = 1;");
+		// constant predicate requires length >= 2 so `X` isn't caught here.
+		// pascal_case then claims it as class_name.
+		expect(pick(tokens, "X")).not.toBe("constant");
+	});
+
+	it("PascalCase names are not constant", () => {
+		const tokens = tokens_of("const MaxSize = 100;");
+		expect(pick(tokens, "MaxSize")).not.toBe("constant");
+	});
+
+	it("lowercase names are not constant", () => {
+		const tokens = tokens_of("const max_size = 100;");
+		expect(pick(tokens, "max_size")).toBe("identifier");
+	});
+
+	it("names starting with underscore are not constant", () => {
+		const tokens = tokens_of("const _MAX = 1;");
+		expect(pick(tokens, "_MAX")).toBe("identifier");
+	});
+
+	it("fidelity='low' leaves UPPER_SNAKE_CASE as identifier", () => {
+		const tokens = tokens_of("const MAX_SIZE = 100;", { fidelity: "low" });
+		expect(pick(tokens, "MAX_SIZE")).toBe("identifier");
+	});
+
+	it("fidelity allowlist excluding 'constant' leaves as identifier", () => {
+		const tokens = tokens_of("const MAX_SIZE = 100;", {
+			fidelity: ["function"],
+		});
+		expect(pick(tokens, "MAX_SIZE")).toBe("identifier");
+	});
+
+	it("fidelity allowlist including 'constant' promotes", () => {
+		const tokens = tokens_of("const MAX_SIZE = 100;", {
+			fidelity: ["constant"],
+		});
+		expect(pick(tokens, "MAX_SIZE")).toBe("constant");
+	});
+});
+
+describe("JavaScript reclassifier — pascal_case catch-all", () => {
+	function tokens_of(input, options) {
+		const result = make_language(options)(input);
+		const out = [];
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			out.push({
+				type: result.token_types[result.tokens[i * 3]],
+				value: input.slice(
+					result.tokens[i * 3 + 1],
+					result.tokens[i * 3 + 2],
+				),
+			});
+		}
+		return out;
+	}
+	const pick = (tokens, value) =>
+		tokens.find((t) => t.value === value)?.type;
+
+	it("free-standing PascalCase promotes to class_name", () => {
+		const tokens = tokens_of("const x = Foo.bar;");
+		expect(pick(tokens, "Foo")).toBe("class_name");
+	});
+
+	it("positional claims still win (`new Foo()` → class_name already)", () => {
+		const tokens = tokens_of("new Widget();");
+		expect(pick(tokens, "Widget")).toBe("class_name");
+	});
+
+	it("camelCase stays as identifier", () => {
+		const tokens = tokens_of("const x = fooBar;");
+		expect(pick(tokens, "fooBar")).toBe("identifier");
+	});
+
+	it("call-site PascalCase stays as function (grammar bakes it)", () => {
+		// Foo() is already `function` from the identifier_probe. pascal_case
+		// runs on `identifier` only, so the function classification survives.
+		const tokens = tokens_of("const x = Foo();");
+		expect(pick(tokens, "Foo")).toBe("function");
+	});
+
+	it("UPPER_SNAKE does not collide (constant wins)", () => {
+		const tokens = tokens_of("const MAX_X = 1;");
+		expect(pick(tokens, "MAX_X")).toBe("constant");
+	});
+
+	it("fidelity='low' leaves PascalCase as identifier", () => {
+		const tokens = tokens_of("const x = Foo.bar;", { fidelity: "low" });
+		expect(pick(tokens, "Foo")).toBe("identifier");
+	});
+
+	it("fidelity allowlist excluding 'class_name' leaves as identifier", () => {
+		const tokens = tokens_of("const x = Foo.bar;", {
+			fidelity: ["function"],
+		});
+		expect(pick(tokens, "Foo")).toBe("identifier");
+	});
+
+	it("fidelity allowlist including 'class_name' promotes", () => {
+		const tokens = tokens_of("const x = Foo.bar;", {
+			fidelity: ["class_name"],
+		});
+		expect(pick(tokens, "Foo")).toBe("class_name");
+	});
+});
+
+describe("JavaScript reclassifier — namespace promotion", () => {
+	function tokens_of(input, options) {
+		const result = make_language(options)(input);
+		const out = [];
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			out.push({
+				type: result.token_types[result.tokens[i * 3]],
+				value: input.slice(
+					result.tokens[i * 3 + 1],
+					result.tokens[i * 3 + 2],
+				),
+			});
+		}
+		return out;
+	}
+	const pick = (tokens, value) =>
+		tokens.find((t) => t.value === value)?.type;
+
+	it("`import * as X from ...` promotes X to namespace", () => {
+		const tokens = tokens_of('import * as React from "react";');
+		expect(pick(tokens, "React")).toBe("namespace");
+	});
+
+	it("default import stays as class_name (PascalCase) — not namespace", () => {
+		// No `* as` pattern, so namespace promoter doesn't fire. PascalCase
+		// catches it as class_name since it's a PascalCase identifier.
+		const tokens = tokens_of('import React from "react";');
+		expect(pick(tokens, "React")).toBe("class_name");
+	});
+
+	it("named imports `{ X }` stay as identifier (the binding is a value)", () => {
+		const tokens = tokens_of('import { useState } from "react";');
+		expect(pick(tokens, "useState")).toBe("identifier");
+	});
+
+	it("fidelity='low' leaves X as identifier", () => {
+		const tokens = tokens_of('import * as React from "react";', {
+			fidelity: "low",
+		});
+		expect(pick(tokens, "React")).toBe("identifier");
+	});
+});
+
+describe("JavaScript reclassifier — parameter promotion", () => {
+	function tokens_of(input, options) {
+		const result = make_language(options)(input);
+		const out = [];
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			out.push({
+				type: result.token_types[result.tokens[i * 3]],
+				value: input.slice(
+					result.tokens[i * 3 + 1],
+					result.tokens[i * 3 + 2],
+				),
+			});
+		}
+		return out;
+	}
+	const pick = (tokens, value) =>
+		tokens.find((t) => t.value === value)?.type;
+
+	it("named function declaration params promote", () => {
+		const tokens = tokens_of("function add(x, y) { return x + y; }");
+		expect(pick(tokens, "x")).toBe("parameter");
+		expect(pick(tokens, "y")).toBe("parameter");
+	});
+
+	it("anonymous function expression params promote", () => {
+		const tokens = tokens_of("const f = function(a, b) { return a; };");
+		expect(pick(tokens, "a")).toBe("parameter");
+		expect(pick(tokens, "b")).toBe("parameter");
+	});
+
+	it("default values keep the name as parameter", () => {
+		const tokens = tokens_of("function f(x = 1, y = 2) { }");
+		expect(pick(tokens, "x")).toBe("parameter");
+		expect(pick(tokens, "y")).toBe("parameter");
+	});
+
+	it("rest parameters promote", () => {
+		const tokens = tokens_of("function f(a, ...rest) { }");
+		expect(pick(tokens, "a")).toBe("parameter");
+		expect(pick(tokens, "rest")).toBe("parameter");
+	});
+
+	it("arrow function params are NOT promoted (deferred)", () => {
+		// known limitation: arrow functions need `=>` lookahead to identify
+		// the param list. skipped for now, params stay as identifier.
+		const tokens = tokens_of("const f = (x, y) => x + y;");
+		expect(pick(tokens, "x")).toBe("identifier");
+		expect(pick(tokens, "y")).toBe("identifier");
+	});
+
+	it("call-site arguments stay as identifier", () => {
+		const tokens = tokens_of("add(a, b);");
+		expect(pick(tokens, "a")).toBe("identifier");
+		expect(pick(tokens, "b")).toBe("identifier");
+	});
+
+	it("fidelity='low' leaves params as identifier", () => {
+		const tokens = tokens_of("function f(x, y) { }", { fidelity: "low" });
+		expect(pick(tokens, "x")).toBe("identifier");
+		expect(pick(tokens, "y")).toBe("identifier");
 	});
 });

@@ -25,8 +25,10 @@
 //     handled.
 
 import {
+	ALNUM,
 	LETTER,
 	enter,
+	fallback,
 	goto,
 	keyword,
 	leave,
@@ -139,6 +141,20 @@ export default define_grammar({
 		...js_grammar.states,
 
 		// ---------------------------------------------------------------------
+		// decorator — continuation after `@`. consumes identifier chars and
+		// `.` so `@foo.bar.Baz` stays one decorator span. exits on any other
+		// char (whitespace, `(`, etc.) and resumes at the outer state. each
+		// rule emits a single-char decorator token; the tokenizer merges
+		// same-type adjacent emissions into one span.
+		// ---------------------------------------------------------------------
+		decorator: {
+			rules: [
+				match(["_", "$", ".", ALNUM], TOKENS.decorator),
+				fallback(leave()),
+			],
+		},
+
+		// ---------------------------------------------------------------------
 		// regex_allow — initial state; `/` starts a regex here
 		// override: TS keywords + built-in types + decorator
 		// ---------------------------------------------------------------------
@@ -148,8 +164,10 @@ export default define_grammar({
 				ts_operators(null),
 				...ts_keywords_literals(null, "division"),
 
-				// decorator
-				match("@", TOKENS.decorator),
+				// decorator: `@` sigil enters a dedicated state that extends the
+				// decorator span across the identifier chain (`@foo`, `@foo.bar`,
+				// `@foo.bar.Baz`). single-char emissions coalesce into one span.
+				match("@", TOKENS.decorator, enter("decorator")),
 
 				// regex
 				match("/", TOKENS.regex, enter("regex_pattern")),
@@ -174,8 +192,10 @@ export default define_grammar({
 				ts_operators("regex_allow"),
 				...ts_keywords_literals("regex_allow", null),
 
-				// decorator
-				match("@", TOKENS.decorator),
+				// decorator: `@` sigil enters a dedicated state that extends the
+				// decorator span across the identifier chain (`@foo`, `@foo.bar`,
+				// `@foo.bar.Baz`). single-char emissions coalesce into one span.
+				match("@", TOKENS.decorator, enter("decorator")),
 
 				// opening brackets — after these, `/` is regex
 				match(["(", "{", "["], TOKENS.punctuation, goto("regex_allow")),
@@ -202,8 +222,10 @@ export default define_grammar({
 				ts_operators(null),
 				...ts_keywords_literals(null, "tmpl_division"),
 
-				// decorator
-				match("@", TOKENS.decorator),
+				// decorator: `@` sigil enters a dedicated state that extends the
+				// decorator span across the identifier chain (`@foo`, `@foo.bar`,
+				// `@foo.bar.Baz`). single-char emissions coalesce into one span.
+				match("@", TOKENS.decorator, enter("decorator")),
 
 				match("}", TOKENS.punctuation, leave()),
 				match("/", TOKENS.regex, enter("regex_pattern")),
@@ -227,8 +249,10 @@ export default define_grammar({
 				ts_operators("tmpl_regex_allow"),
 				...ts_keywords_literals("tmpl_regex_allow", null),
 
-				// decorator
-				match("@", TOKENS.decorator),
+				// decorator: `@` sigil enters a dedicated state that extends the
+				// decorator span across the identifier chain (`@foo`, `@foo.bar`,
+				// `@foo.bar.Baz`). single-char emissions coalesce into one span.
+				match("@", TOKENS.decorator, enter("decorator")),
 
 				match("}", TOKENS.punctuation, leave()),
 				// `{` pushes tmpl_regex_allow to track brace depth.

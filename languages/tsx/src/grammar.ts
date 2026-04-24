@@ -236,7 +236,7 @@ export default define_grammar({
 				tsx_operators(null),
 				...tsx_keywords_literals(null, "division"),
 
-				match("@", TOKENS.decorator),
+				match("@", TOKENS.decorator, enter("decorator")),
 				match("/", TOKENS.regex, enter("regex_pattern")),
 
 				match(["(", "{", "["], TOKENS.punctuation),
@@ -261,7 +261,7 @@ export default define_grammar({
 				tsx_operators(null),
 				...tsx_keywords_literals(null, "tmpl_division"),
 
-				match("@", TOKENS.decorator),
+				match("@", TOKENS.decorator, enter("decorator")),
 				match("}", TOKENS.punctuation, leave()),
 				match("/", TOKENS.regex, enter("regex_pattern")),
 				match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),

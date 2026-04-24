@@ -19,6 +19,8 @@ export {
 	optional,
 	capture,
 	balanced_parens,
+	GRAMMAR_EXTENSION_DOWNGRADES,
+	GRAMMAR_EXTENSION_CATEGORIES,
 } from "./reclassifier";
 export { make_token_view, make_scope_stack } from "./scan";
 export type {
@@ -37,6 +39,7 @@ export type { ClaimConflict } from "./test_util";
 export {
 	promote_by_text_set,
 	promote_pascal_case,
+	promote_by_upper_snake_case,
 	promote_function_calls,
 } from "./fidelity";
 export type { FunctionCallVariants } from "./fidelity";

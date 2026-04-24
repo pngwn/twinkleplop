@@ -81,6 +81,10 @@ Recent merges:
 - **changed_marker** — diff, diff-basic
 - **class_name** — python, rust
 - **decorator** — tsx, typescript
+
+## 5 languages (reclassifier-only)
+
+- **constant** — go, javascript, python, rust, typescript (all via `promote_by_upper_snake_case`; tag-gated, downgrades to identifier under low fidelity)
 - **deleted** — diff, diff-basic
 - **deleted_marker** — diff, diff-basic
 - **doctype** — html, svelte

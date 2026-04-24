@@ -126,3 +126,61 @@ describe("SQL reclassifier — does not touch non-matches", () => {
 		expect(type_of(tokens, "[from]")).toBe("identifier");
 	});
 });
+
+describe("SQL fidelity — function-call promotion", () => {
+	function tokens_of(
+		input: string,
+		options?: Parameters<typeof make_language>[0],
+	) {
+		const lang = make_language(options);
+		const result = lang(input);
+		const out: { type: string; value: string }[] = [];
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			out.push({
+				type: result.token_types[result.tokens[i * 3]],
+				value: input.slice(
+					result.tokens[i * 3 + 1],
+					result.tokens[i * 3 + 2],
+				),
+			});
+		}
+		return out;
+	}
+	const pick = (tokens: ReturnType<typeof tokens_of>, value: string) =>
+		tokens.find((t) => t.value === value)?.type;
+
+	it("builtin function calls promote to function", () => {
+		const tokens = tokens_of("SELECT COUNT(*), LOWER(name) FROM users");
+		expect(pick(tokens, "COUNT")).toBe("function");
+		expect(pick(tokens, "LOWER")).toBe("function");
+	});
+
+	it("NOW() with no args still promotes", () => {
+		const tokens = tokens_of("SELECT NOW()");
+		expect(pick(tokens, "NOW")).toBe("function");
+	});
+
+	it("plain column reference stays identifier (no paren)", () => {
+		const tokens = tokens_of("SELECT username FROM users");
+		expect(pick(tokens, "username")).toBe("identifier");
+	});
+
+	it("keyword followed by `(` is not caught as function", () => {
+		// `SELECT` is already promoted to keyword before function_calls runs,
+		// so the `(` predicate (which looks for `identifier`) doesn't fire.
+		const tokens = tokens_of("SELECT (x)");
+		expect(pick(tokens, "SELECT")).toBe("keyword");
+	});
+
+	it("fidelity='low' leaves function calls as identifier", () => {
+		const tokens = tokens_of("SELECT COUNT(*) FROM t", { fidelity: "low" });
+		expect(pick(tokens, "COUNT")).toBe("identifier");
+	});
+
+	it("fidelity allowlist excluding 'function' leaves as identifier", () => {
+		const tokens = tokens_of("SELECT COUNT(*) FROM t", {
+			fidelity: ["keyword"],
+		});
+		expect(pick(tokens, "COUNT")).toBe("identifier");
+	});
+});

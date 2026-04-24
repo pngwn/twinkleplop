@@ -37,11 +37,15 @@ export const template = "template";
 export const attribute = "attribute";
 export const builtin = "builtin";
 export const class_name = "class_name";
+export const constant = "constant";
 export const decorator = "decorator";
 export const lifetime = "lifetime";
+export const namespace = "namespace";
+export const parameter = "parameter";
 export const property = "property";
 export const type = "type";
 export const variable = "variable";
+export const variant = "variant";
 
 const fn = "function";
 export { fn as "function" };

@@ -8,7 +8,7 @@
 		"test:watch": "vitest",
 		"bench": "vitest bench",
 		"build:languages": "pnpm --filter='./languages/**' exec vite build --config ../../build/language.vite.config.ts",
-		"build:lib": "pnpm --filter=@twinkleplop/core -r build",
+		"build:lib": "pnpm --filter=@twinkleplop/core -r build && pnpm --filter=@twinkleplop/theme-github run build",
 		"build": "pnpm build:lib && pnpm build:languages"
 	},
 	"keywords": [],

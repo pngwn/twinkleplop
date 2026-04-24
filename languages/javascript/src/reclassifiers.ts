@@ -24,7 +24,9 @@ import {
 	make_scope_stack,
 	make_token_view,
 	promote_by_text_set,
+	promote_by_upper_snake_case,
 	promote_function_calls,
+	promote_pascal_case,
 	rewrite_types,
 	seq,
 	tag,
@@ -924,6 +926,211 @@ export const promote_call_site_functions: Reclassifier = promote_function_calls(
 	{ trivia: ["comment"] },
 );
 
+// UPPER_SNAKE_CASE identifiers read as convention-declared constants in JS
+// (e.g. `MAX_SIZE`, `PI`, `HTTP_STATUS`). purely text-predicated so it's
+// safe everywhere — pascal_case / function / property passes already work
+// on the `identifier` stream they observe post-promotion.
+export const promote_js_constants: Reclassifier = promote_by_upper_snake_case(
+	"identifier",
+	"constant",
+);
+
+// PascalCase identifiers (Foo, MyWidget, Promise) read as type-like names by
+// convention. class_name_promoter already catches positional cases (class
+// head, `new`, `instanceof`, `extends`); this pass picks up the free-
+// standing references class_name_promoter doesn't (`Foo.bar`, `const x =
+// Foo`, `y instanceof Promise.__proto__` etc.). placed AFTER
+// class_name_promoter in the pipeline so the positional classifier has
+// already claimed its targets — a no-op for those identifiers, a new
+// promotion for remaining plain PascalCase names.
+export const promote_js_pascal_case: Reclassifier = promote_pascal_case(
+	"identifier",
+	"class_name",
+);
+
+// parameter promotion: walk `function name(...)` / `function(...)` (named
+// and anonymous function declarations/expressions) and tag parameter-
+// position identifiers as `parameter`. arrow functions, class/object
+// method shorthand, and destructuring patterns are deferred — they need
+// forward-looking lookahead for `=>` and scope tracking for class bodies.
+// rest parameter (`...args`) is handled via a single skip.
+export const promote_js_parameters: Reclassifier = (input, result) => {
+	const { tokens, token_types } = result;
+	const identifier_id = token_types.indexOf("identifier");
+	const keyword_id = token_types.indexOf("keyword");
+	const punctuation_id = token_types.indexOf("punctuation");
+	const operator_id = token_types.indexOf("operator");
+	if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0) {
+		return result;
+	}
+	let parameter_id = token_types.indexOf("parameter");
+	if (parameter_id < 0) {
+		parameter_id = token_types.length;
+		token_types.push("parameter");
+	}
+	const view = make_token_view(input, tokens, token_types);
+	const n = view.count;
+
+	for (let i = 0; i < n; i++) {
+		if (view.is_trivia(i)) continue;
+		if (view.kind_of(i) !== keyword_id) continue;
+		if (view.text_of(i) !== "function") continue;
+
+		// skip optional function name and optional `*` (generator syntax:
+		// `function* name(`). the name may have been grammar-promoted to
+		// `function` via the identifier probe — accept both identifier and
+		// the existing function token as the name.
+		let j = view.next_non_trivia(i + 1);
+		if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "*") {
+			j = view.next_non_trivia(j + 1);
+		}
+		const function_id = token_types.indexOf("function");
+		if (
+			j >= 0 &&
+			(view.kind_of(j) === identifier_id ||
+				(function_id >= 0 && view.kind_of(j) === function_id))
+		) {
+			j = view.next_non_trivia(j + 1);
+		}
+		// TS-specific: skip a generic type-parameter list `<...>` that may
+		// appear between the name and `(`.
+		if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "<") {
+			let depth = 1;
+			j++;
+			while (j < n && depth > 0) {
+				if (view.is_trivia(j)) {
+					j++;
+					continue;
+				}
+				if (view.kind_of(j) === operator_id) {
+					const t = view.text_of(j);
+					if (t === "<") depth++;
+					else if (t === ">") depth--;
+					else if (t === ">>") depth = Math.max(0, depth - 2);
+				}
+				j++;
+			}
+			j = view.next_non_trivia(j);
+		}
+		if (
+			j < 0 ||
+			view.kind_of(j) !== punctuation_id ||
+			!view.text_of(j).startsWith("(")
+		) {
+			continue;
+		}
+
+		// walk the parameter list. promote the first identifier after `(`
+		// or `,` at depth 1. treat `...` rest marker as transparent.
+		let depth = 1;
+		let expect_param = true;
+		let k = j + 1;
+		while (k < n && depth > 0) {
+			if (view.is_trivia(k)) {
+				k++;
+				continue;
+			}
+			const kind = view.kind_of(k);
+			const t = view.text_of(k);
+			if (kind === punctuation_id) {
+				for (const ch of t) {
+					if (ch === "(" || ch === "[" || ch === "{") depth++;
+					else if (ch === ")" || ch === "]" || ch === "}") {
+						depth--;
+						if (depth === 0) break;
+					} else if (ch === "," && depth === 1) {
+						expect_param = true;
+					}
+				}
+				k++;
+				continue;
+			}
+			if (depth === 1 && expect_param) {
+				// `...args` — skip spread operator, keep expect_param live.
+				if (kind === operator_id && t === "...") {
+					k++;
+					continue;
+				}
+				if (kind === identifier_id) {
+					tokens[k * 3] = parameter_id;
+					expect_param = false;
+				} else {
+					expect_param = false;
+				}
+			}
+			k++;
+		}
+		i = k - 1;
+	}
+
+	return { tokens, token_types };
+};
+
+// namespace promotion: targets positions where the syntax unambiguously
+// marks an identifier as a module/namespace binding. covers:
+//   - `import * as X from "..."`  → X = namespace  (both JS and TS)
+//   - `import X = require("...")` → X = namespace  (TS)
+//   - `namespace X { ... }`       → X = namespace  (TS)
+//   - `module X { ... }`          → X = namespace  (TS, deprecated)
+// everything else (default imports, dotted property chains) is left alone
+// because identifying those as namespace would need scope tracking.
+export const promote_js_namespaces: Reclassifier = (input, result) => {
+	const { tokens, token_types } = result;
+	const identifier_id = token_types.indexOf("identifier");
+	const keyword_id = token_types.indexOf("keyword");
+	const operator_id = token_types.indexOf("operator");
+	if (identifier_id < 0 || keyword_id < 0) return result;
+	let namespace_id = token_types.indexOf("namespace");
+	if (namespace_id < 0) {
+		namespace_id = token_types.length;
+		token_types.push("namespace");
+	}
+	const view = make_token_view(input, tokens, token_types);
+	const n = view.count;
+
+	for (let i = 0; i < n; i++) {
+		if (view.is_trivia(i)) continue;
+		if (view.kind_of(i) !== keyword_id) continue;
+		const kw = view.text_of(i);
+
+		// `import * as X from "..."` — X is a namespace binding.
+		if (kw === "import") {
+			const j = view.next_non_trivia(i + 1);
+			if (
+				j < 0 ||
+				view.kind_of(j) !== operator_id ||
+				view.text_of(j) !== "*"
+			) {
+				continue;
+			}
+			const as = view.next_non_trivia(j + 1);
+			if (
+				as < 0 ||
+				view.kind_of(as) !== keyword_id ||
+				view.text_of(as) !== "as"
+			) {
+				continue;
+			}
+			const name = view.next_non_trivia(as + 1);
+			if (name >= 0 && view.kind_of(name) === identifier_id) {
+				tokens[name * 3] = namespace_id;
+			}
+			continue;
+		}
+
+		// TS `namespace Foo { ... }` and the deprecated `module Foo { ... }`.
+		if (kw === "namespace" || kw === "module") {
+			const name = view.next_non_trivia(i + 1);
+			if (name >= 0 && view.kind_of(name) === identifier_id) {
+				tokens[name * 3] = namespace_id;
+			}
+			continue;
+		}
+	}
+
+	return { tokens, token_types };
+};
+
 // pipeline entries are either fidelity-gated (wrapped with `tag(...)`) or
 // always-on (plain reclassifier). the language factory drops every tagged
 // entry under `fidelity: 'low'`; under `fidelity: ['function', ...]` it
@@ -931,6 +1138,11 @@ export const promote_call_site_functions: Reclassifier = promote_function_calls(
 // tagged-template embedder is always-on — embeds are not an identifier
 // fidelity axis.
 export const reclassifiers: LanguagePipeline = [
+	// constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
+	// so subsequent passes see the promoted stream. function / property /
+	// class_name predicates all key on `identifier`, so converting an
+	// identifier to `constant` upstream simply removes it from their view.
+	tag(promote_js_constants, ["constant"]),
 	tag(rewrite_types(function_variable_rules, { trivia: ["comment"] }), [
 		"function",
 	]),
@@ -944,5 +1156,16 @@ export const reclassifiers: LanguagePipeline = [
 	// claim at all, so no post-hoc fixup is needed.
 	tag(claim_property_scope, ["property"]),
 	tag(class_name_promoter, ["class_name"]),
+	// parameter promotion runs before pascal_case so PascalCase parameter
+	// names (rare in JS, but legal) end up tagged as parameter, not class.
+	tag(promote_js_parameters, ["parameter"]),
+	// namespace promotion (import * as X, TS `namespace X { ... }`) runs
+	// before pascal_case so `X` is tagged namespace, not class_name, when
+	// both predicates match.
+	tag(promote_js_namespaces, ["namespace"]),
+	// free-standing PascalCase → class_name. runs after class_name_promoter so
+	// its positional claims stay authoritative on overlapping positions;
+	// this pass only touches identifiers nothing else has promoted.
+	tag(promote_js_pascal_case, ["class_name"]),
 	always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
 ];

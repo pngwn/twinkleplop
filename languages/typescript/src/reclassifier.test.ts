@@ -145,7 +145,8 @@ describe("TypeScript reclassifier — type-position promotion", () => {
 	it("custom type in parameter position promotes", () => {
 		const tokens = enrich("function foo(x: User) { return x; }");
 		expect(type_of(tokens, "User")).toBe("type");
-		expect(type_of(tokens, "x")).toBe("identifier");
+		// x itself is promoted to parameter; this test is about User.
+		expect(type_of(tokens, "x")).toBe("parameter");
 	});
 
 	it("custom type in return position promotes", () => {
@@ -301,9 +302,14 @@ describe("TypeScript reclassifier — type-position promotion", () => {
 		expect(type_of(tokens, "handler")).toBe("identifier");
 	});
 
-	it("function param with function-type demotes anchor to identifier", () => {
+	it("function param with function-type demotes anchor then parameter-promotes it", () => {
+		// type_position_promoter demotes `cb` to identifier (not function),
+		// then promote_js_parameters promotes it to parameter since it's in
+		// a function's parameter list. `x` inside the nested function-type
+		// is a sub-parameter and stays identifier (inner parens aren't the
+		// outer parameter list).
 		const tokens = enrich("function f(cb: (x: T) => U) {}");
-		expect(type_of(tokens, "cb")).toBe("identifier");
+		expect(type_of(tokens, "cb")).toBe("parameter");
 		expect(type_of(tokens, "T")).toBe("type");
 		expect(type_of(tokens, "U")).toBe("type");
 	});
@@ -429,5 +435,139 @@ describe("TypeScript reclassifier — generic parameter constraints", () => {
 		const tokens = enrich("class C extends f({ key: 1 }) { x = 1; }");
 		expect(type_of(tokens, "key")).toBe("property");
 		expect(type_of(tokens, "x")).toBe("identifier");
+	});
+});
+
+describe("TypeScript fidelity — decorator downgrade", () => {
+	// the grammar emits the full `@foo.bar` chain as a single decorator token
+	// (bake-in path keeps the high-fidelity case reclassifier-free). under
+	// low fidelity or an allowlist that excludes `decorator`, the grammar
+	// extension downgrade remaps decorator tokens to identifier.
+
+	const src = "@Component({})\nclass A {}";
+
+	function tokens_of(input, options) {
+		const result = make_language(options)(input);
+		const out = [];
+		for (let i = 0; i < result.tokens.length / 3; i++) {
+			out.push({
+				type: result.token_types[result.tokens[i * 3]],
+				value: input.slice(
+					result.tokens[i * 3 + 1],
+					result.tokens[i * 3 + 2],
+				),
+			});
+		}
+		return out;
+	}
+
+	it("fidelity='high' keeps decorator as one decorator span", () => {
+		const tokens = tokens_of(src, { fidelity: "high" });
+		expect(tokens.find((t) => t.value === "@Component")?.type).toBe(
+			"decorator",
+		);
+	});
+
+	it("fidelity='low' downgrades decorator to identifier", () => {
+		const tokens = tokens_of(src, { fidelity: "low" });
+		expect(tokens.find((t) => t.value === "@Component")?.type).toBe(
+			"identifier",
+		);
+	});
+
+	it("fidelity allowlist including 'decorator' keeps it", () => {
+		const tokens = tokens_of(src, { fidelity: ["decorator"] });
+		expect(tokens.find((t) => t.value === "@Component")?.type).toBe(
+			"decorator",
+		);
+	});
+
+	it("fidelity allowlist excluding 'decorator' downgrades it", () => {
+		const tokens = tokens_of(src, { fidelity: ["function"] });
+		expect(tokens.find((t) => t.value === "@Component")?.type).toBe(
+			"identifier",
+		);
+	});
+
+	it("dotted decorator names stay as one decorator span", () => {
+		const tokens = tokens_of("@foo.bar.Baz class A {}");
+		expect(tokens.find((t) => t.value === "@foo.bar.Baz")?.type).toBe(
+			"decorator",
+		);
+	});
+
+	it("UPPER_SNAKE_CASE names promote to constant", () => {
+		const tokens = tokens_of("const MAX_SIZE: number = 100;");
+		expect(tokens.find((t) => t.value === "MAX_SIZE")?.type).toBe("constant");
+	});
+
+	it("constant downgrades to identifier under fidelity='low'", () => {
+		const tokens = tokens_of("const MAX_SIZE: number = 100;", {
+			fidelity: "low",
+		});
+		expect(tokens.find((t) => t.value === "MAX_SIZE")?.type).toBe(
+			"identifier",
+		);
+	});
+
+	it("decorator immediately before paren args does not swallow the paren", () => {
+		const tokens = tokens_of("@Injectable()\nclass A {}");
+		// the decorator span must stop at `@Injectable` — the subsequent `()`
+		// is a separate punctuation run.
+		const decorator = tokens.find((t) => t.type === "decorator");
+		expect(decorator?.value).toBe("@Injectable");
+	});
+
+	it("free-standing PascalCase promotes to class_name", () => {
+		const tokens = tokens_of("const x = Foo.bar;");
+		expect(tokens.find((t) => t.value === "Foo")?.type).toBe("class_name");
+	});
+
+	it("type-annotation position still wins as `type` (not class_name)", () => {
+		// type_position_promoter runs before the pascal_case catch-all, so a
+		// PascalCase name inside `: MyType` stays as `type`, not class_name.
+		const tokens = tokens_of("let x: MyType = 1;");
+		expect(tokens.find((t) => t.value === "MyType")?.type).toBe("type");
+	});
+
+	it("fidelity='low' leaves PascalCase as identifier", () => {
+		const tokens = tokens_of("const x = Foo.bar;", { fidelity: "low" });
+		expect(tokens.find((t) => t.value === "Foo")?.type).toBe("identifier");
+	});
+
+	it("`namespace X { ... }` promotes X to namespace", () => {
+		const tokens = tokens_of("namespace Utils { export const x = 1; }");
+		expect(tokens.find((t) => t.value === "Utils")?.type).toBe("namespace");
+	});
+
+	it("`module X { ... }` (deprecated) promotes X to namespace", () => {
+		const tokens = tokens_of("module Utils { export const x = 1; }");
+		expect(tokens.find((t) => t.value === "Utils")?.type).toBe("namespace");
+	});
+
+	it("`import * as X from ...` promotes X to namespace", () => {
+		const tokens = tokens_of('import * as fs from "node:fs";');
+		expect(tokens.find((t) => t.value === "fs")?.type).toBe("namespace");
+	});
+
+	it("namespace downgrades to identifier under fidelity='low'", () => {
+		const tokens = tokens_of("namespace Utils { }", { fidelity: "low" });
+		expect(tokens.find((t) => t.value === "Utils")?.type).toBe("identifier");
+	});
+
+	it("TS-annotated params promote (type stays as type/class_name)", () => {
+		const tokens = tokens_of("function f(x: number, y: MyType) { }");
+		expect(tokens.find((t) => t.value === "x")?.type).toBe("parameter");
+		expect(tokens.find((t) => t.value === "y")?.type).toBe("parameter");
+		expect(tokens.find((t) => t.value === "number")?.type).toBe("type");
+		expect(tokens.find((t) => t.value === "MyType")?.type).toBe("type");
+	});
+
+	it("generic type parameters `<T>` between name and `(` are skipped", () => {
+		const tokens = tokens_of("function f<T>(x: T) { }");
+		expect(tokens.find((t) => t.value === "x")?.type).toBe("parameter");
+		// T is a type parameter — type_position_promoter tags it as type.
+		// My walker's job is just to not mis-tag it as `parameter`.
+		expect(tokens.find((t) => t.value === "T")?.type).toBe("type");
 	});
 });
