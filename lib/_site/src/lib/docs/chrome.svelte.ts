@@ -3,70 +3,70 @@ import { browser } from "$app/environment";
 const STATE_KEY = "twinkledocs:state";
 
 type tweak_state = {
-	theme: "default" | "phosphor" | "plasma" | "paper";
-	density: "compact" | "cozy" | "comfortable";
-	nav: "tree" | "grouped" | "manpage";
-	crt: "on" | "off";
+  theme: "default" | "phosphor" | "plasma" | "paper";
+  density: "compact" | "cozy" | "comfortable";
+  nav: "tree" | "grouped" | "manpage";
+  crt: "on" | "off";
 };
 
 const DEFAULTS: tweak_state = {
-	theme: "default",
-	density: "cozy",
-	nav: "manpage",
-	crt: "on",
+  theme: "default",
+  density: "cozy",
+  nav: "manpage",
+  crt: "on",
 };
 
 function load_state(): tweak_state {
-	if (!browser) return { ...DEFAULTS };
-	try {
-		const raw = localStorage.getItem(STATE_KEY);
-		if (!raw) return { ...DEFAULTS };
-		return { ...DEFAULTS, ...JSON.parse(raw) };
-	} catch {
-		return { ...DEFAULTS };
-	}
+  if (!browser) return { ...DEFAULTS };
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (!raw) return { ...DEFAULTS };
+    return { ...DEFAULTS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULTS };
+  }
 }
 
 function save_state(s: tweak_state) {
-	if (!browser) return;
-	try {
-		localStorage.setItem(STATE_KEY, JSON.stringify(s));
-	} catch {
-		/* ignore */
-	}
+  if (!browser) return;
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
 }
 
 export const chrome = $state({
-	tweaks: load_state(),
-	palette_open: false,
-	tweaks_open: false,
-	nav_open: false,
-	hydrated: false,
+  tweaks: load_state(),
+  palette_open: false,
+  tweaks_open: false,
+  nav_open: false,
+  hydrated: false,
 });
 
 export function hydrate_from_storage() {
-	const loaded = load_state();
-	chrome.tweaks = loaded;
-	chrome.hydrated = true;
+  const loaded = load_state();
+  chrome.tweaks = loaded;
+  chrome.hydrated = true;
 }
 
 export function set_tweak<K extends keyof tweak_state>(key: K, value: tweak_state[K]) {
-	chrome.tweaks = { ...chrome.tweaks, [key]: value };
-	save_state(chrome.tweaks);
+  chrome.tweaks = { ...chrome.tweaks, [key]: value };
+  save_state(chrome.tweaks);
 }
 
 export function open_palette() {
-	chrome.palette_open = true;
+  chrome.palette_open = true;
 }
 
 export function close_palette() {
-	chrome.palette_open = false;
+  chrome.palette_open = false;
 }
 
 export function toggle_nav() {
-	chrome.nav_open = !chrome.nav_open;
+  chrome.nav_open = !chrome.nav_open;
 }
 
 export function close_nav() {
-	chrome.nav_open = false;
+  chrome.nav_open = false;
 }

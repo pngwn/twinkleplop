@@ -11,6 +11,7 @@ rejecting them makes real-world files look wrong.
 ## sources consulted
 
 primary (official spec):
+
 - https://yaml.org/spec/1.2.2/ — yaml 1.2.2 specification (the canonical source)
 - https://yaml.org/spec/1.2.2/#chapter-2-language-overview — indicators, scalar styles, collection styles
 - https://yaml.org/spec/1.2.2/#chapter-5-character-productions — character set productions (ns-char, c-indicator, etc.)
@@ -22,11 +23,13 @@ primary (official spec):
 - https://github.com/yaml/yaml-grammar/blob/master/yaml-spec-1.2.txt — bnf grammar dump
 
 cross-reference (existing highlighters):
+
 - https://github.com/PrismJS/prism/blob/master/components/prism-yaml.js — prism's yaml grammar (pragmatic, context-insensitive)
 - https://github.com/ikatyang/tree-sitter-yaml — tree-sitter-yaml (structurally accurate, uses external scanner for indentation)
 - https://prismjs.com/tokens.html — prism standard token taxonomy (for output naming conventions)
 
 gaps and calls:
+
 - the yaml 1.2.2 spec declines to provide a single formal grammar for plain
   scalars (`ns-plain` is parameterized by context: block-in, block-out, flow-in,
   flow-out, block-key, flow-key). a tokenizer does not need to implement all
@@ -36,7 +39,7 @@ gaps and calls:
   is the lexically interesting one; failsafe (§10.1, everything is a string) is
   trivial and json schema (§10.2) differs from core only in case-sensitivity of
   true/false/null. a highlighter should emit `boolean` / `null` / `number`
-  tokens for *either* the core schema's accepted forms or a 1.1-compatible
+  tokens for _either_ the core schema's accepted forms or a 1.1-compatible
   superset, and emit `string` for everything else.
 - full indentation-sensitivity (detecting block-scalar end, implicit key/value
   boundaries, block-node closing) requires parser-level work and is outside
@@ -105,9 +108,10 @@ these have extra restrictions on plain scalars in flow context.
 ### 2.2 literals
 
 **plain scalars (unquoted)**
+
 - no delimiters, no escape sequences.
 - first character must be either (a) a non-indicator `ns-char`, or (b) one of
-  `?`, `:`, `-` *immediately* followed by an `ns-plain-safe` character (no
+  `?`, `:`, `-` _immediately_ followed by an `ns-plain-safe` character (no
   whitespace). this permits `-1`, `?foo`, `:bar` as plain scalars but rejects
   `- ` (block sequence entry), `? ` (explicit key), `: ` (map value).
 - inside the scalar, `:` is allowed only when not followed by whitespace or a
@@ -122,6 +126,7 @@ these have extra restrictions on plain scalars in flow context.
   string depending on content match.
 
 **single-quoted strings** `'...'`
+
 - the only escape is `''` (two consecutive single quotes) which produces one
   literal `'`. no backslash escapes.
 - may span multiple lines; line folding rules apply (line break becomes space,
@@ -130,12 +135,14 @@ these have extra restrictions on plain scalars in flow context.
   next line are stripped by the folding rule.
 
 **double-quoted strings** `"..."`
+
 - full escape sequence support (see 2.6 below).
 - may span multiple lines; line folding rules apply.
 - a backslash at end of line suppresses the line break entirely (line
   continuation), like shell/c.
 
 **block scalar: literal** `|`
+
 - header: `|` optionally followed by indentation indicator (`1`..`9`) and/or
   chomping indicator (`-` strip, `+` keep, default clip).
   - `|` — literal, clip (single trailing newline).
@@ -152,6 +159,7 @@ these have extra restrictions on plain scalars in flow context.
   indent (or end of stream).
 
 **block scalar: folded** `>`
+
 - header: same rules as literal (`>`, `>-`, `>+`, `>2`, etc.).
 - body: same indentation rules, but line breaks fold to spaces, blank lines
   become newlines, and "more indented" lines (indented beyond the base content
@@ -181,6 +189,7 @@ NO other numeric forms in core schema: no binary (`0b...`) prefix, no digit
 separators, no numeric suffixes.
 
 yaml 1.1 extras seen in the wild:
+
 - commas as thousand separators: `1,000,000` — DO NOT highlight as number,
   `,` is too overloaded (flow entry). keep as plain scalar.
 - sexagesimal: `1:2:3` meaning `3723` — likewise do not specialize.
@@ -194,6 +203,7 @@ yaml 1.1 extras seen in the wild:
   characters to color.
 
 legacy yaml 1.1 booleans (still matched by many tools):
+
 - `y | Y | yes | Yes | YES | n | N | no | No | NO`
 - `on | On | ON | off | Off | OFF`
 
@@ -221,30 +231,30 @@ emit as `number` (prism's alias convention for datetime) or a dedicated
 
 verbatim list from yaml 1.2.2 §5.7 (c-ns-esc-char):
 
-| escape     | meaning                                    | codepoint     |
-| ---------- | ------------------------------------------ | ------------- |
-| `\0`       | null                                       | U+0000        |
-| `\a`       | bell                                       | U+0007        |
-| `\b`       | backspace                                  | U+0008        |
-| `\t`       | horizontal tab                             | U+0009        |
-| `\<TAB>`   | (literal tab, only inside double-quoted)   | U+0009        |
-| `\n`       | line feed                                  | U+000A        |
-| `\v`       | vertical tab                               | U+000B        |
-| `\f`       | form feed                                  | U+000C        |
-| `\r`       | carriage return                            | U+000D        |
-| `\e`       | escape                                     | U+001B        |
-| `\ `       | literal space                              | U+0020        |
-| `\"`       | literal double quote                       | U+0022        |
-| `\/`       | literal forward slash (json compat)        | U+002F        |
-| `\\`       | literal backslash                          | U+005C        |
-| `\N`       | next line                                  | U+0085        |
-| `\_`       | non-breaking space                         | U+00A0        |
-| `\L`       | line separator                             | U+2028        |
-| `\P`       | paragraph separator                        | U+2029        |
-| `\xXX`     | 8-bit unicode                              | U+00XX        |
-| `\uXXXX`   | 16-bit unicode                             | U+XXXX        |
-| `\UXXXXXXXX` | 32-bit unicode                           | U+XXXXXXXX    |
-| `\<break>` | line continuation (escape + line break)    | —             |
+| escape       | meaning                                  | codepoint  |
+| ------------ | ---------------------------------------- | ---------- |
+| `\0`         | null                                     | U+0000     |
+| `\a`         | bell                                     | U+0007     |
+| `\b`         | backspace                                | U+0008     |
+| `\t`         | horizontal tab                           | U+0009     |
+| `\<TAB>`     | (literal tab, only inside double-quoted) | U+0009     |
+| `\n`         | line feed                                | U+000A     |
+| `\v`         | vertical tab                             | U+000B     |
+| `\f`         | form feed                                | U+000C     |
+| `\r`         | carriage return                          | U+000D     |
+| `\e`         | escape                                   | U+001B     |
+| `\ `         | literal space                            | U+0020     |
+| `\"`         | literal double quote                     | U+0022     |
+| `\/`         | literal forward slash (json compat)      | U+002F     |
+| `\\`         | literal backslash                        | U+005C     |
+| `\N`         | next line                                | U+0085     |
+| `\_`         | non-breaking space                       | U+00A0     |
+| `\L`         | line separator                           | U+2028     |
+| `\P`         | paragraph separator                      | U+2029     |
+| `\xXX`       | 8-bit unicode                            | U+00XX     |
+| `\uXXXX`     | 16-bit unicode                           | U+XXXX     |
+| `\UXXXXXXXX` | 32-bit unicode                           | U+XXXXXXXX |
+| `\<break>`   | line continuation (escape + line break)  | —          |
 
 an unrecognized escape (e.g., `\z`) is a lexical error in strict parsers. a
 permissive highlighter should emit the `\z` as two characters: `\` as
@@ -252,6 +262,7 @@ permissive highlighter should emit the `\z` as two characters: `\` as
 continue.
 
 ### 2.7 comments
+
 - `#` starts a comment that runs to end of line.
 - `#` is only a comment indicator when preceded by whitespace (or at start of
   line). `foo#bar` is a scalar, `foo #bar` has a comment.
@@ -274,6 +285,7 @@ directives appear before `---`. the first non-directive, non-blank line either
 starts with `---` (explicit doc start) or begins the first node.
 
 ### 2.9 document markers
+
 - `---` at start of a line, followed by whitespace or eol: document start
   (directives-end).
 - `...` at start of a line, followed by whitespace or eol: document end.
@@ -320,6 +332,7 @@ brackets). outside verbatim form, tag names use `ns-tag-char`.
 
 yaml has no operators in the expression sense. what this grammar needs to
 handle:
+
 - `:` (mapping value separator)
 - `-` (block sequence entry)
 - `?` (explicit block mapping key)
@@ -330,6 +343,7 @@ all of these are punctuation / structural, not operators.
 ### 2.13 identifiers
 
 yaml has no identifiers per se. the closest are:
+
 - anchor / alias names (see 2.10)
 - tag handles (`!`, `!!`, `!foo!`)
 - directive names (`YAML`, `TAG`, plus reserved)
@@ -452,7 +466,7 @@ yaml has no identifiers per se. the closest are:
 - `0x`, `0o` without digits: plain scalar (not numeric).
 - `true` is bool, but `true foo` (with any following char forming a longer
   plain scalar) is a string. the boolean pattern matches only when the plain
-  scalar is *exactly* `true` etc. — a reclassifier needs to check the whole
+  scalar is _exactly_ `true` etc. — a reclassifier needs to check the whole
   scalar, not just a prefix.
 - `Null` and `NULL` — both null. `null-value` — string.
 - same for bool: `true-ish` is a string. anchoring on the full scalar range
@@ -493,6 +507,7 @@ without flow context, `a, b, c` as a line would be one plain scalar
 
 purely lexical tokenization cannot detect block-scalar end perfectly without
 tracking indentation. practical approach:
+
 - for `|` / `>` headers, consume the rest of the header line, then keep
   consuming lines as block-scalar content until a line has less indentation
   than the first content line.
@@ -668,6 +683,7 @@ state-machine operations.
 ### trace 1: multi-document file with directives, anchors, flow mapping
 
 input:
+
 ```
 %YAML 1.2
 %TAG !e! tag:example.com,2024:
@@ -747,6 +763,7 @@ trace (condensed; per-line unless a line needs sub-line detail):
 - `...\n` → document end marker
 
 key observations from this trace:
+
 - flow depth tracking is needed between `{` and `}`.
 - after `:` + whitespace, the next token is a value; reclassifier looks at the
   full plain scalar to decide number vs string vs bool etc.
@@ -756,6 +773,7 @@ key observations from this trace:
 ### trace 2: block scalars with headers and indentation indicators
 
 input:
+
 ```
 description: >-
   This is a folded
@@ -783,12 +801,12 @@ trace:
 - `  multiple paragraphs.\n` → body line 3
 - `\n` → blank line (trailing; chomping `-` strips it)
 - `code` → this line's indentation is 0, LESS than 2. block scalar ENDS.
-         tokenizer emits `code` as plain scalar key.
+  tokenizer emits `code` as plain scalar key.
 - `:` sep, ` ` ws
 - `|2` → block scalar header (literal, explicit indent = 2)
   - `|` → literal indicator
   - `2` → indentation indicator (content is indented 2 spaces more than
-          parent, so effectively 2 cols)
+    parent, so effectively 2 cols)
 - `\n`
 - `    indent preserved\n` — 4 spaces of indent. content is stored as
   "stripped by 2 spaces" → `  indent preserved`. (tokenizer just tokenizes
@@ -798,6 +816,7 @@ trace:
 - `:` sep, ` ` ws, `value` plain scalar.
 
 observations:
+
 - `>-` requires recognizing two header characters, in strict left-to-right
   order: first `>` or `|`, then optional digit and/or `+`/`-`.
 - the block scalar end is detected by a line whose indentation drops below
@@ -809,6 +828,7 @@ observations:
 ### trace 3: flow-heavy content with tags, comments, numeric edge cases
 
 input:
+
 ```
 # top-level comment
 metrics:
@@ -845,8 +865,8 @@ trace (per-line):
   - `+.inf` plain scalar → reclassifier: float infinity → number
 - `  bits: 0b1010       # NOT ... number\n`
   - `0b1010` plain scalar → reclassifier: NOT matched by core-schema int
-     patterns (no 0b). emit as string. (permissive mode could emit as number;
-     this is a decision for the grammar author.)
+    patterns (no 0b). emit as string. (permissive mode could emit as number;
+    this is a decision for the grammar author.)
 - `  ratio: 3:00:00     # sexagesimal ...\n`
   - `ratio` key, `:` sep, ws
   - `3:00:00` — now careful. this is tokenized as plain scalar starting with
@@ -854,7 +874,7 @@ trace (per-line):
     no. so `:` is part of the plain scalar. same for the second `:`. the
     whole `3:00:00` is ONE plain scalar. reclassifier: no match → string.
     (yaml 1.1 would resolve to 10800. a permissive highlighter MAY emit as
-     number; default to string for safety.)
+    number; default to string for safety.)
   - then whitespace, then `#` comment.
 - `  empty:\n`
   - `empty` key, `:` sep, eol. value is implicitly null. no value token to emit.
@@ -893,6 +913,7 @@ trace (per-line):
   - `]` exit flow sequence (flow depth 0)
 
 observations from trace 3:
+
 - numeric vs string is decided by reclassifier over the FULL plain scalar
   span, not by a lookahead at first char.
 - single-quoted vs double-quoted must be distinguished: double-quoted

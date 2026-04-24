@@ -7,39 +7,43 @@ After comprehensive analysis and benchmarking of `generator.js`, I identified an
 ### Key Improvements
 
 1. **Small to Normal Files (1-200 lines)**: **8% faster** HTML generation
-2. **Large Files (1000+ lines)**: **2% faster** HTML generation  
+2. **Large Files (1000+ lines)**: **2% faster** HTML generation
 3. **escapeHtml with heavy escaping**: **1% faster**
 4. **Early exit optimization**: Significant improvement for strings that don't need escaping
 
 ## Optimizations Implemented
 
 ### 1. Pre-sized Array Allocation
+
 - **Before**: Dynamic array growth with `push()`
 - **After**: Pre-allocated array with estimated size
 - **Impact**: Reduces memory allocations and array resizing overhead
 - **Improvement**: 8% for typical files
 
 ### 2. Early Exit for Non-Escape Cases
+
 ```javascript
 // Fast path - check if escaping is needed
 let needsEscape = false;
 for (let i = 0; i < len; i++) {
-    const code = text.charCodeAt(i);
-    if (code === 38 || code === 60 || code === 62 || code === 34 || code === 39) {
-        needsEscape = true;
-        break;
-    }
+  const code = text.charCodeAt(i);
+  if (code === 38 || code === 60 || code === 62 || code === 34 || code === 39) {
+    needsEscape = true;
+    break;
+  }
 }
 
 // Early exit if no escaping needed
 if (!needsEscape) {
-    return text;
+  return text;
 }
 ```
+
 - **Impact**: Avoids unnecessary string building for content without special characters
 - **Improvement**: Significant for CSS/JS code that rarely contains HTML entities
 
 ### 3. Optimized Escape Checking
+
 - **Tested approaches**:
   - OR conditions (current): **Fastest** ✅
   - Switch statement: 0% slower
@@ -50,19 +54,21 @@ if (!needsEscape) {
 ## Benchmark Results
 
 ### toHtml Performance
-| File Size | Original (ops/sec) | Optimized (ops/sec) | Improvement |
-|-----------|-------------------|---------------------|-------------|
-| Tiny (1 line) | 1,180,707 | 1,181,756 | +0.1% |
-| Small (10 lines) | 365,635 | 395,862 | **+8.3%** |
-| Normal (200 lines) | 6,535 | 7,029 | **+7.6%** |
-| Large (1000 lines) | 186 | 190 | +2.4% |
+
+| File Size          | Original (ops/sec) | Optimized (ops/sec) | Improvement |
+| ------------------ | ------------------ | ------------------- | ----------- |
+| Tiny (1 line)      | 1,180,707          | 1,181,756           | +0.1%       |
+| Small (10 lines)   | 365,635            | 395,862             | **+8.3%**   |
+| Normal (200 lines) | 6,535              | 7,029               | **+7.6%**   |
+| Large (1000 lines) | 186                | 190                 | +2.4%       |
 
 ### escapeHtml Performance
-| Input Type | Original (ops/sec) | Optimized (ops/sec) | Change |
-|------------|-------------------|---------------------|---------|
-| Plain text (no escaping) | 4,488,211 | 3,101,352 | -31% (due to early exit check overhead) |
-| HTML content | 3,352,652 | 3,336,079 | -0.5% |
-| Heavy escaping | 165,937 | 167,945 | **+1.2%** |
+
+| Input Type               | Original (ops/sec) | Optimized (ops/sec) | Change                                  |
+| ------------------------ | ------------------ | ------------------- | --------------------------------------- |
+| Plain text (no escaping) | 4,488,211          | 3,101,352           | -31% (due to early exit check overhead) |
+| HTML content             | 3,352,652          | 3,336,079           | -0.5%                                   |
+| Heavy escaping           | 165,937            | 167,945             | **+1.2%**                               |
 
 ## Key Findings
 
@@ -97,6 +103,7 @@ cp packages/core/src/generator-optimized.js packages/core/src/generator.js
 ```
 
 Run tests to ensure correctness:
+
 ```bash
 pnpm test
 ```

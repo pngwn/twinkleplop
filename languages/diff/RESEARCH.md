@@ -46,6 +46,7 @@ not attempt this.
 ## sources consulted
 
 primary (official):
+
 - https://pubs.opengroup.org/onlinepubs/9699919799/utilities/diff.html (posix.1-2008 diff specification, includes unified format since issue 7)
 - https://www.gnu.org/software/diffutils/manual/html_node/Unified-Format.html (gnu diffutils unified format)
 - https://www.gnu.org/software/diffutils/manual/html_node/Context-Format.html (gnu diffutils context format)
@@ -54,6 +55,7 @@ primary (official):
 - https://git-scm.com/docs/git-diff (git diff command, including combined diff for merges)
 
 cross-reference (existing highlighters):
+
 - https://github.com/microsoft/vscode/blob/main/extensions/diff/syntaxes/diff.tmLanguage.json (textmate grammar used by vscode, most complete scope hierarchy)
 - https://github.com/tree-sitter-grammars/tree-sitter-diff (tree-sitter grammar, most structured parse tree)
 - https://github.com/PrismJS/prism/pull/1889 (prism diff language definition)
@@ -62,12 +64,14 @@ cross-reference (existing highlighters):
 - https://github.com/sublimehq/Packages/blob/master/Diff/Diff.sublime-syntax (sublime text diff syntax)
 
 character-level diff tools (for the "out of scope" analysis):
+
 - https://github.com/dandavison/delta (delta, rust-based git pager)
 - https://github.com/git/git/tree/master/contrib/diff-highlight (git diff-highlight, perl)
 - https://github.com/mookid/diffr (diffr, rust)
 - https://github.com/rickhowe/diffchar.vim (diffchar.vim)
 
 gaps and calls:
+
 - there is no single rfc or formal bnf for unified diff. the posix spec
   defines the `-u` option and output format but leaves some git extensions
   (like `diff --git`, `index`, `similarity index`, `rename from/to`,
@@ -90,6 +94,7 @@ the first line of each file in `git diff` output. always starts with
 `diff --git `.
 
 **git metadata lines** (appear between the diff header and file headers):
+
 - `index <hash>..<hash> <mode>` (abbreviated commit hashes and optional file mode)
 - `old mode <mode>` / `new mode <mode>` (file permission changes)
 - `new file mode <mode>` / `deleted file mode <mode>`
@@ -99,14 +104,17 @@ the first line of each file in `git diff` output. always starts with
 - `Binary files <path> and <path> differ`
 
 **file headers (unified)**
+
 - `--- a/path` or `--- /dev/null` (old file)
 - `+++ b/path` or `+++ /dev/null` (new file)
 
 **file headers (context)**
+
 - `*** path timestamp` (old file)
 - `--- path timestamp` (new file, reuses `---` but in context format)
 
 **normal diff header**
+
 - `diff path path` (without `--git`)
 
 ### hunk headers
@@ -137,6 +145,7 @@ where NUMBER is a line number or `start,end` range.
 ### combined diff lines (merge commits)
 
 in combined diff for n parents, each line has n prefix columns:
+
 - `+` in column i means the line was added relative to parent i
 - `-` in column i means the line was removed relative to parent i
 - ` ` (space) in column i means the line matches parent i
@@ -155,24 +164,24 @@ files). not universally present.
 
 the following token types are appropriate for a diff grammar:
 
-| token name | what it covers |
-|---|---|
-| `keyword` | diff command word (`diff`), format flags (`--git`, `--cc`) |
-| `heading` | file header lines (`---`, `+++` in unified; `***` in context) |
-| `label` | hunk header markers (`@@`, `***...****`, `---...----`) |
-| `number` | line numbers and ranges in hunk headers, mode numbers |
-| `string` | file paths in headers |
-| `hash` | git object hashes in `index` lines |
-| `meta` | git metadata keywords (`index`, `old mode`, `new mode`, `similarity index`, `rename from`, `rename to`, `copy from`, `copy to`, `new file mode`, `deleted file mode`, `Binary files`) |
-| `inserted` | added line content (after the `+` prefix) |
-| `inserted.marker` | the `+` or `>` prefix character itself |
-| `deleted` | removed line content (after the `-` prefix) |
-| `deleted.marker` | the `-` or `<` prefix character itself |
-| `changed` | changed line content in context format (after `!`) |
-| `changed.marker` | the `!` prefix character |
-| `context` | unchanged context line content |
-| `comment` | comment lines, "no newline at end of file" marker, section context after `@@` |
-| `punctuation` | range separators (`,`, `..`), path prefixes (`a/`, `b/`), `%` in similarity |
+| token name        | what it covers                                                                                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keyword`         | diff command word (`diff`), format flags (`--git`, `--cc`)                                                                                                                            |
+| `heading`         | file header lines (`---`, `+++` in unified; `***` in context)                                                                                                                         |
+| `label`           | hunk header markers (`@@`, `***...****`, `---...----`)                                                                                                                                |
+| `number`          | line numbers and ranges in hunk headers, mode numbers                                                                                                                                 |
+| `string`          | file paths in headers                                                                                                                                                                 |
+| `hash`            | git object hashes in `index` lines                                                                                                                                                    |
+| `meta`            | git metadata keywords (`index`, `old mode`, `new mode`, `similarity index`, `rename from`, `rename to`, `copy from`, `copy to`, `new file mode`, `deleted file mode`, `Binary files`) |
+| `inserted`        | added line content (after the `+` prefix)                                                                                                                                             |
+| `inserted.marker` | the `+` or `>` prefix character itself                                                                                                                                                |
+| `deleted`         | removed line content (after the `-` prefix)                                                                                                                                           |
+| `deleted.marker`  | the `-` or `<` prefix character itself                                                                                                                                                |
+| `changed`         | changed line content in context format (after `!`)                                                                                                                                    |
+| `changed.marker`  | the `!` prefix character                                                                                                                                                              |
+| `context`         | unchanged context line content                                                                                                                                                        |
+| `comment`         | comment lines, "no newline at end of file" marker, section context after `@@`                                                                                                         |
+| `punctuation`     | range separators (`,`, `..`), path prefixes (`a/`, `b/`), `%` in similarity                                                                                                           |
 
 note: `inserted`, `deleted`, `changed` are semantic token types specific to
 diff. they map naturally to green/red/yellow background highlighting in
@@ -237,11 +246,13 @@ prefixes. in practice, almost all combined diffs are 2-parent, so supporting
 ### git diff with rename detection
 
 when git detects a rename, the header includes:
+
 ```
 similarity index 95%
 rename from old/path
 rename to new/path
 ```
+
 and the diff may show only the changed portions. these metadata lines appear
 between `diff --git` and the `---`/`+++` file headers.
 
@@ -354,21 +365,21 @@ index abc1234..def5678 100644
 
 character-by-character trace:
 
-| pos | char(s) | context | token | transition |
-|---|---|---|---|---|
-| line 1 | `diff --git a/src/old_name.js b/src/new_name.js` | top | `keyword` for `diff`, `keyword` for `--git`, `string` for paths | enter file block |
-| line 2 | `similarity index 85%` | metadata | `meta` for `similarity index`, `number` for `85`, `punctuation` for `%` | stay in metadata |
-| line 3 | `rename from src/old_name.js` | metadata | `meta` for `rename from`, `string` for path | stay in metadata |
-| line 4 | `rename to src/new_name.js` | metadata | `meta` for `rename to`, `string` for path | stay in metadata |
-| line 5 | `index abc1234..def5678 100644` | metadata | `meta` for `index`, `hash` for `abc1234`, `punctuation` for `..`, `hash` for `def5678`, `number` for `100644` | stay in metadata |
-| line 6 | `--- a/src/old_name.js` | metadata | `heading` for `---`, `string` for path | exit metadata, enter file headers |
-| line 7 | `+++ b/src/new_name.js` | file headers | `heading` for `+++`, `string` for path | stay in file headers |
-| line 8 | `@@ -1,4 +1,4 @@` | file headers | `label` for `@@`, `number` for `1`, `punctuation` for `,`, `number` for `4`, `number` for `1`, `punctuation` for `,`, `number` for `4`, `label` for `@@` | enter hunk |
-| line 9 | ` const foo = 1;` | hunk | `context` (space prefix + content) | stay in hunk |
-| line 10 | `-const bar = 2;` | hunk | `deleted.marker` for `-`, `deleted` for rest | stay in hunk |
-| line 11 | `+const bar = 3;` | hunk | `inserted.marker` for `+`, `inserted` for rest | stay in hunk |
-| line 12 | ` const baz = foo + bar;` | hunk | `context` (space prefix + content) | stay in hunk |
-| eof | | hunk | | exit hunk, exit file block |
+| pos     | char(s)                                          | context      | token                                                                                                                                                    | transition                        |
+| ------- | ------------------------------------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| line 1  | `diff --git a/src/old_name.js b/src/new_name.js` | top          | `keyword` for `diff`, `keyword` for `--git`, `string` for paths                                                                                          | enter file block                  |
+| line 2  | `similarity index 85%`                           | metadata     | `meta` for `similarity index`, `number` for `85`, `punctuation` for `%`                                                                                  | stay in metadata                  |
+| line 3  | `rename from src/old_name.js`                    | metadata     | `meta` for `rename from`, `string` for path                                                                                                              | stay in metadata                  |
+| line 4  | `rename to src/new_name.js`                      | metadata     | `meta` for `rename to`, `string` for path                                                                                                                | stay in metadata                  |
+| line 5  | `index abc1234..def5678 100644`                  | metadata     | `meta` for `index`, `hash` for `abc1234`, `punctuation` for `..`, `hash` for `def5678`, `number` for `100644`                                            | stay in metadata                  |
+| line 6  | `--- a/src/old_name.js`                          | metadata     | `heading` for `---`, `string` for path                                                                                                                   | exit metadata, enter file headers |
+| line 7  | `+++ b/src/new_name.js`                          | file headers | `heading` for `+++`, `string` for path                                                                                                                   | stay in file headers              |
+| line 8  | `@@ -1,4 +1,4 @@`                                | file headers | `label` for `@@`, `number` for `1`, `punctuation` for `,`, `number` for `4`, `number` for `1`, `punctuation` for `,`, `number` for `4`, `label` for `@@` | enter hunk                        |
+| line 9  | ` const foo = 1;`                                | hunk         | `context` (space prefix + content)                                                                                                                       | stay in hunk                      |
+| line 10 | `-const bar = 2;`                                | hunk         | `deleted.marker` for `-`, `deleted` for rest                                                                                                             | stay in hunk                      |
+| line 11 | `+const bar = 3;`                                | hunk         | `inserted.marker` for `+`, `inserted` for rest                                                                                                           | stay in hunk                      |
+| line 12 | ` const baz = foo + bar;`                        | hunk         | `context` (space prefix + content)                                                                                                                       | stay in hunk                      |
+| eof     |                                                  | hunk         |                                                                                                                                                          | exit hunk, exit file block        |
 
 ### trace 2: context diff with changed lines
 
@@ -386,19 +397,19 @@ character-by-character trace:
   line three
 ```
 
-| pos | char(s) | context | token | transition |
-|---|---|---|---|---|
-| line 1 | `*** old_file.txt\t2024-01-15...` | top | `heading` for `***`, `string` for path, `comment` for timestamp | enter file block (context format) |
-| line 2 | `--- new_file.txt\t2024-01-15...` | file headers | `heading` for `---`, `string` for path, `comment` for timestamp | stay in file headers |
-| line 3 | `***************` | file headers | `label` for the separator | enter context hunk |
-| line 4 | `*** 1,5 ****` | context hunk | `label` for `***`, `number` for `1`, `punctuation` for `,`, `number` for `5`, `label` for `****` | enter old section |
-| line 5 | `  line one` | old section | `context` (two-space prefix + content) | stay in old section |
-| line 6 | `! line two old` | old section | `changed.marker` for `!`, `changed` for rest | stay in old section |
-| line 7 | `  line three` | old section | `context` | stay in old section |
-| line 8 | `--- 1,5 ----` | old section | `label` for `---`, `number` for `1`, `punctuation` for `,`, `number` for `5`, `label` for `----` | exit old section, enter new section |
-| line 9 | `  line one` | new section | `context` | stay in new section |
-| line 10 | `! line two new` | new section | `changed.marker` for `!`, `changed` for rest | stay in new section |
-| line 11 | `  line three` | new section | `context` | stay in new section, then exit |
+| pos     | char(s)                           | context      | token                                                                                            | transition                          |
+| ------- | --------------------------------- | ------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------- |
+| line 1  | `*** old_file.txt\t2024-01-15...` | top          | `heading` for `***`, `string` for path, `comment` for timestamp                                  | enter file block (context format)   |
+| line 2  | `--- new_file.txt\t2024-01-15...` | file headers | `heading` for `---`, `string` for path, `comment` for timestamp                                  | stay in file headers                |
+| line 3  | `***************`                 | file headers | `label` for the separator                                                                        | enter context hunk                  |
+| line 4  | `*** 1,5 ****`                    | context hunk | `label` for `***`, `number` for `1`, `punctuation` for `,`, `number` for `5`, `label` for `****` | enter old section                   |
+| line 5  | `  line one`                      | old section  | `context` (two-space prefix + content)                                                           | stay in old section                 |
+| line 6  | `! line two old`                  | old section  | `changed.marker` for `!`, `changed` for rest                                                     | stay in old section                 |
+| line 7  | `  line three`                    | old section  | `context`                                                                                        | stay in old section                 |
+| line 8  | `--- 1,5 ----`                    | old section  | `label` for `---`, `number` for `1`, `punctuation` for `,`, `number` for `5`, `label` for `----` | exit old section, enter new section |
+| line 9  | `  line one`                      | new section  | `context`                                                                                        | stay in new section                 |
+| line 10 | `! line two new`                  | new section  | `changed.marker` for `!`, `changed` for rest                                                     | stay in new section                 |
+| line 11 | `  line three`                    | new section  | `context`                                                                                        | stay in new section, then exit      |
 
 ### trace 3: git diff with binary, new file, no newline, and combined diff
 
@@ -418,24 +429,25 @@ index 1a2b3c4..5d6e7f8 100644
  }
 ```
 
-| pos | char(s) | context | token | transition |
-|---|---|---|---|---|
-| line 1 | `diff --git a/image.png b/image.png` | top | `keyword` for `diff --git`, `string` for paths | enter file block |
-| line 2 | `new file mode 100644` | metadata | `meta` for `new file mode`, `number` for `100644` | stay in metadata |
-| line 3 | `Binary files /dev/null and b/image.png differ` | metadata | `meta` for `Binary files`, `string` for paths, `meta` for `and`, `meta` for `differ` | exit file block (no hunks) |
-| line 4 | `diff --git a/config.json b/config.json` | top | `keyword` for `diff --git`, `string` for paths | enter new file block |
-| line 5 | `index 1a2b3c4..5d6e7f8 100644` | metadata | `meta` for `index`, `hash` for hashes, `punctuation` for `..`, `number` for `100644` | stay in metadata |
-| line 6 | `--- a/config.json` | metadata | `heading` for `---`, `string` for path | exit metadata |
-| line 7 | `+++ b/config.json` | file headers | `heading` for `+++`, `string` for path | stay in file headers |
-| line 8 | `@@ -1,3 +1,3 @@` | file headers | `label` for `@@`, numbers, `label` for `@@` | enter hunk |
-| line 9 | ` {` | hunk | `context` | stay in hunk |
-| line 10 | `-  "port": 3000` | hunk | `deleted.marker` for `-`, `deleted` for rest | stay in hunk |
-| line 11 | `+  "port": 8080` | hunk | `inserted.marker` for `+`, `inserted` for rest | stay in hunk |
-| line 12 | `\ No newline at end of file` | hunk | `comment` for entire line (starts with `\`) | stay in hunk |
-| line 13 | ` }` | hunk | `context` | stay in hunk |
-| eof | | hunk | | exit hunk, exit file block |
+| pos     | char(s)                                         | context      | token                                                                                | transition                 |
+| ------- | ----------------------------------------------- | ------------ | ------------------------------------------------------------------------------------ | -------------------------- |
+| line 1  | `diff --git a/image.png b/image.png`            | top          | `keyword` for `diff --git`, `string` for paths                                       | enter file block           |
+| line 2  | `new file mode 100644`                          | metadata     | `meta` for `new file mode`, `number` for `100644`                                    | stay in metadata           |
+| line 3  | `Binary files /dev/null and b/image.png differ` | metadata     | `meta` for `Binary files`, `string` for paths, `meta` for `and`, `meta` for `differ` | exit file block (no hunks) |
+| line 4  | `diff --git a/config.json b/config.json`        | top          | `keyword` for `diff --git`, `string` for paths                                       | enter new file block       |
+| line 5  | `index 1a2b3c4..5d6e7f8 100644`                 | metadata     | `meta` for `index`, `hash` for hashes, `punctuation` for `..`, `number` for `100644` | stay in metadata           |
+| line 6  | `--- a/config.json`                             | metadata     | `heading` for `---`, `string` for path                                               | exit metadata              |
+| line 7  | `+++ b/config.json`                             | file headers | `heading` for `+++`, `string` for path                                               | stay in file headers       |
+| line 8  | `@@ -1,3 +1,3 @@`                               | file headers | `label` for `@@`, numbers, `label` for `@@`                                          | enter hunk                 |
+| line 9  | ` {`                                            | hunk         | `context`                                                                            | stay in hunk               |
+| line 10 | `-  "port": 3000`                               | hunk         | `deleted.marker` for `-`, `deleted` for rest                                         | stay in hunk               |
+| line 11 | `+  "port": 8080`                               | hunk         | `inserted.marker` for `+`, `inserted` for rest                                       | stay in hunk               |
+| line 12 | `\ No newline at end of file`                   | hunk         | `comment` for entire line (starts with `\`)                                          | stay in hunk               |
+| line 13 | ` }`                                            | hunk         | `context`                                                                            | stay in hunk               |
+| eof     |                                                 | hunk         |                                                                                      | exit hunk, exit file block |
 
 notes from traces:
+
 - the main complexity is distinguishing `---`/`+++`/`***` as headers vs
   content lines. the key signal is position: before any hunk they are
   headers, inside a hunk they are content prefixed with `-`/`+`/`*`.

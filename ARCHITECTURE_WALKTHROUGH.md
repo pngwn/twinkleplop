@@ -140,13 +140,14 @@ one matcher:
 The `(state, exit)` combination produces four stack operations:
 
 | `state` set | `exit` set | Meaning                  | Stack op |
-|-------------|------------|--------------------------|----------|
+| ----------- | ---------- | ------------------------ | -------- |
 | yes         | no         | push parent, descend     | push     |
 | yes         | yes        | replace at current depth | sideways |
 | no          | yes        | pop to parent            | pop      |
 | no          | no         | stay                     | none     |
 
 The helper factories encode these directly:
+
 - `enter(s)` returns `{ state: s }`.
 - `goto(s)` returns `{ state: s, exit: true }`.
 - `leave()` returns `{ exit: true }`.
@@ -180,11 +181,11 @@ omit rules from shared rulesets when a state wants its own.
 
 **Ambiguity handling**:
 
-- *Maximal munch* is compile-time: pattern buckets are sorted descending by
+- _Maximal munch_ is compile-time: pattern buckets are sorted descending by
   length, so the runtime picks the longest viable match first without any
   explicit lookahead.
-- *Contextual ambiguity* uses probe mode.
-- *Word boundaries* use `boundary: true`.
+- _Contextual ambiguity_ uses probe mode.
+- _Word boundaries_ use `boundary: true`.
 
 **Adjacency concern.** A rule can only see the current character plus the
 state on top of the stack; there is no multi-token lookahead. Cross-token
@@ -267,7 +268,7 @@ first-seen order and assigned a 0-based id. The state count is capped at
 - **ASCII fast path**: for each matchable ASCII code in each state,
   `char_maps[state_id * 128 + char_code] = rule_idx`. Unset entries store
   the sentinel 65535. For single-char `match` or `range` rules this is the
-  whole story; for multi-char patterns only the *first* char is set here
+  whole story; for multi-char patterns only the _first_ char is set here
   and the full pattern goes into the bucket map.
 - **Multi-char patterns**: per state, bucketed by first char into
   `patterns: Map<state_id, Array<PatternInfo[] | null>>`. Each
@@ -354,10 +355,10 @@ The tokeniser ingests a plain JavaScript string and walks it with
 
 ```ts
 const len = input.length;
-const tokens = new Uint32Array(len * 3);   // pre-allocated worst case
+const tokens = new Uint32Array(len * 3); // pre-allocated worst case
 let token_count = 0;
 
-const state_stack = new Uint16Array(256);  // fixed-depth stack
+const state_stack = new Uint16Array(256); // fixed-depth stack
 let stack_ptr = 0;
 let current_state = 0;
 
@@ -509,6 +510,7 @@ offset, `tokens[i*3+2]` the end offset. The array is returned via
 without copying.
 
 **Invariants**:
+
 - Tokens are in source order, non-overlapping.
 - Adjacent same-type runs are already coalesced (see stage 5).
 - There is no sentinel "gap" token; untokenised spans between tokens are
@@ -538,7 +540,7 @@ The pipeline composer (`reclassify(pipeline)` in
   mutate their local copy in place). An empty pipeline returns the input
   reference unchanged, so `reclassify([])` is effectively free.
 - **Claim batching**. Passes produced by `rewrite_types` (and marked with
-  `__claim`) are *claim-producing*. Adjacent claim-producers in the pipeline
+  `__claim`) are _claim-producing_. Adjacent claim-producers in the pipeline
   are batched: they all run against the same base stream, their claims
   merge by precedence, the winning claims apply once. A mutating
   (non-claim) pass flushes the batch before running. This keeps precedence
@@ -601,7 +603,7 @@ Precedence is a fixed table reflecting specificity
 (`reclassifier.ts:899-922`):
 
 | Type        | Precedence |
-|-------------|------------|
+| ----------- | ---------- |
 | identifier  | 0          |
 | punctuation | 5          |
 | operator    | 5          |
@@ -632,9 +634,9 @@ workhorse of the `type_claim` layer. Rules are structured as:
 
 ```ts
 interface RewriteRule {
-  anchor: string | TypePatternSpec;     // the token to rewrite
-  before?: TokenPatternSpec;            // optional backward-looking guard
-  when?: TokenPatternSpec;              // optional forward-looking guard
+  anchor: string | TypePatternSpec; // the token to rewrite
+  before?: TokenPatternSpec; // optional backward-looking guard
+  when?: TokenPatternSpec; // optional forward-looking guard
   rewrite: string | Record<string, string>;
 }
 ```
@@ -676,7 +678,7 @@ content is broken by host-language "holes" that must be preserved
 verbatim. The exemplar is a JS tagged template:
 
 ```js
-html`<p class="${cls}">hi</p>`
+html`<p class="${cls}">hi</p>`;
 ```
 
 where the HTML sub-tokeniser must see a well-formed attribute value even
@@ -686,7 +688,7 @@ though `${cls}` is a JS interpolation. Config:
 interface EmbedInterleavedConfig {
   scan: GroupScanFn;
   language?: LanguageFn;
-  hole_char?: string;  // default " "
+  hole_char?: string; // default " "
 }
 ```
 
@@ -763,8 +765,8 @@ first-class feature. Passes in this tier are tagged with
 token types the pass emits. Example:
 
 ```ts
-tag(function_variable_rules, ["function"], "type_claim")
-tag(class_name_promoter, ["class_name"], "type_claim")
+tag(function_variable_rules, ["function"], "type_claim");
+tag(class_name_promoter, ["class_name"], "type_claim");
 ```
 
 ### Gating
@@ -819,7 +821,7 @@ Complex fidelity passes walk the token stream with helpers from
   `["comment"]` and the implementation takes a fast path when only one
   trivia type is configured.
 - `make_scope_stack<T>()` returns a `ScopeStack<T>` with `push(bracket,
-  data)`, `pop()`, `top()`, and live `paren_depth`, `brace_depth`,
+data)`, `pop()`, `top()`, and live `paren_depth`, `brace_depth`,
   `bracket_depth` counters. The scope entry stores bracket kind plus a
   caller-defined `data` object. The tokeniser coalesces runs of same-kind
   punctuation into one token, so callers walk the token text char by
@@ -1155,9 +1157,10 @@ Claim-based composition handles the common case where several passes
 want to rewrite overlapping sets of identifiers. Each pass emits
 `Claim[] = { token_idx, type_id, precedence }`; the pipeline merges
 claims per token index using a fixed precedence table (class_name > type
+
 > function > property > identifier, with keyword/boolean/number at 75
-and comment/string at 80) and ties break by insertion order. This keeps
-the result stable regardless of pass ordering within a batch.
+> and comment/string at 80) and ties break by insertion order. This keeps
+> the result stable regardless of pass ordering within a batch.
 
 The correctness tier is tagged `always()` — empty `produces` — which
 signals to the fidelity gate that these passes run at every fidelity
@@ -1418,15 +1421,15 @@ const x = 1
 
 `A` is position 10. `len = 11`. Char codes:
 
-| pos  | char  | code |
-|------|-------|------|
+| pos  | char  | code               |
+| ---- | ----- | ------------------ |
 | 0..4 | const | 99 111 110 115 116 |
-| 5    | ␣     | 32   |
-| 6    | x     | 120  |
-| 7    | ␣     | 32   |
-| 8    | =     | 61   |
-| 9    | ␣     | 32   |
-| 10   | 1     | 49   |
+| 5    | ␣     | 32                 |
+| 6    | x     | 120                |
+| 7    | ␣     | 32                 |
+| 8    | =     | 61                 |
+| 9    | ␣     | 32                 |
+| 10   | 1     | 49                 |
 
 ## Stage 1 — Raw grammar fragment
 
@@ -1613,7 +1616,9 @@ every chunk.
 ## Stage 12 — Output HTML
 
 ```html
-<pre class="twinkleplop"><code><span class="l"><span class="tok keyword">const</span> <span class="tok identifier">x</span> <span class="tok operator">=</span> <span class="tok number">1</span></span></code></pre>
+<pre
+  class="twinkleplop"
+><code><span class="l"><span class="tok keyword">const</span> <span class="tok identifier">x</span> <span class="tok operator">=</span> <span class="tok number">1</span></span></code></pre>
 ```
 
 Four token spans, three single-space gaps as raw text, one line wrapper.

@@ -53,6 +53,7 @@ the design of this grammar is not driven by spec completeness but by
 conflict analysis against common programming languages.
 
 additional conflict analysis references:
+
 - javascript/typescript: `+` and `-` are unary operators but always appear
   mid-expression, not at column 0 as a statement start
 - python: `+` and `-` same as above; `---` is not valid syntax
@@ -70,6 +71,7 @@ additional conflict analysis references:
 this grammar has exactly five token categories.
 
 ### inserted line
+
 - prefix: `+` at column 0, followed by any character except `+`, or
   followed by end of line (a bare `+` on its own line)
 - the `+` prefix character is the marker token
@@ -78,6 +80,7 @@ this grammar has exactly five token categories.
   operator/marker in other languages)
 
 ### deleted line
+
 - prefix: `-` at column 0, followed by any character except `-`, or
   followed by end of line (a bare `-` on its own line)
 - the `-` prefix character is the marker token
@@ -86,6 +89,7 @@ this grammar has exactly five token categories.
   markdown horizontal rule)
 
 ### changed line (context diff)
+
 - prefix: `!` at column 0, followed by a space
 - the `!` is the marker token
 - everything after `! ` to end of line is the content token
@@ -94,6 +98,7 @@ this grammar has exactly five token categories.
   `macro_name!()`)
 
 ### hunk header
+
 - `@@` at column 0, the entire line through to end of line
 - the opening `@@` is the label token
 - the range information (`-N,N +N,N`) contains number tokens
@@ -102,37 +107,38 @@ this grammar has exactly five token categories.
 - also matches `@@@` (combined diff) for the same structure
 
 ### no newline marker
+
 - `\ ` (backslash space) at column 0
 - the entire line is a comment token
 - matches `\ No newline at end of file` and localized variants
 
 ### what is deliberately excluded
 
-| excluded construct | reason |
-|---|---|
-| `---` / `+++` file headers | conflicts with yaml, markdown, operators |
-| `diff --git` header | `diff` is a common identifier |
-| `index`, `similarity index`, etc. | `index` is a keyword in many languages |
-| `***` context file header | conflicts with pointer deref, exponentiation, bold |
-| `< ` / `> ` normal diff markers | conflicts with html tags, shell redirects, generics |
-| `Binary files ... differ` | too many common words |
-| `#` comment lines | conflicts with comments in shell, python, etc. |
-| context lines (space prefix) | a space at column 0 is universal in indented code |
+| excluded construct                | reason                                              |
+| --------------------------------- | --------------------------------------------------- |
+| `---` / `+++` file headers        | conflicts with yaml, markdown, operators            |
+| `diff --git` header               | `diff` is a common identifier                       |
+| `index`, `similarity index`, etc. | `index` is a keyword in many languages              |
+| `***` context file header         | conflicts with pointer deref, exponentiation, bold  |
+| `< ` / `> ` normal diff markers   | conflicts with html tags, shell redirects, generics |
+| `Binary files ... differ`         | too many common words                               |
+| `#` comment lines                 | conflicts with comments in shell, python, etc.      |
+| context lines (space prefix)      | a space at column 0 is universal in indented code   |
 
 ## 2. complete token type mapping
 
-| token name | what it covers |
-|---|---|
-| `inserted` | added line content (after the `+` prefix) |
-| `inserted.marker` | the `+` prefix character itself |
-| `deleted` | removed line content (after the `-` prefix) |
-| `deleted.marker` | the `-` prefix character itself |
-| `changed` | changed line content in context format (after `! `) |
-| `changed.marker` | the `! ` prefix |
-| `label` | `@@` / `@@@` hunk header delimiters |
-| `number` | line numbers and ranges within hunk headers |
-| `comment` | function context after closing `@@`, no-newline marker |
-| `punctuation` | `,` range separator in hunk headers, `+`/`-` signs before ranges |
+| token name        | what it covers                                                   |
+| ----------------- | ---------------------------------------------------------------- |
+| `inserted`        | added line content (after the `+` prefix)                        |
+| `inserted.marker` | the `+` prefix character itself                                  |
+| `deleted`         | removed line content (after the `-` prefix)                      |
+| `deleted.marker`  | the `-` prefix character itself                                  |
+| `changed`         | changed line content in context format (after `! `)              |
+| `changed.marker`  | the `! ` prefix                                                  |
+| `label`           | `@@` / `@@@` hunk header delimiters                              |
+| `number`          | line numbers and ranges within hunk headers                      |
+| `comment`         | function context after closing `@@`, no-newline marker           |
+| `punctuation`     | `,` range separator in hunk headers, `+`/`-` signs before ranges |
 
 this is 10 token types vs 17 in the full diff grammar. the semantic types
 (`inserted`, `deleted`, `changed`) are shared between both grammars so themes
@@ -182,6 +188,7 @@ alone means "an empty line was deleted."
 when used as an overlay, `@@` at column 0 inside a multiline string or
 block comment in the underlying language would be a false positive. this
 is an acceptable tradeoff because:
+
 1. `@@` at column 0 inside a string/comment is extremely rare
 2. the overlay grammar has no way to know about the underlying language's
    string/comment state
@@ -244,17 +251,17 @@ grammar's state machine. each line is an independent classification.
    return result;
 ```
 
-| line | col 0 | match? | token | notes |
-|---|---|---|---|---|
-| `@@ -10,7 +10,8 @@ function...` | `@` | yes | `label` `@@`, `number` `10`, `punctuation` `,`, `number` `7`, `number` `10`, `punctuation` `,`, `number` `8`, `label` `@@`, `comment` ` function process(input) {` | hunk header |
-| `   const result = [];` | ` ` (space) | no | (not matched, pass through to underlying grammar) | context line, ignored |
-| `-  for (let i = 0; ...` | `-` | yes, next char is ` ` (not `-`) | `deleted.marker` `-`, `deleted` rest of line | deleted line |
-| `-    result.push(input[i]...` | `-` | yes | `deleted.marker` `-`, `deleted` rest | deleted line |
-| `+  for (const item of ...` | `+` | yes, next char is ` ` (not `+`) | `inserted.marker` `+`, `inserted` rest | inserted line |
-| `+    result.push(item...` | `+` | yes | `inserted.marker` `+`, `inserted` rest | inserted line |
-| `+    console.log(item);` | `+` | yes | `inserted.marker` `+`, `inserted` rest | inserted line |
-| `   }` | ` ` | no | (pass through) | context line |
-| `   return result;` | ` ` | no | (pass through) | context line |
+| line                            | col 0       | match?                          | token                                                                                                                                                              | notes                 |
+| ------------------------------- | ----------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| `@@ -10,7 +10,8 @@ function...` | `@`         | yes                             | `label` `@@`, `number` `10`, `punctuation` `,`, `number` `7`, `number` `10`, `punctuation` `,`, `number` `8`, `label` `@@`, `comment` ` function process(input) {` | hunk header           |
+| `   const result = [];`         | ` ` (space) | no                              | (not matched, pass through to underlying grammar)                                                                                                                  | context line, ignored |
+| `-  for (let i = 0; ...`        | `-`         | yes, next char is ` ` (not `-`) | `deleted.marker` `-`, `deleted` rest of line                                                                                                                       | deleted line          |
+| `-    result.push(input[i]...`  | `-`         | yes                             | `deleted.marker` `-`, `deleted` rest                                                                                                                               | deleted line          |
+| `+  for (const item of ...`     | `+`         | yes, next char is ` ` (not `+`) | `inserted.marker` `+`, `inserted` rest                                                                                                                             | inserted line         |
+| `+    result.push(item...`      | `+`         | yes                             | `inserted.marker` `+`, `inserted` rest                                                                                                                             | inserted line         |
+| `+    console.log(item);`       | `+`         | yes                             | `inserted.marker` `+`, `inserted` rest                                                                                                                             | inserted line         |
+| `   }`                          | ` `         | no                              | (pass through)                                                                                                                                                     | context line          |
+| `   return result;`             | ` `         | no                              | (pass through)                                                                                                                                                     | context line          |
 
 ### trace 2: edge cases with `++`, `--`, and bare markers
 
@@ -270,17 +277,17 @@ grammar's state machine. each line is an independent classification.
  }
 ```
 
-| line | col 0 | match? | token | notes |
-|---|---|---|---|---|
-| `@@ -1,6 +1,6 @@` | `@` | yes | hunk header tokens | hunk header |
-| ` int main() {` | ` ` | no | pass through | context |
-| `-    int x = 0;` | `-` | yes, next is ` ` | `deleted.marker`, `deleted` | deleted line |
-| `-    x--;` | `-` | yes, next is ` ` | `deleted.marker`, `deleted` | deleted line (content contains `--` but that is fine, only col 0 matters) |
-| `+    int x = 1;` | `+` | yes, next is ` ` | `inserted.marker`, `inserted` | inserted line |
-| `+    x++;` | `+` | yes, next is ` ` | `inserted.marker`, `inserted` | inserted line (content contains `++`, fine) |
-| `+` | `+` | yes, next is end of line | `inserted.marker` | bare `+`, empty line was added |
-| `-` | `-` | yes, next is end of line | `deleted.marker` | bare `-`, empty line was deleted |
-| ` }` | ` ` | no | pass through | context |
+| line              | col 0 | match?                   | token                         | notes                                                                     |
+| ----------------- | ----- | ------------------------ | ----------------------------- | ------------------------------------------------------------------------- |
+| `@@ -1,6 +1,6 @@` | `@`   | yes                      | hunk header tokens            | hunk header                                                               |
+| ` int main() {`   | ` `   | no                       | pass through                  | context                                                                   |
+| `-    int x = 0;` | `-`   | yes, next is ` `         | `deleted.marker`, `deleted`   | deleted line                                                              |
+| `-    x--;`       | `-`   | yes, next is ` `         | `deleted.marker`, `deleted`   | deleted line (content contains `--` but that is fine, only col 0 matters) |
+| `+    int x = 1;` | `+`   | yes, next is ` `         | `inserted.marker`, `inserted` | inserted line                                                             |
+| `+    x++;`       | `+`   | yes, next is ` `         | `inserted.marker`, `inserted` | inserted line (content contains `++`, fine)                               |
+| `+`               | `+`   | yes, next is end of line | `inserted.marker`             | bare `+`, empty line was added                                            |
+| `-`               | `-`   | yes, next is end of line | `deleted.marker`              | bare `-`, empty line was deleted                                          |
+| ` }`              | ` `   | no                       | pass through                  | context                                                                   |
 
 ### trace 3: overlay scenario with false positive analysis
 
@@ -289,26 +296,27 @@ imagine this python file displayed with diff-basic overlay:
 ```
 +def new_function():
 +    return 42
- 
+
  def existing():
 -    return old_value
 +    return new_value
 \ No newline at end of file
 ```
 
-| line | col 0 | match? | token | notes |
-|---|---|---|---|---|
-| `+def new_function():` | `+` | yes | `inserted.marker` `+`, `inserted` `def new_function():` | correct: this is a diff-added line |
-| `+    return 42` | `+` | yes | `inserted.marker` `+`, `inserted` `    return 42` | correct |
-| ` ` | ` ` | no | pass through (underlying grammar sees empty line) | context line with just a space |
-| ` def existing():` | ` ` | no | pass through (underlying grammar highlights `def` etc.) | context line |
-| `-    return old_value` | `-` | yes | `deleted.marker` `-`, `deleted` `    return old_value` | correct |
-| `+    return new_value` | `+` | yes | `inserted.marker` `+`, `inserted` `    return new_value` | correct |
-| `\ No newline at end of file` | `\` | yes (`\ `) | `comment` entire line | no-newline marker |
+| line                          | col 0 | match?     | token                                                    | notes                              |
+| ----------------------------- | ----- | ---------- | -------------------------------------------------------- | ---------------------------------- |
+| `+def new_function():`        | `+`   | yes        | `inserted.marker` `+`, `inserted` `def new_function():`  | correct: this is a diff-added line |
+| `+    return 42`              | `+`   | yes        | `inserted.marker` `+`, `inserted` `    return 42`        | correct                            |
+| ` `                           | ` `   | no         | pass through (underlying grammar sees empty line)        | context line with just a space     |
+| ` def existing():`            | ` `   | no         | pass through (underlying grammar highlights `def` etc.)  | context line                       |
+| `-    return old_value`       | `-`   | yes        | `deleted.marker` `-`, `deleted` `    return old_value`   | correct                            |
+| `+    return new_value`       | `+`   | yes        | `inserted.marker` `+`, `inserted` `    return new_value` | correct                            |
+| `\ No newline at end of file` | `\`   | yes (`\ `) | `comment` entire line                                    | no-newline marker                  |
 
 now imagine the same python file WITHOUT diff markers (pure source code).
 the only lines that could false-positive are lines starting with `+`, `-`,
 or `!` at column 0. in standard python:
+
 - `+x` or `-x` at column 0 would be a bare expression statement with unary
   operator, which is syntactically valid but pointless and extremely rare
 - `!` at column 0 is not valid python syntax (ipython magic, not real python)

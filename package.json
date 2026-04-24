@@ -1,33 +1,33 @@
 {
-	"name": "twinkleplop",
-	"version": "1.0.0",
-	"description": "",
-	"main": "index.js",
-	"scripts": {
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"bench": "pnpm build && vitest bench --config lib/bench/vitest.config.js",
-		"build:languages": "pnpm --filter='./languages/**' exec vite build --config ../../build/language.vite.config.ts",
-		"build:lib": "pnpm --filter=@twinkleplop/core -r build && pnpm --filter=@twinkleplop/theme-github run build && pnpm --filter=@twinkleplop/theme-atom-one run build",
-		"build": "pnpm build:lib && pnpm build:languages",
-		"format:write": "oxfmt",
-		"format:check": "oxfmt --check"
-	},
-	"keywords": [],
-	"author": "",
-	"license": "ISC",
-	"dependencies": {
-		"dts-buddy": "^0.6.2",
-		"oxfmt": "^0.46.0",
-		"prismjs": "^1.30.0",
-		"shiki": "^3.3.0",
-		"typescript": "^5.8.3",
-		"vite": "^8.0.10",
-		"vitest": "^4.1.5"
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"esbuild"
-		]
-	}
+  "name": "twinkleplop",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "pnpm build && vitest bench --config lib/bench/vitest.config.js",
+    "build:languages": "pnpm --filter='./languages/**' exec vite build --config ../../build/language.vite.config.ts",
+    "build:lib": "pnpm --filter=@twinkleplop/core -r build && pnpm --filter=@twinkleplop/theme-github run build && pnpm --filter=@twinkleplop/theme-atom-one run build",
+    "build": "pnpm build:lib && pnpm build:languages",
+    "format:write": "oxfmt",
+    "format:check": "oxfmt --check"
+  },
+  "dependencies": {
+    "dts-buddy": "^0.6.2",
+    "oxfmt": "^0.46.0",
+    "prismjs": "^1.30.0",
+    "shiki": "^3.3.0",
+    "typescript": "^5.8.3",
+    "vite": "^8.0.10",
+    "vitest": "^4.1.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
 }

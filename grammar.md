@@ -4,9 +4,20 @@ Grammars are plain JavaScript modules built with a small set of helpers from `@t
 
 ```js
 import {
-  match, on, keyword, within, fallback, range,
-  enter, goto, leave, to,
-  LETTER, DIGIT, ALNUM, HEX,
+  match,
+  on,
+  keyword,
+  within,
+  fallback,
+  range,
+  enter,
+  goto,
+  leave,
+  to,
+  LETTER,
+  DIGIT,
+  ALNUM,
+  HEX,
 } from "@twinkleplop/core";
 
 import * as TOKENS from "@twinkleplop/core/tokens";
@@ -38,10 +49,10 @@ Token types are just strings. Any string is valid. `@twinkleplop/core/tokens` ex
 ```js
 import * as TOKENS from "@twinkleplop/core/tokens";
 
-TOKENS.identifier  // "identifier"
-TOKENS.keyword     // "keyword"
-TOKENS.string      // "string"
-TOKENS.function    // "function"   (dot access is fine — see note below)
+TOKENS.identifier; // "identifier"
+TOKENS.keyword; // "keyword"
+TOKENS.string; // "string"
+TOKENS.function; // "function"   (dot access is fine — see note below)
 ```
 
 Standard names include: `boolean`, `comment`, `function`, `identifier`, `keyword`, `number`, `operator`, `property`, `punctuation`, `regex`, `selector`, `string`, `template`, plus CSS-ish extras (`attribute`, `class_name`, `css_var`, `id`, `pseudo`, `unit`).
@@ -49,7 +60,7 @@ Standard names include: `boolean`, `comment`, `function`, `identifier`, `keyword
 Custom token types can still be passed as plain strings to any helper:
 
 ```js
-match("@media", "at_rule")   // "at_rule" is a custom token — just a string
+match("@media", "at_rule"); // "at_rule" is a custom token — just a string
 ```
 
 > **Note on `TOKENS.function`**: because `function` is a reserved word, the module uses the ES2022 string-literal export form internally (`export { fn as "function" }`). Dot access (`TOKENS.function`) and bracket access (`TOKENS["function"]`) both resolve it.
@@ -65,19 +76,19 @@ A rule object has at most one matcher (`match` / `range` / `match_within` / `any
 Build a rule with a token. `patterns` can be a single string, an array of strings, a `range(...)` tag, or a mix of both. `transition` is a partial rule spread into the result (see transition helpers below).
 
 ```js
-match("const", TOKENS.keyword)
+match("const", TOKENS.keyword);
 // → { match: "const", token: "keyword" }
 
-match(["+", "-", "*", "/"], TOKENS.operator)
+match(["+", "-", "*", "/"], TOKENS.operator);
 // → { match: ["+", "-", "*", "/"], token: "operator" }
 
-match(DIGIT, TOKENS.number)
+match(DIGIT, TOKENS.number);
 // → { token: "number", range: [["0","9"]] }
 
-match(["_", "$", LETTER], TOKENS.identifier)
+match(["_", "$", LETTER], TOKENS.identifier);
 // → { match: ["_", "$"], range: [["a","z"],["A","Z"]], token: "identifier" }
 
-match("/", TOKENS.regex, enter("regex_pattern"))
+match("/", TOKENS.regex, enter("regex_pattern"));
 // → { match: "/", token: "regex", state: "regex_pattern" }
 ```
 
@@ -88,10 +99,10 @@ A single `match(...)` call can emit a rule with **both** `match` and `range` set
 Token-less variant of `match` — for rules that change state but don't emit a token. Same pattern rules as `match`.
 
 ```js
-on(["_", "$", LETTER], goto("identifier_probe"))
+on(["_", "$", LETTER], goto("identifier_probe"));
 // → { match: ["_", "$"], range: [["a","z"],["A","Z"]], state: "identifier_probe", exit: true }
 
-on([" ", "\t", "\n", "\r"])
+on([" ", "\t", "\n", "\r"]);
 // → { match: [" ", "\t", "\n", "\r"] }  (consume whitespace, stay in state)
 ```
 
@@ -100,19 +111,22 @@ on([" ", "\t", "\n", "\r"])
 Build a character-range tag to use inside `match(...)` or `on(...)`:
 
 ```js
-range([["0", "7"]])              // octal digits
-range([["a", "z"], ["A", "Z"]])  // letters
+range([["0", "7"]]); // octal digits
+range([
+  ["a", "z"],
+  ["A", "Z"],
+]); // letters
 ```
 
 Pre-built range tags are re-exported for convenience:
 
 ```js
-LOWER   // [["a","z"]]
-UPPER   // [["A","Z"]]
-LETTER  // [["a","z"], ["A","Z"]]
-DIGIT   // [["0","9"]]
-ALNUM   // [["a","z"], ["A","Z"], ["0","9"]]
-HEX     // [["0","9"], ["a","f"], ["A","F"]]
+LOWER; // [["a","z"]]
+UPPER; // [["A","Z"]]
+LETTER; // [["a","z"], ["A","Z"]]
+DIGIT; // [["0","9"]]
+ALNUM; // [["a","z"], ["A","Z"], ["0","9"]]
+HEX; // [["0","9"], ["a","f"], ["A","F"]]
 ```
 
 ### `keyword(words, transition?, token?)`
@@ -120,13 +134,13 @@ HEX     // [["0","9"], ["a","f"], ["A","F"]]
 Whole-word match with a word-boundary check. Defaults `token` to `"keyword"`:
 
 ```js
-keyword(["if", "else", "while"])
+keyword(["if", "else", "while"]);
 // → { match: ["if","else","while"], boundary: true, token: "keyword" }
 
-keyword(["true", "false"], {}, TOKENS.boolean)
+keyword(["true", "false"], {}, TOKENS.boolean);
 // → { match: ["true","false"], boundary: true, token: "boolean" }
 
-keyword(["return"], goto("regex_allow"))
+keyword(["return"], goto("regex_allow"));
 // → { match: ["return"], boundary: true, token: "keyword", state: "regex_allow", exit: true }
 ```
 
@@ -137,13 +151,13 @@ Word-boundary means the character after the match must not be an identifier char
 A bounded match — strings, comments, delimited blocks. `opts` can set `escape` (an escape-character prefix) and `multiline` (default `true`; set `false` to stop at newlines).
 
 ```js
-within("//", "\n", TOKENS.comment)
+within("//", "\n", TOKENS.comment);
 // single-line comment
 
-within("/*", "*/", TOKENS.comment)
+within("/*", "*/", TOKENS.comment);
 // block comment
 
-within('"', '"', TOKENS.string, { escape: "\\", multiline: true })
+within('"', '"', TOKENS.string, { escape: "\\", multiline: true });
 // double-quoted string with escapes, may span lines
 ```
 
@@ -152,10 +166,10 @@ within('"', '"', TOKENS.string, { escape: "\\", multiline: true })
 Matches anything the other rules didn't claim. Equivalent to `{ any: true, ...opts }`.
 
 ```js
-fallback()                             // { any: true }  (consume + stay)
-fallback({ token: TOKENS.regex })      // emit a token
-fallback(leave())                      // pop the state
-fallback(goto("division"))             // sideways transition (doesn't consume the char)
+fallback(); // { any: true }  (consume + stay)
+fallback({ token: TOKENS.regex }); // emit a token
+fallback(leave()); // pop the state
+fallback(goto("division")); // sideways transition (doesn't consume the char)
 ```
 
 `any: true` combined with a sideways transition (`state + exit: true`) does **not** consume the character — it re-processes it in the destination state. This is how you "hand back" a character when you realise you're in the wrong context.
@@ -167,31 +181,30 @@ fallback(goto("division"))             // sideways transition (doesn't consume t
 State transitions are just partial rule objects you spread into a full rule. All helpers return plain objects, so you can mix them freely with your own fields.
 
 ```js
-enter("foo")   // → { state: "foo" }              push; enters foo, parent stays on stack
-goto("foo")    // → { state: "foo", exit: true }  sideways; replaces current state
-leave()        // → { exit: true }                pop; returns to parent
-to("foo")      // → { state: "foo", exit: true }  same as goto
-to(null)       // → {}                            stay in current state
+enter("foo"); // → { state: "foo" }              push; enters foo, parent stays on stack
+goto("foo"); // → { state: "foo", exit: true }  sideways; replaces current state
+leave(); // → { exit: true }                pop; returns to parent
+to("foo"); // → { state: "foo", exit: true }  same as goto
+to(null); // → {}                            stay in current state
 ```
 
 `to()` is convenient for parameterised rule factories where the destination may be `null` to mean "stay":
 
 ```js
-const operators = (afterOp) =>
-  match(ALL_OPERATORS, TOKENS.operator, to(afterOp));
+const operators = (afterOp) => match(ALL_OPERATORS, TOKENS.operator, to(afterOp));
 
-operators("regex_allow")  // sideways to regex_allow after an operator
-operators(null)           // stay — e.g. inside regex_allow where an operator keeps us here
+operators("regex_allow"); // sideways to regex_allow after an operator
+operators(null); // stay — e.g. inside regex_allow where an operator keeps us here
 ```
 
 ### Which transition to use
 
-| Helper  | Stack op | When to use |
-|---|---|---|
-| `enter(s)` | push | Entering a nested context you'll return from (string body, parenthesised expression, regex pattern, …). |
-| `goto(s)`  | replace | Changing context without nesting — e.g. flipping between `regex_allow` and `division`. The parent state is dropped. |
-| `leave()`  | pop | Exiting a nested context. The character IS consumed; use `fallback(leave())` to exit without consuming. |
-| `to(s?)`   | optional goto | Factory helpers that take a nullable destination — `null` = stay, string = goto. |
+| Helper     | Stack op      | When to use                                                                                                         |
+| ---------- | ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `enter(s)` | push          | Entering a nested context you'll return from (string body, parenthesised expression, regex pattern, …).             |
+| `goto(s)`  | replace       | Changing context without nesting — e.g. flipping between `regex_allow` and `division`. The parent state is dropped. |
+| `leave()`  | pop           | Exiting a nested context. The character IS consumed; use `fallback(leave())` to exit without consuming.             |
+| `to(s?)`   | optional goto | Factory helpers that take a nullable destination — `null` = stay, string = goto.                                    |
 
 ---
 
@@ -212,12 +225,12 @@ states: {
 
 Optional fields on a state:
 
-| Field | Meaning |
-|---|---|
-| `mode: "probe"` | Enter probe mode when this state is reached — see "Probe states" below. |
-| `fallback: "state_name"` | Target state if probing hits EOF without matching (probe states only). |
-| `extend: "group_name"` or `[…]` | Inherit rules from one or more groups declared at the top of the grammar. |
-| `include: "ruleset_name"` or `[…]` | Prepend rules from a named ruleset (see below). |
+| Field                              | Meaning                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------- |
+| `mode: "probe"`                    | Enter probe mode when this state is reached — see "Probe states" below.   |
+| `fallback: "state_name"`           | Target state if probing hits EOF without matching (probe states only).    |
+| `extend: "group_name"` or `[…]`    | Inherit rules from one or more groups declared at the top of the grammar. |
+| `include: "ruleset_name"` or `[…]` | Prepend rules from a named ruleset (see below).                           |
 
 ### Sharing rules with arrays
 
@@ -278,7 +291,9 @@ export default {
   states: {
     main: {
       include: "js_strings",
-      rules: [ /* own rules, tried AFTER included rules */ ],
+      rules: [
+        /* own rules, tried AFTER included rules */
+      ],
     },
   },
 };
@@ -325,7 +340,7 @@ Inside a probe state, rules are positive-match only — the probe keeps consumin
 Whitespace has no special treatment — add an explicit rule that consumes it without emitting a token if you want to skip it:
 
 ```js
-on([" ", "\t", "\n", "\r"])
+on([" ", "\t", "\n", "\r"]);
 ```
 
 ---
@@ -336,8 +351,7 @@ Helpers are pure factories, so building your own is just a JS function that retu
 
 ```js
 // Shortcut for a sideways transition that emits a punctuation token
-const punct = (chars, dest) =>
-  match(chars, TOKENS.punctuation, goto(dest));
+const punct = (chars, dest) => match(chars, TOKENS.punctuation, goto(dest));
 
 // Multi-rule helper — keyword branching for a language with two contexts
 const keywords = (regexDest, divDest) => [

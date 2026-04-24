@@ -32,11 +32,11 @@ const js_default = (src: string) => (js_fn ??= js_language())(src);
 const css_default = (src: string) => (css_fn ??= css_language())(src);
 
 export const reclassifiers: LanguagePipeline = [
-	always(
-		embed_grammars({
-			raw_script: js_default,
-			raw_style: css_default,
-		}),
-		"embed",
-	),
+  always(
+    embed_grammars({
+      raw_script: js_default,
+      raw_style: css_default,
+    }),
+    "embed",
+  ),
 ];

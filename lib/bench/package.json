@@ -1,39 +1,39 @@
 {
-	"name": "@twinkleplop/bench",
-	"version": "0.0.1",
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"prebench": "pnpm -w build",
-		"bench:internal": "vitest bench --run ",
-		"bench": "vitest  bench --run src/library/comparison-suite.bench.js",
-		"bench:ui": "vitest bench --ui"
-	},
-	"devDependencies": {
-		"@twinkleplop/core": "workspace:*",
-		"@twinkleplop/css": "workspace:*",
-		"@twinkleplop/html": "workspace:*",
-		"@twinkleplop/markdown": "workspace:*",
-		"@vitest/ui": "^4.1.5",
-		"prismjs": "^1.30.0",
-		"shiki": "^3.12.0",
-		"vitest": "^4.1.5"
-	},
-	"dependencies": {
-		"@twinkleplop/bash": "workspace:*",
-		"@twinkleplop/go": "workspace:*",
-		"@twinkleplop/javascript": "workspace:*",
-		"@twinkleplop/python": "workspace:*",
-		"@twinkleplop/rust": "workspace:*",
-		"@twinkleplop/sql": "workspace:*",
-		"@twinkleplop/svelte": "workspace:*",
-		"@twinkleplop/toml": "workspace:*",
-		"@twinkleplop/tsx": "workspace:*",
-		"@twinkleplop/typescript": "workspace:*",
-		"@twinkleplop/yaml": "workspace:*",
-		"@wooorm/starry-night": "^3.8.0",
-		"highlight.js": "^11.11.1",
-		"kleur": "^4.1.5",
-		"sugar-high": "^1.1.0"
-	}
+  "name": "@twinkleplop/bench",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prebench": "pnpm -w build",
+    "bench:internal": "vitest bench --run ",
+    "bench": "vitest  bench --run src/library/comparison-suite.bench.js",
+    "bench:ui": "vitest bench --ui"
+  },
+  "dependencies": {
+    "@twinkleplop/bash": "workspace:*",
+    "@twinkleplop/go": "workspace:*",
+    "@twinkleplop/javascript": "workspace:*",
+    "@twinkleplop/python": "workspace:*",
+    "@twinkleplop/rust": "workspace:*",
+    "@twinkleplop/sql": "workspace:*",
+    "@twinkleplop/svelte": "workspace:*",
+    "@twinkleplop/toml": "workspace:*",
+    "@twinkleplop/tsx": "workspace:*",
+    "@twinkleplop/typescript": "workspace:*",
+    "@twinkleplop/yaml": "workspace:*",
+    "@wooorm/starry-night": "^3.8.0",
+    "highlight.js": "^11.11.1",
+    "kleur": "^4.1.5",
+    "sugar-high": "^1.1.0"
+  },
+  "devDependencies": {
+    "@twinkleplop/core": "workspace:*",
+    "@twinkleplop/css": "workspace:*",
+    "@twinkleplop/html": "workspace:*",
+    "@twinkleplop/markdown": "workspace:*",
+    "@vitest/ui": "^4.1.5",
+    "prismjs": "^1.30.0",
+    "shiki": "^3.12.0",
+    "vitest": "^4.1.5"
+  }
 }

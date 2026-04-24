@@ -15,15 +15,13 @@ import { rewrite_types, seq, tag, type } from "@twinkleplop/core";
 import type { LanguagePipeline } from "@twinkleplop/core";
 
 export const function_call_rules = [
-	{
-		anchor: "identifier",
-		when: seq(type("punctuation", "(")),
-		rewrite: "function",
-	},
+  {
+    anchor: "identifier",
+    when: seq(type("punctuation", "(")),
+    rewrite: "function",
+  },
 ];
 
 export const reclassifiers: LanguagePipeline = [
-	tag(rewrite_types(function_call_rules, { trivia: ["comment"] }), [
-		"function",
-	]),
+  tag(rewrite_types(function_call_rules, { trivia: ["comment"] }), ["function"]),
 ];

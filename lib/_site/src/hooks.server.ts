@@ -7,10 +7,10 @@ import type { Handle } from "@sveltejs/kit";
 // no cross-origin assets (shiki bundles its wasm from the same origin),
 // so the stricter embedder policy is safe.
 export const handle: Handle = async ({ event, resolve }) => {
-	const response = await resolve(event);
-	if (event.url.pathname.startsWith("/explore")) {
-		response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
-		response.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
-	}
-	return response;
+  const response = await resolve(event);
+  if (event.url.pathname.startsWith("/explore")) {
+    response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+    response.headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+  }
+  return response;
 };

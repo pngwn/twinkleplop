@@ -12,6 +12,7 @@ languages use it. Intermediate / implementation-detail tokens are excluded:
 `clike` has no implementation and is not counted.
 
 Recent merges:
+
 - `tag_boundary` → `punctuation` (html, svelte, tsx)
 - `svelte_element` → `keyword` (svelte)
 - `variable_special` → `variable` (bash)

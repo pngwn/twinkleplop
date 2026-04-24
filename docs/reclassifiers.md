@@ -79,10 +79,10 @@ tokens go" (restoration), or as a feature request (optional fidelity)?
 **Restoration** (run first so downstream passes see the baseline fidelity)
 
 - `promote_boolean_literals` — `promote_by_text_set("identifier",
-  "boolean", ["true", "false"])`. The grammar no longer matches these at
+"boolean", ["true", "false"])`. The grammar no longer matches these at
   lex time; this pass brings the `boolean` token back.
 - `promote_call_site_functions` — `promote_function_calls("identifier",
-  "function", { plain: true })`. Identifier immediately followed by `(`
+"function", { plain: true })`. Identifier immediately followed by `(`
   becomes `function`. Replaces the grammar's former `function_name` probe
   state.
 
@@ -113,8 +113,8 @@ passes and adds one more restoration pass plus one correctness pass.
 **Restoration (additional to the JS restoration)**
 
 - `promote_builtin_types` — `promote_by_text_set("identifier", "type",
-  BUILTIN_TYPES)` where BUILTIN_TYPES is `["number", "string", "boolean",
-  "any", "never", "unknown", "object", "symbol", "bigint"]`. The grammar no
+BUILTIN_TYPES)` where BUILTIN_TYPES is `["number", "string", "boolean",
+"any", "never", "unknown", "object", "symbol", "bigint"]`. The grammar no
   longer matches these; this pass replaces the former keyword rule.
 
 **Correctness**
@@ -141,11 +141,11 @@ Re-exports the TypeScript pipeline unchanged. No JSX-specific passes yet.
 and "False" start with uppercase)
 
 - `promote_python_booleans` — `promote_by_text_set("identifier", "boolean",
-  ["True", "False"])`.
+["True", "False"])`.
 - `promote_python_builtins` — `promote_by_text_set("identifier", "builtin",
-  BUILTIN_TYPES)`. BUILTIN_TYPES is the lowercase set from `grammar.ts`.
+BUILTIN_TYPES)`. BUILTIN_TYPES is the lowercase set from `grammar.ts`.
 - `promote_python_pascal_case` — `promote_pascal_case("identifier",
-  "class_name")`. Upper-first identifiers become class names.
+"class_name")`. Upper-first identifiers become class names.
 
 **Correctness**
 
@@ -166,12 +166,12 @@ and "False" start with uppercase)
 **Restoration**
 
 - `promote_rust_booleans` — `promote_by_text_set("identifier", "boolean",
-  ["true", "false"])`.
+["true", "false"])`.
 - `promote_rust_primitive_types` — `promote_by_text_set("identifier",
-  "class_name", PRIMITIVE_TYPES)`. PRIMITIVE_TYPES covers integer widths
+"class_name", PRIMITIVE_TYPES)`. PRIMITIVE_TYPES covers integer widths
   (`i32`, `u64`, …), float widths (`f32`, `f64`), and `bool`, `char`, `str`.
 - `promote_rust_pascal_case` — `promote_pascal_case("identifier",
-  "class_name")`. Covers user-defined types (`Vec`, `String`, `Option`, …).
+"class_name")`. Covers user-defined types (`Vec`, `String`, `Option`, …).
 
 **Correctness**
 
@@ -282,7 +282,7 @@ resolves cleanly.
 - `promote_keywords` — whole-token identifier lookup against `RESERVED_SET`,
   `BUILTIN_SET`, and `BOOLEAN_SET` from the grammar, rewriting to
   `keyword` / `builtin` / `boolean`. This runs as a post-pass because
-  `keyword()` in the grammar only checks the boundary *after* a match, so
+  `keyword()` in the grammar only checks the boundary _after_ a match, so
   the reserved word `in` would mid-match inside an identifier like `main`.
 
 Order matters: `extend_variables` runs before `promote_keywords` so that

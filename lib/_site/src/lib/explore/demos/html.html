@@ -4,8 +4,13 @@
     <meta charset="utf-8" />
     <title>Demo</title>
     <style>
-      :root { --fg: #1f2328; }
-      body.main > .card { color: var(--fg); padding: 1rem; }
+      :root {
+        --fg: #1f2328;
+      }
+      body.main > .card {
+        color: var(--fg);
+        padding: 1rem;
+      }
     </style>
   </head>
   <body class="main">
@@ -14,8 +19,12 @@
     <a href="https://example.com">link</a>
     <script>
       class Greeter {
-        constructor(prefix) { this.prefix = prefix; }
-        greet(name) { return `${this.prefix}, ${name}`; }
+        constructor(prefix) {
+          this.prefix = prefix;
+        }
+        greet(name) {
+          return `${this.prefix}, ${name}`;
+        }
       }
       const g = new Greeter("hello");
       console.log(g.greet("world"));

@@ -35,6 +35,7 @@ Non-lexical v1.1.0 clarifications (table creation, sub-millisecond precision, in
 The TOML v1.0.0 specification is the authoritative source, published at toml.io with an accompanying ABNF grammar. The ABNF is normative for syntax; the prose adds semantic constraints that the ABNF alone cannot express.
 
 Key structural rules from the ABNF:
+
 - A TOML document is a sequence of expressions (blank/comment, keyval, or table header)
 - Whitespace is strictly space (0x20) and tab (0x09) — no other Unicode whitespace
 - Newlines are LF or CRLF
@@ -44,22 +45,24 @@ Key structural rules from the ABNF:
 
 ### Cross-reference: existing highlighters
 
-| Highlighter | Parser type | Spec version | Key vs value context | Dotted keys | Table vs array-of-tables | Datetime | Hex/oct/bin | inf/nan | String type distinction | Escape highlighting |
-|---|---|---|---|---|---|---|---|---|---|---|
-| tree-sitter | Full CFG | v1.0.0 | Full (AST) | YES | YES (separate nodes) | YES (@string.special) | YES | YES | NO (all @string) | YES |
-| Pygments | State machine | v1.1.0 | Full (states) | YES | YES | YES (Literal.Date) | YES | YES | YES (Double/Single) | YES (String.Escape) |
-| Sublime | Context-based | v1.1.0 | Full (contexts) | YES | YES | YES (constant.other.datetime) | YES | YES | YES (double/single) | YES (incl. invalid) |
-| Prism | Flat regex | ~v1.0 | Weak (lookbehind) | Partial (no dot highlight) | NO distinction | YES (alias number) | YES | YES | NO (all one) | NO |
-| highlight.js | Regex+begin/end | ~v0.4 | Weak (lookahead) | YES | NO distinction | NO | NO | NO | NO (all one) | NO |
+| Highlighter  | Parser type     | Spec version | Key vs value context | Dotted keys                | Table vs array-of-tables | Datetime                      | Hex/oct/bin | inf/nan | String type distinction | Escape highlighting |
+| ------------ | --------------- | ------------ | -------------------- | -------------------------- | ------------------------ | ----------------------------- | ----------- | ------- | ----------------------- | ------------------- |
+| tree-sitter  | Full CFG        | v1.0.0       | Full (AST)           | YES                        | YES (separate nodes)     | YES (@string.special)         | YES         | YES     | NO (all @string)        | YES                 |
+| Pygments     | State machine   | v1.1.0       | Full (states)        | YES                        | YES                      | YES (Literal.Date)            | YES         | YES     | YES (Double/Single)     | YES (String.Escape) |
+| Sublime      | Context-based   | v1.1.0       | Full (contexts)      | YES                        | YES                      | YES (constant.other.datetime) | YES         | YES     | YES (double/single)     | YES (incl. invalid) |
+| Prism        | Flat regex      | ~v1.0        | Weak (lookbehind)    | Partial (no dot highlight) | NO distinction           | YES (alias number)            | YES         | YES     | NO (all one)            | NO                  |
+| highlight.js | Regex+begin/end | ~v0.4        | Weak (lookahead)     | YES                        | NO distinction           | NO                            | NO          | NO      | NO (all one)            | NO                  |
 
 **Critical finding**: highlight.js shares its grammar with INI, introducing case-insensitivity, semicolon comments, on/off/yes/no literals, and $variable syntax — all invalid in TOML. Do NOT use it as a reference.
 
 **Most useful references for implementation**:
+
 1. Pygments TOMLLexer — best state-machine reference, proper key vs value context separation, datetime patterns from CPython's tomllib
 2. tree-sitter-toml — most structurally correct, distinct node types for tables vs array-of-tables, recursive dotted keys
 3. Sublime TOML syntax — finest-grained token scopes, only one that marks invalid escapes explicitly
 
 **Where highlighters conflict with the spec**:
+
 - Prism and highlight.js do not distinguish `[table]` from `[[array-of-tables]]` — the spec requires they be semantically different
 - Prism does not highlight dots in dotted keys — the spec treats them as separate key segments
 - highlight.js marks TOML as case-insensitive — the spec says keys and values ARE case-sensitive
@@ -103,6 +106,7 @@ Key structural rules from the ABNF:
 #### Numbers
 
 **Integers** (4 forms):
+
 1. Decimal: optional `+`/`-`, digits with optional `_` separators (e.g., `+99`, `42`, `-17`, `1_000`, `53_49_221`)
    - No leading zeros: `01` is INVALID, `0` alone is valid
 2. Hexadecimal: `0x` prefix + hex digits with optional `_` (e.g., `0xDEADBEEF`, `0xdead_beef`)
@@ -114,12 +118,14 @@ Key structural rules from the ABNF:
    - No `+`/`-` sign; leading zeros OK after prefix
 
 **Floats** (3 forms):
+
 1. Fractional: decimal-integer `.` digits with optional `_` (e.g., `3.1415`, `-0.01`, `224_617.445_991_228`)
    - Must have digit on BOTH sides of `.`: `1.`, `.5`, `1.e2` are INVALID
 2. Exponent: decimal-integer `e`/`E` optional `+`/`-` digits (e.g., `5e+22`, `1e06`, `-2E-2`)
 3. Fractional + exponent: decimal-integer `.` digits `e`/`E` ... (e.g., `6.626e-34`)
 
 **Special floats**: `inf`, `+inf`, `-inf`, `nan`, `+nan`, `-nan`
+
 - ALWAYS lowercase
 
 #### Boolean literals
@@ -161,6 +167,7 @@ TOML has NO null/none type. Absent keys are simply undefined.
 TOML has a small set of value-level keywords (not key-level):
 
 **Hard keywords** (always recognized):
+
 - `true`, `false` — boolean literals
 - `inf` — positive infinity (also `+inf`, `-inf`)
 - `nan` — not-a-number (also `+nan`, `-nan`)
@@ -168,6 +175,7 @@ TOML has a small set of value-level keywords (not key-level):
 These are contextual — they are only keywords when appearing as values (after `=`). As bare keys, `true = 1` is valid TOML where `true` is a key name, not a boolean. This is a critical disambiguation the tokenizer must handle.
 
 **Soft keywords** (contextual):
+
 - None — TOML has no contextual keyword distinction beyond the key/value context
 
 ### 2.4 Operators
@@ -178,11 +186,13 @@ These are contextual — they are only keywords when appearing as values (after 
 - `+`, `-` — numeric sign prefix (unary)
 
 Multi-character operators that need length-sorted matching:
+
 - None — TOML has no `==`, `!=`, `<=`, `>=`, etc. All operators are single characters.
 
 ### 2.5 Identifiers
 
 **Bare keys** (unquoted identifiers):
+
 - Start characters: `A-Z`, `a-z`, `0-9`, `-`, `_`
 - Continuation characters: same as start characters
 - Key distinction: bare keys can START with a digit, hyphen, or underscore — unlike most languages where identifiers must start with a letter
@@ -190,6 +200,7 @@ Multi-character operators that need length-sorted matching:
 - Can be all digits: `1234` is a valid bare key (always interpreted as a string, not a number)
 
 **Quoted keys**:
+
 - `"..."` — basic string as key (supports escapes, same as basic string values)
 - `'...'` — literal string as key (no escapes, same as literal string values)
 - Empty quoted key `""` is valid but discouraged
@@ -843,6 +854,7 @@ Key observations from traces:
 ## Checkpoint
 
 This research covers TOML v1.0.0 with documented v1.1.0 deltas. All five sections are complete:
+
 1. Primary sources — official v1.0.0 ABNF + v1.1.0 ABNF diff + prose spec + CHANGELOG, cross-referenced against 5 highlighter implementations
 2. Token inventory — all string forms, number forms, keywords, operators, identifiers, punctuation, special syntax
 3. Edge case inventory — 7 categories of ambiguity, nesting, escapes, numerics, context-sensitivity, case, whitespace (v1.1.0 escape additions noted)
@@ -850,6 +862,7 @@ This research covers TOML v1.0.0 with documented v1.1.0 deltas. All five section
 5. Manual traces — 3 traces covering multi-line strings, dotted keys, inline tables, array-of-tables, datetime
 
 Refresh history:
+
 - 2026-04-15: re-verified sources, confirmed v1.1.0 shipped 2025-12-18, applied ABNF diff to escapes/inline-tables/comment-char-range.
 
 Ready for grammar-author, passing language name: `toml`

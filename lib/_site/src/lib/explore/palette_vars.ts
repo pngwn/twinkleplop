@@ -10,10 +10,10 @@ import type { token_palette } from "./themes";
 // opt into it with `background: var(--twp-background)` wherever they
 // want the theme's editor background to show through.
 export function palette_to_vars(palette: token_palette): string {
-	const parts: string[] = [];
-	for (const key in palette) {
-		const var_name = key === "background_color" ? "background" : key;
-		parts.push(`--twp-${var_name}:${palette[key]}`);
-	}
-	return parts.join(";");
+  const parts: string[] = [];
+  for (const key in palette) {
+    const var_name = key === "background_color" ? "background" : key;
+    parts.push(`--twp-${var_name}:${palette[key]}`);
+  }
+  return parts.join(";");
 }

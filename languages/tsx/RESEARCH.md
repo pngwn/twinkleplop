@@ -16,6 +16,7 @@ constructs catalogued in sections 2-5.
 ## sources consulted
 
 primary (official):
+
 - https://facebook.github.io/jsx/ — the jsx draft specification (the canonical grammar). latest revision dated 2022. all grammar productions used below are quoted from this spec.
 - https://github.com/facebook/jsx — the jsx repository (readme notes jsx is "designed as an ecmascript feature and the similarity to xml is only for familiarity"). grammar linked from readme is the facebook.github.io/jsx page.
 - https://www.typescriptlang.org/docs/handbook/jsx.html — typescript handbook chapter on jsx. authoritative for tsx-specific behavior. contains the "angle bracket type assertions are disallowed in .tsx" rule and the capitalization rule for intrinsic vs component elements.
@@ -23,6 +24,7 @@ primary (official):
 - https://www.typescriptlang.org/docs/handbook/2/everyday-types.html — typescript handbook on type assertions. establishes `value as T` as the only tsx-legal form.
 
 cross-reference (existing highlighters):
+
 - https://github.com/tree-sitter/tree-sitter-typescript — tree-sitter grammar. its `tsx` dialect re-enables `_jsx_element` in the expression union and removes `type_assertion`. precedence rule `[$.jsx_opening_element, $.type_parameter]` documents the known conflict. `common/define-grammar.js` shows the JSX productions (jsx_element, jsx_self_closing_element, jsx_fragment, jsx_opening_element, jsx_closing_element, jsx_attribute, jsx_namespace_name, jsx_text, jsx_expression).
 - https://github.com/PrismJS/prism/blob/master/components/prism-tsx.js — prism tsx is `Prism.languages.extend('jsx', typescript)` then deletes `parameter` and `literal-property`, and patches the tag regex with a negative lookbehind `(?:^|[^\w$]|(?=</))` to avoid matching `<T>` as a jsx tag in generic positions. comment states "doesn't work with TS because TS is too complex."
 - https://github.com/microsoft/TypeScript-TmLanguage — the textmate grammar used by vscode for `.tsx`. models jsx as its own `meta.jsx.ts` scope; treats text between tags as `meta.jsx.children.ts`.
@@ -30,6 +32,7 @@ cross-reference (existing highlighters):
 - https://github.com/microsoft/TypeScript/issues/15713 — design-issue tracking the generic-arrow vs jsx ambiguity. confirms the three community-established workarounds: `<T,>() => T`, `<T extends unknown>() => T`, and `<T, U>(...)` (multiple parameters, no disambiguation needed).
 
 gaps and calls:
+
 - the jsx spec explicitly punts on whitespace normalization in jsx children: implementations decide how to collapse runs of whitespace when emitting the tree. this is a transform concern, not a lexical one. the highlighter emits all jsx text as-is.
 - the jsx spec's html character reference list is the 252 html4 entity names (amp, lt, gt, quot, apos, nbsp, etc.), NOT the full html5 set. the highlighter does not need to validate the entity name; it can treat any `&name;` shape that appears in jsx text/string as an escape-like token, and any `&#123;` / `&#xFF;` shape likewise. the reclassifier/theme can decide whether to distinguish "known" from "unknown" entities.
 - jsx allows tags to span multiple lines (attributes separated by whitespace/newlines) and allows comments between attributes. the author needs to accept whitespace and js comments (`//` to eol, `/* ... */`) inside an opening tag, but NOT in tag-name position.
@@ -41,6 +44,7 @@ gaps and calls:
 
 spec-wins policy: when prism/tree-sitter/highlight.js disagree with the jsx
 draft spec, the spec wins. documented conflicts:
+
 - prism's tag regex has the negative-lookbehind `(?:^|[^\w$]|(?=</))` which treats any `<` preceded by an identifier-tail character as NOT a jsx tag. this is a pragmatic regex hack that over-rejects valid jsx (e.g. immediately after a template literal `` `...` ``, a string, or a closing paren). the twinkleplop grammar should instead track state: jsx is only valid in expression position, so we decide "is the current position an expression start" and enter jsx mode accordingly. this is the same problem the js grammar already solves for regex-vs-division.
 - highlight.js lexes jsx with a narrow tag-only regex and treats everything between as plain text, missing expression containers entirely. follow the spec: `{ ... }` inside jsx is a first-class construct.
 - tree-sitter's `jsx_expression` permits `...` spread at the start; babel permits it for children (`{...items}` as a child) AND for attributes (`<Comp {...props} />`). the spec agrees. we include both forms.
@@ -71,23 +75,25 @@ tokenizer sees a jsx tag in both cases and depends on later context (the
 comma, the `extends` keyword) to switch interpretation. for a highlighter
 this does not need to be resolved — both interpretations produce reasonable
 coloring:
-  - `<T,>` under jsx interpretation: `<` + `T` (tag name) + `,` (invalid but
-    recoverable) + `>` — would likely fail recovery
-  - under generic interpretation: `<` + `T` + `,` + `>` — all punctuation
+
+- `<T,>` under jsx interpretation: `<` + `T` (tag name) + `,` (invalid but
+  recoverable) + `>` — would likely fail recovery
+- under generic interpretation: `<` + `T` + `,` + `>` — all punctuation
 
 in practice a tsx tokenizer should refuse to enter jsx mode when the opener
 looks like a generic parameter list. cheap heuristic: after consuming the
 opening `<` and the tag-name characters, peek at the next non-whitespace
 character.
-  - `,` → this is a generic type parameter list (bail out of jsx)
-  - `=` that is NOT part of `==` / `===` → ambiguous (could be attribute `=`
-    or assignment); if preceded by identifier + whitespace it's likely a jsx
-    attribute
-  - `extends` keyword → generic type parameter list
-  - `>` → could be either jsx-self-close-with-closing-tag OR generic with
-    one parameter
-  - `/>`→ definitely jsx (self-closing element)
-  - letter / `{` / `"` / `'` → jsx attribute
+
+- `,` → this is a generic type parameter list (bail out of jsx)
+- `=` that is NOT part of `==` / `===` → ambiguous (could be attribute `=`
+  or assignment); if preceded by identifier + whitespace it's likely a jsx
+  attribute
+- `extends` keyword → generic type parameter list
+- `>` → could be either jsx-self-close-with-closing-tag OR generic with
+  one parameter
+- `/>`→ definitely jsx (self-closing element)
+- letter / `{` / `"` / `'` → jsx attribute
 
 this level of lookahead is the author's problem; for research purposes,
 document that the ambiguity exists and the heuristics that resolve it.
@@ -127,6 +133,7 @@ that matter for tsx interaction:
 the jsx grammar from facebook.github.io/jsx (quoted verbatim where useful):
 
 **jsx element (umbrella production)**
+
 ```
 JSXElement ::
     JSXSelfClosingElement
@@ -134,37 +141,44 @@ JSXElement ::
 ```
 
 **jsx fragment**
+
 ```
 JSXFragment ::
     < > JSXChildren? < / >
 ```
+
 a fragment has the literal characters `<>` and `</>`, with optional children
 between. `<>` is NOT a generic empty type parameter list — in tsx,
 `<>` in expression position is a fragment.
 
 **jsx self-closing element**
+
 ```
 JSXSelfClosingElement ::
     < JSXElementName JSXAttributes? / >
 ```
 
 **jsx opening element**
+
 ```
 JSXOpeningElement ::
     < JSXElementName JSXAttributes? >
 ```
 
 **jsx closing element**
+
 ```
 JSXClosingElement ::
     < / JSXElementName >
 ```
+
 early error: opening and closing element names must match exactly as source
 text (the spec uses the phrase "match exactly", which means identical source
 characters — not "semantically equivalent"; `<Foo.Bar>` must close with
 `</Foo.Bar>`, not `</Foo .Bar>` or `</Foo . Bar >`).
 
 **jsx element name (three forms)**
+
 ```
 JSXElementName ::
     JSXIdentifier
@@ -176,6 +190,7 @@ JSXIdentifier ::
     JSXIdentifier IdentifierPart
     JSXIdentifier - (no whitespace)
 ```
+
 notable: `JSXIdentifier` permits `-` as an identifier-continuation character.
 so `data-foo` is a valid jsx identifier (and attribute name). this is a
 divergence from ecmascript identifiers, which do NOT allow `-`. in tag names
@@ -185,6 +200,7 @@ dashes are unusual but legal (`<my-element>` for custom elements).
 JSXNamespacedName ::
     JSXIdentifier : JSXIdentifier
 ```
+
 used for xml-namespaced elements and attributes: `<svg:path>` as an element
 name, `xlink:href` as an attribute name. both sides must be `JSXIdentifier`
 (no member access across the colon). whitespace is NOT allowed around the `:`.
@@ -194,6 +210,7 @@ JSXMemberExpression ::
     JSXIdentifier . JSXIdentifier
     JSXMemberExpression . JSXIdentifier
 ```
+
 used for component access: `<React.Fragment>`, `<Lib.Thing.SubThing>`. left-
 associative, dots with no whitespace around them.
 
@@ -201,6 +218,7 @@ note: `JSXNamespacedName` and `JSXMemberExpression` are mutually exclusive.
 you cannot have `<foo:bar.baz>` or `<foo.bar:baz>`.
 
 **jsx attributes**
+
 ```
 JSXAttributes ::
     JSXSpreadAttribute JSXAttributes?
@@ -226,7 +244,9 @@ JSXAttributeValue ::
 JSXSpreadAttribute ::
     { ... AssignmentExpression }
 ```
+
 points:
+
 - an attribute with no `=` is a boolean true: `<input disabled>`.
 - the value can be a string, an expression container, or a nested element
   (no expression container needed for the nested form: `prop=<Foo />`).
@@ -243,6 +263,7 @@ points:
   `\n` is NOT. this is the reverse of ecmascript string literals.
 
 **jsx attribute string characters**
+
 ```
 JSXDoubleStringCharacters ::
     JSXDoubleStringCharacter JSXDoubleStringCharacters?
@@ -254,17 +275,20 @@ JSXDoubleStringCharacter ::
 JSXStringCharacter :: SourceCharacter but not HTMLCharacterReference
                      (further restricted: not " in double-quoted, not ' in single-quoted)
 ```
+
 so backslash is a plain character (not an escape initiator) and the only
 "escapes" are html character references. newline is allowed in a jsx string
 literal (spec does not forbid it), although most style guides discourage it.
 
 **html character references (three forms)**
+
 ```
 HTMLCharacterReference ::
     & HTMLNamedCharacterReferenceName ;
     & # DecimalDigits ;
     & # x HexDigits ;
 ```
+
 named references are drawn from "HTML 4.0 character entity references" — the
 252-name list (amp, lt, gt, quot, apos, nbsp, copy, reg, trade, mdash,
 ndash, ldquo, rdquo, lsquo, rsquo, hellip, middot, laquo, raquo, iexcl,
@@ -274,6 +298,7 @@ decimal and hex numeric references are bounded by `0x10FFFF` (the unicode
 maximum). `&#0;` is allowed lexically but encodes U+0000.
 
 **jsx children**
+
 ```
 JSXChildren ::
     JSXChild JSXChildren?
@@ -291,6 +316,7 @@ JSXChildExpression ::
 JSXText ::
     SourceCharacter but not one of { or < or > or }
 ```
+
 children are a sequence of text runs, nested elements, fragments, and
 expression containers. the expression container may be empty (`{}`), which
 is pointless but legal. the expression container may contain a spread
@@ -374,25 +400,26 @@ the canonical example: `const f = <T>(x: T): T => x;`
 in a `.tsx` file, the tokenizer sees `<T>` in expression position and must
 decide: jsx or generic arrow?
 
-  - community-established workarounds make the code UNAMBIGUOUS:
-    - `<T,>(x: T) => x` — trailing comma in type param list (only one
-      param, so the comma is the disambiguator). jsx element names cannot be
-      followed by a comma inside the open tag, so this is unambiguously
-      generic.
-    - `<T extends unknown>(x: T) => x` — the `extends` keyword cannot appear
-      inside a jsx opening tag.
-    - `<T, U>(x: T, y: U) => ...` — multiple type parameters; the comma
-      between them disambiguates.
-  - without a workaround, tsx interprets `<T>...` as jsx (opening tag `<T>`).
+- community-established workarounds make the code UNAMBIGUOUS:
+  - `<T,>(x: T) => x` — trailing comma in type param list (only one
+    param, so the comma is the disambiguator). jsx element names cannot be
+    followed by a comma inside the open tag, so this is unambiguously
+    generic.
+  - `<T extends unknown>(x: T) => x` — the `extends` keyword cannot appear
+    inside a jsx opening tag.
+  - `<T, U>(x: T, y: U) => ...` — multiple type parameters; the comma
+    between them disambiguates.
+- without a workaround, tsx interprets `<T>...` as jsx (opening tag `<T>`).
 
 for the tokenizer, a sensible rule: enter jsx mode on a `<` in expression
 position UNLESS the lookahead reveals a type-parameter-list shape. cheap
 checks after consuming the tag-name:
-  - `,` then `>` or `,`-list — generic
-  - `extends` keyword — generic
-  - `=` followed by `>` or identifier — could be attribute `key=value`, so
-    jsx; unless we've already committed to generic
-  - otherwise jsx
+
+- `,` then `>` or `,`-list — generic
+- `extends` keyword — generic
+- `=` followed by `>` or identifier — could be attribute `key=value`, so
+  jsx; unless we've already committed to generic
+- otherwise jsx
 
 but: the simplest and most common approach (used by tree-sitter, prism) is
 "try jsx, let the parser error if it's not". for a highlighter, emitting
@@ -414,7 +441,7 @@ start position) before entering jsx mode.
 ### 3.4 jsx inside template literals
 
 ```tsx
-const html = `Hello ${<b>name</b>}`;
+const html = `Hello ${(<b>name</b>)}`;
 ```
 
 inside a template literal interpolation, the expression can be jsx. the
@@ -449,6 +476,7 @@ does not need to validate name matching — it just lexes each side.
 
 inside an attribute value `{...}`, arbitrary js/ts expressions are allowed.
 the contents may include:
+
 - nested objects `{{...}}` — the outer `{` is the jsx container, the inner
   `{...}` is an object literal. bracket depth tracking is essential.
 - nested jsx (a jsx element as an attribute value).
@@ -463,7 +491,9 @@ this is structurally identical to f-string expression handling in python.
 
 ```tsx
 <ul>
-  {items.map((x) => <li key={x.id}>{x.name}</li>)}
+  {items.map((x) => (
+    <li key={x.id}>{x.name}</li>
+  ))}
   {count > 0 && <Badge count={count} />}
   {...items}
 </ul>
@@ -503,10 +533,11 @@ of children.
 
 jsx text contains literal newlines, spaces, html entities, and arbitrary
 unicode. character references:
-  - `&copy;` — named (html4 list).
-  - `&mdash;` — named.
-  - `&#32;` — decimal (space).
-  - `&#x20;` — hex (space).
+
+- `&copy;` — named (html4 list).
+- `&mdash;` — named.
+- `&#32;` — decimal (space).
+- `&#x20;` — hex (space).
 
 unrecognized named entities (`&foo;`) are a parse error per the spec, but
 react/babel emit a warning and keep the text as-is. the highlighter may
@@ -532,10 +563,14 @@ highlighter implication: inside a jsx attribute string, do NOT emit
 as escapes.
 
 multi-line jsx attribute strings are allowed:
+
 ```tsx
-<Comp msg="line one
-line two" />
+<Comp
+  msg="line one
+line two"
+/>
 ```
+
 is a two-line string containing a literal newline.
 
 ### 3.11 attribute name with dash
@@ -625,14 +660,14 @@ an expression-position `<` is jsx. a binary-operator-position `<` is less-
 than. the rules are the same as the regex-vs-division discrimination the
 existing js grammar already solves:
 
-  - expression position: after `(`, `[`, `{`, `=`, `==`, `===`, `!=`, `!==`,
-    `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `~`, `!`,
-    `?`, `:`, `,`, `;`, `=>`, `return`, `throw`, `new`, `typeof`, `void`,
-    `delete`, `await`, `yield`, `in`, `of`, `instanceof`, the start of the
-    file, an opening template literal `` ` ``, a `${` template interpolation
-    start, an opening jsx container `{` / jsx attribute equals `=`.
-  - binary/relational position: after an identifier, a number, a string, a
-    closing paren/bracket, or the keywords `this` / `super`.
+- expression position: after `(`, `[`, `{`, `=`, `==`, `===`, `!=`, `!==`,
+  `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `~`, `!`,
+  `?`, `:`, `,`, `;`, `=>`, `return`, `throw`, `new`, `typeof`, `void`,
+  `delete`, `await`, `yield`, `in`, `of`, `instanceof`, the start of the
+  file, an opening template literal `` ` ``, a `${` template interpolation
+  start, an opening jsx container `{` / jsx attribute equals `=`.
+- binary/relational position: after an identifier, a number, a string, a
+  closing paren/bracket, or the keywords `this` / `super`.
 
 this is the same set the js grammar tracks. tsx reuses it and reroutes a
 `<` in expression position into jsx mode instead of typescript generics (in
@@ -693,7 +728,7 @@ jsx is part of js. follow the lenient convention: accept `//` to eol and
 ### 3.23 jsx in top-level expression statement
 
 ```tsx
-<App />;
+<App />
 ```
 
 a jsx element as an expression statement is fine. the leading `<` is at
@@ -727,17 +762,20 @@ tokens.
 ### 3.26 `>` and `}` in jsx text
 
 per spec, `>` and `}` are forbidden in jsx text. in practice:
+
 ```tsx
 <p>a > b && c < d</p>
 ```
+
 most parsers accept the `>` as text. the `<` opens a new element (and since
 `d` is followed by `<` `/` `p`, the less-than-d parse fails). to be safe,
 users write `&gt;` and `&lt;`. the highlighter should:
-  - recognize `>` in jsx text as text (lenient).
-  - recognize `<` as opening a child element (strict — this is unambiguous).
-  - recognize `}` in jsx text as text (lenient, or emit as invalid-but-
-    recoverable).
-  - recognize `{` as opening a child expression container (strict).
+
+- recognize `>` in jsx text as text (lenient).
+- recognize `<` as opening a child element (strict — this is unambiguous).
+- recognize `}` in jsx text as text (lenient, or emit as invalid-but-
+  recoverable).
+- recognize `{` as opening a child expression container (strict).
 
 ### 3.27 regex-vs-division inside jsx expression containers
 
@@ -945,6 +983,7 @@ region", etc. to concrete state operations.
 ### trace 1: component with attributes, children, expression containers, spread
 
 input:
+
 ```tsx
 import { useState } from "react";
 
@@ -954,11 +993,7 @@ export function Picker({ items, onPick }: Props) {
   const [q, setQ] = useState<string>("");
   return (
     <div className="picker" data-testid="picker">
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search..."
-      />
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search..." />
       <ul>
         {items
           .filter((x) => x.includes(q))
@@ -1082,6 +1117,7 @@ selected trace (condensed for repetition):
 - `\n}` — closes function body.
 
 observations:
+
 - `useState<string>("")` is a generic function call, NOT jsx, because the
   `<` is glued to an identifier.
 - `<div ...>` is jsx, because the `<` is in expression position after
@@ -1095,11 +1131,17 @@ observations:
 ### trace 2: fragments, generic arrow ambiguity, as-assertions, nested objects
 
 input:
+
 ```tsx
 const id = <T,>(x: T): T => x;
 const cast = value as number;
 const items = [1, 2, 3] as const;
-const Panel = () => <><h1>hi</h1>{id<string>("ok")}</>;
+const Panel = () => (
+  <>
+    <h1>hi</h1>
+    {id<string>("ok")}
+  </>
+);
 const style: React.CSSProperties = { color: "red", padding: 4 };
 const el = <div style={{ ...style, margin: 2 }}>content</div>;
 ```
@@ -1125,7 +1167,7 @@ trace (interesting parts):
   - note: `value as number` works in BOTH `.ts` and `.tsx`. the
     alternative `<number>value` form is disallowed in tsx and would be
     a syntax error (or emitted as `<number>` jsx open + `value` identifier
-    + `;`).
+    - `;`).
 - `const items = [1, 2, 3] as const;` — `as const` is a "const assertion".
   tokens: `as`, ` `, `const` (keyword). this is unambiguous in tsx.
 - `const Panel = () => <><h1>hi</h1>{id<string>("ok")}</>;`
@@ -1168,6 +1210,7 @@ trace (interesting parts):
   - `;` — end statement.
 
 observations:
+
 - `<T,>` requires a look-ahead past the tag name for the `,` disambiguator;
   a pragmatic approach is to always enter jsx state on `<` and let the
   parser recover on the `,` (emit `,` and `>` as punctuation).
@@ -1184,6 +1227,7 @@ observations:
 ### trace 3: namespaced elements, html entities, multiline text, conditional rendering
 
 input:
+
 ```tsx
 const svg = (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -1192,10 +1236,7 @@ const svg = (
   </svg>
 );
 
-const Panel: React.FC<{ show: boolean; count?: number }> = ({
-  show,
-  count = 0,
-}) => {
+const Panel: React.FC<{ show: boolean; count?: number }> = ({ show, count = 0 }) => {
   return (
     <section aria-expanded={show ? "true" : "false"}>
       {show && count > 0 && (
@@ -1229,7 +1270,7 @@ trace:
 - `<title>` — open element with title tag name.
 - `Home ` — jsx text.
 - `&amp;` — html named entity. emit `jsx.text.entity`.
-- ` Garden ` — text.
+- `Garden` — text.
 - `&mdash;` — named entity.
 - ` ` text.
 - `&#9733;` — decimal entity (☆). emit entity.
@@ -1279,6 +1320,7 @@ trace:
 - `\n  )` `;` `\n}` `;`.
 
 observations:
+
 - namespaced attribute `xlink:href` lexes as a single JSXNamespacedName
   attribute name; the `:` is part of the name.
 - inside jsx text, html entities are first-class; inside a jsx expression

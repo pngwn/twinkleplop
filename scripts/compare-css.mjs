@@ -24,7 +24,10 @@ console.log("firstMismatch index:", firstMismatch);
 if (firstMismatch !== -1) {
   console.log("expected:", exp_nested[firstMismatch]);
   console.log("actual  :", actual[firstMismatch]);
-  console.log("window expected:", exp_nested.slice(Math.max(0, firstMismatch - 5), firstMismatch + 5));
+  console.log(
+    "window expected:",
+    exp_nested.slice(Math.max(0, firstMismatch - 5), firstMismatch + 5),
+  );
   console.log("window actual  :", actual.slice(Math.max(0, firstMismatch - 5), firstMismatch + 5));
 } else if (actual.length !== exp_nested.length) {
   console.log("Lengths differ. Tail actual:", actual.slice(n - 10));

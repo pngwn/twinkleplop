@@ -1,24 +1,24 @@
 {
-	"name": "@twinkleplop/twoslash-svelte",
-	"version": "0.1.0",
-	"type": "module",
-	"main": "src/index.js",
-	"exports": {
-		".": "./src/index.js"
-	},
-	"dependencies": {
-		"@twinkleplop/core": "workspace:*",
-		"@twinkleplop/svelte": "workspace:*",
-		"@twinkleplop/twoslash": "workspace:*",
-		"@jridgewell/sourcemap-codec": "^1.5.0",
-		"@volar/language-core": "^2.4.0",
-		"svelte": "^5.38.7",
-		"svelte2tsx": "^0.7.53",
-		"twoslash": "^0.3.7",
-		"twoslash-protocol": "^0.3.7",
-		"typescript": "^5.8.3"
-	},
-	"scripts": {
-		"test": "vitest"
-	}
+  "name": "@twinkleplop/twoslash-svelte",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@jridgewell/sourcemap-codec": "^1.5.0",
+    "@twinkleplop/core": "workspace:*",
+    "@twinkleplop/svelte": "workspace:*",
+    "@twinkleplop/twoslash": "workspace:*",
+    "@volar/language-core": "^2.4.0",
+    "svelte": "^5.38.7",
+    "svelte2tsx": "^0.7.53",
+    "twoslash": "^0.3.7",
+    "twoslash-protocol": "^0.3.7",
+    "typescript": "^5.8.3"
+  }
 }

@@ -1,20 +1,20 @@
 {
-	"name": "@twinkleplop/toml",
-	"version": "0.1.0",
-	"type": "module",
-	"main": "src/index.js",
-	"exports": {
-		".": {
-			"source": "./src/index.ts",
-			"import": "./dist/index.js"
-		},
-		"./test": "./test/index.js"
-	},
-	"dependencies": {
-		"@twinkleplop/core": "workspace:*"
-	},
-	"scripts": {
-		"test": "vitest",
-		"gen_test": "node generate-snapshots.js"
-	}
+  "name": "@twinkleplop/toml",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "import": "./dist/index.js"
+    },
+    "./test": "./test/index.js"
+  },
+  "scripts": {
+    "test": "vitest",
+    "gen_test": "node generate-snapshots.js"
+  },
+  "dependencies": {
+    "@twinkleplop/core": "workspace:*"
+  }
 }

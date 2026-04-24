@@ -13,11 +13,9 @@ import { language as svelte_language } from "@twinkleplop/svelte";
 import { render } from "@twinkleplop/twoslash";
 import { create_twoslasher } from "./twoslasher";
 
-
-
 interface HighlightOptions {
-	class_name?: string;
-	twoslash?: object;
+  class_name?: string;
+  twoslash?: object;
 }
 
 // bind a default-fidelity svelte highlighter once; the twoslash flow is
@@ -27,14 +25,14 @@ const svelte = svelte_language();
 /**
  * Create a reusable Svelte highlighter. Caches the underlying
  * twoslash TypeScript environment across calls.
-*/
+ */
 export function create_highlighter(options: HighlightOptions = {}) {
-	const twoslasher = create_twoslasher(options.twoslash ?? {});
-	return (code: string) => {
-		const result = twoslasher(code, "svelte");
-		const tokens = svelte(result.code);
-		return render(result.code, tokens, result, options);
-	};
+  const twoslasher = create_twoslasher(options.twoslash ?? {});
+  return (code: string) => {
+    const result = twoslasher(code, "svelte");
+    const tokens = svelte(result.code);
+    return render(result.code, tokens, result, options);
+  };
 }
 
 /**
@@ -42,7 +40,7 @@ export function create_highlighter(options: HighlightOptions = {}) {
  * `create_highlighter` as it reuses the twoslash language-service instance.
  */
 export function highlight(code: string, options: HighlightOptions = {}) {
-	return create_highlighter(options)(code);
+  return create_highlighter(options)(code);
 }
 
 export { create_twoslasher };

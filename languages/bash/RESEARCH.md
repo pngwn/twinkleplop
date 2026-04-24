@@ -20,6 +20,7 @@ real token as a word.
 ## sources consulted
 
 primary (official):
+
 - https://www.gnu.org/software/bash/manual/html_node/Definitions.html — blank, word, name, metacharacter, control operator, operator (the exact char sets)
 - https://www.gnu.org/software/bash/manual/html_node/Reserved-Words.html — full reserved word list
 - https://www.gnu.org/software/bash/manual/html_node/Quoting.html — four quoting forms overview
@@ -48,6 +49,7 @@ primary (official):
 - https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html — posix.1-2017 shell command language (for superset/subset alignment)
 
 cross-reference (existing highlighters):
+
 - https://github.com/tree-sitter/tree-sitter-bash — grammar.js + src/scanner.c (external c scanner handles heredocs, concat, extglob, regex rhs). the most lexically accurate reference
 - https://github.com/PrismJS/prism/blob/master/components/prism-bash.js — prism grammar, pragmatic regex
 - https://github.com/highlightjs/highlight.js/blob/main/src/languages/bash.js — highlight.js grammar (lumps bash/zsh/gnu-coreutils into one)
@@ -55,6 +57,7 @@ cross-reference (existing highlighters):
 - https://github.com/microsoft/vscode/blob/main/extensions/shellscript/syntaxes/shell-unix-bash.tmLanguage.json — textmate grammar used by vscode's built-in shell support
 
 gaps and calls:
+
 - posix 2.3 "token recognition" rule 5 ("if the current character is not quoted and can be used as the first character of a new operator, the current token (if any) shall be delimited...") is a parser-flavored rule. a character-scanning highlighter just emits operators when it sees them in a command-word context and relies on the fact that an operator character at word-start-ish position is overwhelmingly an operator.
 - `in` and `do` are contextually reserved only as the third word of certain
   compound commands (`case … in`, `select … in`, `for … in`, `for … do`).
@@ -84,7 +87,7 @@ gaps and calls:
   lexically meaningful when `shopt -s extglob` is active. since that's a
   runtime flag, a highlighter has no way to know if they're live. emit them
   when they appear in pattern-context (after `case` pattern `|`, inside `[[
-  == ]]` right side, as file args to a command); otherwise treat the `?` /
+== ]]` right side, as file args to a command); otherwise treat the `?` /
   `*` / `+` / `@` / `!` as separate tokens.
 - bash 5.3 introduces `${ command; }` / `${c command; }` ("valueless
   command substitution"). accept the syntax but don't worry about the
@@ -238,12 +241,14 @@ below. command-word position produces `WORD` tokens regardless of content.
 ### 2.2 string forms
 
 **single-quoted string** `'...'`
+
 - opens: `'`
 - closes: first unescaped `'` (no way to include `'` inside)
 - content: literal bytes. no expansions, no escapes. backslash is literal.
 - multi-line: yes. newlines preserved.
 
 **double-quoted string** `"..."`
+
 - opens: `"`
 - closes: first unescaped `"`
 - content: literal bytes with these chars active:
@@ -264,30 +269,31 @@ below. command-word position produces `WORD` tokens regardless of content.
 - note: unlike single-quotes, double-quotes may contain `'`.
 
 **ansi-c quoted string** `$'...'`
+
 - opens: `$'` (literal two-char sequence)
 - closes: first unescaped `'`
 - content: literal with backslash escape processing
 - complete escape table (per manual, ANSI_002dC-Quoting.html):
 
-  | escape | meaning |
-  | --- | --- |
-  | `\a` | alert (bell, 0x07) |
-  | `\b` | backspace (0x08) |
-  | `\e`, `\E` | escape character (0x1b) |
-  | `\f` | form feed (0x0c) |
-  | `\n` | newline (0x0a) |
-  | `\r` | carriage return (0x0d) |
-  | `\t` | horizontal tab (0x09) |
-  | `\v` | vertical tab (0x0b) |
-  | `\\` | backslash |
-  | `\'` | single quote |
-  | `\"` | double quote |
-  | `\?` | question mark |
-  | `\nnn` | octal value (1 to 3 octal digits) |
-  | `\xHH` | hex value (1 to 2 hex digits) |
-  | `\uHHHH` | unicode (1 to 4 hex digits) |
-  | `\UHHHHHHHH` | unicode (1 to 8 hex digits) |
-  | `\cx` | control-x character |
+  | escape       | meaning                           |
+  | ------------ | --------------------------------- |
+  | `\a`         | alert (bell, 0x07)                |
+  | `\b`         | backspace (0x08)                  |
+  | `\e`, `\E`   | escape character (0x1b)           |
+  | `\f`         | form feed (0x0c)                  |
+  | `\n`         | newline (0x0a)                    |
+  | `\r`         | carriage return (0x0d)            |
+  | `\t`         | horizontal tab (0x09)             |
+  | `\v`         | vertical tab (0x0b)               |
+  | `\\`         | backslash                         |
+  | `\'`         | single quote                      |
+  | `\"`         | double quote                      |
+  | `\?`         | question mark                     |
+  | `\nnn`       | octal value (1 to 3 octal digits) |
+  | `\xHH`       | hex value (1 to 2 hex digits)     |
+  | `\uHHHH`     | unicode (1 to 4 hex digits)       |
+  | `\UHHHHHHHH` | unicode (1 to 8 hex digits)       |
+  | `\cx`        | control-x character               |
 
 - after processing: "the expanded result is single-quoted, as if the
   dollar sign had not been present" — no further expansion.
@@ -295,6 +301,7 @@ below. command-word position produces `WORD` tokens regardless of content.
   char); we emit `string.escape.invalid` for them.
 
 **locale-translated string** `$"..."`
+
 - opens: `$"` (literal two-char sequence)
 - closes: first unescaped `"`
 - content: same escape rules as plain `"..."`, PLUS translation at runtime
@@ -304,6 +311,7 @@ below. command-word position produces `WORD` tokens regardless of content.
   single-quoted) but has no lexical effect.
 
 **backslash-escaped character** (outside quotes)
+
 - `\<char>` — the character is taken literally (loses special meaning
   except newline, which does line-continuation)
 - `\<newline>` — line continuation: both chars removed from input
@@ -319,6 +327,7 @@ if  in  select  then  time  until  while
 ```
 
 contextual recognition:
+
 - `in` — reserved only as the 3rd word of `case`, `select`, `for`.
   ambiguity between `for x in` and `for ((…))` is resolved by the `((`.
 - `do` — reserved only as the 3rd word of `for` (and by analogy all loop
@@ -352,6 +361,7 @@ from Definitions.html: "a metacharacter is a `space`, `tab`, `newline`, or
 one of `|`, `&`, `;`, `(`, `)`, `<`, `>`."
 
 **control operators** (exact list from manual):
+
 - newline
 - `||` — logical or / pipe-or chain
 - `&&` — logical and
@@ -366,6 +376,7 @@ one of `|`, `&`, `;`, `(`, `)`, `<`, `>`."
 - `)` — subshell close
 
 **redirection operators** (from Redirections.html):
+
 - `<`, `>`, `>>`, `<>`
 - `<<`, `<<-`, `<<<` — heredoc, tab-stripping heredoc, herestring
 - `<&`, `>&` — duplicate fd
@@ -380,6 +391,7 @@ digit and the operator. since bash 4.1, `{varname}<file` opens the file
 and assigns the allocated fd to `varname`.
 
 **pipeline / command**:
+
 - `!` (at pipeline start, negation)
 - `time` (at pipeline start, timing)
 - `time -p` (posix-format output)
@@ -408,6 +420,7 @@ precedence table (per Shell-Arithmetic.html), highest to lowest:
 17. `,` — comma
 
 integer forms inside arithmetic:
+
 - decimal: `0`, `1`, `42`, `1_000` (no underscore support — unlike
   python; highlighter should treat `1_000` as an identifier followed by
   nothing sensible, but in practice bash users write `1000`)
@@ -422,6 +435,7 @@ integer forms inside arithmetic:
 and Bash-Conditional-Expressions.html):
 
 file-test unary:
+
 - `-a` (deprecated alias for `-e`)
 - `-b`, `-c` (block / character special)
 - `-d` (directory)
@@ -439,16 +453,19 @@ file-test unary:
 - `-t` (fd is a terminal)
 
 variable/shell-option unary:
+
 - `-o optname` (shopt/set option enabled)
 - `-v varname` (var set, including indexed arrays / subscripts)
 - `-R varname` (var set AND is a nameref)
 
 binary file comparisons:
+
 - `file1 -ef file2` (same device+inode)
 - `file1 -nt file2` (newer than)
 - `file1 -ot file2` (older than)
 
 string:
+
 - `-z string`, `-n string`
 - `string1 == string2`, `string1 = string2` (both are pattern match;
   `==` preferred)
@@ -458,13 +475,16 @@ string:
   regex with whitespace significant unless quoted)
 
 arithmetic (inside `[[ ]]` — distinct from `(( ))`):
+
 - `arg1 -eq arg2`, `-ne`, `-lt`, `-le`, `-gt`, `-ge`
 
 logical (inside `[[ ]]`):
+
 - `!` (not), `&&` (and), `||` (or)
 - `( … )` (grouping)
 
 **assignment operators**:
+
 - `=` (plain assign, only at command-word-start position)
 - `+=` (append; indexed array append with `arr+=(…)`)
 
@@ -504,6 +524,7 @@ logical (inside `[[ ]]`):
 ### 2.7 special syntax
 
 **comments**
+
 - `#` at the start of a word (line-begin, after unquoted blank, or after
   an operator) starts a comment through end of line.
 - `#!` on line 1 is a shebang (highlighted as comment but recognized
@@ -513,10 +534,12 @@ logical (inside `[[ ]]`):
 - `#` inside `$((…))` is NOT a comment (it's a special char, see below).
 
 **shebang**
+
 - only on line 1. `#!/bin/bash`, `#!/usr/bin/env bash`, etc. lexically
   identical to a comment, but themes often color it distinctly.
 
 **brace expansion** (Brace-Expansion.html)
+
 - list form: `{a,b,c}` — generates words `a`, `b`, `c`
 - sequence form: `{start..end}` — generates integers or single chars
 - sequence with increment: `{start..end..incr}`
@@ -532,6 +555,7 @@ logical (inside `[[ ]]`):
   - inside single-quoted, double-quoted, and ansi-c strings: literal
 
 **tilde expansion** (Tilde-Expansion.html)
+
 - `~` at word-start → `$HOME`
 - `~user` → user's home
 - `~+` → `$PWD`
@@ -542,6 +566,7 @@ logical (inside `[[ ]]`):
   context (so `PATH=~/bin:~/local/bin` expands both tildes)
 
 **parameter expansion** (Shell-Parameter-Expansion.html)
+
 - basic: `$name`, `$1`, `$N`, `${name}`, `${N}`, `$0`
 - specials: `$*`, `$@`, `$#`, `$?`, `$-`, `$$`, `$!`, `$_`
 - indirect: `${!name}` (the value of the variable named by `$name`)
@@ -595,6 +620,7 @@ all operators above work with array subscripts too: `${arr[3]:-default}`,
 `${arr[@]##prefix}`, `${arr[@]/pat/new}`, etc.
 
 **command substitution** (Command-Substitution.html)
+
 - `$(command)` — preferred form. parens balance.
 - `` `command` `` — legacy form. backslash inside retains literal meaning
   EXCEPT before `$`, `` ` ``, or `\`.
@@ -605,6 +631,7 @@ all operators above work with array subscripts too: `${arr[3]:-default}`,
 - inside double quotes: result is not word-split or glob-expanded.
 
 **arithmetic expansion** (Arithmetic-Expansion.html)
+
 - `$((expression))` — preferred.
 - `$[expression]` — deprecated legacy form. still accepted.
 - inside `$(( ))`, the chars `$`, `` ` ``, `\` retain their meaning.
@@ -612,11 +639,13 @@ all operators above work with array subscripts too: `${arr[3]:-default}`,
   the outer word level, not within arithmetic.
 
 **arithmetic command** (Conditional-Constructs.html)
+
 - `(( expression ))` — runs as a standalone command. exit status 0 if
   result is nonzero.
 - also appears as the head of C-style for: `for (( init; cond; step ))`
 
 **process substitution** (Process-Substitution.html)
+
 - `<(list)` — list is run with its stdout connected to a fifo/named pipe;
   expansion produces a filename
 - `>(list)` — list's stdin is connected
@@ -624,6 +653,7 @@ all operators above work with array subscripts too: `${arr[3]:-default}`,
 - nests normally
 
 **heredoc** (Redirections.html)
+
 - `[n]<<delimiter` — body runs until a line containing only `delimiter`
 - `[n]<<-delimiter` — leading tabs (not spaces) are stripped from each
   body line AND from the closing delimiter line
@@ -644,11 +674,13 @@ all operators above work with array subscripts too: `${arr[3]:-default}`,
   heredocs. they fire in order after the current logical line ends.
 
 **herestring** — `[n]<<< word`
+
 - word is subjected to tilde, parameter, command, arithmetic expansion
   and quote removal but NOT word splitting or pathname expansion
 - lexically, `<<<` is a redirection operator; the rhs is a normal word
 
 **glob patterns** (pathname expansion)
+
 - `*` — any sequence of chars
 - `?` — any single char
 - `[chars]` — any of the enclosed chars; `[!chars]` or `[^chars]` negated;
@@ -665,6 +697,7 @@ all operators above work with array subscripts too: `${arr[3]:-default}`,
   gates extglob).
 
 **arrays** (Arrays.html)
+
 - declare indexed: `declare -a arr`, or implicit `arr[i]=v` / `arr=(…)`
 - declare associative: `declare -A arr` (required — no implicit form)
 - init: `arr=(a b c)` or `arr=([0]=a [1]=b)` or `arr=([k1]=v1 [k2]=v2)`
@@ -679,10 +712,12 @@ all operators above work with array subscripts too: `${arr[3]:-default}`,
 
 **function definitions** (Shell-Functions.html)
 two equivalent forms:
+
 ```
 name () compound-command [ redirections ]
 function name [()] compound-command [ redirections ]
 ```
+
 - body is any compound command: `{ … }`, `( … )`, `(( … ))`, `[[ … ]]`,
   `if`/`for`/`while`/`case`/`select`, etc.
 - function name accepts a broader char set than regular identifiers —
@@ -693,6 +728,7 @@ function name [()] compound-command [ redirections ]
   the `}`.
 
 **coprocesses** (Coprocesses.html)
+
 - `coproc [NAME] simple-command [redirections]`
 - `coproc [NAME] compound-command`
 - `coproc { command; }` (name defaults to `COPROC`)
@@ -721,6 +757,7 @@ frontend, which is out of scope. document this choice so users asking
 ## 3. edge case inventory
 
 ### 3.1 `#` ambiguity
+
 - `foo #comment` — `#` starts comment (preceded by unquoted blank)
 - `foo#bar` — `#` is literal mid-word
 - `foo;#comment` — `#` starts comment (after control operator)
@@ -737,6 +774,7 @@ frontend, which is out of scope. document this choice so users asking
   literal pattern char)
 
 ### 3.2 `=` ambiguity
+
 - `VAR=value` at word-start → assignment
 - `VAR = value` with spaces → command `VAR` with args `=` and `value`
 - `echo foo=bar` — `=` is part of the word (not an assignment)
@@ -748,6 +786,7 @@ frontend, which is out of scope. document this choice so users asking
 - `declare -A m=([k]=v)` — associative-array init inside declare
 
 ### 3.3 `(` ambiguity
+
 - `(cmd)` — subshell
 - `cmd()` — function def (with `{…}` body after)
 - `func ()  { … }` — function def with space before parens
@@ -761,6 +800,7 @@ frontend, which is out of scope. document this choice so users asking
 - `?(…)`, `*(…)`, `+(…)`, `@(…)`, `!(…)` — extglob patterns
 
 ### 3.4 `)` ambiguity
+
 - subshell close
 - function-def parens close
 - arithmetic close `))`
@@ -770,6 +810,7 @@ frontend, which is out of scope. document this choice so users asking
 - arithmetic group close inside `[[ ]]`: `[[ (x = y) ]]`
 
 ### 3.5 `[` `]` ambiguity
+
 - `[ … ]` — the `test` / `[` builtin (a command, takes arguments)
 - `[[ … ]]` — conditional command (keyword, special grammar)
 - `arr[i]` — array subscript (only after an identifier with no space)
@@ -778,6 +819,7 @@ frontend, which is out of scope. document this choice so users asking
 - `[[:alpha:]]` — posix character class inside a glob char class
 
 ### 3.6 `$` ambiguity
+
 - `$name`, `$1`, `$0` — simple variable
 - `$#`, `$*`, `$@`, `$?`, `$-`, `$$`, `$!`, `$_` — special
 - `${…}` — parameter expansion
@@ -790,6 +832,7 @@ frontend, which is out of scope. document this choice so users asking
 - `\$` inside `"…"` — literal `$`
 
 ### 3.7 `<` `>` ambiguity
+
 - `cmd < file`, `cmd > file` — redirection
 - `cmd <<EOF` — heredoc
 - `cmd <<<word` — herestring
@@ -804,6 +847,7 @@ frontend, which is out of scope. document this choice so users asking
 - `<&3-` — move fd 3
 
 ### 3.8 `!` ambiguity
+
 - `!` at pipeline-start — negate (keyword)
 - `! expr` inside `[[ ]]` — logical not operator
 - `${!var}` — indirect expansion
@@ -818,6 +862,7 @@ frontend, which is out of scope. document this choice so users asking
   backslash-escaped)
 
 ### 3.9 heredoc edge cases
+
 - `cat <<EOF` with body — expansions active
 - `cat <<"EOF"` or `cat <<'EOF'` or `cat <<\EOF` — literal body
 - `cat <<-EOF` — strips leading TABS only (not spaces) from body lines
@@ -844,6 +889,7 @@ frontend, which is out of scope. document this choice so users asking
   `<<`.
 
 ### 3.10 `;` ambiguity
+
 - `cmd;` — statement separator
 - `cmd;;` inside `case` — clause end
 - `cmd;&` inside `case` — fall-through
@@ -854,6 +900,7 @@ frontend, which is out of scope. document this choice so users asking
   before `}` because `}` is a reserved word (word-boundary required).
 
 ### 3.11 quoting edge cases
+
 - `\<newline>` inside `"…"` — line continuation (both chars removed)
 - `\<newline>` inside `'…'` — literal backslash + literal newline
 - `\<newline>` inside `$'…'` — literal backslash + literal newline (the
@@ -867,6 +914,7 @@ frontend, which is out of scope. document this choice so users asking
   a common idiom to embed `'` inside a single-quoted context
 
 ### 3.12 case-pattern edge cases
+
 - `case x in a) … ;; esac` — simple pattern
 - `case x in (a) … ;; esac` — optional leading `(` for symmetry
 - `case x in a|b|c) … ;; esac` — pattern alternation with `|`
@@ -879,6 +927,7 @@ frontend, which is out of scope. document this choice so users asking
   metacharacters if quoted
 
 ### 3.13 `[[ ]]` edge cases
+
 - `[[ $a = pat* ]]` — glob pattern match; unquoted rhs is a pattern
 - `[[ $a = "pat*" ]]` — literal match; quoted rhs is a literal
 - `[[ $a =~ ^[0-9]+$ ]]` — regex; spaces inside the regex are
@@ -892,6 +941,7 @@ frontend, which is out of scope. document this choice so users asking
   `[ ]`; they're not operators in `(( ))`
 
 ### 3.14 `(( ))` / arithmetic edge cases
+
 - `(( i++ ))` — returns 0 if i was nonzero, 1 if i was zero (exit status
   is inverse of arithmetic value)
 - `(( i = j + 1 ))` — assignment inside arithmetic
@@ -902,6 +952,7 @@ frontend, which is out of scope. document this choice so users asking
 - `(( arr[i+1] = 42 ))` — subscript arithmetic
 
 ### 3.15 numeric / fd prefixes on redirections
+
 - `2>&1` — tight: no whitespace between digit and operator
 - `10>file` — multi-digit fd on lhs is allowed (bash ≥ 2.05 or so)
 - `{varname}<file` — fd allocation (bash ≥ 4.1); creates variable
@@ -909,6 +960,7 @@ frontend, which is out of scope. document this choice so users asking
   an fd prefix)
 
 ### 3.16 `in` as identifier vs keyword
+
 - `for i in 1 2 3; do …` — `in` is keyword (3rd word of for)
 - `local in=foo` — `in` is a variable name (assignment context)
 - `declare in=foo` — same
@@ -920,6 +972,7 @@ frontend, which is out of scope. document this choice so users asking
   keyword. the edge cases above are rare.
 
 ### 3.17 unicode
+
 - bash identifier charset is ascii-only per spec
 - utf-8 bytes in command-word position are passed through literally
 - utf-8 inside `"…"` and `'…'` is transparent
@@ -929,6 +982,7 @@ frontend, which is out of scope. document this choice so users asking
   `[[ ]]` use locale for sort order
 
 ### 3.18 `|&` and `&>` and `&>>`
+
 - `cmd1 |& cmd2` — pipe both stdout and stderr (bash 4+). equivalent to
   `cmd1 2>&1 | cmd2`.
 - `&>file` — redirect both stdout and stderr to file (bash-specific)
@@ -938,7 +992,9 @@ frontend, which is out of scope. document this choice so users asking
   fd" semantics
 
 ### 3.19 pattern vs regex vs glob context
+
 three distinct pattern syntaxes:
+
 - **glob** (pathname expansion, case patterns, `[[ = ]]`, parameter
   `#%/` operators): `*`, `?`, `[abc]`, extglob
 - **posix-ere regex** (`[[ =~ ]]`): full POSIX extended regex
@@ -949,10 +1005,12 @@ the highlighter emits `glob.pattern` tokens inside the first, `regex`
 tokens inside the second, and `punctuation` tokens for brace expansion.
 
 ### 3.20 case-sensitivity
+
 - bash is case-sensitive everywhere: keywords, variable names, function
   names, glob patterns (unless `nocaseglob` / `nocasematch` shopt set)
 
 ### 3.21 whitespace significance
+
 - inter-token: space and tab are word separators
 - intra-token inside quotes: literal
 - `\<newline>` outside quotes: line continuation
@@ -973,12 +1031,14 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
 ## 4. nesting and context constructs
 
 ### single-quoted string
+
 - opens: `'`
 - closes: first `'` (no escape possible)
 - nests: nothing (literal)
 - escapes: none
 
 ### double-quoted string
+
 - opens: `"`
 - closes: first unescaped `"`
 - nests: `$var`, `${…}`, `$(…)`, `$((…))`, `` `…` ``, `$'…'`, `$"…"`
@@ -988,6 +1048,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
   scope for script highlighter)
 
 ### ansi-c string
+
 - opens: `$'`
 - closes: first unescaped `'`
 - nests: nothing (no further expansion after escape processing)
@@ -996,12 +1057,14 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
   `\cx`
 
 ### locale-translated string
+
 - opens: `$"`
 - closes: first unescaped `"`
 - nests: same as double-quoted string
 - escapes: same as double-quoted string
 
 ### command substitution `$(…)`
+
 - opens: `$(`
 - closes: matching `)` (parens balance; arbitrary nesting of subshells
   and substitutions inside)
@@ -1010,6 +1073,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
 - escapes: none directly; the inner chars are parsed as new shell input
 
 ### command substitution (backtick) `` `…` ``
+
 - opens: `` ` ``
 - closes: first unescaped `` ` ``
 - nests: full bash syntax BUT backslash escaping is degraded:
@@ -1018,6 +1082,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
 - use `$(…)` in modern bash; backticks are legacy.
 
 ### arithmetic expansion `$((…))`
+
 - opens: `$((`
 - closes: first `))` at matching depth
 - nests: arithmetic operators, variable names (both `$var` and `var`),
@@ -1028,6 +1093,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
   `'` can appear but are not special to arithmetic itself.
 
 ### arithmetic command `((…))`
+
 - opens: `((`
 - closes: matching `))`
 - nests: same as `$((…))`
@@ -1035,6 +1101,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
   `(( i = 1 ))` is a statement; `$(( i = 1 ))` is an expansion.
 
 ### parameter expansion `${…}`
+
 - opens: `${`
 - closes: matching `}`
 - nests: `$(…)`, `$((…))`, `${…}` (another parameter expansion in
@@ -1044,12 +1111,14 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
   `` \` ``, `\<newline>`, `\"` (in quoted rhs)
 
 ### process substitution `<(…)` / `>(…)`
+
 - opens: `<(` or `>(`
 - closes: matching `)`
 - nests: full bash syntax (same as `$(…)` contents)
 - escapes: none directly
 
 ### heredoc body (unquoted delimiter)
+
 - opens: the newline after the line containing `<<DELIM`
 - closes: a line containing exactly `DELIM` (with optional leading tabs
   stripped if `<<-DELIM`)
@@ -1058,6 +1127,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
   double-quote rules)
 
 ### heredoc body (quoted delimiter)
+
 - opens: newline after the line containing `<<'DELIM'` /
   `<<"DELIM"` / `<<\DELIM`
 - closes: line containing exactly the literal delimiter
@@ -1065,11 +1135,13 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
 - escapes: none (completely literal)
 
 ### here-string `<<<word`
+
 - not a nesting context — `word` is parsed as a normal word (expansions
   apply: tilde, parameter, command, arithmetic, quote removal). not a
   multiline construct.
 
 ### `[[ ]]` conditional body
+
 - opens: `[[` (with blank before and after)
 - closes: `]]` (with blank before)
 - nests: words (which may contain `$var`, `${…}`, etc.), quoted strings,
@@ -1078,6 +1150,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
 - escapes: none directly; inside the body words follow normal word rules
 
 ### `[[ =~ ]]` regex rhs
+
 - sub-context of `[[ ]]` starting after `=~` and ending at the word
   boundary (first unquoted whitespace) or at the `]]`
 - syntax: posix-extended regex
@@ -1087,6 +1160,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
 - nests: nothing (it's a leaf token)
 
 ### case pattern
+
 - opens: after `in` (first pattern) or after `;;` / `;&` / `;;&` (next
   pattern), optional `(` before the pattern
 - closes: `)` (pattern terminator)
@@ -1096,18 +1170,21 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
 - glob metachars: `*`, `?`, `[…]`, `[^…]`, `[[:class:]]`
 
 ### subshell `(…)`
+
 - opens: `(` (word-start, with blank before)
 - closes: matching `)` (with blank after for most contexts)
 - nests: full bash syntax
 - escapes: none directly
 
 ### command group `{…;}`
+
 - opens: `{` (word-start, with blank after)
 - closes: `}` (word-start, preceded by `;`, `&`, or newline)
 - nests: full bash syntax
 - escapes: none directly
 
 ### brace expansion `{a,b,c}` or `{1..10}`
+
 - opens: `{` with no immediate `$` before (i.e. not `${`), at word-start
   or mid-word
 - closes: matching `}`
@@ -1117,6 +1194,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
 - escapes: `\{`, `\}`, `\,` disable
 
 ### function body
+
 - any compound command (`{…}`, `(…)`, `((…))`, `[[…]]`, `if`, `for`,
   `while`, `until`, `case`, `select`)
 - the body nesting is whatever the compound command's nesting rules are
@@ -1128,6 +1206,7 @@ tokens inside the second, and `punctuation` tokens for brace expansion.
 ### sample 1 — heredoc with mixed quoting and command substitution
 
 input:
+
 ```bash
 log_error() {
     local msg="$1"
@@ -1219,6 +1298,7 @@ r e t u r n             — builtin "return"
 ```
 
 key observations:
+
 1. the heredoc delimiter `EOF` is captured at `<<EOF` time and must be
    remembered across the rest of the current logical line AND the
    heredoc body.
@@ -1236,6 +1316,7 @@ key observations:
 ### sample 2 — `[[ ]]` with regex, arrays, and extglob
 
 input:
+
 ```bash
 declare -A paths=(
     ["src"]="/usr/local/src"
@@ -1342,6 +1423,7 @@ done                    — keyword
 ```
 
 key observations:
+
 1. `"${!paths[@]}"` nests: double-quote string → `${…}` → `!` indirect
    operator → array-keys `[@]`. three tokens at least:
    `"`, `${`, `!`, `paths`, `[`, `@`, `]`, `}`, `"`. all emitted as
@@ -1359,6 +1441,7 @@ key observations:
 ### sample 3 — arithmetic-heavy, coprocess, process substitution
 
 input:
+
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
@@ -1475,6 +1558,7 @@ printf                  — builtin
 ```
 
 key observations:
+
 1. arithmetic for `for ((i=0; i<0x100; i+=2))` uses `((` as the
    arithmetic-for-open token (NOT the arithmetic-command `(( ))` —
    they share tokens but parser-context differs). inside, `;` is a
