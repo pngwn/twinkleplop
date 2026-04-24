@@ -4,7 +4,7 @@
 //
 // do not hand-edit the generated files.
 
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { dark, light } from "./tokens.ts";
@@ -47,6 +47,7 @@ const HEADER = "/* @twinkleplop/theme-github — generated from src/tokens.ts, d
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(here, "..", "dist");
+mkdirSync(dist, { recursive: true });
 
 const bindings = binding_block(light);
 
