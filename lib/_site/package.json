@@ -7,13 +7,12 @@
     "build": "vite build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "deploy": "pnpm run build && wrangler deploy",
     "dev": "vite dev",
-    "dev:wrangler": "wrangler dev",
     "format": "prettier --write .",
     "lint": "prettier --check .",
     "prepare": "svelte-kit sync || echo ''",
-    "preview": "vite preview",
-    "preview:wrangler": "pnpm run build && wrangler dev"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
@@ -43,7 +42,6 @@
     "shiki": "^4.0.2"
   },
   "devDependencies": {
-    "@sveltejs/adapter-cloudflare": "^7.2.8",
     "@sveltejs/kit": "^2.58.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@types/prismjs": "^1.26.6",
