@@ -21,8 +21,12 @@
 	}
 	import { palette_to_vars } from '$lib/explore/palette_vars';
 	import { measure } from '$lib/explore/measure';
-	import { get_highlighter, shiki_lang_for } from '$lib/explore/shiki_client';
-	import type { Highlighter } from 'shiki';
+	import {
+		get_highlighter,
+		shiki_lang_for,
+		tokenize_with_scopes
+	} from '$lib/explore/shiki_client';
+	import type { Highlighter, ThemedToken } from 'shiki';
 	import '$lib/styles/explore.css';
 
 	let { data } = $props();
@@ -164,39 +168,99 @@
 	let tweaks_visible = $state(false);
 	let source_open = $state(false);
 
-	// token inspector tooltip. when tweaks.inspect is on, hovering a `.tok`
-	// span inside the plop pane reveals the token type that twinkleplop
-	// produced for that range. we read the second class on the span (the
-	// first is always `tok`), so this stays synchronized with whatever
-	// `to_html` actually emits without needing a parallel data channel.
+	// token inspector tooltip. when tweaks.inspect is on, hovering a span in
+	// either pane reveals the classification the highlighter assigned. for
+	// the plop pane we read the second class on a `.tok` span (the first is
+	// always `tok`); for the shiki pane we read the `data-scopes` attribute
+	// attached by the second-pass annotation effect below. holding shift
+	// while hovering a shiki span unfolds the rest of the textmate scope
+	// chain beneath the leaf.
 	let inspect_label = $state<string | null>(null);
+	let inspect_chain = $state<string[] | null>(null);
+	let inspect_theme_scope = $state<string | null>(null);
 	let inspect_x = $state(0);
 	let inspect_y = $state(0);
+	let shift_held = $state(false);
 
 	function on_inspect_move(e: PointerEvent) {
 		if (!tweaks.inspect) return;
 		const target = e.target as Element | null;
-		const tok = target?.closest?.('[data-pane="plop"] .tok') as HTMLElement | null;
-		if (!tok) {
-			inspect_label = null;
+		const plop_tok = target?.closest?.('[data-pane="plop"] .tok') as HTMLElement | null;
+		if (plop_tok) {
+			// the `to_html` markup is `<span class="tok TYPE">`. token types
+			// are emitted as bare strings (no spaces), so the second class is
+			// the full type name.
+			inspect_label = plop_tok.classList[1] ?? null;
+			inspect_chain = null;
+			inspect_theme_scope = null;
+			inspect_x = e.clientX;
+			inspect_y = e.clientY;
 			return;
 		}
-		// the `to_html` markup is `<span class="tok TYPE">`. token types are
-		// emitted as bare strings (no spaces), so the second class is the
-		// full type name.
-		const type = tok.classList[1] ?? null;
-		inspect_label = type;
-		inspect_x = e.clientX;
-		inspect_y = e.clientY;
+		const shiki_tok = target?.closest?.(
+			'[data-pane="shiki"] span[data-scopes]'
+		) as HTMLElement | null;
+		if (shiki_tok) {
+			// `data-scopes` is a `|`-joined chain ordered root-first; the
+			// leaf (most-specific) scope is the last entry. `data-theme-scope`
+			// is the literal scope pattern of the theme rule that won the
+			// color contest for this token (e.g. `keyword.operator` even when
+			// the grammar leaf is `keyword.operator.assignment.js`).
+			const raw = shiki_tok.dataset.scopes ?? '';
+			const chain = raw ? raw.split('|') : [];
+			inspect_chain = chain.length ? chain : null;
+			inspect_label = chain.length ? chain[chain.length - 1] : null;
+			inspect_theme_scope = shiki_tok.dataset.themeScope ?? null;
+			inspect_x = e.clientX;
+			inspect_y = e.clientY;
+			return;
+		}
+		inspect_label = null;
+		inspect_chain = null;
+		inspect_theme_scope = null;
 	}
 
 	function on_inspect_leave() {
 		inspect_label = null;
+		inspect_chain = null;
+		inspect_theme_scope = null;
 	}
 
 	$effect(() => {
-		if (!tweaks.inspect) inspect_label = null;
+		if (!tweaks.inspect) {
+			inspect_label = null;
+			inspect_chain = null;
+			inspect_theme_scope = null;
+			return;
+		}
+		function on_keydown(e: KeyboardEvent) {
+			if (e.key === 'Shift') shift_held = true;
+		}
+		function on_keyup(e: KeyboardEvent) {
+			if (e.key === 'Shift') shift_held = false;
+		}
+		function on_blur() {
+			shift_held = false;
+		}
+		window.addEventListener('keydown', on_keydown);
+		window.addEventListener('keyup', on_keyup);
+		window.addEventListener('blur', on_blur);
+		return () => {
+			window.removeEventListener('keydown', on_keydown);
+			window.removeEventListener('keyup', on_keyup);
+			window.removeEventListener('blur', on_blur);
+			shift_held = false;
+		};
 	});
+
+	// chain entries to surface beneath the leaf when shift is held, ordered
+	// most-specific-first (the leaf itself sits at the top of the tooltip,
+	// so the unfold begins with the leaf's parent).
+	let inspect_extra = $derived(
+		shift_held && inspect_chain && inspect_chain.length > 1
+			? inspect_chain.slice(0, -1).reverse()
+			: null
+	);
 
 	// twinkleplop tokenization + real parse time. `measure` batches calls
 	// to beat the 5-100us `performance.now()` clamp and takes the median
@@ -274,6 +338,198 @@
 	});
 
 	let shiki_token_count = $derived((shiki_html?.match(/<span /g)?.length ?? 0) || 0);
+
+	// second, untimed pass: only runs when the inspector is on. shiki's
+	// `includeExplanation` materially slows tokenization, so keeping it out
+	// of the timed `codeToHtml` path lets the perf readout in the shiki pane
+	// stay honest. the result is the per-line, per-token explanation tree
+	// used to populate `data-scopes` on the rendered shiki spans below.
+	let shiki_body_el = $state<HTMLElement | null>(null);
+	let shiki_explained = $state<ThemedToken[][] | null>(null);
+	$effect(() => {
+		const shiki_lang = shiki_lang_for(data.lang);
+		// always invalidate first so the annotation effect doesn't run with
+		// stale tokens against fresh dom while the microtask is in flight.
+		shiki_explained = null;
+		if (!tweaks.inspect || !highlighter || !source || !shiki_lang || !shiki_html) return;
+		const local_highlighter = highlighter;
+		const local_source = source;
+		const local_lang = shiki_lang;
+		const local_theme = resolve_theme(tweaks.theme, theme_mode.resolved).shiki_id;
+		let cancelled = false;
+		// `codeToTokens` is sync but can be heavy; defer it so it doesn't
+		// block the same microtask that just rendered shiki_html.
+		queueMicrotask(() => {
+			if (cancelled) return;
+			if (local_source !== source) return;
+			try {
+				shiki_explained = tokenize_with_scopes(
+					local_highlighter,
+					local_source,
+					local_lang,
+					local_theme
+				);
+			} catch (err) {
+				console.warn('shiki explained-tokens pass failed', err);
+				shiki_explained = null;
+			}
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	// returns true when textmate selector `sel` matches the dot-segmented
+	// scope `target`. selectors match when their segments are a prefix of
+	// the target's segments (e.g. `keyword.operator` matches
+	// `keyword.operator.assignment.js`, but `keyword.assignment` does not).
+	function selector_matches(sel: string, target: string): boolean {
+		return target === sel || target.startsWith(sel + '.');
+	}
+
+	// resolves which theme rule actually colored a sub-token, given the
+	// rendered color of its parent themedtoken. walks the sub-token's
+	// scopes and finds the themematch whose `settings.foreground` equals
+	// the parent color. when a matching rule has an array `scope` (theme
+	// json shorthand for "all these selectors share these settings"), we
+	// narrow to the single selector that actually matched this scope —
+	// listing siblings would point at unrelated tokens that happen to
+	// share the rule.
+	type SubScope = { scopeName: string; themeMatches?: ThemedTokenScopeMatch[] };
+	type ThemedTokenScopeMatch = {
+		scope?: string | string[];
+		settings?: { foreground?: string };
+	};
+	function resolve_rule(scopes: SubScope[], parent_color: string): string | null {
+		if (!parent_color) return null;
+		for (const scope of scopes) {
+			for (const match of scope.themeMatches ?? []) {
+				const fg = match.settings?.foreground?.toLowerCase();
+				if (!fg || fg !== parent_color) continue;
+				const s = match.scope;
+				if (typeof s === 'string') return s;
+				if (Array.isArray(s)) {
+					let best: string | null = null;
+					for (const sel of s) {
+						if (typeof sel !== 'string') continue;
+						if (selector_matches(sel, scope.scopeName)) {
+							if (!best || sel.length > best.length) best = sel;
+						}
+					}
+					if (best) return best;
+					for (const sel of s) {
+						if (typeof sel === 'string') return sel;
+					}
+				}
+				return null;
+			}
+		}
+		return null;
+	}
+
+	// dom annotation: walks the rendered shiki output and tags each token
+	// span with `data-scopes` (the grammar chain) and `data-theme-scope`
+	// (the theme rule that earned the color). shiki coalesces tokens at
+	// *two* layers and we have to undo both:
+	//
+	// 1. `codeToHtml` merges adjacent same-color spans for the rendered
+	//    output, so a single dom span often contains several themedtokens.
+	// 2. inside a themedtoken, the tokenizer can also coalesce neighboring
+	//    same-color atoms — `");"` arrives as one themedtoken whose
+	//    `explanation` array carries two entries (`)` with `meta.brace
+	//    .round` and `;` with `punctuation.terminator.statement`). so the
+	//    real atomic unit is the explanation entry, not the themedtoken.
+	//
+	// we flatten the line into per-explanation sub-tokens, walk dom spans
+	// in lockstep by character length, and split any span that ends up
+	// containing more than one sub-token into per-sub-token spans. cloning
+	// the original span's style preserves the rendered color so splitting
+	// is visually invisible — but each sub-span is now its own hover
+	// target with its own accurate scope/rule annotation.
+	//
+	// we restore shiki_html into the body before walking so previous
+	// annotation passes (which mutated the dom by splitting) don't throw
+	// off the per-character walk. svelte's {@html} only re-renders when
+	// the html string itself changes, so toggling inspect off/on for the
+	// same source would otherwise re-walk a stale, already-split dom.
+	// `shiki_html` is shiki's own escaped output and is already trusted
+	// here — the parent template renders it via {@html} in shikipane.
+	$effect(() => {
+		if (!shiki_body_el || !shiki_explained || !shiki_html) return;
+		Reflect.set(shiki_body_el, 'innerHTML', shiki_html);
+		const lines = shiki_body_el.querySelectorAll('.line');
+		const explained = shiki_explained;
+		for (let line_idx = 0; line_idx < lines.length; line_idx++) {
+			const line = lines[line_idx];
+			const tokens = explained[line_idx];
+			if (!tokens || tokens.length === 0) continue;
+			type Sub = { content: string; scopes: string[]; theme_scope: string | null };
+			const flat: Sub[] = [];
+			for (const tok of tokens) {
+				const color = (tok.color ?? '').toLowerCase();
+				const exps = tok.explanation ?? [];
+				if (exps.length === 0) {
+					flat.push({ content: tok.content, scopes: [], theme_scope: null });
+					continue;
+				}
+				for (const exp of exps) {
+					const scopes_arr = exp.scopes ?? [];
+					const names = scopes_arr.map((s) => s.scopeName);
+					const theme_scope = resolve_rule(scopes_arr as SubScope[], color);
+					flat.push({ content: exp.content, scopes: names, theme_scope });
+				}
+			}
+			const original_spans = Array.from(line.querySelectorAll(':scope > span'));
+			let sub_idx = 0;
+			for (const span of original_spans) {
+				const span_len = span.textContent?.length ?? 0;
+				const contained: Sub[] = [];
+				let consumed = 0;
+				while (sub_idx < flat.length && consumed < span_len) {
+					contained.push(flat[sub_idx]);
+					consumed += flat[sub_idx].content.length;
+					sub_idx++;
+				}
+				apply_subtokens(span as HTMLElement, contained);
+			}
+		}
+	});
+
+	function apply_subtokens(
+		span: HTMLElement,
+		subs: { content: string; scopes: string[]; theme_scope: string | null }[]
+	) {
+		if (subs.length === 0) return;
+		if (subs.length === 1) {
+			annotate_span(span, subs[0].scopes, subs[0].theme_scope);
+			return;
+		}
+		const style = span.getAttribute('style') ?? '';
+		const cls = span.getAttribute('class') ?? '';
+		const fragment = document.createDocumentFragment();
+		for (const s of subs) {
+			const new_span = document.createElement('span');
+			if (style) new_span.setAttribute('style', style);
+			if (cls) new_span.setAttribute('class', cls);
+			new_span.textContent = s.content;
+			annotate_span(new_span, s.scopes, s.theme_scope);
+			fragment.appendChild(new_span);
+		}
+		span.replaceWith(fragment);
+	}
+
+	function annotate_span(span: HTMLElement, scopes: string[], theme_scope: string | null) {
+		if (scopes.length > 0) {
+			span.dataset.scopes = scopes.join('|');
+		} else {
+			delete span.dataset.scopes;
+		}
+		if (theme_scope) {
+			span.dataset.themeScope = theme_scope;
+		} else {
+			delete span.dataset.themeScope;
+		}
+	}
 
 	// `crossOriginIsolated` flips true once the coop/coep response headers
 	// from hooks.server.ts land. that's what lets `performance.now()`
@@ -416,6 +672,7 @@
 			show_line_numbers={tweaks.show_line_numbers}
 			perf_ms={shiki_ms}
 			perf_token_count={shiki_token_count}
+			bind:body_el={shiki_body_el}
 		/>
 	</div>
 
@@ -433,9 +690,27 @@
 	/>
 
 	{#if tweaks.inspect && inspect_label}
-		<div class="inspect-tip" style="left: {inspect_x}px; top: {inspect_y}px;">
-			<!-- <span class="inspect-tip__label">token</span> -->
+		<div
+			class="inspect-tip"
+			class:inspect-tip--stack={inspect_extra || inspect_theme_scope}
+			style="left: {inspect_x}px; top: {inspect_y}px;"
+		>
 			<span class="inspect-tip__value">{inspect_label}</span>
+			{#if inspect_theme_scope}
+				<span class="inspect-tip__themed">
+					<span class="inspect-tip__themed-label">themed by</span>
+					<span class="inspect-tip__themed-scope">{inspect_theme_scope}</span>
+				</span>
+			{/if}
+			{#if inspect_extra}
+				<ul class="inspect-tip__chain">
+					{#each inspect_extra as scope (scope)}
+						<li class="inspect-tip__scope">{scope}</li>
+					{/each}
+				</ul>
+			{:else if inspect_chain && inspect_chain.length > 1}
+				<span class="inspect-tip__hint">⇧ for chain</span>
+			{/if}
 		</div>
 	{/if}
 </div>

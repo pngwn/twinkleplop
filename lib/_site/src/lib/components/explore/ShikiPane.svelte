@@ -12,6 +12,7 @@
 		show_line_numbers: boolean;
 		perf_ms: number;
 		perf_token_count: number;
+		body_el?: HTMLElement | null;
 	}
 
 	let {
@@ -25,6 +26,7 @@
 		show_line_numbers,
 		perf_ms,
 		perf_token_count,
+		body_el = $bindable(null),
 	}: Props = $props();
 
 	let line_count = $derived(source ? source.split("\n").length : 0);
@@ -40,6 +42,7 @@
 	</header>
 
 	<div
+		bind:this={body_el}
 		class="pane__body"
 		class:show-line-numbers={show_line_numbers}
 		data-density={density}

@@ -1,4 +1,4 @@
-import type { Highlighter } from "shiki";
+import type { Highlighter, ThemedToken } from "shiki";
 import { SHIKI_THEME_IDS } from "./themes";
 
 // keys match the twinkleplop language slugs; value is the shiki grammar id
@@ -45,4 +45,26 @@ export function get_highlighter(): Promise<Highlighter> {
 
 export function shiki_lang_for(lang: string): string | null {
   return SHIKI_LANG_MAP[lang] ?? null;
+}
+
+// returns shiki's per-line, per-token output with the textmate scope chain
+// attached on each token (`token.explanation[*].scopes`). intended for the
+// inspector pane: kept separate from `codeToHtml` so the timed render path
+// stays free of the explanation overhead.
+//
+// shiki types `lang` as `BundledLanguage | SpecialLanguage`; the cast keeps
+// the helper in sync with the rest of the call sites in this file, which
+// pipe `string` through SHIKI_LANG_MAP (the source of truth for which
+// grammars we actually load on startup).
+export function tokenize_with_scopes(
+  highlighter: Highlighter,
+  source: string,
+  lang: string,
+  theme: string,
+): ThemedToken[][] {
+  return highlighter.codeToTokens(source, {
+    lang: lang as Parameters<Highlighter["codeToTokens"]>[1]["lang"],
+    theme,
+    includeExplanation: true,
+  }).tokens;
 }

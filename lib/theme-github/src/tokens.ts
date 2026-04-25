@@ -173,7 +173,7 @@ export const dark: theme_palette = {
   class_name: "#ffa657", // scale.orange[2] — entity.name
   constant: "#79c0ff", // scale.blue[2] — constant.other / variable.other.constant
   decorator: "#d2a8ff", // scale.purple[2] — entity.name.function fallback
-  lifetime: "#ff7b72", // scale.red[3] — storage.modifier.lifetime fallback
+  lifetime: "#ffa657", // scale.red[3] — storage.modifier.lifetime fallback
   namespace: "#ffa657", // scale.orange[2] — entity.name.namespace → entity.name
   parameter: "#ffa657", // scale.orange[2] — variable.parameter → variable family accent
   property: "#79c0ff", // scale.blue[2] — meta.property-name
