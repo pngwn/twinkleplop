@@ -8,7 +8,9 @@
 	type tokenize_result = { tokens: Uint32Array; token_types: string[] };
 	type language_factory = () => (src: string) => tokenize_result;
 
-	const tokenize = (ts_language as unknown as language_factory)();
+	const tokenize = (ts_language as unknown as language_factory)({
+	 fidelity: 'high'
+	});
 
 	let {
 		initial = `function greet(name: string) {
@@ -278,6 +280,7 @@ console.log(msg);`,
 	:global(::highlight(mini_decorator)) { color: var(--twp-decorator); }
 	:global(::highlight(mini_string_escape)) { color: var(--twp-string_escape); }
 	:global(::highlight(mini_attribute)) { color: var(--twp-attribute); }
+	:global(::highlight(mini_parameter)) { color: var(--twp-parameter); }
 
 	@media (max-width: 760px) {
 		.pad {

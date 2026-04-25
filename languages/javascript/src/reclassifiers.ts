@@ -1501,6 +1501,23 @@ export const promote_js_parameters: Reclassifier = (input, result) => {
           t &&
           (t.kind === "class" || t.kind === "object" || t.kind === "interface")
         ) {
+          // method name same as a leading-keyword: `get(id) {}`, `set(v) {}`,
+          // `async(x) {}`, `static(x) {}`. when at member-start, the keyword
+          // IS the method name and the next `(` opens its param list. walk
+          // it now — the main loop's identifier branch never fires for
+          // keywords, so without this we'd skip parameter tagging entirely.
+          if (t.at_start) {
+            const nxt = view.next_non_trivia(i + 1);
+            if (
+              nxt >= 0 &&
+              view.kind_of(nxt) === punctuation_id &&
+              view.text_of(nxt).startsWith("(")
+            ) {
+              walk_params_at(nxt, 0);
+              consume_at_start();
+              continue;
+            }
+          }
           continue;
         }
         consume_at_start();
@@ -1764,6 +1781,6 @@ export const reclassifiers: LanguagePipeline = [
   // free-standing PascalCase → class_name. runs after class_name_promoter so
   // its positional claims stay authoritative on overlapping positions;
   // this pass only touches identifiers nothing else has promoted.
-  tag(promote_js_pascal_case, ["class_name"]),
+  // tag(promote_js_pascal_case, ["class_name"]),
   always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
 ];
