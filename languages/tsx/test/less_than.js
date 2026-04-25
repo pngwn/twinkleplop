@@ -240,7 +240,7 @@ export default [
 		"end": 138
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 139,
 		"end": 140
 	},

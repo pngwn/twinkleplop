@@ -1,60 +1,52 @@
 <script lang="ts">
-	import { goto } from "$app/navigation";
+	import { goto } from '$app/navigation';
 
-	import TopBar from "$lib/components/explore/TopBar.svelte";
-	import SourceEditor from "$lib/components/explore/SourceEditor.svelte";
-	import CodePane from "$lib/components/explore/CodePane.svelte";
-	import ShikiPane from "$lib/components/explore/ShikiPane.svelte";
-	import RaceBar from "$lib/components/explore/RaceBar.svelte";
-	import TweaksPanel from "$lib/components/explore/TweaksPanel.svelte";
+	import TopBar from '$lib/components/explore/TopBar.svelte';
+	import SourceEditor from '$lib/components/explore/SourceEditor.svelte';
+	import CodePane from '$lib/components/explore/CodePane.svelte';
+	import ShikiPane from '$lib/components/explore/ShikiPane.svelte';
+	import RaceBar from '$lib/components/explore/RaceBar.svelte';
+	import TweaksPanel from '$lib/components/explore/TweaksPanel.svelte';
 
-	import { SvelteSet } from "svelte/reactivity";
-	import {
-		DEFAULT_TWEAKS,
-		THEMES,
-		type tweak_state,
-	} from "$lib/explore/themes";
-	import {
-		GRAMMAR_EXTENSION_CATEGORIES,
-		to_html,
-	} from "@twinkleplop/core";
+	import { SvelteSet } from 'svelte/reactivity';
+	import { DEFAULT_TWEAKS, resolve_theme, type tweak_state } from '$lib/explore/themes';
+	import { theme_mode, hydrate_mode } from '$lib/theme_mode.svelte';
+	import { onMount } from 'svelte';
+	import { GRAMMAR_EXTENSION_CATEGORIES, to_html } from '@twinkleplop/core';
 
 	// core ships no .d.ts yet so we redeclare the result shape locally.
 	interface tokenize_result {
 		tokens: Uint32Array;
 		token_types: string[];
 	}
-	import { palette_to_vars } from "$lib/explore/palette_vars";
-	import { measure } from "$lib/explore/measure";
-	import {
-		get_highlighter,
-		shiki_lang_for,
-	} from "$lib/explore/shiki_client";
-	import type { Highlighter } from "shiki";
-	import "$lib/styles/explore.css";
+	import { palette_to_vars } from '$lib/explore/palette_vars';
+	import { measure } from '$lib/explore/measure';
+	import { get_highlighter, shiki_lang_for } from '$lib/explore/shiki_client';
+	import type { Highlighter } from 'shiki';
+	import '$lib/styles/explore.css';
 
 	let { data } = $props();
 
 	// the underlying modules do not ship .d.ts, so the promise shape is
 	// typed loosely here. `language` is resolved at runtime in load_grammar.
 	const grammar_loaders: Record<string, () => Promise<unknown>> = {
-		css: () => import("@twinkleplop/css"),
-		whitespace: () => import("@twinkleplop/whitespace"),
-		javascript: () => import("@twinkleplop/javascript"),
-		html: () => import("@twinkleplop/html"),
-		svelte: () => import("@twinkleplop/svelte"),
-		rust: () => import("@twinkleplop/rust"),
-		typescript: () => import("@twinkleplop/typescript"),
-		tsx: () => import("@twinkleplop/tsx"),
-		sql: () => import("@twinkleplop/sql"),
-		yaml: () => import("@twinkleplop/yaml"),
-		markdown: () => import("@twinkleplop/markdown"),
-		toml: () => import("@twinkleplop/toml"),
-		python: () => import("@twinkleplop/python"),
-		bash: () => import("@twinkleplop/bash"),
-		go: () => import("@twinkleplop/go"),
-		diff: () => import("@twinkleplop/diff"),
-		"diff-basic": () => import("@twinkleplop/diff-basic"),
+		css: () => import('@twinkleplop/css'),
+		whitespace: () => import('@twinkleplop/whitespace'),
+		javascript: () => import('@twinkleplop/javascript'),
+		html: () => import('@twinkleplop/html'),
+		svelte: () => import('@twinkleplop/svelte'),
+		rust: () => import('@twinkleplop/rust'),
+		typescript: () => import('@twinkleplop/typescript'),
+		tsx: () => import('@twinkleplop/tsx'),
+		sql: () => import('@twinkleplop/sql'),
+		yaml: () => import('@twinkleplop/yaml'),
+		markdown: () => import('@twinkleplop/markdown'),
+		toml: () => import('@twinkleplop/toml'),
+		python: () => import('@twinkleplop/python'),
+		bash: () => import('@twinkleplop/bash'),
+		go: () => import('@twinkleplop/go'),
+		diff: () => import('@twinkleplop/diff'),
+		'diff-basic': () => import('@twinkleplop/diff-basic')
 	};
 
 	const all_languages = Object.keys(grammar_loaders);
@@ -63,9 +55,7 @@
 	// the factory reference is kept separately from the resolved grammar so
 	// flipping a fidelity tag just re-runs the derivation below without
 	// re-importing the language module.
-	let make_language = $state<
-		((opts?: unknown) => (src: string) => tokenize_result) | undefined
-	>();
+	let make_language = $state<((opts?: unknown) => (src: string) => tokenize_result) | undefined>();
 	let available_tags = $state<string[]>([]);
 	let enabled_tags = new SvelteSet<string>();
 
@@ -81,8 +71,7 @@
 			language?: (options?: unknown) => (src: string) => tokenize_result;
 			grammar?: { token_types?: string[] };
 			reclassifiers?: Array<
-				| ((...a: unknown[]) => unknown)
-				| { reclassifier: unknown; produces: string[] }
+				((...a: unknown[]) => unknown) | { reclassifier: unknown; produces: string[] }
 			>;
 		};
 		const tags: string[] = [];
@@ -101,7 +90,7 @@
 			}
 		}
 		for (const entry of mod.reclassifiers ?? []) {
-			if (typeof entry === "function") continue;
+			if (typeof entry === 'function') continue;
 			for (const p of entry.produces) {
 				if (!seen.has(p)) {
 					seen.add(p);
@@ -125,9 +114,9 @@
 		if (!make_language) return undefined;
 		const fidelity =
 			enabled_tags.size === 0
-				? "low"
+				? 'low'
 				: enabled_tags.size === available_tags.length
-					? "high"
+					? 'high'
 					: [...enabled_tags];
 		return make_language({ fidelity });
 	});
@@ -138,13 +127,13 @@
 	}
 
 	// source buffer: starts with the server-provided file, editable locally.
-	let source = $state("");
-	let source_key = $state("");
+	let source = $state('');
+	let source_key = $state('');
 	$effect(() => {
 		const next_key = `${data.lang}:${data.test}`;
 		if (next_key === source_key) return;
 		source_key = next_key;
-		source = data.css_files.find(([file]) => file === data.test)?.[1] ?? "";
+		source = data.css_files.find(([file]) => file === data.test)?.[1] ?? '';
 	});
 
 	let tweaks = $state<tweak_state>({ ...DEFAULT_TWEAKS });
@@ -152,8 +141,62 @@
 		tweaks = { ...tweaks, ...patch };
 	}
 
+	// fidelity popout: bind:open makes the native disclosure reactive, and
+	// the effect closes it on clicks outside the <details> element.
+	let fidelity_open = $state(false);
+	let fidelity_el = $state<HTMLDetailsElement>();
+
+	$effect(() => {
+		if (!fidelity_open) return;
+		function on_pointerdown(e: PointerEvent) {
+			if (!fidelity_el?.contains(e.target as Node)) {
+				fidelity_open = false;
+			}
+		}
+		document.addEventListener('pointerdown', on_pointerdown);
+		return () => document.removeEventListener('pointerdown', on_pointerdown);
+	});
+
+	onMount(() => {
+		hydrate_mode();
+	});
+
 	let tweaks_visible = $state(false);
 	let source_open = $state(false);
+
+	// token inspector tooltip. when tweaks.inspect is on, hovering a `.tok`
+	// span inside the plop pane reveals the token type that twinkleplop
+	// produced for that range. we read the second class on the span (the
+	// first is always `tok`), so this stays synchronized with whatever
+	// `to_html` actually emits without needing a parallel data channel.
+	let inspect_label = $state<string | null>(null);
+	let inspect_x = $state(0);
+	let inspect_y = $state(0);
+
+	function on_inspect_move(e: PointerEvent) {
+		if (!tweaks.inspect) return;
+		const target = e.target as Element | null;
+		const tok = target?.closest?.('[data-pane="plop"] .tok') as HTMLElement | null;
+		if (!tok) {
+			inspect_label = null;
+			return;
+		}
+		// the `to_html` markup is `<span class="tok TYPE">`. token types are
+		// emitted as bare strings (no spaces), so the second class is the
+		// full type name.
+		const type = tok.classList[1] ?? null;
+		inspect_label = type;
+		inspect_x = e.clientX;
+		inspect_y = e.clientY;
+	}
+
+	function on_inspect_leave() {
+		inspect_label = null;
+	}
+
+	$effect(() => {
+		if (!tweaks.inspect) inspect_label = null;
+	});
 
 	// twinkleplop tokenization + real parse time. `measure` batches calls
 	// to beat the 5-100us `performance.now()` clamp and takes the median
@@ -209,28 +252,28 @@
 		}
 		try {
 			const local_highlighter = highlighter;
+
 			const { result, ms } = measure(
 				() =>
 					local_highlighter.codeToHtml(source, {
 						lang: shiki_lang,
-						theme: THEMES[tweaks.theme].shiki_id,
+						theme: resolve_theme(tweaks.theme, theme_mode.resolved).shiki_id
 					}),
 				// shiki is an order of magnitude heavier than twinkleplop;
 				// trim the budget so edits still feel responsive.
-				{ min_sample_ms: 5, budget_ms: 120 },
+				{ min_sample_ms: 5, budget_ms: 50 }
 			);
 			shiki_html = result;
 			shiki_ms = ms;
 		} catch (err) {
+		console.log({err})
 			shiki_error = err instanceof Error ? err.message : String(err);
 			shiki_html = null;
 			shiki_ms = 0;
 		}
 	});
 
-	let shiki_token_count = $derived(
-		(shiki_html?.match(/<span /g)?.length ?? 0) || 0,
-	);
+	let shiki_token_count = $derived((shiki_html?.match(/<span /g)?.length ?? 0) || 0);
 
 	// `crossOriginIsolated` flips true once the coop/coep response headers
 	// from hooks.server.ts land. that's what lets `performance.now()`
@@ -239,23 +282,21 @@
 	let cross_origin_isolated = $state(false);
 	$effect(() => {
 		cross_origin_isolated =
-			typeof globalThis !== "undefined" &&
-			"crossOriginIsolated" in globalThis &&
+			typeof globalThis !== 'undefined' &&
+			'crossOriginIsolated' in globalThis &&
 			Boolean((globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated);
 	});
 
 	let plop_html = $derived(
 		plop_tokens
 			? to_html(source, plop_tokens, {
-					class_name: "code",
-					line_numbers: tweaks.show_line_numbers,
+					class_name: 'code',
+					line_numbers: tweaks.show_line_numbers
 				})
-			: "",
+			: ''
 	);
 	let plop_line_count = $derived(count_lines(source));
-	let plop_token_count = $derived(
-		plop_tokens ? plop_tokens.tokens.length / 3 : 0,
-	);
+	let plop_token_count = $derived(plop_tokens ? plop_tokens.tokens.length / 3 : 0);
 
 	function count_lines(text: string) {
 		if (!text) return 0;
@@ -271,7 +312,7 @@
 	// background. it lives on the .panes wrapper so the shiki pane — which
 	// ignores the token vars — still inherits --twp-background.
 	let palette_style = $derived(
-		palette_to_vars(THEMES[tweaks.theme].palette),
+		palette_to_vars(resolve_theme(tweaks.theme, theme_mode.resolved).palette)
 	);
 
 	function handle_lang(next: string) {
@@ -285,20 +326,19 @@
 	}
 </script>
 
-<div class="explore-app" data-flavor={tweaks.flavor}>
+<div class="explore-app" data-flavor={tweaks.flavor} data-mode={theme_mode.resolved}>
 	<TopBar
 		lang={data.lang}
 		sample={data.test}
 		languages={all_languages}
 		samples={sample_options}
 		show_line_numbers={tweaks.show_line_numbers}
-		diff={tweaks.diff}
+		inspect={tweaks.inspect}
 		edit_open={source_open}
 		on_lang_change={handle_lang}
 		on_sample_change={handle_sample}
-		on_toggle_line_numbers={() =>
-			update_tweaks({ show_line_numbers: !tweaks.show_line_numbers })}
-		on_toggle_diff={() => update_tweaks({ diff: !tweaks.diff })}
+		on_toggle_line_numbers={() => update_tweaks({ show_line_numbers: !tweaks.show_line_numbers })}
+		on_toggle_inspect={() => update_tweaks({ inspect: !tweaks.inspect })}
 		on_toggle_edit={() => (source_open = !source_open)}
 		on_toggle_tweaks={() => (tweaks_visible = !tweaks_visible)}
 	/>
@@ -314,27 +354,44 @@
 
 	{#snippet fidelity_meta()}
 		{#if available_tags.length > 0}
-			<div class="fidelity-tags">
-				{#each available_tags as tag (tag)}
-					<label class="fidelity-tag">
-						<input
-							type="checkbox"
-							checked={enabled_tags.has(tag)}
-							onchange={() => toggle_tag(tag)}
-						/>
-						<span>{tag}</span>
-					</label>
-				{/each}
-			</div>
+			<details bind:this={fidelity_el} bind:open={fidelity_open} class="fidelity">
+				<summary class="fidelity__trigger">
+					<span class="fidelity__label">fidelity</span>
+					<span class="fidelity__count">
+						[{enabled_tags.size}/{available_tags.length}]
+					</span>
+				</summary>
+				<div class="fidelity__menu" role="group" aria-label="Fidelity tags">
+					<div class="fidelity__head">token categories</div>
+					{#each available_tags as tag (tag)}
+						<label class="fidelity__item">
+							<input
+								type="checkbox"
+								checked={enabled_tags.has(tag)}
+								onchange={() => toggle_tag(tag)}
+							/>
+							<span class="fidelity__mark" aria-hidden="true"></span>
+							<span class="fidelity__name">{tag}</span>
+						</label>
+					{/each}
+				</div>
+			</details>
 		{/if}
 	{/snippet}
 
-	<div class="panes" style={palette_style}>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="panes"
+		class:is-inspect={tweaks.inspect}
+		style={palette_style}
+		onpointermove={on_inspect_move}
+		onpointerleave={on_inspect_leave}
+	>
 		<CodePane
 			pane_id="plop"
 			title="twinkleplop"
-			subtitle={`theme: ${tweaks.theme} · timer ${
-				cross_origin_isolated ? "~5µs" : "~100µs"
+			subtitle={`theme: ${tweaks.theme}-${theme_mode.resolved} · timer ${
+				cross_origin_isolated ? '~5µs' : '~100µs'
 			}`}
 			html={plop_html}
 			line_count={plop_line_count}
@@ -344,18 +401,14 @@
 			perf_token_count={plop_token_count}
 			meta={fidelity_meta}
 		/>
-		<div class="panes__gutter" aria-hidden="true">
-			<div class="panes__trace"></div>
-			<div class="panes__vs">vs</div>
-		</div>
 		<ShikiPane
 			pane_id="shiki"
 			title="shiki"
 			subtitle={shiki_loading
-				? "loading oniguruma..."
+				? 'loading oniguruma...'
 				: shiki_error
 					? `error: ${shiki_error}`
-					: `theme: ${THEMES[tweaks.theme].shiki_id}`}
+					: `theme: ${resolve_theme(tweaks.theme, theme_mode.resolved).shiki_id}`}
 			{shiki_html}
 			{source}
 			font={tweaks.font}
@@ -378,33 +431,129 @@
 		on_update={update_tweaks}
 		on_close={() => (tweaks_visible = false)}
 	/>
+
+	{#if tweaks.inspect && inspect_label}
+		<div class="inspect-tip" style="left: {inspect_x}px; top: {inspect_y}px;">
+			<!-- <span class="inspect-tip__label">token</span> -->
+			<span class="inspect-tip__value">{inspect_label}</span>
+		</div>
+	{/if}
 </div>
 
 <style>
-	.fidelity-tags {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.5em;
+	.fidelity {
+		position: relative;
 	}
-	.fidelity-tag {
+	.fidelity__trigger {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3em;
-		font-size: 0.7rem;
-		letter-spacing: 0.05em;
+		gap: 6px;
+		background: var(--bg-pane);
+		border: 1px solid var(--border);
+		color: var(--fg-dim);
+		padding: 3px 8px;
+		font: inherit;
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		cursor: pointer;
+		user-select: none;
+		list-style: none;
+		text-transform: lowercase;
+		transition:
+			border-color 0.15s,
+			color 0.15s,
+			background 0.15s;
+	}
+	.fidelity__trigger::-webkit-details-marker {
+		display: none;
+	}
+	.fidelity__trigger::marker {
+		content: '';
+	}
+	.fidelity__trigger:hover {
+		color: var(--fg);
+		border-color: var(--border-bright);
+	}
+	.fidelity[open] .fidelity__trigger {
+		color: var(--accent);
+		border-color: var(--accent);
+		background: color-mix(in oklab, var(--accent) 14%, var(--bg-pane));
+	}
+	.fidelity__count {
+		color: var(--accent);
+		font-variant-numeric: tabular-nums;
+	}
+	.fidelity:not([open]) .fidelity__menu {
+		display: none;
+	}
+	.fidelity__menu {
+		position: absolute;
+		top: calc(100% + 6px);
+		right: 0;
+		min-width: 220px;
+		max-height: 320px;
+		overflow: auto;
+		background: var(--bg-elev);
+		border: 1px solid var(--border-bright);
+		box-shadow:
+			0 12px 40px rgba(0, 0, 0, 0.6),
+			var(--glow);
+		padding: 6px;
+		z-index: 100;
+	}
+	.fidelity__head {
+		padding: 4px 8px 6px;
 		color: var(--fg-muted);
+		font-size: 9px;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		border-bottom: 1px dashed var(--border);
+		margin-bottom: 4px;
+	}
+	.fidelity__item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 4px 8px;
+		color: var(--fg-dim);
+		font-size: 12px;
 		cursor: pointer;
 		user-select: none;
 	}
-	.fidelity-tag input {
-		margin: 0;
-		width: 0.85em;
-		height: 0.85em;
-		accent-color: var(--accent);
-		cursor: pointer;
-	}
-	.fidelity-tag:hover {
+	.fidelity__item:hover {
+		background: color-mix(in oklab, var(--fg) 5%, transparent);
 		color: var(--fg);
+	}
+	.fidelity__item:has(input:checked) {
+		color: var(--fg);
+	}
+	.fidelity__item input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+		width: 0;
+		height: 0;
+	}
+	.fidelity__mark {
+		display: inline-block;
+		min-width: 22px;
+		color: var(--fg-muted);
+		white-space: pre;
+		font-variant-numeric: tabular-nums;
+	}
+	/* the nbsp keeps the space between [ and ] from collapsing so the
+	   unchecked and checked glyphs occupy the same width. */
+	.fidelity__mark::before {
+		content: '[\00a0]';
+	}
+	.fidelity__item:has(input:checked) .fidelity__mark {
+		color: var(--accent);
+		text-shadow: var(--glow);
+	}
+	.fidelity__item:has(input:checked) .fidelity__mark::before {
+		content: '[x]';
+	}
+	.fidelity__name {
+		flex: 1;
 	}
 </style>

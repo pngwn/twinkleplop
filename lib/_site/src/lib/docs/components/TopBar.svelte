@@ -1,25 +1,25 @@
 <script lang="ts">
-	import Keycap from "./Keycap.svelte";
-	import { open_palette } from "../chrome.svelte";
+	import Keycap from './Keycap.svelte';
+	import { chrome, open_palette, toggle_tweaks } from '../chrome.svelte';
 
-	const BRAND = "twinkleplop";
+	const BRAND = 'twinkleplop';
 	const TWINKLE_COLORS = [
-		"t-red",
-		"t-orange",
-		"t-yellow",
-		"t-green",
-		"t-teal",
-		"t-blue",
-		"t-purple",
-		"t-pink",
-		"t-red",
-		"t-yellow",
+		't-red',
+		't-orange',
+		't-yellow',
+		't-green',
+		't-teal',
+		't-blue',
+		't-purple',
+		't-pink',
+		't-red',
+		't-yellow'
 	];
 </script>
 
 <header class="topbar">
 	<a class="brand" href="/docs">
-		{#each BRAND.split("") as ch, i}
+		{#each BRAND.split('') as ch, i (i)}
 			<span class="rainbow-letter" style:color="var(--{TWINKLE_COLORS[i]})">{ch}</span>
 		{/each}
 	</a>
@@ -29,14 +29,23 @@
 		<a class="active" href="/docs">docs</a><span class="sep">/</span>
 		<a href="#changelog">changelog</a>
 	</nav>
-	<button class="top-search" title="Press / or ⌘K" onclick={open_palette}>
-		<span class="prompt">$</span>
-		<span class="placeholder">search docs…</span>
-		<span class="kbd-row">
-			<Keycap>⌘</Keycap>
-			<Keycap>K</Keycap>
-		</span>
-	</button>
+	<div class="top-right">
+		<button class="top-search" title="Press / or ⌘K" onclick={open_palette}>
+			<span class="prompt">$</span>
+			<span class="placeholder">search docs…</span>
+			<span class="kbd-row">
+				<Keycap>⌘</Keycap>
+				<Keycap>K</Keycap>
+			</span>
+		</button>
+		<button
+			class="top-tweaks"
+			title="Tweaks"
+			aria-label="Toggle tweaks panel"
+			aria-expanded={chrome.tweaks_open}
+			onclick={toggle_tweaks}>tweaks</button
+		>
+	</div>
 </header>
 
 <style>
@@ -121,6 +130,34 @@
 		margin-left: auto;
 		display: inline-flex;
 		gap: 3px;
+	}
+
+	.top-right {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.top-tweaks {
+		height: 26px;
+		padding: 0 10px;
+		border: 1px solid var(--docs-line);
+		border-radius: 2px;
+		background: var(--docs-bg-1);
+		color: var(--docs-fg-dim);
+		font-family: var(--docs-mono);
+		font-size: var(--docs-fs-sm);
+		cursor: pointer;
+		letter-spacing: 0.3px;
+	}
+	.top-tweaks:hover {
+		border-color: var(--docs-accent-dim);
+		color: var(--docs-fg);
+	}
+	.top-tweaks[aria-expanded='true'] {
+		border-color: var(--docs-accent-dim);
+		color: var(--docs-accent);
+		background: color-mix(in oklch, var(--docs-accent) 10%, transparent);
 	}
 
 	@media (max-width: 760px) {

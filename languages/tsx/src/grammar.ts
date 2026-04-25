@@ -233,7 +233,7 @@ export default define_grammar({
 
         match(["(", "{", "["], TOKENS.punctuation),
         match([")", "}", "]"], TOKENS.punctuation, goto("division")),
-        match([";", ",", "."], TOKENS.punctuation),
+        match([";", ",", ".", ":"], TOKENS.punctuation),
 
         on(["_", "$", LETTER], goto("identifier_probe")),
       ],
@@ -259,7 +259,7 @@ export default define_grammar({
         match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
         match(["(", "["], TOKENS.punctuation),
         match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
-        match([";", ",", "."], TOKENS.punctuation),
+        match([";", ",", ".", ":"], TOKENS.punctuation),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
       ],

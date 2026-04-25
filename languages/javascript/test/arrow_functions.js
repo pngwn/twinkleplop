@@ -330,7 +330,7 @@ export default [
 		"end": 313
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 313,
 		"end": 314
 	},

@@ -163,10 +163,11 @@ export default define_grammar({
         // regex
         match("/", TOKENS.regex, enter("regex_pattern")),
 
-        // punctuation
+        // punctuation. `:` is a separator (type annotation, ternary,
+        // property key, label) — emitted as punctuation, not operator.
         match(["(", "{", "["], TOKENS.punctuation),
         match([")", "}", "]"], TOKENS.punctuation, goto("division")),
-        match([";", ",", "."], TOKENS.punctuation),
+        match([";", ",", ".", ":"], TOKENS.punctuation),
 
         // identifiers
         on(["_", "$", LETTER], goto("identifier_probe")),
@@ -193,9 +194,10 @@ export default define_grammar({
         // `/` is division
         match("/", TOKENS.operator, goto("regex_allow")),
 
-        // punctuation
+        // punctuation. `:` separates a key/label/ternary alternate from
+        // its value or a name from its type annotation.
         match([")", "}", "]"], TOKENS.punctuation),
-        match([";", ","], TOKENS.punctuation, goto("regex_allow")),
+        match([";", ",", ":"], TOKENS.punctuation, goto("regex_allow")),
         match(".", TOKENS.punctuation),
 
         // identifiers
@@ -224,7 +226,7 @@ export default define_grammar({
         match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
         match(["(", "["], TOKENS.punctuation),
         match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
-        match([";", ",", "."], TOKENS.punctuation),
+        match([";", ",", ".", ":"], TOKENS.punctuation),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
       ],
@@ -251,7 +253,7 @@ export default define_grammar({
         match(["(", "["], TOKENS.punctuation, goto("tmpl_regex_allow")),
         match("/", TOKENS.operator, goto("tmpl_regex_allow")),
         match([")", "]"], TOKENS.punctuation),
-        match([";", ","], TOKENS.punctuation, goto("tmpl_regex_allow")),
+        match([";", ",", ":"], TOKENS.punctuation, goto("tmpl_regex_allow")),
         match(".", TOKENS.punctuation),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),

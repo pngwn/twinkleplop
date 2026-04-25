@@ -275,7 +275,7 @@ export default [
 		"end": 170
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 170,
 		"end": 171
 	},

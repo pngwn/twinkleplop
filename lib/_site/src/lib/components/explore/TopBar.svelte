@@ -7,12 +7,12 @@
 		languages: string[];
 		samples: string[];
 		show_line_numbers: boolean;
-		diff: boolean;
+		inspect: boolean;
 		edit_open: boolean;
 		on_lang_change: (next: string) => void;
 		on_sample_change: (next: string) => void;
 		on_toggle_line_numbers: () => void;
-		on_toggle_diff: () => void;
+		on_toggle_inspect: () => void;
 		on_toggle_edit: () => void;
 		on_toggle_tweaks: () => void;
 	}
@@ -23,12 +23,12 @@
 		languages,
 		samples,
 		show_line_numbers,
-		diff,
+		inspect,
 		edit_open,
 		on_lang_change,
 		on_sample_change,
 		on_toggle_line_numbers,
-		on_toggle_diff,
+		on_toggle_inspect,
 		on_toggle_edit,
 		on_toggle_tweaks,
 	}: Props = $props();
@@ -80,9 +80,9 @@
 			<span class="toggle__pip"></span>
 			<span>ln</span>
 		</button>
-		<button class="toggle" class:is-on={diff} type="button" onclick={on_toggle_diff}>
+		<button class="toggle" class:is-on={inspect} type="button" onclick={on_toggle_inspect}>
 			<span class="toggle__pip"></span>
-			<span>diff</span>
+			<span>inspect</span>
 		</button>
 		<button
 			class="toggle"

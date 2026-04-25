@@ -80,7 +80,7 @@ export default [
 		"end": 60
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 60,
 		"end": 61
 	},

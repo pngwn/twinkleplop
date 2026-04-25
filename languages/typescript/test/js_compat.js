@@ -240,7 +240,7 @@ export default [
 		"end": 184
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 184,
 		"end": 185
 	},
@@ -260,7 +260,7 @@ export default [
 		"end": 201
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 201,
 		"end": 202
 	},
@@ -275,7 +275,7 @@ export default [
 		"end": 206
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 206,
 		"end": 207
 	},
@@ -1135,7 +1135,7 @@ export default [
 		"end": 858
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 859,
 		"end": 860
 	},
@@ -1190,7 +1190,7 @@ export default [
 		"end": 897
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 897,
 		"end": 898
 	},

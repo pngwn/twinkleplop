@@ -39,9 +39,9 @@ describe("JavaScript reclassifier — function-variable (positive cases)", () =>
   it("const add = (a, b) => a + b", () => {
     const tokens = enrich("const add = (a, b) => a + b");
     expect(type_of(tokens, "add")).toBe("function");
-    // Params inside the arrow must stay as identifiers.
-    expect(type_of(tokens, "a")).toBe("identifier");
-    expect(type_of(tokens, "b")).toBe("identifier");
+    // Params inside the arrow are promoted by promote_js_parameters.
+    expect(type_of(tokens, "a")).toBe("parameter");
+    expect(type_of(tokens, "b")).toBe("parameter");
   });
 
   it("const double = x => x * 2", () => {
@@ -91,14 +91,20 @@ describe("JavaScript reclassifier — function-variable (positive cases)", () =>
 });
 
 describe("JavaScript reclassifier — function-variable (negative cases)", () => {
+  // Names below are tagged `constant` by promote_js_const_bindings, not
+  // `function` — the function-variable rule doesn't match a non-function
+  // value, which is what these tests guard against. The name isn't
+  // `identifier` because the const-binding pass claims it.
   it("const x = 5", () => {
     const tokens = enrich("const x = 5");
-    expect(type_of(tokens, "x")).toBe("identifier");
+    expect(type_of(tokens, "x")).not.toBe("function");
+    expect(type_of(tokens, "x")).toBe("constant");
   });
 
   it("const y = someCall()", () => {
     const tokens = enrich("const y = someCall()");
-    expect(type_of(tokens, "y")).toBe("identifier");
+    expect(type_of(tokens, "y")).not.toBe("function");
+    expect(type_of(tokens, "y")).toBe("constant");
     // The base grammar already marks `someCall` as function via probe mode,
     // so this is just a sanity check that the reclassifier doesn't trample.
     expect(type_of(tokens, "someCall")).toBe("function");
@@ -106,12 +112,17 @@ describe("JavaScript reclassifier — function-variable (negative cases)", () =>
 
   it("const z = a + b", () => {
     const tokens = enrich("const z = a + b");
-    expect(type_of(tokens, "z")).toBe("identifier");
+    expect(type_of(tokens, "z")).not.toBe("function");
+    expect(type_of(tokens, "z")).toBe("constant");
+    // RHS identifiers are untouched — they're values, not bindings.
+    expect(type_of(tokens, "a")).toBe("identifier");
+    expect(type_of(tokens, "b")).toBe("identifier");
   });
 
   it("const zs = [1, 2, 3]", () => {
     const tokens = enrich("const zs = [1, 2, 3]");
-    expect(type_of(tokens, "zs")).toBe("identifier");
+    expect(type_of(tokens, "zs")).not.toBe("function");
+    expect(type_of(tokens, "zs")).toBe("constant");
   });
 });
 
@@ -203,10 +214,12 @@ describe("JavaScript reclassifier — known limitations (documented misses)", ()
   // tightens or loosens. Feel free to flip these expectations if you improve
   // the rule — they are NOT requirements.
 
-  it("ternary: const foo = cond ? () => 1 : () => 2 — NOT detected", () => {
+  it("ternary: const foo = cond ? () => 1 : () => 2 — NOT function", () => {
     const tokens = enrich("const foo = cond ? () => 1 : () => 2");
-    // Miss: we'd need to peek past `?` which we don't do.
-    expect(type_of(tokens, "foo")).toBe("identifier");
+    // Function-variable miss: we'd need to peek past `?`. The const-binding
+    // pass still tags `foo` — but as `constant`, not `function`.
+    expect(type_of(tokens, "foo")).not.toBe("function");
+    expect(type_of(tokens, "foo")).toBe("constant");
   });
 });
 
@@ -509,26 +522,28 @@ describe("JavaScript reclassifier — constant promotion", () => {
     expect(pick(tokens, "PI")).toBe("constant");
   });
 
-  it("single uppercase char is not constant (left for pascal_case)", () => {
+  // Any const binding is tagged `constant` by promote_js_const_bindings,
+  // regardless of casing. This is a deliberate choice: JS `const` is an
+  // immutable binding, and users asked for the signal even though the
+  // reference can still be mutated if it holds a mutable value.
+  it("single uppercase char const: X becomes constant", () => {
     const tokens = tokens_of("const X = 1;");
-    // constant predicate requires length >= 2 so `X` isn't caught here.
-    // pascal_case then claims it as class_name.
-    expect(pick(tokens, "X")).not.toBe("constant");
+    expect(pick(tokens, "X")).toBe("constant");
   });
 
-  it("PascalCase names are not constant", () => {
+  it("PascalCase const name becomes constant (overrides pascal_case)", () => {
     const tokens = tokens_of("const MaxSize = 100;");
-    expect(pick(tokens, "MaxSize")).not.toBe("constant");
+    expect(pick(tokens, "MaxSize")).toBe("constant");
   });
 
-  it("lowercase names are not constant", () => {
+  it("lowercase const name becomes constant", () => {
     const tokens = tokens_of("const max_size = 100;");
-    expect(pick(tokens, "max_size")).toBe("identifier");
+    expect(pick(tokens, "max_size")).toBe("constant");
   });
 
-  it("names starting with underscore are not constant", () => {
+  it("underscore-prefixed const name becomes constant", () => {
     const tokens = tokens_of("const _MAX = 1;");
-    expect(pick(tokens, "_MAX")).toBe("identifier");
+    expect(pick(tokens, "_MAX")).toBe("constant");
   });
 
   it("fidelity='low' leaves UPPER_SNAKE_CASE as identifier", () => {
@@ -689,12 +704,69 @@ describe("JavaScript reclassifier — parameter promotion", () => {
     expect(pick(tokens, "rest")).toBe("parameter");
   });
 
-  it("arrow function params are NOT promoted (deferred)", () => {
-    // known limitation: arrow functions need `=>` lookahead to identify
-    // the param list. skipped for now, params stay as identifier.
+  it("arrow function with paren param list promotes", () => {
     const tokens = tokens_of("const f = (x, y) => x + y;");
-    expect(pick(tokens, "x")).toBe("identifier");
-    expect(pick(tokens, "y")).toBe("identifier");
+    expect(pick(tokens, "x")).toBe("parameter");
+    expect(pick(tokens, "y")).toBe("parameter");
+  });
+
+  it("single-identifier arrow promotes the binding", () => {
+    const tokens = tokens_of("const f = x => x + 1;");
+    expect(pick(tokens, "x")).toBe("parameter");
+  });
+
+  it("inline arrow inside a call promotes params", () => {
+    const tokens = tokens_of("arr.map((item, i) => item + i);");
+    expect(pick(tokens, "item")).toBe("parameter");
+    expect(pick(tokens, "i")).toBe("parameter");
+  });
+
+  it("inline single-ident arrow promotes binding", () => {
+    const tokens = tokens_of("arr.map(x => x * 2);");
+    expect(pick(tokens, "x")).toBe("parameter");
+  });
+
+  it("async arrow promotes params", () => {
+    const tokens = tokens_of("const f = async (a, b) => a + b;");
+    expect(pick(tokens, "a")).toBe("parameter");
+    expect(pick(tokens, "b")).toBe("parameter");
+  });
+
+  it("class method params promote", () => {
+    const tokens = tokens_of("class C { m(a, b) { return a + b; } }");
+    expect(pick(tokens, "a")).toBe("parameter");
+    expect(pick(tokens, "b")).toBe("parameter");
+  });
+
+  it("class getter / setter params promote", () => {
+    const tokens = tokens_of("class C { get p() { return 1; } set p(v) { } }");
+    expect(pick(tokens, "v")).toBe("parameter");
+  });
+
+  it("generator method params promote", () => {
+    const tokens = tokens_of("class C { *gen(a, b) { yield a; yield b; } }");
+    expect(pick(tokens, "a")).toBe("parameter");
+    expect(pick(tokens, "b")).toBe("parameter");
+  });
+
+  it("object method shorthand params promote", () => {
+    const tokens = tokens_of("const o = { run(x, y) { return x + y; } };");
+    expect(pick(tokens, "x")).toBe("parameter");
+    expect(pick(tokens, "y")).toBe("parameter");
+  });
+
+  it("object arrow-value shorthand params promote", () => {
+    const tokens = tokens_of("const o = { run: (x, y) => x + y };");
+    expect(pick(tokens, "x")).toBe("parameter");
+    expect(pick(tokens, "y")).toBe("parameter");
+  });
+
+  it("grouped expression is NOT mistaken for arrow params", () => {
+    // `(a, b)` without a following `=>` is a comma expression. the
+    // identifiers must stay as-is (identifier in this case).
+    const tokens = tokens_of("const z = (a, b);");
+    expect(pick(tokens, "a")).toBe("identifier");
+    expect(pick(tokens, "b")).toBe("identifier");
   });
 
   it("call-site arguments stay as identifier", () => {
@@ -707,5 +779,204 @@ describe("JavaScript reclassifier — parameter promotion", () => {
     const tokens = tokens_of("function f(x, y) { }", { fidelity: "low" });
     expect(pick(tokens, "x")).toBe("identifier");
     expect(pick(tokens, "y")).toBe("identifier");
+  });
+});
+
+describe("JavaScript reclassifier — const binding promotion", () => {
+  function tokens_of(input, options) {
+    const result = make_language(options)(input);
+    const out = [];
+    for (let i = 0; i < result.tokens.length / 3; i++) {
+      out.push({
+        type: result.token_types[result.tokens[i * 3]],
+        value: input.slice(result.tokens[i * 3 + 1], result.tokens[i * 3 + 2]),
+      });
+    }
+    return out;
+  }
+  const pick = (tokens, value) => tokens.find((t) => t.value === value)?.type;
+
+  it("simple const binding promotes to constant", () => {
+    const tokens = tokens_of("const x = 1;");
+    expect(pick(tokens, "x")).toBe("constant");
+  });
+
+  it("multiple comma-separated const bindings all promote", () => {
+    const tokens = tokens_of("const a = 1, b = 2, c;");
+    expect(pick(tokens, "a")).toBe("constant");
+    expect(pick(tokens, "b")).toBe("constant");
+    expect(pick(tokens, "c")).toBe("constant");
+  });
+
+  it("function-valued const stays as function (fn_var wins)", () => {
+    const tokens = tokens_of("const f = () => 1;");
+    expect(pick(tokens, "f")).toBe("function");
+  });
+
+  it("object destructuring: shorthand bindings are constant", () => {
+    const tokens = tokens_of("const { a, b } = obj;");
+    expect(pick(tokens, "a")).toBe("constant");
+    expect(pick(tokens, "b")).toBe("constant");
+  });
+
+  it("object destructuring with renaming: target is the binding, source isn't tagged", () => {
+    const tokens = tokens_of("const { src: dst } = obj;");
+    expect(pick(tokens, "dst")).toBe("constant");
+    // `src` is the source-side property key. claim_property_scope emits a
+    // property claim for it, so it becomes `property`.
+    expect(pick(tokens, "src")).toBe("property");
+  });
+
+  it("object destructuring with defaults: binding is constant", () => {
+    const tokens = tokens_of("const { a = 5, b: c = 6 } = obj;");
+    expect(pick(tokens, "a")).toBe("constant");
+    expect(pick(tokens, "c")).toBe("constant");
+  });
+
+  it("object destructuring with rest: rest binding is constant", () => {
+    const tokens = tokens_of("const { a, ...rest } = obj;");
+    expect(pick(tokens, "a")).toBe("constant");
+    expect(pick(tokens, "rest")).toBe("constant");
+  });
+
+  it("array destructuring: bindings are constant", () => {
+    const tokens = tokens_of("const [a, b, ...r] = arr;");
+    expect(pick(tokens, "a")).toBe("constant");
+    expect(pick(tokens, "b")).toBe("constant");
+    expect(pick(tokens, "r")).toBe("constant");
+  });
+
+  it("nested destructuring promotes inner bindings", () => {
+    const tokens = tokens_of("const { a: [b, c] } = o;");
+    expect(pick(tokens, "b")).toBe("constant");
+    expect(pick(tokens, "c")).toBe("constant");
+  });
+
+  it("TS type annotation doesn't tag type names as constant", () => {
+    const tokens = tokens_of("const x: number = 1;");
+    expect(pick(tokens, "x")).toBe("constant");
+    expect(pick(tokens, "number")).not.toBe("constant");
+  });
+
+  it("for-of const binding promotes", () => {
+    const tokens = tokens_of("for (const item of items) { use(item); }");
+    expect(pick(tokens, "item")).toBe("constant");
+  });
+
+  it("let bindings are NOT promoted (only const)", () => {
+    const tokens = tokens_of("let x = 1;");
+    expect(pick(tokens, "x")).toBe("identifier");
+  });
+
+  it("var bindings are NOT promoted (only const)", () => {
+    const tokens = tokens_of("var x = 1;");
+    expect(pick(tokens, "x")).toBe("identifier");
+  });
+
+  it("RHS identifiers are not mistaken for bindings", () => {
+    const tokens = tokens_of("const z = a + b;");
+    expect(pick(tokens, "z")).toBe("constant");
+    expect(pick(tokens, "a")).toBe("identifier");
+    expect(pick(tokens, "b")).toBe("identifier");
+  });
+
+  it("fidelity='low' leaves const bindings as identifier", () => {
+    const tokens = tokens_of("const x = 1;", { fidelity: "low" });
+    expect(pick(tokens, "x")).toBe("identifier");
+  });
+
+  it("fidelity allowlist excluding 'constant' leaves as identifier", () => {
+    const tokens = tokens_of("const x = 1;", { fidelity: ["function"] });
+    expect(pick(tokens, "x")).toBe("identifier");
+  });
+
+  it("fidelity allowlist including 'constant' promotes", () => {
+    const tokens = tokens_of("const x = 1;", { fidelity: ["constant"] });
+    expect(pick(tokens, "x")).toBe("constant");
+  });
+});
+
+describe("JavaScript reclassifier — property colon as punctuation", () => {
+  function tokens_of(input, options) {
+    const result = make_language(options)(input);
+    const out = [];
+    for (let i = 0; i < result.tokens.length / 3; i++) {
+      out.push({
+        type: result.token_types[result.tokens[i * 3]],
+        value: input.slice(result.tokens[i * 3 + 1], result.tokens[i * 3 + 2]),
+        start: result.tokens[i * 3 + 1],
+      });
+    }
+    return out;
+  }
+
+  it("object-literal property separator `:` is punctuation", () => {
+    const tokens = tokens_of("const o = { foo: 1 };");
+    const colon = tokens.find((t) => t.value === ":");
+    expect(colon?.type).toBe("punctuation");
+  });
+
+  it("ternary `:` is punctuation (separator, not operator)", () => {
+    const tokens = tokens_of("const x = a ? b : c;");
+    const colon = tokens.find((t) => t.value === ":");
+    expect(colon?.type).toBe("punctuation");
+  });
+
+  it("TS type annotation `:` is punctuation", () => {
+    const tokens = tokens_of("function f(x: number) {}");
+    const colons = tokens.filter((t) => t.value === ":");
+    expect(colons.length).toBeGreaterThan(0);
+    for (const c of colons) {
+      expect(c.type).toBe("punctuation");
+    }
+  });
+
+  it("labeled statement `:` is punctuation", () => {
+    const tokens = tokens_of("label: for (;;) { break label; }");
+    const colon = tokens.find((t) => t.value === ":");
+    expect(colon?.type).toBe("punctuation");
+  });
+
+  it("multiple object properties each get punctuation colons", () => {
+    const tokens = tokens_of("const o = { a: 1, b: 2 };");
+    const colons = tokens.filter((t) => t.value === ":");
+    expect(colons).toHaveLength(2);
+    for (const c of colons) {
+      expect(c.type).toBe("punctuation");
+    }
+  });
+});
+
+describe("JavaScript reclassifier — export * as namespace", () => {
+  function tokens_of(input, options) {
+    const result = make_language(options)(input);
+    const out = [];
+    for (let i = 0; i < result.tokens.length / 3; i++) {
+      out.push({
+        type: result.token_types[result.tokens[i * 3]],
+        value: input.slice(result.tokens[i * 3 + 1], result.tokens[i * 3 + 2]),
+      });
+    }
+    return out;
+  }
+  const pick = (tokens, value) => tokens.find((t) => t.value === value)?.type;
+
+  it("`export * as X from ...` promotes X to namespace", () => {
+    const tokens = tokens_of('export * as utils from "./utils";');
+    expect(pick(tokens, "utils")).toBe("namespace");
+  });
+
+  it("`export * from ...` (no alias) doesn't promote", () => {
+    // no binding to tag.
+    const tokens = tokens_of('export * from "./utils";');
+    // just assert no crash and `export` is still keyword.
+    expect(pick(tokens, "export")).toBe("keyword");
+  });
+
+  it("fidelity='low' leaves export binding as identifier", () => {
+    const tokens = tokens_of('export * as utils from "./utils";', {
+      fidelity: "low",
+    });
+    expect(pick(tokens, "utils")).toBe("identifier");
   });
 });
