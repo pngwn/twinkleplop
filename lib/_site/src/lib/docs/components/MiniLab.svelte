@@ -1,16 +1,11 @@
 <script lang="ts">
-	import { language as ts_language } from "@twinkleplop/typescript";
+	import { tokenize as ts_tokenize } from "@twinkleplop/typescript";
 	import "@twinkleplop/theme-github/dark";
 	import { onMount } from "svelte";
 	import { measure } from "$lib/explore/measure";
 
 
-	type tokenize_result = { tokens: Uint32Array; token_types: string[] };
-	type language_factory = () => (src: string) => tokenize_result;
-
-	const tokenize = (ts_language as unknown as language_factory)({
-	 fidelity: 'high'
-	});
+	const tokenize = ts_tokenize({ fidelity: "high" });
 
 	let {
 		initial = `function greet(name: string) {

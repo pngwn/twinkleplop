@@ -1,13 +1,22 @@
 import { compile } from "@twinkleplop/core/compile";
-import { create_language } from "@twinkleplop/core";
+import { create_language, to_html } from "@twinkleplop/core";
+import type { LanguageOptions, RenderOptions } from "@twinkleplop/core";
 import { default as raw_grammar } from "./grammar.js";
 
-// three-tier API shared by every language package:
+// public API:
 //
-//   language       -> one-call entry point for tokenization
-//   grammar        -> the compiled grammar for direct use
-//   reclassifiers  -> post-pass rules (empty for JSON, no embedded languages)
+//   language(opts?) → (code, render?) => HTML string
+//   tokenize(opts?) → (code) => TokenizeResult
+//   grammar         → the compiled grammar for direct use
+//   reclassifiers   → post-pass rules (empty for JSON, no embedded languages)
 export const grammar = compile(raw_grammar);
 export const reclassifiers = [];
-export const language = create_language(grammar, reclassifiers);
+export const tokenize = create_language(grammar, reclassifiers);
+
+export function language(options?: LanguageOptions) {
+  const tokenize_fn = tokenize(options);
+  return (input: string, render?: RenderOptions): string =>
+    to_html(input, tokenize_fn(input), render);
+}
+
 export { raw_grammar };

@@ -33,7 +33,6 @@ import {
   promote_js_constants,
   promote_js_namespaces,
   promote_js_parameters,
-  promote_js_pascal_case,
   scan_tagged_template,
 } from "@twinkleplop/javascript";
 
@@ -70,8 +69,8 @@ export const promote_builtin_types: Reclassifier = promote_by_text_set(
 // the alias-name (`Foo` in `type Foo = ...`) is handled here rather than
 // from inside type_position_promoter so the claim runs as a plain pass —
 // the alias state machine already advances on the name; this pass adds
-// the missing token rewrite so the name doesn't fall through to
-// promote_js_pascal_case as a generic class_name.
+// the missing token rewrite so the name is tagged `type` rather than
+// being left as a plain identifier.
 //
 // `import type * as X from "..."` and `export type * as X from "..."`
 // are NOT touched here — the namespace promoter owns `* as X` shapes.
@@ -1262,8 +1261,8 @@ export const reclassifiers: LanguagePipeline = [
   tag(type_position_promoter, ["type"]),
   // `type Foo = ...`, `import type ...`, `export type ...` — binding-name
   // positions that type_position_promoter doesn't claim. runs before
-  // class_name_promoter / pascal_case so the names are tagged `type`
-  // rather than falling through to `class_name`.
+  // class_name_promoter so the names are tagged `type` rather than
+  // falling through to `class_name`.
   tag(promote_ts_type_only_bindings, ["type"]),
   // call sites and declarations with explicit type arguments — `f<T>(...)`,
   // `function f<T>(...)`, `Foo<U>(...)`. the grammar's identifier probe
@@ -1271,8 +1270,8 @@ export const reclassifiers: LanguagePipeline = [
   // the leading identifier stays `identifier` instead of `function`. runs
   // AFTER type_position_promoter so TPP's `looks_like_generic_args` still
   // sees the leading token as `identifier` and tags type args correctly,
-  // and BEFORE class_name_promoter / pascal_case so PascalCase generic
-  // calls (`Foo<T>()`) reach `function` rather than `class_name`.
+  // and BEFORE class_name_promoter so PascalCase generic calls
+  // (`Foo<T>()`) reach `function` rather than `class_name`.
   tag(promote_ts_generic_calls, ["function"]),
   // class_name_promoter retained for TS only — handles extends/implements
   // comma lists (interface J extends K, L; class C implements Foo, Bar)
@@ -1281,15 +1280,7 @@ export const reclassifiers: LanguagePipeline = [
   // single-name and dotted-chain cases; this pass extends to lists and
   // demotes grammar-emitted class_name that should be type in TS context.
   tag(class_name_promoter, ["class_name"]),
-  // parameter promotion runs before pascal_case so `function f<T>(x: T)`
-  // style params are `parameter`, not class_name.
   tag(promote_js_parameters, ["parameter"]),
-  // free-standing PascalCase → class_name, as a final catch-all for names
-  // that neither type_position_promoter (caught as `type`) nor
-  // class_name_promoter (positional) reached. runs LAST among the
-  // identifier-level rewriters so type annotations stay as `type` and
-  // positional cases stay as whatever the specific promoters claimed.
-  // tag(promote_js_pascal_case, ["class_name"]),
   // last identifier-level pass: retag `<` / `>` that delimit type-argument
   // lists from `operator` to `punctuation`. all preceding passes that walk
   // angle groups (TPP, generic_calls, class_name_promoter, parameter

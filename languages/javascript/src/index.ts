@@ -1,5 +1,6 @@
-import { create_language } from "@twinkleplop/core";
+import { create_language, to_html } from "@twinkleplop/core";
 import { compile } from "@twinkleplop/core/compile";
+import type { LanguageOptions, RenderOptions } from "@twinkleplop/core";
 import { default as raw_grammar } from "./grammar.js";
 import {
   claim_property_scope,
@@ -11,21 +12,22 @@ import {
   promote_js_constants,
   promote_js_namespaces,
   promote_js_parameters,
-  promote_js_pascal_case,
   reclassifiers,
   scan_tagged_template,
 } from "./reclassifiers.js";
 
-// Three-tier API surface shared by every language package:
+// public API:
 //
-//   language       → one-call entry point: (input) → enriched TokenizeResult
-//   grammar        → the raw compiled grammar (for consumers who want only
-//                    base tokens, or who want to compose a custom pipeline)
-//   reclassifiers  → the default reclassifier list (for consumers who want
-//                    to prepend/append their own rules)
+//   language(opts?) → (code, render?) => HTML string — the simple path.
+//   tokenize(opts?) → (code) => TokenizeResult — for consumers building
+//                     a custom renderer (e.g. CSS Custom Highlight API).
+//   grammar         → the raw compiled grammar (for bare base tokens or
+//                     for composing a fully custom pipeline).
+//   reclassifiers   → the default reclassifier list (prepend/append rules).
 //
-// Typical use is `import { language } from "@twinkleplop/javascript"` — the
-// full enriched experience without composing anything by hand.
+// Typical use is `import { language } from "@twinkleplop/javascript"` and
+// then `language()(code)` — the full enriched experience without composing
+// anything by hand.
 //
 // Individual reclassifier pieces (`function_variable_rules`,
 // `claim_property_scope`, `scan_tagged_template`) are exported so benchmarks
@@ -34,7 +36,13 @@ import {
 // embedder when they want a JS-only pipeline.
 
 export const grammar = compile(raw_grammar);
-export const language = create_language(grammar, reclassifiers);
+export const tokenize = create_language(grammar, reclassifiers);
+
+export function language(options?: LanguageOptions) {
+  const tokenize_fn = tokenize(options);
+  return (input: string, render?: RenderOptions): string =>
+    to_html(input, tokenize_fn(input), render);
+}
 export {
   raw_grammar,
   reclassifiers,
@@ -47,7 +55,6 @@ export {
   promote_js_constants,
   promote_js_namespaces,
   promote_js_parameters,
-  promote_js_pascal_case,
   scan_tagged_template,
 };
 

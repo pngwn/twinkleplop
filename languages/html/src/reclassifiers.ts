@@ -14,22 +14,22 @@
 // package (for `` html`...` `` / `` css`...` `` tagged templates), which
 // creates a workspace cycle: html → js → html. The ESM module graph handles
 // this as long as the cross-language references are looked up LAZILY rather
-// than captured at module-eval time — so we wrap `js_language`/`css_language`
+// than captured at module-eval time — so we wrap `js_tokenize`/`css_tokenize`
 // in closures. By the time embed_grammars actually calls one of these, the
 // sibling module has finished evaluating and the binding is live.
 
 import { always, embed_grammars } from "@twinkleplop/core";
 import type { LanguageFn, LanguagePipeline } from "@twinkleplop/core";
-import { language as js_language } from "@twinkleplop/javascript";
-import { language as css_language } from "@twinkleplop/css";
+import { tokenize as js_tokenize } from "@twinkleplop/javascript";
+import { tokenize as css_tokenize } from "@twinkleplop/css";
 
 // sub-language factories are invoked lazily on first embed. the factory
 // call is cheap (one pipeline build) but we still cache to avoid rebuilding
 // per tokenize pass.
 let js_fn: LanguageFn | undefined;
 let css_fn: LanguageFn | undefined;
-const js_default = (src: string) => (js_fn ??= js_language())(src);
-const css_default = (src: string) => (css_fn ??= css_language())(src);
+const js_default = (src: string) => (js_fn ??= js_tokenize())(src);
+const css_default = (src: string) => (css_fn ??= css_tokenize())(src);
 
 export const reclassifiers: LanguagePipeline = [
   always(

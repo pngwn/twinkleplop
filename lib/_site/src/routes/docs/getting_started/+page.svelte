@@ -7,7 +7,6 @@
 	import Card from "$lib/docs/components/Card.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { to_html } from "@twinkleplop/core";
 	import { language } from "@twinkleplop/bash";
 	import { language as ts_language } from "@twinkleplop/typescript";
 
@@ -15,7 +14,7 @@
 	const ts = ts_language();
 
 	const install_src = `pnpm add "@twinkleplop/typescript" "@twinkleplop/theme"`;
-	const install_code = to_html(install_src, bash(install_src));
+	const install_code = bash(install_src);
 	const first_highlght_src = `// import the language
 import { language } from '@twinkleplop/typescript';
 
@@ -26,7 +25,7 @@ const typescript = language();
 const html = typescript("1 + 2");
 
 document.body.innerHTML = html;`
-	const first_highlight_code = to_html(first_highlght_src, ts(first_highlght_src));
+	const first_highlight_code = ts(first_highlght_src);
 </script>
 
 <ArticleMain

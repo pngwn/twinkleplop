@@ -9,7 +9,7 @@
 // sibling package walks those positions against tokens produced by the
 // svelte grammar to emit the final <pre><code> HTML.
 
-import { language as svelte_language } from "@twinkleplop/svelte";
+import { tokenize as svelte_tokenize } from "@twinkleplop/svelte";
 import { render } from "@twinkleplop/twoslash";
 import { create_twoslasher } from "./twoslasher";
 
@@ -18,9 +18,9 @@ interface HighlightOptions {
   twoslash?: object;
 }
 
-// bind a default-fidelity svelte highlighter once; the twoslash flow is
+// bind a default-fidelity svelte tokenizer once; the twoslash flow is
 // not fidelity-configurable today.
-const svelte = svelte_language();
+const svelte = svelte_tokenize();
 
 /**
  * Create a reusable Svelte highlighter. Caches the underlying

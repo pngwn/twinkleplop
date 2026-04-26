@@ -27,15 +27,15 @@
 
 import type { LanguageFn, LanguagePipeline, Reclassifier, TokenizeResult } from "@twinkleplop/core";
 import { always, embed_grammars } from "@twinkleplop/core";
-import { language as css_language } from "@twinkleplop/css";
-import { language as js_language } from "@twinkleplop/javascript";
+import { tokenize as css_tokenize } from "@twinkleplop/css";
+import { tokenize as js_tokenize } from "@twinkleplop/javascript";
 
 // cached default-fidelity sub-tokenizers for embed call sites (see HTML
 // package for rationale).
 let js_fn: LanguageFn | undefined;
 let css_fn: LanguageFn | undefined;
-const js_default = (src: string) => (js_fn ??= js_language())(src);
-const css_default = (src: string) => (css_fn ??= css_language())(src);
+const js_default = (src: string) => (js_fn ??= js_tokenize())(src);
+const css_default = (src: string) => (css_fn ??= css_tokenize())(src);
 
 const BLOCK_OR_AT_SIGILS = new Set(["#", ":", "/", "@"]);
 

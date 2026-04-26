@@ -198,6 +198,14 @@ export interface LanguageOptions {
 // full-fidelity pipeline.
 export type LanguageFactory = (options?: LanguageOptions) => LanguageFn;
 
+// per-call options for rendering tokens to HTML. passed to the function
+// returned by a language package's `language()` factory, and consumed
+// directly by `to_html`.
+export interface RenderOptions {
+  class_name?: string;
+  line_numbers?: boolean;
+}
+
 // Pattern language for `rewrite_types` — tag-discriminated union so authors
 // build patterns with the exported combinator helpers (`type`, `seq`,
 // `any_of`, `optional`, `capture`, `balanced_parens`).

@@ -72,7 +72,7 @@
 			return;
 		}
 		const mod = (await loader()) as {
-			language?: (options?: unknown) => (src: string) => tokenize_result;
+			tokenize?: (options?: unknown) => (src: string) => tokenize_result;
 			grammar?: { token_types?: string[] };
 			reclassifiers?: Array<
 				((...a: unknown[]) => unknown) | { reclassifier: unknown; produces: string[] }
@@ -105,7 +105,7 @@
 		available_tags = tags;
 		enabled_tags.clear();
 		for (const tag of tags) enabled_tags.add(tag);
-		make_language = mod.language;
+		make_language = mod.tokenize;
 	}
 
 	$effect(() => {

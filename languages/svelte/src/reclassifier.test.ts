@@ -3,7 +3,7 @@
 // `{expression}` interpolations and block expression bodies.
 
 import { describe, expect, it } from "vitest";
-import { language as make_language } from "./index.js";
+import { tokenize as make_language } from "./index.js";
 
 const language = make_language();
 
