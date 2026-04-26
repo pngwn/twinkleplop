@@ -13,27 +13,114 @@ export type doc_group = {
 
 export const DOCS: doc_group[] = [
   {
-    group: "Start here",
+    group: "Build",
     items: [
-      {
-        id: "home",
-        title: "Welcome",
-        path: "/docs",
-        crumb: "docs / welcome",
-        icon: "★",
-      },
       {
         id: "getting_started",
         title: "Getting started",
         path: "/docs/getting_started",
-        crumb: "docs / getting-started",
-        icon: "▸",
+        crumb: "docs / build / getting-started",
+        icon: "◐",
+      },
+      {
+        id: "languages",
+        title: "Languages",
+        path: "/docs/languages",
+        crumb: "docs / build / languages",
+        icon: "⇢",
+      },
+      {
+        id: "themes",
+        title: "Themes",
+        path: "/docs/themes",
+        crumb: "docs / build / themes",
+        icon: "↔",
+      },
+      {
+        id: "line_numbers",
+        title: "Line numbers",
+        path: "/docs/line_numbers",
+        crumb: "docs / build / line-numbers",
+        icon: "↔",
+      },
+      {
+        id: "diffs",
+        title: "Diffs",
+        path: "/docs/diffs",
+        crumb: "docs / build / diffs",
+        icon: "↔",
+      },
+      {
+        id: "twoslash",
+        title: "Twoslash",
+        path: "/docs/twoslash",
+        crumb: "docs / build / twoslash",
+        icon: "↔",
+      },
+      {
+        id: "context",
+        title: "Context",
+        path: "/docs/context",
+        crumb: "docs / build / context",
+        icon: "↔",
+      },
+      {
+        id: "fidelity",
+        title: "Fidelity",
+        path: "/docs/fidelity",
+        crumb: "docs / build / fidelity",
+        icon: "↔",
       },
     ],
   },
   {
-    group: "Guides",
+    group: "Markdown",
     items: [
+      {
+        id: "?",
+        title: "?",
+        path: "/docs/",
+        crumb: "docs / markdown / ",
+        icon: "¶",
+      },
+    ],
+  },
+  {
+    group: "Migration",
+    items: [
+      {
+        id: "shiki",
+        title: "Shiki",
+        path: "/docs/migrate_from_shiki",
+        crumb: "docs / migration / shiki",
+        icon: "¶",
+      },
+      {
+        id: "prism",
+        title: "Prism",
+        path: "/docs/migrate_from_prism",
+        crumb: "docs / migration / prism",
+        icon: "¶",
+      },
+      {
+        id: "hljs",
+        title: "Hljs",
+        path: "/docs/migrate_from_hljs",
+        crumb: "docs / migration / hljs",
+        icon: "¶",
+      },
+    ],
+  },
+  {
+    group: "Reference",
+    items: [
+      {
+        id: "languages",
+        title: "Languages",
+        path: "/docs/languages",
+        crumb: "docs / guides / languages",
+        icon: "◐",
+      },
       {
         id: "themes",
         title: "Themes",
@@ -42,38 +129,52 @@ export const DOCS: doc_group[] = [
         icon: "◐",
       },
       {
-        id: "tokenization",
-        title: "How tokenization works",
-        path: "/docs/tokenization",
-        crumb: "docs / concepts / tokenization",
-        icon: "λ",
-      },
-      {
-        id: "transformers",
-        title: "Transformers",
-        path: "/docs/transformers",
-        crumb: "docs / guides / transformers",
-        icon: "⇢",
-      },
-      {
-        id: "migration",
-        title: "Migrating from shiki",
-        path: "/docs/migration",
-        crumb: "docs / guides / migration",
-        icon: "↔",
-      },
-    ],
-  },
-  {
-    group: "Reference",
-    items: [
-      {
         id: "api",
-        title: "API reference",
+        title: "Core API",
         path: "/docs/api",
         crumb: "docs / reference / api",
         icon: "¶",
       },
+      {
+        id: "grammar",
+        title: "Grammars",
+        path: "/docs/grammar",
+        crumb: "docs / reference / grammar",
+        icon: "¶",
+      },
+      {
+        id: "reclassifier",
+        title: "Reclassifiers",
+        path: "/docs/reclassifier",
+        crumb: "docs / reference / reclassifier",
+        icon: "¶",
+      },
+    ],
+  },
+  {
+    group: "Technical",
+    items: [
+      {
+        id: "architecture",
+        title: "Architecture",
+        path: "/docs/architecture",
+        crumb: "docs / technical / architecture",
+        icon: "¶",
+      },
+      {
+        id: "performance",
+        title: "Performance",
+        path: "/docs/performance",
+        crumb: "docs / technical / performance",
+        icon: "¶",
+      },
+      {
+        id: "benchmarks",
+        title: "Benchmarks",
+        path: "/docs/benchmarks",
+        crumb: "docs / technical / ",
+        icon: "¶",
+      }
     ],
   },
 ];

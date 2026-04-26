@@ -87,7 +87,7 @@ const rows: Row[] = [
     lang_name: "javascript",
     category: "class_name",
     mechanism: "upgrade",
-    source: "const x = Foo.bar;",
+    source: "class Foo {}",
     target: "Foo",
     rich: "class_name",
     base: "identifier",
@@ -493,9 +493,8 @@ function expect_token(
 
 // regressions for a UI bug where deselecting one category silently
 // flipped the tokenisation of another. verify that disabling `constant`
-// leaves UPPER_SNAKE names as identifier (NOT promoted to class_name by
-// the pascal_case catch-all), and that disabling `class_name` does NOT
-// disturb constants.
+// leaves UPPER_SNAKE names as identifier and that disabling `class_name`
+// does NOT disturb constants.
 describe("fidelity isolation — deselecting one category does not affect others", () => {
   const src = "const MAX_SIZE = 100;";
   function first_type(factory: LanguageFactory, fidelity: FidelitySpec, target: string) {
@@ -519,7 +518,7 @@ describe("fidelity isolation — deselecting one category does not affect others
     "namespace",
     "parameter",
   ];
-  it("JS: disabling only `constant` leaves MAX_SIZE as identifier (not class_name)", () => {
+  it("JS: disabling only `constant` leaves MAX_SIZE as identifier", () => {
     const without_constant = js_all.filter((c) => c !== "constant");
     expect(first_type(javascript, without_constant, "MAX_SIZE")).toBe("identifier");
   });
@@ -527,13 +526,8 @@ describe("fidelity isolation — deselecting one category does not affect others
     const without_class = js_all.filter((c) => c !== "class_name");
     expect(first_type(javascript, without_class, "MAX_SIZE")).toBe("constant");
   });
-  it("JS: all categories enabled → MAX_SIZE is constant (winner over pascal_case)", () => {
+  it("JS: all categories enabled → MAX_SIZE is constant", () => {
     expect(first_type(javascript, js_all, "MAX_SIZE")).toBe("constant");
-  });
-  it("JS: pascal_case does not claim UPPER_SNAKE names (even when constant is off)", () => {
-    // fidelity just class_name — no constant pass. the catch-all
-    // promote_js_pascal_case must NOT treat MAX_SIZE as PascalCase.
-    expect(first_type(javascript, ["class_name"], "MAX_SIZE")).toBe("identifier");
   });
 });
 

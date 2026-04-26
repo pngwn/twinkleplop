@@ -31,7 +31,9 @@ describe("HTML language — script embedding", () => {
     // The script body should be JS tokens, not raw_script.
     expect(tokens.some((t) => t.type === "raw_script")).toBe(false);
     expect(type_of(tokens, "const")).toBe("keyword");
-    expect(type_of(tokens, "x")).toBe("identifier");
+    // JS reclassifiers run inside the embed too: `const x` promotes the
+    // binding to `constant` via promote_js_const_bindings.
+    expect(type_of(tokens, "x")).toBe("constant");
     expect(type_of(tokens, "5")).toBe("number");
   });
 

@@ -3,162 +3,128 @@
  */
 
 :root {
-  /* base palette */
-  --docs-bg: #000000;
-  --docs-bg-1: #08080a;
-  --docs-bg-2: #101014;
-  --docs-bg-3: #16161c;
-  --docs-line: #26262e;
-  --docs-line-2: #1a1a20;
-  --docs-fg: #e8e6df;
-  --docs-fg-dim: #a6a49c;
-  --docs-fg-mute: #6b6963;
-  --docs-fg-ghost: #3d3b37;
+	/* type — reuse fonts already loaded by the site */
+	--docs-mono:
+		'Berkeley Mono', 'JetBrains Mono', 'SF Mono', Monaco, Consolas, 'Liberation Mono',
+		'Courier New', monospace;
+	--docs-pixel: 'Pixel Code', 'VT323', monospace;
 
-  /* twinkle letter palette */
-  --t-red: #f26d6d;
-  --t-orange: #f29a6d;
-  --t-yellow: #f2c94c;
-  --t-green: #7fe08a;
-  --t-teal: #5fd4c4;
-  --t-blue: #6aa9ff;
-  --t-purple: #c59bff;
-  --t-pink: #f29ad2;
-
-  /* signature accent */
-  --docs-accent: #7fe08a;
-  --docs-accent-dim: #3d8a47;
-
-  /* type — reuse fonts already loaded by the site */
-  --docs-mono:
-    "Berkeley Mono", "JetBrains Mono", "SF Mono", Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
-  --docs-pixel: "Pixel Code", "VT323", monospace;
-
-  /* density defaults (cozy) */
-  --docs-line-height: 1.55;
-  --docs-fs-body: 13px;
-  --docs-fs-sm: 11.5px;
-  --docs-fs-xs: 10.5px;
+	/* density defaults (cozy) */
+	--docs-line-height: 1.55;
+	--docs-fs-body: 13px;
+	--docs-fs-sm: 11.5px;
+	--docs-fs-xs: 10.5px;
 }
 
 /* density variants */
-[data-docs-density="compact"] {
-  --docs-fs-body: 12px;
-  --docs-fs-sm: 10.5px;
-  --docs-line-height: 1.45;
+[data-docs-density='compact'] {
+	--docs-fs-body: 12px;
+	--docs-fs-sm: 10.5px;
+	--docs-line-height: 1.45;
 }
-[data-docs-density="cozy"] {
-  --docs-fs-body: 13px;
-  --docs-fs-sm: 11.5px;
-  --docs-line-height: 1.55;
+[data-docs-density='cozy'] {
+	--docs-fs-body: 13px;
+	--docs-fs-sm: 11.5px;
+	--docs-line-height: 1.55;
 }
-[data-docs-density="comfortable"] {
-  --docs-fs-body: 14.5px;
-  --docs-fs-sm: 12.5px;
-  --docs-line-height: 1.7;
+[data-docs-density='comfortable'] {
+	--docs-fs-body: 14.5px;
+	--docs-fs-sm: 12.5px;
+	--docs-line-height: 1.7;
 }
 
-/* theme variants */
-[data-docs-theme="phosphor"] {
-  --docs-bg: #020604;
-  --docs-bg-1: #04090a;
-  --docs-bg-2: #081210;
-  --docs-bg-3: #0c1a18;
-  --docs-line: #133228;
-  --docs-line-2: #0c221b;
-  --docs-fg: #a6f2be;
-  --docs-fg-dim: #6cbf84;
-  --docs-fg-mute: #3d8a5a;
-  --docs-fg-ghost: #1a4028;
-  --docs-accent: #7fe08a;
-  --docs-accent-dim: #3d8a47;
-  --t-red: #ffb87a;
-  --t-orange: #e8c56a;
-  --t-yellow: #f2e25a;
-  --t-green: #7fe08a;
-  --t-teal: #5fd4c4;
-  --t-blue: #6fe0b0;
-  --t-purple: #9fffc5;
-  --t-pink: #d8ffb0;
+/* dark mode — site chrome + twinkle letter palette */
+[data-docs-mode='dark'] {
+	--docs-bg: #000000;
+	--docs-bg-1: #08080a;
+	--docs-bg-2: #101014;
+	--docs-bg-3: #16161c;
+	--docs-line: #26262e;
+	--docs-line-2: #1a1a20;
+	--docs-fg: #e8e6df;
+	--docs-fg-dim: #a6a49c;
+	--docs-fg-mute: #6b6963;
+	--docs-fg-ghost: #3d3b37;
+
+	--t-red: #f26d6d;
+	--t-orange: #f29a6d;
+	--t-yellow: #f2c94c;
+	--t-green: #7fe08a;
+	--t-teal: #5fd4c4;
+	--t-blue: #6aa9ff;
+	--t-purple: #c59bff;
+	--t-pink: #f29ad2;
+
+	--docs-accent: #7fe08a;
+	--docs-accent-dim: #3d8a47;
 }
-[data-docs-theme="plasma"] {
-  --docs-bg: #0a0210;
-  --docs-bg-1: #120420;
-  --docs-bg-2: #1a072c;
-  --docs-bg-3: #220a38;
-  --docs-line: #3a1a50;
-  --docs-line-2: #2a1038;
-  --docs-fg: #f0e6ff;
-  --docs-fg-dim: #b8a6cc;
-  --docs-fg-mute: #7a6688;
-  --docs-fg-ghost: #3d2f4a;
-  --docs-accent: #c59bff;
-  --docs-accent-dim: #7040b0;
-}
-[data-docs-theme="paper"] {
-  --docs-bg: #f3f0e8;
-  --docs-bg-1: #ebe8df;
-  --docs-bg-2: #e3e0d5;
-  --docs-bg-3: #d8d4c7;
-  --docs-line: #c5c0b0;
-  --docs-line-2: #d5d0c0;
-  --docs-fg: #1a1a1a;
-  --docs-fg-dim: #4a4a4a;
-  --docs-fg-mute: #7a766a;
-  --docs-fg-ghost: #b5b0a0;
-  --docs-accent: #2a7a3a;
-  --docs-accent-dim: #5aa868;
-  --t-red: #b83030;
-  --t-orange: #b85a20;
-  --t-yellow: #9a7a10;
-  --t-green: #2a7a3a;
-  --t-teal: #186a62;
-  --t-blue: #2a5ab8;
-  --t-purple: #6a3ab0;
-  --t-pink: #b03a80;
+
+/* light mode — adapted from the old "paper" theme */
+[data-docs-mode='light'] {
+	--docs-bg: #f3f0e8;
+	--docs-bg-1: #ebe8df;
+	--docs-bg-2: #e3e0d5;
+	--docs-bg-3: #d8d4c7;
+	--docs-line: #c5c0b0;
+	--docs-line-2: #d5d0c0;
+	--docs-fg: #1a1a1a;
+	--docs-fg-dim: #4a4a4a;
+	--docs-fg-mute: #7a766a;
+	--docs-fg-ghost: #b5b0a0;
+
+	--t-red: #b83030;
+	--t-orange: #b85a20;
+	--t-yellow: #9a7a10;
+	--t-green: #2a7a3a;
+	--t-teal: #186a62;
+	--t-blue: #2a5ab8;
+	--t-purple: #6a3ab0;
+	--t-pink: #b03a80;
+
+	--docs-accent: #2a7a3a;
+	--docs-accent-dim: #5aa868;
 }
 
 /* root wrapper — owned by layout, kept global so cursor/tree animations can reach */
 .docs-root {
-  background: var(--docs-bg);
-  color: var(--docs-fg);
-  font-family: var(--docs-mono);
-  font-size: var(--docs-fs-body);
-  line-height: var(--docs-line-height);
-  font-feature-settings:
-    "calt" 1,
-    "liga" 1;
-  -webkit-font-smoothing: antialiased;
-  height: 100vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+	background: var(--docs-bg);
+	color: var(--docs-fg);
+	font-family: var(--docs-mono);
+	font-size: var(--docs-fs-body);
+	line-height: var(--docs-line-height);
+	font-feature-settings:
+		'calt' 1,
+		'liga' 1;
+	-webkit-font-smoothing: antialiased;
+	height: 100vh;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 }
 .docs-root *,
 .docs-root *::before,
 .docs-root *::after {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 @media (max-width: 760px) {
-  .docs-root {
-    height: auto;
-    overflow: auto;
-    padding-bottom: 52px;
-  }
+	.docs-root {
+		height: auto;
+		overflow: auto;
+		padding-bottom: 52px;
+	}
 }
 
 /* keyframes referenced by multiple components */
 @keyframes docs-blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
+	0%,
+	49% {
+		opacity: 1;
+	}
+	50%,
+	100% {
+		opacity: 0;
+	}
 }
 
 /* syntax-token classes
@@ -166,36 +132,36 @@
  * so they can't be scoped to a single component
  */
 .tok-kw {
-  color: var(--t-red);
+	color: var(--t-red);
 }
 .tok-str {
-  color: var(--t-yellow);
+	color: var(--t-yellow);
 }
 .tok-num {
-  color: var(--t-orange);
+	color: var(--t-orange);
 }
 .tok-fn {
-  color: var(--t-blue);
+	color: var(--t-blue);
 }
 .tok-cls {
-  color: var(--t-teal);
+	color: var(--t-teal);
 }
 .tok-var {
-  color: var(--t-purple);
+	color: var(--t-purple);
 }
 .tok-com {
-  color: var(--docs-fg-mute);
-  font-style: italic;
+	color: var(--docs-fg-mute);
+	font-style: italic;
 }
 .tok-punct {
-  color: var(--docs-fg-dim);
+	color: var(--docs-fg-dim);
 }
 .tok-tag {
-  color: var(--t-red);
+	color: var(--t-red);
 }
 .tok-attr {
-  color: var(--t-green);
+	color: var(--t-green);
 }
 .tok-prop {
-  color: var(--t-teal);
+	color: var(--t-teal);
 }

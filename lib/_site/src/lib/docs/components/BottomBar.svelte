@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { chrome, open_palette, toggle_nav } from "../chrome.svelte";
+	import { chrome, open_palette, toggle_nav, toggle_tweaks } from '../chrome.svelte';
 </script>
 
 <nav class="botbar" role="navigation" aria-label="Mobile nav">
@@ -9,6 +9,12 @@
 		<span class="placeholder">search docs…</span>
 		<span class="kb">⌘K</span>
 	</button>
+	<button
+		class="menu"
+		aria-label="Toggle tweaks"
+		aria-expanded={chrome.tweaks_open}
+		onclick={toggle_tweaks}>⚙</button
+	>
 	<button
 		class="menu"
 		aria-label="Toggle navigation"
@@ -28,7 +34,7 @@
 		background: var(--docs-bg);
 		border-top: 1px solid var(--docs-line);
 		z-index: 55;
-		grid-template-columns: auto 1fr auto;
+		grid-template-columns: auto 1fr auto auto;
 		align-items: center;
 		gap: 8px;
 		padding: 0 10px;
@@ -88,7 +94,7 @@
 	.menu:active {
 		background: var(--docs-bg-2);
 	}
-	.menu[aria-expanded="true"] {
+	.menu[aria-expanded='true'] {
 		border-color: var(--docs-accent-dim);
 		color: var(--docs-accent);
 	}

@@ -4,13 +4,16 @@
 		type density_mode,
 		type flavor_name,
 		type theme_name,
-		type tweak_state,
-	} from "$lib/explore/themes";
+		type tweak_state
+	} from '$lib/explore/themes';
+	import { theme_mode, set_mode, type theme_mode_value } from '$lib/theme_mode.svelte';
 
-	const THEME_GROUPS: { label: string; themes: theme_name[] }[] = [
-		{ label: "GitHub", themes: ["github-light", "github-dark"] },
-		{ label: "Atom One", themes: ["atom-one-light", "atom-one-dark"] },
+	const THEMES_LIST: { value: theme_name; label: string }[] = [
+		{ value: 'github', label: 'GitHub' },
+		{ value: 'atom-one', label: 'Atom One' }
 	];
+
+	const MODE_OPTIONS: theme_mode_value[] = ['system', 'light', 'dark'];
 
 	interface Props {
 		visible: boolean;
@@ -21,14 +24,8 @@
 
 	let { visible, state, on_update, on_close }: Props = $props();
 
-	const DENSITIES: density_mode[] = ["compact", "comfortable", "relaxed"];
-	const FLAVORS_LIST: flavor_name[] = [
-		"phosphor",
-		"amber",
-		"paperwhite",
-		"synth",
-		"ember",
-	];
+	const DENSITIES: density_mode[] = ['compact', 'comfortable', 'relaxed'];
+	const FLAVORS_LIST: flavor_name[] = ['phosphor', 'amber', 'paperwhite', 'synth', 'ember'];
 </script>
 
 {#if visible}
@@ -39,24 +36,33 @@
 		</header>
 
 		<section class="tweaks__sec">
+			<div class="tweaks__label">Mode</div>
+			<div class="tweaks__chips">
+				{#each MODE_OPTIONS as m (m)}
+					<button
+						class="tweak-chip"
+						class:is-on={theme_mode.value === m}
+						type="button"
+						onclick={() => set_mode(m)}
+					>
+						{m}
+					</button>
+				{/each}
+			</div>
+		</section>
+
+		<section class="tweaks__sec">
 			<div class="tweaks__label">Theme</div>
-			<div class="tweaks__groups">
-				{#each THEME_GROUPS as group (group.label)}
-					<div class="tweak-group">
-						<div class="tweak-group__label">{group.label}</div>
-						<div class="tweaks__chips">
-							{#each group.themes as t (t)}
-								<button
-									class="tweak-chip"
-									class:is-on={state.theme === t}
-									type="button"
-									onclick={() => on_update({ theme: t })}
-								>
-									{t}
-								</button>
-							{/each}
-						</div>
-					</div>
+			<div class="tweaks__chips">
+				{#each THEMES_LIST as t (t.value)}
+					<button
+						class="tweak-chip"
+						class:is-on={state.theme === t.value}
+						type="button"
+						onclick={() => on_update({ theme: t.value })}
+					>
+						{t.label}
+					</button>
 				{/each}
 			</div>
 		</section>
@@ -94,15 +100,15 @@
 		</section>
 
 		<section class="tweaks__sec">
-			<div class="tweaks__label">Diff overlay</div>
+			<div class="tweaks__label">Token inspector</div>
 			<div class="tweaks__chips">
 				<button
 					class="tweak-chip"
-					class:is-on={state.diff}
+					class:is-on={state.inspect}
 					type="button"
-					onclick={() => on_update({ diff: !state.diff })}
+					onclick={() => on_update({ inspect: !state.inspect })}
 				>
-					{state.diff ? "on" : "off"}
+					{state.inspect ? 'on' : 'off'}
 				</button>
 			</div>
 		</section>

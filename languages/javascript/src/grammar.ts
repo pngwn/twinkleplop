@@ -139,7 +139,7 @@ export const OP_2CHAR = [
   "|=",
   "^=",
 ];
-export const OP_1CHAR = ["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%", ":"];
+export const OP_1CHAR = ["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%"];
 
 // Full operator set (excludes bare `/`, which is state-dependent).
 export const OP_ALL = [...OP_4CHAR, ...OP_3CHAR, OP_SPREAD, ...OP_2CHAR, ...OP_1CHAR];
@@ -187,6 +187,7 @@ export const IDENTIFIER_TERMINATORS = [
   "}",
   ";",
   ",",
+  ":",
   "`",
 ];
 
@@ -250,7 +251,7 @@ export const js_tmpl_common = [...js_comments, ...js_strings, ...js_numbers_arg,
 export const js_paren_common = [
   match(")", TOKENS.punctuation, leave()),
   match(",", TOKENS.punctuation),
-  match(["[", "]", "{", "}", ";", "."], TOKENS.punctuation),
+  match(["[", "]", "{", "}", ";", ".", ":"], TOKENS.punctuation),
   match(["===", "!=="], TOKENS.operator),
   match(["--", "++", "<=", ">=", "==", "!=", "&&", "||"], TOKENS.operator),
   match(["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "/", "~", "^", "%"], TOKENS.operator),
@@ -304,10 +305,11 @@ export default define_grammar({
         // Here, `/` is a regex!
         match("/", TOKENS.regex, enter("regex_pattern")),
 
-        // Punctuation
+        // Punctuation. `:` is a separator (object literal property,
+        // type annotation, ternary, label) — not an operator.
         match(["(", "{", "["], TOKENS.punctuation),
         match([")", "}", "]"], TOKENS.punctuation, goto("division")),
-        match([";", ",", "."], TOKENS.punctuation),
+        match([";", ",", ".", ":"], TOKENS.punctuation),
 
         // Identifiers
         on(["_", "$", LETTER], goto("identifier_probe")),
@@ -356,9 +358,10 @@ export default define_grammar({
         match(["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%"], TOKENS.operator),
         match("/", TOKENS.regex, enter("regex_pattern")),
 
-        // Other punctuation
+        // Other punctuation. `:` is a separator (named arg, ternary,
+        // type annotation), not an operator.
         match(["[", "]", "{", "}"], TOKENS.punctuation),
-        match([";", "."], TOKENS.punctuation),
+        match([";", ".", ":"], TOKENS.punctuation),
 
         // Identifiers (recursive probe for nested function calls)
         on(["_", "$", LETTER], goto("identifier_probe")),
@@ -445,8 +448,10 @@ export default define_grammar({
         match(["(", "[", "{"], TOKENS.punctuation, goto("regex_allow")),
         // Closing brackets after an identifier
         match([")", "]", "}"], TOKENS.punctuation, goto("division")),
-        // Comma and semicolon delimiters
-        match([",", ";"], TOKENS.punctuation, goto("regex_allow")),
+        // Comma, semicolon, and `:` delimiters — `:` separates property
+        // key from value, label name from statement, parameter from
+        // type annotation, ternary from alternate.
+        match([",", ";", ":"], TOKENS.punctuation, goto("regex_allow")),
         // Dot accessor
         match(".", TOKENS.punctuation, goto("division")),
         // All operators including `/` and `/=` — sideways to regex_allow
@@ -470,9 +475,10 @@ export default define_grammar({
         // Here, `/` is division — `operators(...)` covers `/=`; bare `/` is its own rule
         match("/", TOKENS.operator, goto("regex_allow")),
 
-        // Punctuation
+        // Punctuation. `:` separates a key/label/ternary alternate from
+        // its value — go back to regex_allow for the right-hand side.
         match([")", "}", "]"], TOKENS.punctuation),
-        match([";", ","], TOKENS.punctuation, goto("regex_allow")),
+        match([";", ",", ":"], TOKENS.punctuation, goto("regex_allow")),
         match(".", TOKENS.punctuation),
 
         // Identifiers
@@ -658,7 +664,7 @@ export default define_grammar({
         match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
         match(["(", "["], TOKENS.punctuation),
         match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
-        match([";", ",", "."], TOKENS.punctuation),
+        match([";", ",", ".", ":"], TOKENS.punctuation),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
       ],
@@ -680,7 +686,7 @@ export default define_grammar({
         match(["(", "["], TOKENS.punctuation, goto("tmpl_regex_allow")),
         match("/", TOKENS.operator, goto("tmpl_regex_allow")),
         match([")", "]"], TOKENS.punctuation),
-        match([";", ","], TOKENS.punctuation, goto("tmpl_regex_allow")),
+        match([";", ",", ":"], TOKENS.punctuation, goto("tmpl_regex_allow")),
         match(".", TOKENS.punctuation),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
@@ -740,7 +746,7 @@ export default define_grammar({
         match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
         match("}", TOKENS.punctuation, leave()),
         match(["[", "]"], TOKENS.punctuation),
-        match([";", "."], TOKENS.punctuation),
+        match([";", ".", ":"], TOKENS.punctuation),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
       ],
@@ -765,7 +771,7 @@ export default define_grammar({
         match(["(", "["], TOKENS.punctuation, goto("tmpl_regex_allow")),
         match("}", TOKENS.punctuation, leave()),
         match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
-        match([",", ";"], TOKENS.punctuation, goto("tmpl_regex_allow")),
+        match([",", ";", ":"], TOKENS.punctuation, goto("tmpl_regex_allow")),
         match(".", TOKENS.punctuation, goto("tmpl_division")),
         match([...OP_ALL, "/"], TOKENS.operator, goto("tmpl_regex_allow")),
         on([" ", "\t", "\n", "\r"], goto("tmpl_division")),

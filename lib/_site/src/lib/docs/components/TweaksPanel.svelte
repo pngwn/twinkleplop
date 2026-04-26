@@ -1,22 +1,21 @@
 <script lang="ts">
-	import { chrome, set_tweak } from "../chrome.svelte";
+	import { chrome, set_tweak } from '../chrome.svelte';
+	import { theme_mode, set_mode, type theme_mode_value } from '$lib/theme_mode.svelte';
 
-	const THEME_OPTIONS = ["default", "phosphor", "plasma", "paper"] as const;
-	const DENSITY_OPTIONS = ["compact", "cozy", "comfortable"] as const;
-	const NAV_OPTIONS = ["tree", "grouped", "manpage"] as const;
-	const CRT_OPTIONS = ["on", "off"] as const;
+	const MODE_OPTIONS: theme_mode_value[] = ['system', 'light', 'dark'];
+	const DENSITY_OPTIONS = ['compact', 'cozy', 'comfortable'] as const;
+	const NAV_OPTIONS = ['tree', 'grouped', 'manpage'] as const;
+	const CRT_OPTIONS = ['on', 'off'] as const;
 </script>
 
 <div class="tweaks" class:open={chrome.tweaks_open}>
 	<h4>tweaks</h4>
 	<div class="group">
-		<div class="lbl">theme</div>
+		<div class="lbl">mode</div>
 		<div class="pills">
-			{#each THEME_OPTIONS as t}
-				<button
-					class="pill"
-					class:on={chrome.tweaks.theme === t}
-					onclick={() => set_tweak("theme", t)}>{t}</button
+			{#each MODE_OPTIONS as m (m)}
+				<button class="pill" class:on={theme_mode.value === m} onclick={() => set_mode(m)}
+					>{m}</button
 				>
 			{/each}
 		</div>
@@ -24,11 +23,11 @@
 	<div class="group">
 		<div class="lbl">density</div>
 		<div class="pills">
-			{#each DENSITY_OPTIONS as d}
+			{#each DENSITY_OPTIONS as d (d)}
 				<button
 					class="pill"
 					class:on={chrome.tweaks.density === d}
-					onclick={() => set_tweak("density", d)}>{d === "comfortable" ? "comfy" : d}</button
+					onclick={() => set_tweak('density', d)}>{d === 'comfortable' ? 'comfy' : d}</button
 				>
 			{/each}
 		</div>
@@ -36,11 +35,9 @@
 	<div class="group">
 		<div class="lbl">nav style</div>
 		<div class="pills">
-			{#each NAV_OPTIONS as n}
-				<button
-					class="pill"
-					class:on={chrome.tweaks.nav === n}
-					onclick={() => set_tweak("nav", n)}>{n}</button
+			{#each NAV_OPTIONS as n (n)}
+				<button class="pill" class:on={chrome.tweaks.nav === n} onclick={() => set_tweak('nav', n)}
+					>{n}</button
 				>
 			{/each}
 		</div>
@@ -48,11 +45,9 @@
 	<div class="group">
 		<div class="lbl">crt scanlines</div>
 		<div class="pills">
-			{#each CRT_OPTIONS as c}
-				<button
-					class="pill"
-					class:on={chrome.tweaks.crt === c}
-					onclick={() => set_tweak("crt", c)}>{c}</button
+			{#each CRT_OPTIONS as c (c)}
+				<button class="pill" class:on={chrome.tweaks.crt === c} onclick={() => set_tweak('crt', c)}
+					>{c}</button
 				>
 			{/each}
 		</div>

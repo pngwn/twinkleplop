@@ -68,15 +68,17 @@ describe("TypeScript reclassifier — interface member promotion", () => {
     expect(type_of(tokens, "x")).toBe("property");
   });
 
-  it("typed parameters in interface methods stay as identifier", () => {
-    // regression: the promoter must skip identifiers inside `(...)` so
-    // `find(id: number)` doesn't reclassify `id` as a property.
+  it("typed parameters in interface methods are tagged as parameter", () => {
+    // promote_js_parameters tags interface method signature params the
+    // same as runtime methods — users want the parameter highlight on
+    // names like `id` and `user` regardless of whether the surrounding
+    // declaration is a type-only signature or a runtime method.
     const tokens = enrich(
       "interface Repository { find(id: number): User; save(user: User): void; }",
     );
     expect(type_of(tokens, "find")).toBe("function");
-    expect(type_of(tokens, "id")).toBe("identifier");
-    expect(type_of(tokens, "user")).toBe("identifier");
+    expect(type_of(tokens, "id")).toBe("parameter");
+    expect(type_of(tokens, "user")).toBe("parameter");
     expect(type_of(tokens, "save")).toBe("function");
   });
 
@@ -91,8 +93,8 @@ describe("TypeScript reclassifier — interface member promotion", () => {
     expect(type_of(tokens, "field2")).toBe("property");
     expect(type_of(tokens, "find")).toBe("function");
     expect(type_of(tokens, "save")).toBe("function");
-    expect(type_of(tokens, "id")).toBe("identifier");
-    expect(type_of(tokens, "user")).toBe("identifier");
+    expect(type_of(tokens, "id")).toBe("parameter");
+    expect(type_of(tokens, "user")).toBe("parameter");
   });
 
   it("computed key inside interface stays as identifier", () => {
@@ -398,8 +400,8 @@ describe("TypeScript reclassifier — generic parameter constraints", () => {
     const tokens = enrich(src);
     expect(type_of(tokens, "add")).toBe("function");
     expect(type_of(tokens, "lookup")).toBe("function");
-    // method param identifiers stay as identifier.
-    expect(type_of(tokens, "item")).toBe("identifier");
+    // class method params are tagged `parameter` by promote_js_parameters.
+    expect(type_of(tokens, "item")).toBe("parameter");
   });
 
   it("interface with generic constraint — body members still property", () => {
@@ -407,10 +409,10 @@ describe("TypeScript reclassifier — generic parameter constraints", () => {
     // inside the generic constraint
     const id_types = tokens.filter((t) => t.value === "id").map((t) => t.type);
     // first `id` is the constraint's type-literal key (property);
-    // second `id` is the method parameter name inside `(id: number)`
-    // (identifier, paren scope).
+    // second `id` is the interface method parameter name (parameter,
+    // tagged by promote_js_parameters).
     expect(id_types).toContain("property");
-    expect(id_types).toContain("identifier");
+    expect(id_types).toContain("parameter");
     // interface body member
     expect(type_of(tokens, "x")).toBe("property");
     expect(type_of(tokens, "find")).toBe("function");
@@ -491,21 +493,19 @@ describe("TypeScript fidelity — decorator downgrade", () => {
     expect(decorator?.value).toBe("@Injectable");
   });
 
-  it("free-standing PascalCase promotes to class_name", () => {
+  it("free-standing PascalCase stays identifier", () => {
+    // class_name promotion is positional only (class/new/instanceof/
+    // extends/implements). A PascalCase reference in plain expression
+    // position gets no special treatment.
     const tokens = tokens_of("const x = Foo.bar;");
-    expect(tokens.find((t) => t.value === "Foo")?.type).toBe("class_name");
+    expect(tokens.find((t) => t.value === "Foo")?.type).toBe("identifier");
   });
 
-  it("type-annotation position still wins as `type` (not class_name)", () => {
-    // type_position_promoter runs before the pascal_case catch-all, so a
-    // PascalCase name inside `: MyType` stays as `type`, not class_name.
+  it("type-annotation position still wins as `type`", () => {
+    // type_position_promoter promotes any name in `: ...` annotation
+    // position to `type`, including PascalCase references.
     const tokens = tokens_of("let x: MyType = 1;");
     expect(tokens.find((t) => t.value === "MyType")?.type).toBe("type");
-  });
-
-  it("fidelity='low' leaves PascalCase as identifier", () => {
-    const tokens = tokens_of("const x = Foo.bar;", { fidelity: "low" });
-    expect(tokens.find((t) => t.value === "Foo")?.type).toBe("identifier");
   });
 
   it("`namespace X { ... }` promotes X to namespace", () => {

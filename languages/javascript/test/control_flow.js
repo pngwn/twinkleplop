@@ -150,7 +150,7 @@ export default [
 		"end": 191
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 192,
 		"end": 193
 	},
@@ -205,7 +205,7 @@ export default [
 		"end": 232
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 233,
 		"end": 234
 	},
@@ -215,7 +215,7 @@ export default [
 		"end": 236
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 237,
 		"end": 238
 	},
@@ -270,7 +270,7 @@ export default [
 		"end": 288
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 288,
 		"end": 289
 	},
@@ -305,7 +305,7 @@ export default [
 		"end": 326
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 326,
 		"end": 327
 	},
@@ -320,7 +320,7 @@ export default [
 		"end": 336
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 336,
 		"end": 337
 	},
@@ -350,7 +350,7 @@ export default [
 		"end": 382
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 382,
 		"end": 383
 	},
@@ -920,7 +920,7 @@ export default [
 		"end": 906
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 906,
 		"end": 907
 	},
@@ -940,7 +940,7 @@ export default [
 		"end": 926
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 926,
 		"end": 927
 	},
@@ -1150,7 +1150,7 @@ export default [
 		"end": 1092
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 1092,
 		"end": 1093
 	},
@@ -1235,7 +1235,7 @@ export default [
 		"end": 1131
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 1131,
 		"end": 1132
 	},

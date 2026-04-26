@@ -29,10 +29,10 @@ import {
   function_variable_rules,
   promote_boolean_literals,
   promote_call_site_functions,
+  promote_js_const_bindings,
   promote_js_constants,
   promote_js_namespaces,
   promote_js_parameters,
-  promote_js_pascal_case,
   scan_tagged_template,
 } from "@twinkleplop/javascript";
 
@@ -55,6 +55,135 @@ export const promote_builtin_types: Reclassifier = promote_by_text_set(
   "type",
   BUILTIN_TYPES,
 );
+
+// type-only declarations whose name positions aren't reached by
+// type_position_promoter:
+//
+//   type Foo = ...                       → Foo
+//   export type Foo = ...                → Foo
+//   declare type Foo = ...               → Foo
+//   import type Foo from "..."           → Foo
+//   import type { A, B as C } from "..." → A, C  (`as` is type-transparent)
+//   export type { A, B } [from "..."]    → A, B
+//
+// the alias-name (`Foo` in `type Foo = ...`) is handled here rather than
+// from inside type_position_promoter so the claim runs as a plain pass —
+// the alias state machine already advances on the name; this pass adds
+// the missing token rewrite so the name is tagged `type` rather than
+// being left as a plain identifier.
+//
+// `import type * as X from "..."` and `export type * as X from "..."`
+// are NOT touched here — the namespace promoter owns `* as X` shapes.
+export const promote_ts_type_only_bindings: Reclassifier = (input, result) => {
+  const { tokens, token_types } = result;
+  const identifier_id = token_types.indexOf("identifier");
+  const keyword_id = token_types.indexOf("keyword");
+  const punctuation_id = token_types.indexOf("punctuation");
+  const operator_id = token_types.indexOf("operator");
+  if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0) return result;
+  let type_id = token_types.indexOf("type");
+  if (type_id < 0) {
+    type_id = token_types.length;
+    token_types.push("type");
+  }
+  const view = make_token_view(input, tokens, token_types);
+  const n = view.count;
+
+  // walk a `{ A, B as C, ... }` binding list. tags every identifier
+  // inside as `type`. assumes tokens[start_idx] starts with `{`.
+  const tag_binding_list = (start_idx: number): void => {
+    let depth = 0;
+    const start_text = view.text_of(start_idx);
+    for (const ch of start_text) {
+      if (ch === "{") depth++;
+      else if (ch === "}") depth--;
+    }
+    if (depth <= 0) return;
+    let m = start_idx + 1;
+    while (m < n && depth > 0) {
+      if (view.is_trivia(m)) {
+        m++;
+        continue;
+      }
+      const mk = view.kind_of(m);
+      const mt = view.text_of(m);
+      if (mk === punctuation_id) {
+        for (const ch of mt) {
+          if (ch === "{") depth++;
+          else if (ch === "}") {
+            depth--;
+            if (depth === 0) break;
+          }
+        }
+      } else if (mk === identifier_id) {
+        tokens[m * 3] = type_id;
+      }
+      m++;
+    }
+  };
+
+  for (let i = 0; i < n; i++) {
+    if (view.is_trivia(i)) continue;
+    if (view.kind_of(i) !== keyword_id) continue;
+    const t = view.text_of(i);
+
+    // `type Foo = ...` — claim Foo. require statement-start so we don't
+    // grab a member named `type` inside an object literal etc.
+    if (t === "type") {
+      const prev = view.prev_non_trivia(i - 1);
+      let stmt_start = prev < 0;
+      if (!stmt_start && prev >= 0) {
+        const pk = view.kind_of(prev);
+        const pt = view.text_of(prev);
+        if (
+          pk === punctuation_id &&
+          pt.length > 0 &&
+          (pt[pt.length - 1] === ";" || pt[pt.length - 1] === "}")
+        ) {
+          stmt_start = true;
+        }
+        if (pk === keyword_id && (pt === "export" || pt === "declare")) {
+          stmt_start = true;
+        }
+      }
+      if (!stmt_start) continue;
+      const j = view.next_non_trivia(i + 1);
+      if (j >= 0 && view.kind_of(j) === identifier_id) {
+        tokens[j * 3] = type_id;
+      }
+      continue;
+    }
+
+    // `import type ...` / `export type ...`
+    if (t === "import" || t === "export") {
+      const j = view.next_non_trivia(i + 1);
+      if (
+        j < 0 ||
+        view.kind_of(j) !== keyword_id ||
+        view.text_of(j) !== "type"
+      ) {
+        continue;
+      }
+      const k = view.next_non_trivia(j + 1);
+      if (k < 0) continue;
+      const kk = view.kind_of(k);
+      const kt = view.text_of(k);
+      if (kk === operator_id && kt === "*") continue; // namespace shape
+      if (kk === punctuation_id && kt.length > 0 && kt[0] === "{") {
+        tag_binding_list(k);
+        continue;
+      }
+      // `import type Foo from "..."` — Foo is a default-import type.
+      if (kk === identifier_id && t === "import") {
+        tokens[k * 3] = type_id;
+      }
+      // `export type Foo = ...` falls through to the `type` branch on
+      // the next outer-loop iteration.
+      continue;
+    }
+  }
+  return result;
+};
 
 // ---------------------------------------------------------------------------
 // type_position_promoter
@@ -440,6 +569,7 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) =>
     const pk = kind_of(prev);
     if (pk !== identifier_id && pk !== type_id) return false;
     let depth = 1;
+    let brace_depth = 0;
     let j = open_idx + 1;
     let matched_close = -1;
     while (j < n) {
@@ -453,14 +583,30 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) =>
         if (tt === "<") {
           depth++;
         } else if (tt === ">") {
-          depth--;
-          if (depth === 0) {
-            matched_close = j;
-            break;
+          if (brace_depth === 0) {
+            depth--;
+            if (depth === 0) {
+              matched_close = j;
+              break;
+            }
           }
         }
       } else if (kk === punctuation_id) {
-        if (tt === ";" || tt === "{" || tt === "}") return false;
+        // object-type literal in a type-parameter constraint
+        // (`<T extends { id: number }>`) lives inside the angle group;
+        // track brace depth so the inner `{...}` doesn't false-reject.
+        // `;` outside braces still terminates — generics can't span
+        // statements — but `;` inside is a valid type-literal member
+        // separator.
+        for (const ch of tt) {
+          if (ch === "{") brace_depth++;
+          else if (ch === "}") {
+            if (brace_depth === 0) return false;
+            brace_depth--;
+          } else if (ch === ";" && brace_depth === 0) {
+            return false;
+          }
+        }
       }
       j++;
     }
@@ -470,23 +616,26 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) =>
     const ak = kind_of(after);
     const at = text_of(after);
     if (ak === punctuation_id) {
+      // punctuation tokens coalesce same-type adjacent chars (`{}`,
+      // `();`, `}))`), so the FIRST char tells us what comes next.
+      const c = at.length > 0 ? at[0] : "";
       return (
-        at === "(" ||
-        at === ")" ||
-        at === "{" ||
-        at === "}" ||
-        at === "[" ||
-        at === "]" ||
-        at === "," ||
-        at === ";" ||
-        at === "."
+        c === "(" ||
+        c === ")" ||
+        c === "{" ||
+        c === "}" ||
+        c === "[" ||
+        c === "]" ||
+        c === "," ||
+        c === ";" ||
+        c === "." ||
+        c === ":"
       );
     }
     if (ak === operator_id) {
       return (
         at === "=" ||
         at === "=>" ||
-        at === ":" ||
         at === "?:" ||
         at === "|" ||
         at === "&" ||
@@ -620,6 +769,27 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) =>
           exit_mode();
         }
       }
+      // `:` is now a punctuation token (separator, not operator). when
+      // out of mode it can introduce a type annotation. handles both the
+      // standalone form and coalesced shapes like `):` (return type),
+      // `]:` (mapped type marker after `]` close), `}:` (rare), etc.
+      if (mode === null && t.length > 0 && t[t.length - 1] === ":") {
+        if (cur_scope().qmark > 0) {
+          cur_scope().qmark--;
+        } else {
+          let kind: TypeModeKind | null = null;
+          // coalesced `):` — `:` immediately follows the `)` close.
+          // classify_colon's prev_nt lookup wouldn't see the `)` here
+          // since it's WITHIN this same token, so detect that case
+          // explicitly.
+          if (t.length >= 2 && t[t.length - 2] === ")") {
+            kind = "return";
+          } else {
+            kind = classify_colon(i);
+          }
+          if (kind) enter_mode(kind);
+        }
+      }
       continue;
     }
 
@@ -707,9 +877,16 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) =>
         let skip = false;
         if (paren_depth > m.entry_paren || brace_depth > m.entry_brace) {
           const nxt = next_nt(i + 1);
-          if (nxt >= 0 && kind_of(nxt) === operator_id) {
+          if (nxt >= 0) {
+            const nk = kind_of(nxt);
             const nt = text_of(nxt);
-            if (nt === ":" || nt === "?:") skip = true;
+            // `:` is now punctuation; `?:` is still an operator token.
+            if (
+              (nk === punctuation_id && nt === ":") ||
+              (nk === operator_id && nt === "?:")
+            ) {
+              skip = true;
+            }
           }
         }
         if (!skip) {
@@ -723,12 +900,10 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) =>
     // OUT OF MODE: scan for entry triggers and maintain statement state
     // ------------------------------------------------------------------
 
-    // `:` or `?:` — possible type annotation, after ternary consumption.
-    if (k === operator_id && (t === ":" || t === "?:")) {
-      if (t === ":" && cur_scope().qmark > 0) {
-        cur_scope().qmark--;
-        continue;
-      }
+    // `?:` operator — TS optional-member marker, possibly introducing a
+    // type annotation. (the bare `:` punctuation form is handled in the
+    // punctuation block above.)
+    if (k === operator_id && t === "?:") {
       const kind = classify_colon(i);
       if (kind) {
         // step 6 change: no identifier claim is emitted on the anchor
@@ -812,6 +987,249 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) =>
 export const type_position_promoter: ClaimingReclassifier =
   as_claim_producer(type_position_promoter_fn);
 
+// promote_ts_generic_calls
+// ---------------------------------------------------------------------------
+//
+// the grammar's identifier_probe routes `ident(` to `function_name` and emits
+// `function` directly. when generic type arguments intervene — `ident<T>(` —
+// the probe exits to plain identifier on the `<` and never reaches the call
+// detector. this pass restores the missing classification by scanning for
+// `identifier` tokens followed by a balanced `<...>` group whose immediate
+// next token is `(`. covers both call sites (`identity<string>("hello")`)
+// and declarations (`function identity<T>(arg)`).
+//
+// disambiguation against `a < b > c` (comparison): we require a clean
+// balance and a trailing `(`, and bail on `;`, `{`, `}` inside.
+export const promote_ts_generic_calls: Reclassifier = (input, result) => {
+  const { tokens, token_types } = result;
+  const identifier_id = token_types.indexOf("identifier");
+  const operator_id = token_types.indexOf("operator");
+  const punctuation_id = token_types.indexOf("punctuation");
+  if (identifier_id < 0 || operator_id < 0 || punctuation_id < 0) return result;
+  let function_id = token_types.indexOf("function");
+  if (function_id < 0) {
+    function_id = token_types.length;
+    token_types.push("function");
+  }
+  const view = make_token_view(input, tokens, token_types);
+  const n = view.count;
+
+  for (let i = 0; i < n; i++) {
+    if (view.is_trivia(i)) continue;
+    if (view.kind_of(i) !== identifier_id) continue;
+    const lt = view.next_non_trivia(i + 1);
+    if (lt < 0) continue;
+    if (view.kind_of(lt) !== operator_id || view.text_of(lt) !== "<") continue;
+
+    let depth = 1;
+    let brace_depth = 0;
+    let j = lt + 1;
+    let matched_close = -1;
+    let bail = false;
+    while (j < n) {
+      if (view.is_trivia(j)) {
+        j++;
+        continue;
+      }
+      const kk = view.kind_of(j);
+      const tt = view.text_of(j);
+      if (kk === operator_id) {
+        if (tt === "<") {
+          depth++;
+        } else if (tt === ">") {
+          if (brace_depth === 0) {
+            depth--;
+            if (depth === 0) {
+              matched_close = j;
+              break;
+            }
+          }
+        }
+      } else if (kk === punctuation_id) {
+        for (const ch of tt) {
+          if (ch === "{") brace_depth++;
+          else if (ch === "}") {
+            if (brace_depth === 0) {
+              bail = true;
+              break;
+            }
+            brace_depth--;
+          } else if (ch === ";" && brace_depth === 0) {
+            bail = true;
+            break;
+          }
+        }
+        if (bail) break;
+      }
+      j++;
+    }
+    if (matched_close < 0) continue;
+    const after = view.next_non_trivia(matched_close + 1);
+    if (after < 0) continue;
+    if (
+      view.kind_of(after) !== punctuation_id ||
+      !view.text_of(after).startsWith("(")
+    ) {
+      continue;
+    }
+    tokens[i * 3] = function_id;
+  }
+  return result;
+};
+
+// retag_generic_angles
+// ---------------------------------------------------------------------------
+//
+// the grammar emits `<` and `>` as operators because their role can't be
+// decided lexically — `a < b` is comparison, `Foo<T>` is a type argument
+// list. by the time the rest of the pipeline has finished, the surrounding
+// context lets us identify the angle pairs that actually delimit type
+// arguments and promote them from `operator` to `punctuation`. handles
+// coalesced closes `>>` / `>>>` (which the tokenizer emits as a single
+// operator under maximal munch) by treating each char as one close — every
+// such token is retagged as a unit.
+//
+// runs LAST so passes that depend on `<` / `>` being operators (TPP,
+// promote_ts_generic_calls, class_name_promoter's skip_angles, the
+// parameter walker's generic skip) see the original tokens.
+export const retag_generic_angles: Reclassifier = (input, result) => {
+  const { tokens, token_types } = result;
+  const operator_id = token_types.indexOf("operator");
+  const punctuation_id = token_types.indexOf("punctuation");
+  if (operator_id < 0 || punctuation_id < 0) return result;
+  const identifier_id = token_types.indexOf("identifier");
+  const type_id = token_types.indexOf("type");
+  const class_name_id = token_types.indexOf("class_name");
+  const function_id = token_types.indexOf("function");
+  const keyword_id = token_types.indexOf("keyword");
+  const view = make_token_view(input, tokens, token_types);
+  const n = view.count;
+
+  const is_name_kind = (k: number): boolean =>
+    k === identifier_id ||
+    k === type_id ||
+    k === class_name_id ||
+    k === function_id;
+
+  const after_acceptable = (after: number): boolean => {
+    if (after < 0) return true;
+    const k = view.kind_of(after);
+    const t = view.text_of(after);
+    if (k === punctuation_id) {
+      const c = t.length > 0 ? t[0] : "";
+      return (
+        c === "(" ||
+        c === ")" ||
+        c === "{" ||
+        c === "}" ||
+        c === "[" ||
+        c === "]" ||
+        c === "," ||
+        c === ";" ||
+        c === "." ||
+        c === ":"
+      );
+    }
+    if (k === operator_id) {
+      return (
+        t === "=" ||
+        t === "=>" ||
+        t === "?:" ||
+        t === "|" ||
+        t === "&" ||
+        t === ">" ||
+        t === ">>" ||
+        t === ">>>" ||
+        t === "?" ||
+        t === "!"
+      );
+    }
+    if (k === keyword_id) {
+      return t === "extends" || t === "implements";
+    }
+    return false;
+  };
+
+  let i = 0;
+  while (i < n) {
+    if (view.is_trivia(i)) {
+      i++;
+      continue;
+    }
+    if (view.kind_of(i) !== operator_id || view.text_of(i) !== "<") {
+      i++;
+      continue;
+    }
+    const prev = view.prev_non_trivia(i - 1);
+    if (prev < 0 || !is_name_kind(view.kind_of(prev))) {
+      i++;
+      continue;
+    }
+
+    let depth = 1;
+    let brace_depth = 0;
+    let j = i + 1;
+    let close_idx = -1;
+    const angles: number[] = [i];
+    let bail = false;
+    while (j < n) {
+      if (view.is_trivia(j)) {
+        j++;
+        continue;
+      }
+      const k = view.kind_of(j);
+      const t = view.text_of(j);
+      if (k === operator_id) {
+        if (t === "<") {
+          depth++;
+          angles.push(j);
+        } else if (
+          brace_depth === 0 &&
+          (t === ">" || t === ">>" || t === ">>>")
+        ) {
+          depth -= t.length;
+          angles.push(j);
+          if (depth <= 0) {
+            close_idx = j;
+            break;
+          }
+        }
+      } else if (k === punctuation_id) {
+        for (const ch of t) {
+          if (ch === "{") brace_depth++;
+          else if (ch === "}") {
+            if (brace_depth === 0) {
+              bail = true;
+              break;
+            }
+            brace_depth--;
+          } else if (ch === ";" && brace_depth === 0) {
+            bail = true;
+            break;
+          }
+        }
+        if (bail) break;
+      }
+      j++;
+    }
+    if (bail || close_idx < 0) {
+      i++;
+      continue;
+    }
+    const after = view.next_non_trivia(close_idx + 1);
+    if (!after_acceptable(after)) {
+      i++;
+      continue;
+    }
+    for (const idx of angles) {
+      tokens[idx * 3] = punctuation_id;
+    }
+    i = close_idx + 1;
+  }
+
+  return result;
+};
+
 export const reclassifiers: LanguagePipeline = [
   // constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
   // so subsequent passes see the promoted stream (same ordering as JS).
@@ -835,8 +1253,26 @@ export const reclassifiers: LanguagePipeline = [
   // so it has the final say on positions it specifically owns
   // (class/interface heads, `new`, `instanceof`).
   tag(rewrite_types(function_variable_rules, { trivia: ["comment"] }), ["function"]),
+  // const-binding promotion runs after function_variable_rules so a
+  // function-valued const stays `function`. only rewrites identifiers,
+  // so namespaces / builtin-types / function-vars are untouched.
+  tag(promote_js_const_bindings, ["constant"]),
   tag(claim_property_scope, ["property"]),
   tag(type_position_promoter, ["type"]),
+  // `type Foo = ...`, `import type ...`, `export type ...` — binding-name
+  // positions that type_position_promoter doesn't claim. runs before
+  // class_name_promoter so the names are tagged `type` rather than
+  // falling through to `class_name`.
+  tag(promote_ts_type_only_bindings, ["type"]),
+  // call sites and declarations with explicit type arguments — `f<T>(...)`,
+  // `function f<T>(...)`, `Foo<U>(...)`. the grammar's identifier probe
+  // can't peek past `<...>` to spot the trailing `(`, so without this pass
+  // the leading identifier stays `identifier` instead of `function`. runs
+  // AFTER type_position_promoter so TPP's `looks_like_generic_args` still
+  // sees the leading token as `identifier` and tags type args correctly,
+  // and BEFORE class_name_promoter so PascalCase generic calls
+  // (`Foo<T>()`) reach `function` rather than `class_name`.
+  tag(promote_ts_generic_calls, ["function"]),
   // class_name_promoter retained for TS only — handles extends/implements
   // comma lists (interface J extends K, L; class C implements Foo, Bar)
   // and type-vs-class-name disambiguation inside generic constraints
@@ -844,14 +1280,12 @@ export const reclassifiers: LanguagePipeline = [
   // single-name and dotted-chain cases; this pass extends to lists and
   // demotes grammar-emitted class_name that should be type in TS context.
   tag(class_name_promoter, ["class_name"]),
-  // parameter promotion runs before pascal_case so `function f<T>(x: T)`
-  // style params are `parameter`, not class_name.
   tag(promote_js_parameters, ["parameter"]),
-  // free-standing PascalCase → class_name, as a final catch-all for names
-  // that neither type_position_promoter (caught as `type`) nor
-  // class_name_promoter (positional) reached. runs LAST among the
-  // identifier-level rewriters so type annotations stay as `type` and
-  // positional cases stay as whatever the specific promoters claimed.
-  tag(promote_js_pascal_case, ["class_name"]),
+  // last identifier-level pass: retag `<` / `>` that delimit type-argument
+  // lists from `operator` to `punctuation`. all preceding passes that walk
+  // angle groups (TPP, generic_calls, class_name_promoter, parameter
+  // walker) need the original operator tokens, so this MUST stay at the
+  // tail of the identifier rewriters.
+  always(retag_generic_angles, "shape"),
   always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
 ];

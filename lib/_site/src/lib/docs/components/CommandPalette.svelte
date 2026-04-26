@@ -1,9 +1,10 @@
 <script lang="ts">
-	import Keycap from "./Keycap.svelte";
-	import { FLAT } from "../nav";
-	import { chrome, close_palette, set_tweak } from "../chrome.svelte";
+	import Keycap from './Keycap.svelte';
+	import { FLAT } from '../nav';
+	import { chrome, close_palette, set_tweak } from '../chrome.svelte';
+	import { set_mode } from '$lib/theme_mode.svelte';
 
-	let query = $state("");
+	let query = $state('');
 	let input_el: HTMLInputElement | undefined = $state();
 	let active_index = $state(0);
 
@@ -18,47 +19,40 @@
 
 	const COMMANDS: palette_cmd[] = [
 		{
-			id: "cmd:theme:default",
-			title: "Switch theme → default (black)",
-			crumb: "cmd / theme",
-			icon: "⎈",
-			action: () => set_tweak("theme", "default"),
+			id: 'cmd:mode:system',
+			title: 'Switch mode → system',
+			crumb: 'cmd / mode',
+			icon: '⎈',
+			action: () => set_mode('system')
 		},
 		{
-			id: "cmd:theme:phosphor",
-			title: "Switch theme → phosphor (green CRT)",
-			crumb: "cmd / theme",
-			icon: "⎈",
-			action: () => set_tweak("theme", "phosphor"),
+			id: 'cmd:mode:light',
+			title: 'Switch mode → light',
+			crumb: 'cmd / mode',
+			icon: '⎈',
+			action: () => set_mode('light')
 		},
 		{
-			id: "cmd:theme:plasma",
-			title: "Switch theme → plasma (purple)",
-			crumb: "cmd / theme",
-			icon: "⎈",
-			action: () => set_tweak("theme", "plasma"),
+			id: 'cmd:mode:dark',
+			title: 'Switch mode → dark',
+			crumb: 'cmd / mode',
+			icon: '⎈',
+			action: () => set_mode('dark')
 		},
 		{
-			id: "cmd:theme:paper",
-			title: "Switch theme → paper (light)",
-			crumb: "cmd / theme",
-			icon: "⎈",
-			action: () => set_tweak("theme", "paper"),
+			id: 'cmd:crt:toggle',
+			title: 'Toggle CRT scanlines',
+			crumb: 'cmd / crt',
+			icon: '⎈',
+			action: () => set_tweak('crt', chrome.tweaks.crt === 'on' ? 'off' : 'on')
 		},
 		{
-			id: "cmd:crt:toggle",
-			title: "Toggle CRT scanlines",
-			crumb: "cmd / crt",
-			icon: "⎈",
-			action: () => set_tweak("crt", chrome.tweaks.crt === "on" ? "off" : "on"),
-		},
-		{
-			id: "cmd:lab",
-			title: "Open lab (playground)",
-			crumb: "cmd / open",
-			icon: "↗",
-			href: "/explore",
-		},
+			id: 'cmd:lab',
+			title: 'Open lab (playground)',
+			crumb: 'cmd / open',
+			icon: '↗',
+			href: '/explore'
+		}
 	];
 
 	function score_match(text: string, crumb: string, q: string): number {
@@ -77,13 +71,13 @@
 	}
 
 	function escape_html(s: string): string {
-		return s.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[m] ?? m);
+		return s.replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m] ?? m);
 	}
 
 	function highlight_match(s: string, q: string): string {
 		if (!q) return escape_html(s);
-		const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "ig");
-		return escape_html(s).replace(re, "<span class=\"accent\">$1</span>");
+		const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig');
+		return escape_html(s).replace(re, '<span class="accent">$1</span>');
 	}
 
 	const query_lower = $derived(query.trim().toLowerCase());
@@ -112,7 +106,7 @@
 
 	$effect(() => {
 		if (chrome.palette_open && input_el) {
-			query = "";
+			query = '';
 			setTimeout(() => input_el?.focus(), 10);
 		}
 	});
@@ -121,17 +115,17 @@
 		const rows = [...pages, ...cmds];
 		const row = rows[active_index];
 		if (!row) return;
-		if ("path" in row && row.path) {
+		if ('path' in row && row.path) {
 			close_palette();
 			window.location.href = row.path;
 			return;
 		}
-		if ("action" in row && row.action) {
+		if ('action' in row && row.action) {
 			row.action();
 			close_palette();
 			return;
 		}
-		if ("href" in row && row.href) {
+		if ('href' in row && row.href) {
 			close_palette();
 			window.location.href = row.href;
 		}
@@ -139,26 +133,26 @@
 
 	export function handle_keydown(e: KeyboardEvent) {
 		if (!chrome.palette_open) return;
-		if (e.key === "Escape") {
+		if (e.key === 'Escape') {
 			close_palette();
 			e.preventDefault();
 		}
-		if (e.key === "ArrowDown") {
+		if (e.key === 'ArrowDown') {
 			active_index = (active_index + 1) % Math.max(1, total_rows);
 			e.preventDefault();
 		}
-		if (e.key === "ArrowUp") {
+		if (e.key === 'ArrowUp') {
 			active_index = (active_index - 1 + total_rows) % Math.max(1, total_rows);
 			e.preventDefault();
 		}
-		if (e.key === "Enter") {
+		if (e.key === 'Enter') {
 			activate_row();
 			e.preventDefault();
 		}
 	}
 
 	function backdrop_click(e: MouseEvent) {
-		if ((e.target as HTMLElement).classList.contains("backdrop")) close_palette();
+		if ((e.target as HTMLElement).classList.contains('backdrop')) close_palette();
 	}
 </script>
 
