@@ -493,21 +493,19 @@ describe("TypeScript fidelity — decorator downgrade", () => {
     expect(decorator?.value).toBe("@Injectable");
   });
 
-  it("free-standing PascalCase promotes to class_name", () => {
+  it("free-standing PascalCase stays identifier", () => {
+    // class_name promotion is positional only (class/new/instanceof/
+    // extends/implements). A PascalCase reference in plain expression
+    // position gets no special treatment.
     const tokens = tokens_of("const x = Foo.bar;");
-    expect(tokens.find((t) => t.value === "Foo")?.type).toBe("class_name");
+    expect(tokens.find((t) => t.value === "Foo")?.type).toBe("identifier");
   });
 
-  it("type-annotation position still wins as `type` (not class_name)", () => {
-    // type_position_promoter runs before the pascal_case catch-all, so a
-    // PascalCase name inside `: MyType` stays as `type`, not class_name.
+  it("type-annotation position still wins as `type`", () => {
+    // type_position_promoter promotes any name in `: ...` annotation
+    // position to `type`, including PascalCase references.
     const tokens = tokens_of("let x: MyType = 1;");
     expect(tokens.find((t) => t.value === "MyType")?.type).toBe("type");
-  });
-
-  it("fidelity='low' leaves PascalCase as identifier", () => {
-    const tokens = tokens_of("const x = Foo.bar;", { fidelity: "low" });
-    expect(tokens.find((t) => t.value === "Foo")?.type).toBe("identifier");
   });
 
   it("`namespace X { ... }` promotes X to namespace", () => {

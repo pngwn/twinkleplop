@@ -11,7 +11,6 @@ import {
   promote_js_constants,
   promote_js_namespaces,
   promote_js_parameters,
-  promote_js_pascal_case,
   reclassifiers,
   scan_tagged_template,
 } from "./reclassifiers.js";
@@ -47,7 +46,6 @@ export {
   promote_js_constants,
   promote_js_namespaces,
   promote_js_parameters,
-  promote_js_pascal_case,
   scan_tagged_template,
 };
 

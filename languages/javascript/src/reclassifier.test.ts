@@ -189,12 +189,12 @@ describe("JavaScript reclassifier — class_name promoter", () => {
     expect(type_of(tokens, "Bar")).toBe("class_name");
   });
 
-  it("plain PascalCase identifier in value position promotes to class_name", () => {
+  it("plain PascalCase identifier in value position stays identifier", () => {
+    // free-standing PascalCase no longer auto-promotes to class_name —
+    // class_name only fires from positional cues (class/new/instanceof/
+    // extends/implements).
     const tokens = enrich("const x = Foo + 1;");
-    // the promote_js_pascal_case catch-all runs after class_name_promoter
-    // and picks up free-standing PascalCase references class/new/
-    // instanceof/extends positions don't cover.
-    expect(type_of(tokens, "Foo")).toBe("class_name");
+    expect(type_of(tokens, "Foo")).toBe("identifier");
   });
 
   it("camelCase identifier in value position stays identifier", () => {
@@ -345,11 +345,12 @@ describe("JavaScript reclassifier — interpolated tagged templates", () => {
     // Opening and closing HTML `<` and `>` boundary tokens preserved.
     expect(tokens.some((t) => t.type === "punctuation" && t.value === "<")).toBe(true);
     expect(tokens.some((t) => t.type === "punctuation" && t.value === "</")).toBe(true);
-    // Interpolations passed through as JS. PascalCase `Tag` is promoted
-    // to class_name by the JS pipeline, not left as identifier.
+    // Interpolations passed through as JS. `Tag` stays as identifier —
+    // no positional cue (no class/new/instanceof) places it in a class
+    // position, and the convention-based PascalCase promoter is gone.
     const tag_tokens = tokens.filter((t) => t.value === "Tag");
     expect(tag_tokens).toHaveLength(2);
-    expect(tag_tokens.every((t) => t.type === "class_name")).toBe(true);
+    expect(tag_tokens.every((t) => t.type === "identifier")).toBe(true);
   });
 
   it("multiple interpolations: html`<p>${a}<br>${b}</p>`", () => {
@@ -566,7 +567,10 @@ describe("JavaScript reclassifier — constant promotion", () => {
   });
 });
 
-describe("JavaScript reclassifier — pascal_case catch-all", () => {
+describe("JavaScript reclassifier — free-standing PascalCase stays identifier", () => {
+  // class_name promotion is positional only (class/new/instanceof/
+  // extends/implements). free-standing PascalCase references in value
+  // position get no special treatment — they stay as `identifier`.
   function tokens_of(input, options) {
     const result = make_language(options)(input);
     const out = [];
@@ -580,12 +584,12 @@ describe("JavaScript reclassifier — pascal_case catch-all", () => {
   }
   const pick = (tokens, value) => tokens.find((t) => t.value === value)?.type;
 
-  it("free-standing PascalCase promotes to class_name", () => {
+  it("free-standing PascalCase stays identifier", () => {
     const tokens = tokens_of("const x = Foo.bar;");
-    expect(pick(tokens, "Foo")).toBe("class_name");
+    expect(pick(tokens, "Foo")).toBe("identifier");
   });
 
-  it("positional claims still win (`new Foo()` → class_name already)", () => {
+  it("positional `new Foo()` still becomes class_name", () => {
     const tokens = tokens_of("new Widget();");
     expect(pick(tokens, "Widget")).toBe("class_name");
   });
@@ -595,9 +599,7 @@ describe("JavaScript reclassifier — pascal_case catch-all", () => {
     expect(pick(tokens, "fooBar")).toBe("identifier");
   });
 
-  it("call-site PascalCase stays as function (grammar bakes it)", () => {
-    // Foo() is already `function` from the identifier_probe. pascal_case
-    // runs on `identifier` only, so the function classification survives.
+  it("call-site PascalCase is `function` (grammar identifier_probe)", () => {
     const tokens = tokens_of("const x = Foo();");
     expect(pick(tokens, "Foo")).toBe("function");
   });
@@ -605,25 +607,6 @@ describe("JavaScript reclassifier — pascal_case catch-all", () => {
   it("UPPER_SNAKE does not collide (constant wins)", () => {
     const tokens = tokens_of("const MAX_X = 1;");
     expect(pick(tokens, "MAX_X")).toBe("constant");
-  });
-
-  it("fidelity='low' leaves PascalCase as identifier", () => {
-    const tokens = tokens_of("const x = Foo.bar;", { fidelity: "low" });
-    expect(pick(tokens, "Foo")).toBe("identifier");
-  });
-
-  it("fidelity allowlist excluding 'class_name' leaves as identifier", () => {
-    const tokens = tokens_of("const x = Foo.bar;", {
-      fidelity: ["function"],
-    });
-    expect(pick(tokens, "Foo")).toBe("identifier");
-  });
-
-  it("fidelity allowlist including 'class_name' promotes", () => {
-    const tokens = tokens_of("const x = Foo.bar;", {
-      fidelity: ["class_name"],
-    });
-    expect(pick(tokens, "Foo")).toBe("class_name");
   });
 });
 
@@ -646,11 +629,12 @@ describe("JavaScript reclassifier — namespace promotion", () => {
     expect(pick(tokens, "React")).toBe("namespace");
   });
 
-  it("default import stays as class_name (PascalCase) — not namespace", () => {
-    // No `* as` pattern, so namespace promoter doesn't fire. PascalCase
-    // catches it as class_name since it's a PascalCase identifier.
+  it("default import stays as identifier — not namespace", () => {
+    // No `* as` pattern, so namespace promoter doesn't fire. without
+    // a positional cue (no `new`, `extends`, etc.) the binding stays
+    // as a plain identifier.
     const tokens = tokens_of('import React from "react";');
-    expect(pick(tokens, "React")).toBe("class_name");
+    expect(pick(tokens, "React")).toBe("identifier");
   });
 
   it("named imports `{ X }` stay as identifier (the binding is a value)", () => {

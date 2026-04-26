@@ -26,7 +26,6 @@ import {
   promote_by_text_set,
   promote_by_upper_snake_case,
   promote_function_calls,
-  promote_pascal_case,
   rewrite_types,
   seq,
   tag,
@@ -887,8 +886,8 @@ export const promote_call_site_functions: Reclassifier = promote_function_calls(
 
 // UPPER_SNAKE_CASE identifiers read as convention-declared constants in JS
 // (e.g. `MAX_SIZE`, `PI`, `HTTP_STATUS`). purely text-predicated so it's
-// safe everywhere — pascal_case / function / property passes already work
-// on the `identifier` stream they observe post-promotion.
+// safe everywhere — function / property passes already work on the
+// `identifier` stream they observe post-promotion.
 export const promote_js_constants: Reclassifier = promote_by_upper_snake_case(
   "identifier",
   "constant",
@@ -1081,94 +1080,6 @@ export const promote_js_const_bindings: Reclassifier = (input, result) => {
   }
 
   return { tokens, token_types };
-};
-
-// PascalCase identifiers (Foo, MyWidget, Promise) read as type-like names by
-// convention. class_name_promoter already catches positional cases (class
-// head, `new`, `instanceof`, `extends`); this pass picks up the free-
-// standing references class_name_promoter doesn't (`Foo.bar`, `const x =
-// Foo`, `y instanceof Promise.__proto__` etc.). placed AFTER
-// class_name_promoter in the pipeline so the positional classifier has
-// already claimed its targets — a no-op for those identifiers, a new
-// promotion for remaining plain PascalCase names.
-//
-// exclusions to avoid the most common false positives:
-//   - prev `.` / `?.` — property access (`this.props.MyValue`, `o.Foo`)
-//   - prev `let` / `var` — local-binding declarations are values, not types
-//     (the const-binding pass handles `const` separately as `constant`)
-//   - prev `function` keyword — function-name position
-//   - prev `class` / `interface` keyword — handled positionally by
-//     class_name_promoter, this guard prevents double-promotion churn
-const PASCAL_CASE_SKIP_PUNCT = new Set([".", "?."]);
-const PASCAL_CASE_SKIP_KEYWORDS = new Set(["let", "var", "function", "class", "interface"]);
-
-export const promote_js_pascal_case: Reclassifier = (input, result) => {
-  const { tokens, token_types } = result;
-  const identifier_id = token_types.indexOf("identifier");
-  if (identifier_id < 0) return result;
-  const keyword_id = token_types.indexOf("keyword");
-  const punctuation_id = token_types.indexOf("punctuation");
-  const operator_id = token_types.indexOf("operator");
-  let class_name_id = token_types.indexOf("class_name");
-  if (class_name_id < 0) {
-    class_name_id = token_types.length;
-    token_types.push("class_name");
-  }
-  const view = make_token_view(input, tokens, token_types);
-  const n = view.count;
-
-  // collect every name already tagged as `parameter` so body references
-  // don't get re-tagged as class_name (`function f(MyArg) { return MyArg; }`
-  // — the second MyArg is a value reference, not a type). this is a
-  // text-only match; nested scopes with shadowing still get the
-  // exclusion, which is correct because either binding reads as a value
-  // anyway. likewise for `constant` so `const Foo = ...; Foo.bar` doesn't
-  // re-promote the body reference back to class_name.
-  const value_names = new Set<string>();
-  const parameter_id = token_types.indexOf("parameter");
-  const constant_id = token_types.indexOf("constant");
-  if (parameter_id >= 0 || constant_id >= 0) {
-    for (let i = 0; i < n; i++) {
-      const k = view.kind_of(i);
-      if (k === parameter_id || k === constant_id) {
-        value_names.add(view.text_of(i));
-      }
-    }
-  }
-
-  for (let i = 0; i < n; i++) {
-    if (view.kind_of(i) !== identifier_id) continue;
-    const text = view.text_of(i);
-    const first = text.charCodeAt(0);
-    if (first < 0x41 || first > 0x5a) continue; // not A-Z
-    // reject UPPER_SNAKE (no lowercase chars). single-char names skip
-    // this rule — `T`, `K`, `V` generic-style names are still PascalCase.
-    if (text.length > 1) {
-      let has_lower = false;
-      for (let k = 0; k < text.length; k++) {
-        const c = text.charCodeAt(k);
-        if (c >= 0x61 && c <= 0x7a) {
-          has_lower = true;
-          break;
-        }
-      }
-      if (!has_lower) continue;
-    }
-
-    if (value_names.has(text)) continue;
-
-    const prev = view.prev_non_trivia(i - 1);
-    if (prev >= 0) {
-      const pk = view.kind_of(prev);
-      const pt = view.text_of(prev);
-      if (pk === punctuation_id && PASCAL_CASE_SKIP_PUNCT.has(pt)) continue;
-      if (pk === operator_id && PASCAL_CASE_SKIP_PUNCT.has(pt)) continue;
-      if (pk === keyword_id && PASCAL_CASE_SKIP_KEYWORDS.has(pt)) continue;
-    }
-
-    tokens[i * 3] = class_name_id;
-  }
-  return result;
 };
 
 // parameter promotion: tag identifiers in parameter position as `parameter`.
@@ -1771,16 +1682,8 @@ export const reclassifiers: LanguagePipeline = [
   // claim at all, so no post-hoc fixup is needed.
   tag(claim_property_scope, ["property"]),
   tag(class_name_promoter, ["class_name"]),
-  // parameter promotion runs before pascal_case so PascalCase parameter
-  // names (rare in JS, but legal) end up tagged as parameter, not class.
   tag(promote_js_parameters, ["parameter"]),
-  // namespace promotion (import * as X, TS `namespace X { ... }`) runs
-  // before pascal_case so `X` is tagged namespace, not class_name, when
-  // both predicates match.
+  // namespace promotion (import * as X, TS `namespace X { ... }`).
   tag(promote_js_namespaces, ["namespace"]),
-  // free-standing PascalCase → class_name. runs after class_name_promoter so
-  // its positional claims stay authoritative on overlapping positions;
-  // this pass only touches identifiers nothing else has promoted.
-  // tag(promote_js_pascal_case, ["class_name"]),
   always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
 ];
