@@ -6,7 +6,7 @@
 // and a set of negatives that must NOT be rewritten.
 
 import { describe, it, expect } from "vitest";
-import { language as make_language } from "./index.js";
+import { tokenize as make_language } from "./index.js";
 
 const language = make_language();
 

@@ -7,7 +7,7 @@
 // base grammar stream.
 
 import { describe, expect, it } from "vitest";
-import { language as make_language } from "./index.js";
+import { tokenize as make_language } from "./index.js";
 
 function tokens_of(input: string, options?: Parameters<typeof make_language>[0]) {
   const result = make_language(options)(input);

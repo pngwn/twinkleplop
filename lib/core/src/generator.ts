@@ -1,4 +1,4 @@
-import { TokenizeResult } from "./types";
+import { RenderOptions, TokenizeResult } from "./types";
 
 const ESCAPE_TABLE = new Array(128);
 for (let i = 0; i < 128; i++) {
@@ -13,7 +13,7 @@ ESCAPE_TABLE[39] = "&#39;";
 export function to_html(
   input: string,
   token_result: TokenizeResult,
-  options: { class_name?: string; line_numbers?: boolean } = {},
+  options: RenderOptions = {},
 ) {
   const { tokens, token_types } = token_result;
   const { class_name = "twinkleplop", line_numbers = false } = options;

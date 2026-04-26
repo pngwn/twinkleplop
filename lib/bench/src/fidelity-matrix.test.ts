@@ -18,14 +18,14 @@
 import { describe, expect, it } from "vitest";
 import type { FidelitySpec, LanguageFactory } from "@twinkleplop/core";
 
-import { language as bash } from "@twinkleplop/bash";
-import { language as go } from "@twinkleplop/go";
-import { language as javascript } from "@twinkleplop/javascript";
-import { language as python } from "@twinkleplop/python";
-import { language as rust } from "@twinkleplop/rust";
-import { language as sql } from "@twinkleplop/sql";
-import { language as tsx } from "@twinkleplop/tsx";
-import { language as typescript } from "@twinkleplop/typescript";
+import { tokenize as bash } from "@twinkleplop/bash";
+import { tokenize as go } from "@twinkleplop/go";
+import { tokenize as javascript } from "@twinkleplop/javascript";
+import { tokenize as python } from "@twinkleplop/python";
+import { tokenize as rust } from "@twinkleplop/rust";
+import { tokenize as sql } from "@twinkleplop/sql";
+import { tokenize as tsx } from "@twinkleplop/tsx";
+import { tokenize as typescript } from "@twinkleplop/typescript";
 
 type Mechanism = "upgrade" | "downgrade";
 

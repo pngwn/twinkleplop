@@ -2023,19 +2023,24 @@ function select_pipeline(
 }
 
 /**
- * bundle a compiled grammar with its reclassifier pipeline into a language
- * factory. every language package exports one:
+ * bundle a compiled grammar with its reclassifier pipeline into a tokenize
+ * factory. every language package wraps one and re-exports it as `tokenize`
+ * (raw tokens) alongside a `language` HTML wrapper:
  *
  * ```
  * // in @twinkleplop/javascript
- * export const language = create_language(grammar, reclassifiers);
+ * export const tokenize = create_language(grammar, reclassifiers);
+ * export function language(opts) {
+ *   const t = tokenize(opts);
+ *   return (src, render) => to_html(src, t(src), render);
+ * }
  *
- * // in consumer code
- * import { language as js } from "@twinkleplop/javascript";
- * const highlight = js();                                // full fidelity
- * const bare      = js({ fidelity: "low" });             // no reclassifiers
- * const partial   = js({ fidelity: ["function", "type"] });
- * const tokens    = highlight(source);
+ * // in consumer code that wants raw tokens
+ * import { tokenize as js } from "@twinkleplop/javascript";
+ * const t      = js();                                // full fidelity
+ * const bare   = js({ fidelity: "low" });             // no reclassifiers
+ * const partial = js({ fidelity: ["function", "type"] });
+ * const tokens = t(source);
  * ```
  *
  * pipeline entries may be plain reclassifier functions (always run) or

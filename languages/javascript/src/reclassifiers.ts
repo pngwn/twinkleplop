@@ -38,21 +38,21 @@ import type {
   Reclassifier,
 } from "@twinkleplop/core";
 
-import { language as css_language } from "@twinkleplop/css";
+import { tokenize as css_tokenize } from "@twinkleplop/css";
 // Cross-language references are imported lazily so the HTML ↔ JS workspace
 // cycle (HTML embeds JS for `<script>`, JS embeds HTML for `` html`...` ``)
 // resolves cleanly. The imported bindings may be `undefined` at module-eval
 // time; by wrapping the factory calls in memoized closures we defer both
 // the lookup AND the pipeline build until the sub language is actually
 // invoked, by which point both modules are ready.
-import { language as html_language } from "@twinkleplop/html";
+import { tokenize as html_tokenize } from "@twinkleplop/html";
 
 import type { LanguageFn } from "@twinkleplop/core";
 
 let html_fn: LanguageFn | undefined;
 let css_fn: LanguageFn | undefined;
-const html_default: LanguageFn = (src) => (html_fn ??= html_language())(src);
-const css_default: LanguageFn = (src) => (css_fn ??= css_language())(src);
+const html_default: LanguageFn = (src) => (html_fn ??= html_tokenize())(src);
+const css_default: LanguageFn = (src) => (css_fn ??= css_tokenize())(src);
 
 // ---------------------------------------------------------------------------
 // function-variable detection

@@ -3,7 +3,7 @@ import path from "node:path";
 import { tokenize } from "@twinkleplop/core";
 import { verify } from "@twinkleplop/core/compile";
 import { describe, expect, it, test } from "vitest";
-import { grammar, language as make_language, raw_grammar } from "./index.js";
+import { grammar, tokenize as make_language, raw_grammar } from "./index.js";
 
 const language = make_language();
 

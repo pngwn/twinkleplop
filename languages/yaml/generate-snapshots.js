@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { language as make_language } from "./dist/index.js";
+import { tokenize as make_language } from "./dist/index.js";
 
 const language = make_language();
 
