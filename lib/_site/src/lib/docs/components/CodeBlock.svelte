@@ -16,7 +16,7 @@
 		<span class="lang">{lang}</span>
 		<span class="copy">copy</span>
 	</div>
-<pre><code>{@html html}</code></pre>
+	{@html html}
 </div>
 
 <style>
@@ -60,16 +60,16 @@
 		color: var(--docs-accent);
 		border-color: var(--docs-accent-dim);
 	}
-	pre {
+	.code  :global(pre) {
 		margin: 0;
-		padding: 14px 14px 14px 0;
+		padding: 14px 14px 14px 14px;
 		color: var(--docs-fg);
 		overflow-x: auto;
 	}
-	pre code {
+	.code  :global(pre code)  {
 		display: block;
 	}
-	pre :global(.ln) {
+	.code  :global(pre .ln) {
 		display: inline-block;
 		width: 40px;
 		text-align: right;

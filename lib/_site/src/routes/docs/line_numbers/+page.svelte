@@ -7,26 +7,21 @@
 	import Card from "$lib/docs/components/Card.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { to_html } from "@twinkleplop/core";
-	import { language } from "@twinkleplop/bash";
-	import { language as ts_language } from "@twinkleplop/typescript";
 
-	const bash = language();
-	const ts = ts_language();
+	const install_code = `<span class="ln">1</span><span class="tok-com"># the core package — everything, lazy-loaded</span>
+<span class="ln">2</span><span class="tok-var">npm</span> <span class="tok-var">i</span> <span class="tok-str">'twinkleplop'</span>
+<span class="ln">3</span>
+<span class="ln">4</span><span class="tok-com"># or, just what you need (tree-shakeable)</span>
+<span class="ln">5</span><span class="tok-var">npm</span> <span class="tok-var">i</span> <span class="tok-str">'@twinkleplop/core'</span> <span class="tok-str">'@twinkleplop/themes'</span>`;
 
-	const install_src = `pnpm add "@twinkleplop/typescript" "@twinkleplop/theme"`;
-	const install_code = to_html(install_src, bash(install_src));
-	const first_highlght_src = `// import the language
-import { language } from '@twinkleplop/typescript';
-
-// create a reusable highlighter
-const typescript = language();
-
-// highlight some code
-const html = typescript("1 + 2");
-
-document.body.innerHTML = html;`
-	const first_highlight_code = to_html(first_highlght_src, ts(first_highlght_src));
+	const first_highlight_code = `<span class="ln">1</span><span class="tok-kw">import</span> <span class="tok-punct">&#123;</span> <span class="tok-var">twinkle</span> <span class="tok-punct">&#125;</span> <span class="tok-kw">from</span> <span class="tok-str">'twinkleplop'</span><span class="tok-punct">;</span>
+<span class="ln">2</span>
+<span class="ln">3</span><span class="tok-kw">const</span> <span class="tok-var">html</span> <span class="tok-punct">=</span> <span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-str">\`const greet = (name: string) =&gt; \\\`hi, \$&#123;name&#125;\\\`;\`</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span>
+<span class="ln">4</span>  <span class="tok-var">lang</span><span class="tok-punct">:</span> <span class="tok-str">'typescript'</span><span class="tok-punct">,</span>
+<span class="ln">5</span>  <span class="tok-var">theme</span><span class="tok-punct">:</span> <span class="tok-str">'github-dark'</span><span class="tok-punct">,</span>
+<span class="ln">6</span><span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>
+<span class="ln">7</span>
+<span class="ln">8</span><span class="tok-var">document</span><span class="tok-punct">.</span><span class="tok-var">body</span><span class="tok-punct">.</span><span class="tok-var">innerHTML</span> <span class="tok-punct">=</span> <span class="tok-var">html</span><span class="tok-punct">;</span>`;
 </script>
 
 <ArticleMain
@@ -38,19 +33,20 @@ document.body.innerHTML = html;`
 	]}
 	tagline="▸ 01 · start here · ~4 min"
 	title="getting started"
-	subtitle="Install and highlight your first snippet."
+	subtitle="Install twinkleplop, highlight your first snippet, and ship it to production before lunch."
 	prev={{ dir: "← prev", label: "00. welcome", href: "/docs" }}
 	next={{ dir: "next →", label: "02. themes", href: "/docs/themes" }}
 >
 	<Section id="s1" title="install" num="§ 01">
 		<p>
-		Install a language and theme.
+			Pick your flavour. All three packages ship the same core; the wrappers differ only in what
+			they import by default.
 		</p>
 		<CodeBlock fname="terminal" lang="sh" html={install_code} />
 	</Section>
 
 	<Section id="s2" title="first highlight" num="§ 02">
-		<p>Import. Initialize. Highlight.</p>
+		<p>One call. One await. One HTML string. That is the whole library from the outside:</p>
 		<CodeBlock fname="first-twinkle.ts" lang="typescript" html={first_highlight_code} />
 	</Section>
 
