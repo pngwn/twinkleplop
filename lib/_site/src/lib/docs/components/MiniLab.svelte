@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tokenize as ts_tokenize } from "@twinkleplop/typescript";
-	import "@twinkleplop/theme-github/dark";
+	// import "@twinkleplop/theme-github";
 	import { onMount } from "svelte";
 	import { measure } from "$lib/explore/measure";
 
@@ -225,7 +225,7 @@ console.log(msg);`,
 		outline: none;
 		caret-color: var(--docs-accent);
 		color: var(--twp-identifier, var(--docs-fg));
-		background: var(--twp-background, var(--docs-bg-1));
+		background:  var(--docs-bg-1);
 		overflow-x: auto;
 	}
 	.pad:focus-visible {
@@ -239,6 +239,7 @@ console.log(msg);`,
 		border-top: 1px solid var(--docs-line);
 		font-size: var(--docs-fs-xs);
 		color: var(--docs-fg-mute);
+		background: var(--docs-bg-2);
 	}
 	.ok {
 		color: var(--docs-accent);

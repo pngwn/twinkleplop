@@ -78,7 +78,7 @@
 		user-select: none;
 	}
 
-	@media (max-width: 760px) {
+	/*@media (max-width: 760px) {
 		pre {
 			font-size: 11px;
 			line-height: 1.55;
@@ -87,5 +87,5 @@
 			width: 28px;
 			padding-right: 10px;
 		}
-	}
+	}*/
 </style>

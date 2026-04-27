@@ -29,17 +29,9 @@ document.body.innerHTML = html;`
 </script>
 
 <ArticleMain
-	pane_path="docs / getting-started.md"
-	last_edit="last edit: 5d ago · v0.4.2"
-	breadcrumb={[
-		{ label: "docs", href: "/docs" },
-		{ label: "getting-started" },
-	]}
-	tagline="▸ 01 · start here · ~4 min"
+	pane_path="docs / getting-started"
 	title="getting started"
 	subtitle="Install and highlight your first snippet."
-	prev={{ dir: "← prev", label: "00. welcome", href: "/docs" }}
-	next={{ dir: "next →", label: "02. themes", href: "/docs/themes" }}
 >
 	<Section id="s1" title="install" num="§ 01">
 		<p>
@@ -53,42 +45,14 @@ document.body.innerHTML = html;`
 		<CodeBlock fname="first-twinkle.ts" lang="typescript" html={first_highlight_code} />
 	</Section>
 
-	<Section id="s3" title="try it live" num="§ 03">
-		<p>
-			Edit the source on the left. The output on the right re-twinkles on every keystroke. This
-			is a scaled-down embed of <a href="/explore">the lab</a>.
-		</p>
-		<MiniLab />
-	</Section>
 
-	<Section id="s4" title="framework adapters" num="§ 04">
-		<p>
-			Pre-built adapters for the usual suspects. All of them share the same rendering pipeline —
-			nothing forked, nothing special.
-		</p>
-		<CardGrid cols={3}>
-			<Card
-				icon="⚛"
-				title="react"
-				description={`<code>&lt;Twinkle code=&#123;code&#125; lang="ts" /&gt;</code>`}
-			/>
-			<Card
-				icon="△"
-				title="svelte"
-				description={`<code>&lt;Twinkle &#123;code&#125; lang="ts" /&gt;</code>`}
-			/>
-			<Card
-				icon="♢"
-				title="vue"
-				description={`<code>&lt;Twinkle :code lang="ts" /&gt;</code>`}
-			/>
-		</CardGrid>
+
 		<Callout mark="✦">
 			<strong>What next?</strong> Pick a <a href="/docs/themes">theme</a>, skim the
 			<a href="/docs/api">API reference</a>, or learn
 			<a href="/docs/tokenization">how tokenization works</a> under the hood.
 		</Callout>
-	</Section>
+
 </ArticleMain>
 
 <ArticleOtp
@@ -99,10 +63,5 @@ document.body.innerHTML = html;`
 		{ href: "#s3", label: "§03 — try it live" },
 		{ href: "#s4", label: "§04 — framework adapters" },
 	]}
-	meta={[
-		{ label: "version", value: "0.4.2" },
-		{ label: "updated", value: "5d ago" },
-		{ label: "authors", value: "pngwn" },
-		{ label: "read", value: "~4 min" },
-	]}
+
 />

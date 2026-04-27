@@ -8,11 +8,10 @@
 	let {
 		title,
 		sections = [] as section[],
-		meta = [] as meta_row[],
 	}: {
 		title: string;
 		sections?: section[];
-		meta?: meta_row[];
+
 	} = $props();
 </script>
 
@@ -25,7 +24,7 @@
 		{/each}
 	</ul>
 
-	{#if meta.length}
+	<!-- {#if meta.length}
 		<div class="otp-section">
 			<div class="lbl">meta</div>
 			<dl class="otp-meta">
@@ -35,7 +34,7 @@
 				{/each}
 			</dl>
 		</div>
-	{/if}
+	{/if} -->
 
 	<div class="otp-section">
 		<div class="lbl">shortcuts</div>

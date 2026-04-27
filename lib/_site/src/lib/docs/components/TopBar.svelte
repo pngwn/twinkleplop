@@ -63,13 +63,14 @@
 		flex-shrink: 0;
 	}
 	.brand {
-		font-family: var(--docs-pixel);
-		font-size: 20px;
+		font-family: var(--docs-mono);
+		font-size: 16px;
 		letter-spacing: 0.5px;
 		color: var(--docs-fg);
 		display: inline-flex;
 		align-items: baseline;
 		text-decoration: none;
+		font-weight: bold;
 	}
 	.brand:hover {
 		text-shadow: 0 0 4px color-mix(in oklch, currentColor 50%, transparent);
