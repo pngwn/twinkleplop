@@ -32,6 +32,8 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org
+      - name: Upgrade npm                                                                                                        
+        run: pnpm install -g npm@latest   
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -48,3 +50,4 @@ jobs:
           commit: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
