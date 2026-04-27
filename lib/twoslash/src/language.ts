@@ -7,12 +7,12 @@
 // that matters for visual highlighting.
 
 import { compile, create_language } from "@twinkleplop/core";
-import { language as ts_language } from "@twinkleplop/typescript";
+import { tokenize as ts_language } from "@twinkleplop/typescript";
 import { ts_keyword_reclassifier } from "./ts-keywords";
 
-// const grammar = compile(raw_grammar);
+
 
 // twoslash uses a fixed full-fidelity pipeline. consumers who want a
 // configurable TS grammar should reach for @twinkleplop/typescript
 // directly.
-export const language = ts_language
+export const language = ts_language()
