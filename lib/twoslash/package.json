@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@twinkleplop/core": "workspace:*",
-    "@twinkleplop/javascript": "workspace:*",
+    "@twinkleplop/typescript": "workspace:*",
     "twoslash": "^0.3.7"
   }
 }
