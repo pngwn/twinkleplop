@@ -14,7 +14,10 @@
     "build:lib": "pnpm --filter=@twinkleplop/core -r build && pnpm --filter=@twinkleplop/theme-github run build && pnpm --filter=@twinkleplop/theme-atom-one run build",
     "build": "pnpm build:lib && pnpm build:languages",
     "format:write": "oxfmt",
-    "format:check": "oxfmt --check"
+    "format:check": "oxfmt --check",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish"
   },
   "dependencies": {
     "dts-buddy": "^0.6.2",
@@ -29,5 +32,8 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.31.0"
   }
 }
