@@ -64,9 +64,6 @@
 		flex-direction: column;
 	}
 
-	:global([data-docs-nav="manpage"]) .manpage-nav {
-		display: block;
-	}
 	.mp-entry {
 		/*display: grid;
 		grid-template-columns: 28px 1fr;

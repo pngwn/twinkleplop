@@ -115,16 +115,16 @@ export const DOCS: doc_group[] = [
     group: "Reference",
     items: [
       {
-        id: "languages",
+        id: "languages-ref",
         title: "Languages",
-        path: "/docs/languages",
+        path: "/docs/languages-ref",
         crumb: "docs / guides / languages",
         icon: "◐",
       },
       {
-        id: "themes",
+        id: "themes-ref",
         title: "Themes",
-        path: "/docs/themes",
+        path: "/docs/themes-ref",
         crumb: "docs / guides / themes",
         icon: "◐",
       },

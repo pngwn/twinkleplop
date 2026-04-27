@@ -3,91 +3,104 @@
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
-	import CardGrid from "$lib/docs/components/CardGrid.svelte";
-	import Callout from "$lib/docs/components/Callout.svelte";
-	import ThemeSwatch from "$lib/docs/components/ThemeSwatch.svelte";
-	import { THEMES } from "$lib/docs/themes_data";
+	import { language as make_bash} from "@twinkleplop/bash";
+	import { language as make_ts } from "@twinkleplop/typescript";
 
-	const use_theme_code = `<span class="ln">1</span><span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-var">code</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span> <span class="tok-var">lang</span><span class="tok-punct">:</span> <span class="tok-str">'tsx'</span><span class="tok-punct">,</span> <span class="tok-var">theme</span><span class="tok-punct">:</span> <span class="tok-str">'tokyo-night'</span> <span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>
-<span class="ln">2</span>
-<span class="ln">3</span><span class="tok-com">// dual themes (light + dark, swapped via CSS variables)</span>
-<span class="ln">4</span><span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-var">code</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span>
-<span class="ln">5</span>  <span class="tok-var">lang</span><span class="tok-punct">:</span> <span class="tok-str">'tsx'</span><span class="tok-punct">,</span>
-<span class="ln">6</span>  <span class="tok-var">themes</span><span class="tok-punct">:</span> <span class="tok-punct">&#123;</span> <span class="tok-var">light</span><span class="tok-punct">:</span> <span class="tok-str">'github-light'</span><span class="tok-punct">,</span> <span class="tok-var">dark</span><span class="tok-punct">:</span> <span class="tok-str">'github-dark'</span> <span class="tok-punct">&#125;</span>
-<span class="ln">7</span><span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>`;
+	const bash = make_bash();
+	const ts = make_ts();
 
-	const byo_code = `<span class="ln">1</span><span class="tok-kw">import</span> <span class="tok-var">myTheme</span> <span class="tok-kw">from</span> <span class="tok-str">'./my-theme.json'</span><span class="tok-punct">;</span>
-<span class="ln">2</span><span class="tok-kw">import</span> <span class="tok-punct">&#123;</span> <span class="tok-var">registerTheme</span> <span class="tok-punct">&#125;</span> <span class="tok-kw">from</span> <span class="tok-str">'twinkleplop'</span><span class="tok-punct">;</span>
-<span class="ln">3</span>
-<span class="ln">4</span><span class="tok-fn">registerTheme</span><span class="tok-punct">(</span><span class="tok-str">'my-theme'</span><span class="tok-punct">,</span> <span class="tok-var">myTheme</span><span class="tok-punct">)</span><span class="tok-punct">;</span>
-<span class="ln">5</span><span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-var">code</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span> <span class="tok-var">theme</span><span class="tok-punct">:</span> <span class="tok-str">'my-theme'</span> <span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>`;
+	const install_code_src = `pnpm add @twinkleplop/theme-github`;
+	const install_code = bash(install_code_src);
+
+	const use_theme_code_src = `import "@twinkleplop/theme-github";`;
+	const use_theme_code = ts(use_theme_code_src);
+
+	const copy_css_code_src = `twp theme github out "./src/my_css.css"`;
+	const copy_css_code = bash(copy_css_code_src);
+
+	const interactive_code_src = `twp`;
+	const interactive_code = bash(interactive_code_src);
+
+	const use_theme_tokens_src = `import { light, dark } from "@twinkleplop/theme-github/tokens";`
+	const use_theme_tokens = ts(use_theme_tokens_src);
+
+	const sample_tokens_src = `const light = {
+  background_color: "#ffffff",
+  boolean: "#0550ae",
+  comment: "#6e7781",
+  identifier: "#1f2328",
+  keyword: "#cf222e",
+  number: "#0550ae",
+  operator: "#cf222e",
+  punctuation: "#1f2328",
+  regex: "#0a3069",
+  string: "#0a3069",
+  template: "#0a3069",
+  ...
+}`
+	const sample_tokens = ts(sample_tokens_src);
+
 </script>
 
 <ArticleMain
-	pane_path="docs / guides / themes.md"
-	last_edit="last edit: 1w ago · v0.4.2"
-	breadcrumb={[
-		{ label: "docs", href: "/docs" },
-		{ label: "guides", href: "/docs" },
-		{ label: "themes" },
-	]}
-	tagline="◐ 02 · guides · ~3 min"
+	pane_path="docs / guides / themes"
 	title="themes"
-	subtitle={`Every shiki theme works, unchanged. Plus four pixel-native themes designed for this library. Click a swatch to preview, or hit <span class="kbd">⌘</span><span class="kbd">K</span> and type "theme".`}
-	prev={{ dir: "← prev", label: "01. getting started", href: "/docs/getting_started" }}
-	next={{ dir: "next →", label: "03. how tokenization works", href: "/docs/tokenization" }}
+	subtitle={`Twinkleplop has many themes to choose from. Every theme ships with a light and dark variant.`}
+
 >
-	<Section id="builtin" title="built-in themes" num="§ 01">
+
+    <p>Syntax Highlighting themes have historically be pretty difficult to work with. Twinkleplop doesn't have a concrete solution to this problem but it does provide several different ways to work with themes.</p>
+
+
+	<Section id="install" title="install a theme" num="§ 01">
 		<p>
-			Each theme ships as a <strong>light + dark pair</strong>. Pass either variant name, or use
-			<code>themes: &#123; light, dark &#125;</code> to let the browser pick. All 12 pairs are in
-			the default bundle.
+		Regardless of how you want to work with themes, the first step is to install one.
 		</p>
-		<CardGrid cols={2}>
-			{#each THEMES as theme}
-				<ThemeSwatch {theme} />
-			{/each}
-		</CardGrid>
+
+		<p>Choose your favourite from <a href="/docs/themes-ref/">the theme reference</a>, and install it using your package manager.</p>
+		<CodeBlock fname="terminal" lang="bash" html={install_code} />
 	</Section>
 
-	<Section id="using" title="using a theme" num="§ 02">
+	<Section id="css_import" title="direct import" num="§ 02">
 		<p>
-			Pass the name as a string. Themes are lazy-loaded on first use and cached — you pay the cost
-			exactly once.
+			If you are using a bundler that can handle CSS imports, like Vite or Webpack, you can import the package directly into your app.
 		</p>
-		<CodeBlock fname="use-theme.ts" lang="typescript" html={use_theme_code} />
+		<p>The main export is a stylesheet with both dark and light styles. As long as there is a <code>.dark</code> class on a parent above the code snippet, you will get dark and light mode for free.</p>
+		<CodeBlock fname="theme.ts" lang="typescript" html={use_theme_code} />
 	</Section>
 
-	<Section id="byo" title="bring your own" num="§ 03">
+	<Section id="copy_css" title="copy the css" num="§ 03">
 		<p>
-			Feed it any vs-code-compatible theme JSON. TextMate scopes are translated into the internal
-			token tree at load time, then cached on disk.
+		If you are not using a bundler or wish to modify the CSS in some way, it might be easier to just copy (vendor) the CSS directly into your project.
 		</p>
-		<CodeBlock fname="byo.ts" lang="typescript" html={byo_code} />
+		<p>Twinkleplop provides a CLI to do this. <code>twp</code> will not download files over the internet, both for your security and my sanity, it will simple copy from an already installed pacakge.</p>
+
+		<CodeBlock fname="terminal" lang="bash" html={copy_css_code} />
+
+		<p>Or just run <code>twp</code> without any arguments and answer the interactive prompts. It will ask you what theme to copy and where to copy it to.</p>
+		<CodeBlock fname="terminal" lang="bash" html={interactive_code} />
 	</Section>
 
-	<Section id="parity" title="shiki parity" num="§ 04">
-		<Callout variant="tip">
-			We ran 11,204 snippets through both libraries across 47 shiki themes.
-			<strong>98.7% of outputs are pixel-identical.</strong> The remainder differ by ≤ 2 sub-hues
-			in grammar-ambiguous regions. See the <a href="#parity-report">parity report</a> for the
-			full table.
-		</Callout>
+	<Section id="tokens" title="token colors" num="§ 04">
+		<p>In some instances you may want to build the css yourself, or work directly with the tokens and colors.</p>
+		<p>To support this usecase and provide maxium flexibility, every theme exports the tokens directly from a <code>/tokens</code> subpath.</p>
+		<p>This special export has two named exports, <code>light</code> and <code>dark</code>, which are object maps of token names to color values.</p>
+		<CodeBlock fname="tokens.ts" lang="ts" html={use_theme_tokens} />
+		<p>They look a bit like this:</p>
+		<CodeBlock fname="tokens.ts" lang="ts" html={sample_tokens} />
+		<p>All token names in these two structures correspond to the token names that the highlighter spits out. Every theme should have a definition for every token, even if they resolve to the same color.</p>
+		<p>For a full list of token names, see the <a href="/docs/themes-ref/">themes reference</a>.</p>
 	</Section>
+
+
 </ArticleMain>
 
 <ArticleOtp
 	title="themes"
 	sections={[
 		{ href: "#builtin", label: "§01 — built-in themes", active: true },
-		{ href: "#using", label: "§02 — using a theme" },
-		{ href: "#byo", label: "§03 — bring your own" },
-		{ href: "#parity", label: "§04 — shiki parity" },
+		{ href: "#using", label: "§02 — using import" },
+		{ href: "#parity", label: "§03 — shiki parity" },
 	]}
-	meta={[
-		{ label: "version", value: "0.4.2" },
-		{ label: "updated", value: "1w ago" },
-		{ label: "authors", value: "al" },
-		{ label: "read", value: "~3 min" },
-	]}
+
 />

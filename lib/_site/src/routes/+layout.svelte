@@ -84,7 +84,7 @@
 	}
 
 	/* Global pixel theme styles */
-	.pixel-theme ::-webkit-scrollbar {
+	/*.pixel-theme ::-webkit-scrollbar {
 		width: 12px;
 		height: 12px;
 	}
@@ -124,7 +124,7 @@
 
 	.pixel-theme a:hover {
 		color: var(--pixel-pink);
-	}
+	}*/
 
 	.app-container {
 		min-height: 100vh;
@@ -181,7 +181,7 @@
 		align-items: center;
 	}
 
-	.nav-links a {
+	/*.nav-links a {
 		font-size: 0.9rem;
 		font-weight: 500;
 		transition: all 0.2s ease;
@@ -208,7 +208,7 @@
 		color: var(--text-primary);
 		transform: translateY(-2px);
 		box-shadow: var(--shadow-sm);
-	}
+	}*/
 
 
 </style>

@@ -7,85 +7,76 @@
 	import Card from "$lib/docs/components/Card.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
+	import { language as make_ts } from "@twinkleplop/typescript";
+	import { language as make_html } from "@twinkleplop/html";
+	import { language as make_css } from "@twinkleplop/css";
 
-	const install_code = `<span class="ln">1</span><span class="tok-com"># the core package — everything, lazy-loaded</span>
-<span class="ln">2</span><span class="tok-var">npm</span> <span class="tok-var">i</span> <span class="tok-str">'twinkleplop'</span>
-<span class="ln">3</span>
-<span class="ln">4</span><span class="tok-com"># or, just what you need (tree-shakeable)</span>
-<span class="ln">5</span><span class="tok-var">npm</span> <span class="tok-var">i</span> <span class="tok-str">'@twinkleplop/core'</span> <span class="tok-str">'@twinkleplop/themes'</span>`;
+	const ts = make_ts();
+	const html = make_html();
+	const css = make_css();
 
-	const first_highlight_code = `<span class="ln">1</span><span class="tok-kw">import</span> <span class="tok-punct">&#123;</span> <span class="tok-var">twinkle</span> <span class="tok-punct">&#125;</span> <span class="tok-kw">from</span> <span class="tok-str">'twinkleplop'</span><span class="tok-punct">;</span>
-<span class="ln">2</span>
-<span class="ln">3</span><span class="tok-kw">const</span> <span class="tok-var">html</span> <span class="tok-punct">=</span> <span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-str">\`const greet = (name: string) =&gt; \\\`hi, \$&#123;name&#125;\\\`;\`</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span>
-<span class="ln">4</span>  <span class="tok-var">lang</span><span class="tok-punct">:</span> <span class="tok-str">'typescript'</span><span class="tok-punct">,</span>
-<span class="ln">5</span>  <span class="tok-var">theme</span><span class="tok-punct">:</span> <span class="tok-str">'github-dark'</span><span class="tok-punct">,</span>
-<span class="ln">6</span><span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>
-<span class="ln">7</span>
-<span class="ln">8</span><span class="tok-var">document</span><span class="tok-punct">.</span><span class="tok-var">body</span><span class="tok-punct">.</span><span class="tok-var">innerHTML</span> <span class="tok-punct">=</span> <span class="tok-var">html</span><span class="tok-punct">;</span>`;
+	const line_number_src = `import { language } from "@twinkleplop/typescript";
+
+const ts = language();
+
+// line numbers
+const html = ts("1 + 2", {
+  line_numbers: true,
+});
+
+// no line numbers
+const html_no_line_numbers = ts("1 + 2");`;
+
+	const line_number = ts(line_number_src, {
+		line_numbers: true,
+	})
+
+	const html_output_src = `<pre class="twinkleplop">
+  <code>
+    <span class="l"><span class="ln">1</span> ...tokens </span>
+    <span class="l"><span class="ln">2</span> ...tokens</span>
+    <span class="l"><span class="ln">3</span> ...tokens</span>
+  </code>
+</pre>`
+
+	const html_output = html(html_output_src);
+
+	const css_output_src = `.twinkleplop .ln {
+  display: inline-block;
+  width: 40px;
+  text-align: right;
+  padding-right: 16px;
+}`
+
+	const css_output = css(css_output_src);
 </script>
 
 <ArticleMain
-	pane_path="docs / getting-started.md"
-	last_edit="last edit: 5d ago · v0.4.2"
-	breadcrumb={[
-		{ label: "docs", href: "/docs" },
-		{ label: "getting-started" },
-	]}
-	tagline="▸ 01 · start here · ~4 min"
-	title="getting started"
-	subtitle="Install twinkleplop, highlight your first snippet, and ship it to production before lunch."
-	prev={{ dir: "← prev", label: "00. welcome", href: "/docs" }}
-	next={{ dir: "next →", label: "02. themes", href: "/docs/themes" }}
+	pane_path="docs / line_numbers"
+
+
+	title="line numbers"
+	subtitle="A popular option for code highlighting is add line numbers to the output. Twinkleplop supports this out of the box."
+
 >
-	<Section id="s1" title="install" num="§ 01">
+	<Section id="s1" title="line numbers" num="§ 01">
 		<p>
-			Pick your flavour. All three packages ship the same core; the wrappers differ only in what
-			they import by default.
+		  Line numbers ins twinkleplop are a <em>renderer</em> option. </p>
+		<p>This means that you can create a single resuable highlighter and decide whether or not render line numbers on a per-call basis.
 		</p>
-		<CodeBlock fname="terminal" lang="sh" html={install_code} />
+		<CodeBlock fname="line-numbers.ts" lang="typescript" html={line_number} />
 	</Section>
 
-	<Section id="s2" title="first highlight" num="§ 02">
-		<p>One call. One await. One HTML string. That is the whole library from the outside:</p>
-		<CodeBlock fname="first-twinkle.ts" lang="typescript" html={first_highlight_code} />
+	<Section id="s2" title="styling" num="§ 01">
+
+
+		<p>Line numbers are just an extra HTML element that gets output at the start of the line.</p>
+		<p>The HTML looks like this:</p>
+		<CodeBlock fname="line-numbers.html" lang="html" html={html_output} />
+		<p>You can style them like this:</p>
+		<CodeBlock fname="line-numbers.css" lang="css" html={css_output} />
 	</Section>
 
-	<Section id="s3" title="try it live" num="§ 03">
-		<p>
-			Edit the source on the left. The output on the right re-twinkles on every keystroke. This
-			is a scaled-down embed of <a href="/explore">the lab</a>.
-		</p>
-		<MiniLab />
-	</Section>
-
-	<Section id="s4" title="framework adapters" num="§ 04">
-		<p>
-			Pre-built adapters for the usual suspects. All of them share the same rendering pipeline —
-			nothing forked, nothing special.
-		</p>
-		<CardGrid cols={3}>
-			<Card
-				icon="⚛"
-				title="react"
-				description={`<code>&lt;Twinkle code=&#123;code&#125; lang="ts" /&gt;</code>`}
-			/>
-			<Card
-				icon="△"
-				title="svelte"
-				description={`<code>&lt;Twinkle &#123;code&#125; lang="ts" /&gt;</code>`}
-			/>
-			<Card
-				icon="♢"
-				title="vue"
-				description={`<code>&lt;Twinkle :code lang="ts" /&gt;</code>`}
-			/>
-		</CardGrid>
-		<Callout mark="✦">
-			<strong>What next?</strong> Pick a <a href="/docs/themes">theme</a>, skim the
-			<a href="/docs/api">API reference</a>, or learn
-			<a href="/docs/tokenization">how tokenization works</a> under the hood.
-		</Callout>
-	</Section>
 </ArticleMain>
 
 <ArticleOtp

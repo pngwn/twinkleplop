@@ -3,43 +3,42 @@
 	import Breadcrumbs from "./Breadcrumbs.svelte";
 	import PixelTitle from "./PixelTitle.svelte";
 	import PrevNext from "./PrevNext.svelte";
+	import {page} from "$app/state";
+	import {DOCS} from '../nav';
 
-	type crumb = { label: string; href?: string };
-	type direction = { dir: string; label: string; href: string } | null;
+	let current_page = $derived(page.url.pathname)
+
+
+	const flat_docs = Object.values(DOCS).flatMap(v => {
+		return v.items
+	})
+
+	let current_item = $derived(flat_docs.findIndex(item => item.path === current_page))
+	$inspect(current_item);
+	let prev = $derived(flat_docs?.[current_item - 1] ? { dir: "← prev", label: flat_docs[current_item - 1].title, href: flat_docs[current_item - 1].path } : null)
+	let next = $derived(flat_docs?.[current_item + 1] ? { dir: "→ next", label: flat_docs[current_item + 1].title, href: flat_docs[current_item + 1].path } : null)
+
 
 	let {
 		pane_path,
-		last_edit = "",
-		breadcrumb = [] as crumb[],
-		tagline,
 		title,
 		subtitle,
-		prev = null as direction,
-		next = null as direction,
 		children,
 	}: {
 		pane_path: string;
-		last_edit?: string;
-		breadcrumb?: crumb[];
-		tagline?: string;
 		title?: string;
 		subtitle?: string;
-		prev?: direction;
-		next?: direction;
 		children: import("svelte").Snippet;
 	} = $props();
 </script>
 
 <main class="pane">
-	<PaneHeader label={pane_path} mode="— you are here" right={last_edit} path />
+	<PaneHeader label={pane_path}   path />
 	<div class="content">
-		<!-- <Breadcrumbs crumbs={breadcrumb} /> -->
 
 		{#if title}
 			<div class="title-block">
-				{#if tagline}
-					<span class="tagline">{tagline}</span>
-				{/if}
+
 				<PixelTitle text={title} />
 				{#if subtitle}
 					<p class="subtitle">{@html subtitle}<span class="cursor-block"></span></p>

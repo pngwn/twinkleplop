@@ -20,7 +20,7 @@
 	import TweaksPanel from '$lib/docs/components/TweaksPanel.svelte';
 	import CrtOverlay from '$lib/docs/components/CrtOverlay.svelte';
 	import MobileScrim from '$lib/docs/components/MobileScrim.svelte';
-
+	import "@twinkleplop/theme-github";
 	let { children } = $props();
 
 	const active_id = $derived.by(() => {
@@ -71,7 +71,7 @@
 </svelte:head>
 
 <div
-	class="docs-root"
+	class="docs-root {theme_mode.resolved}"
 	data-docs-mode={theme_mode.resolved}
 	data-docs-density={chrome.tweaks.density}
 	data-docs-nav={chrome.tweaks.nav}
