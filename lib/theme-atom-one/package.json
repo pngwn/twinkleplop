@@ -27,5 +27,12 @@
     "tsx": "^4.19.0",
     "typescript": "^5.8.3",
     "vitest": "^2.1.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pngwn/twinkleplop.git",
+    "directory": "lib/theme-atom-one"
+  },
+  "homepage": "https://github.com/pngwn/twinkleplop",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues"
 }

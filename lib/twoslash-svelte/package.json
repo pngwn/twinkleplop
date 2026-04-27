@@ -20,5 +20,12 @@
     "twoslash": "^0.3.7",
     "twoslash-protocol": "^0.3.7",
     "typescript": "^5.8.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pngwn/twinkleplop.git",
+    "directory": "lib/twoslash-svelte"
+  },
+  "homepage": "https://github.com/pngwn/twinkleplop",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues"
 }

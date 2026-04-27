@@ -16,5 +16,12 @@
     "@twinkleplop/core": "workspace:*",
     "@twinkleplop/typescript": "workspace:*",
     "twoslash": "^0.3.7"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pngwn/twinkleplop.git",
+    "directory": "lib/twoslash"
+  },
+  "homepage": "https://github.com/pngwn/twinkleplop",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues"
 }

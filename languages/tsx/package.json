@@ -18,5 +18,12 @@
     "@twinkleplop/core": "workspace:*",
     "@twinkleplop/javascript": "workspace:*",
     "@twinkleplop/typescript": "workspace:*"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pngwn/twinkleplop.git",
+    "directory": "languages/tsx"
+  },
+  "homepage": "https://github.com/pngwn/twinkleplop",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues"
 }
