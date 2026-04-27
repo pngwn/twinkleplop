@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pngwn/twinkleplop.git",
+    "url": "https://github.com/pngwn/twinkleplop",
     "directory": "languages/typescript"
   },
   "homepage": "https://github.com/pngwn/twinkleplop",
