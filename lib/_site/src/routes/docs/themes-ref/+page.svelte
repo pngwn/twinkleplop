@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
@@ -90,4 +90,4 @@
 		{ label: "authors", value: "al" },
 		{ label: "read", value: "~3 min" },
 	]}
-/>
+/> -->
