@@ -177,6 +177,18 @@ export const DOCS: doc_group[] = [
       }
     ],
   },
+  {
+    group: "Help",
+    items: [
+      {
+        id: "faq",
+        title: "FAQ",
+        path: "/docs/faq",
+        crumb: "docs / faq",
+        icon: "?",
+      },
+    ],
+  },
 ];
 
 export const FLAT: (doc_entry & { group: string })[] = DOCS.flatMap((g) =>
