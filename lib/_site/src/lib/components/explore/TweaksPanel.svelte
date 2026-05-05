@@ -114,6 +114,20 @@
 		</section>
 
 		<section class="tweaks__sec">
+			<div class="tweaks__label">Notation</div>
+			<div class="tweaks__chips">
+				<button
+					class="tweak-chip"
+					class:is-on={state.notation}
+					type="button"
+					onclick={() => on_update({ notation: !state.notation })}
+				>
+					{state.notation ? 'on' : 'off'}
+				</button>
+			</div>
+		</section>
+
+		<section class="tweaks__sec">
 			<div class="tweaks__label">Terminal flavor</div>
 			<div class="tweaks__chips">
 				{#each FLAVORS_LIST as f (f)}

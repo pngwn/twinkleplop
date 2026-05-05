@@ -13,12 +13,20 @@
 	import { theme_mode, hydrate_mode } from '$lib/theme_mode.svelte';
 	import { onMount } from 'svelte';
 	import { GRAMMAR_EXTENSION_CATEGORIES, to_html } from '@twinkleplop/core';
+	import { em, hl } from '@twinkleplop/notation';
 
 	// core ships no .d.ts yet so we redeclare the result shape locally.
 	interface tokenize_result {
 		tokens: Uint32Array;
 		token_types: string[];
 	}
+
+	// notation plugins enabled when the tweak is on. defining the array once
+	// keeps the factory call cheap (no new array every reactive update) and
+	// matches the spec's "always opt-in" rule: when notation is off, the key
+	// is omitted and the language factory takes the zero-cost no-extractor
+	// path inside create_language.
+	const notation_plugins = [em, hl];
 	import { palette_to_vars } from '$lib/explore/palette_vars';
 	import { measure } from '$lib/explore/measure';
 	import {
@@ -122,7 +130,14 @@
 				: enabled_tags.size === available_tags.length
 					? 'high'
 					: [...enabled_tags];
-		return make_language({ fidelity });
+		// only include the notation key when the tweak is on. when omitted,
+		// create_language captures a null extractor and the LanguageFn fast
+		// path is byte-for-byte identical to today's.
+		const opts: { fidelity: typeof fidelity; notation?: { plugins: typeof notation_plugins } } = {
+			fidelity
+		};
+		if (tweaks.notation) opts.notation = { plugins: notation_plugins };
+		return make_language(opts);
 	});
 
 	function toggle_tag(tag: string) {

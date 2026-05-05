@@ -201,6 +201,9 @@ importers:
       '@twinkleplop/markdown':
         specifier: workspace:*
         version: link:../../languages/markdown
+      '@twinkleplop/notation':
+        specifier: workspace:*
+        version: link:../notation
       '@twinkleplop/python':
         specifier: workspace:*
         version: link:../../languages/python
@@ -374,6 +377,16 @@ importers:
       vite:
         specifier: ^8.0.10
         version: 8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)
+
+  lib/notation:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@types/node@20.19.17)(@vitest/ui@4.1.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0))
 
   lib/theme-atom-one:
     dependencies:

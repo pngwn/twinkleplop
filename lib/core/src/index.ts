@@ -40,3 +40,4 @@ export {
 export type { FunctionCallVariants } from "./fidelity";
 export * from "./types";
 export * from "./dsl";
+export { build_notation_extractor } from "./notation";

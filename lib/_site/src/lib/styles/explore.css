@@ -1329,3 +1329,100 @@
 .explore-app .tok.null {
 	color: var(--twp-null);
 }
+
+/* ---------------------------------------------------------------------------
+   notation overlays
+   ---------------------------------------------------------------------------
+   classes set by @twinkleplop/notation plugins. line-mode overlays land on
+   .l, token-mode overlays land on .tok. the styles below cover the phase 1
+   verbs (em, hl) plus the verbs the spec reserves for later phases (dim,
+   focus, diff, diagnostic) so themes have something sensible to render
+   when phase 2/3 ship. tuned to read across both light and dark flavors
+   via color-mix into theme tokens — accent for the active overlays, fg
+   for subdued, semantic colors for diff/diagnostic. */
+
+.explore-app .l.emphasis {
+	background: color-mix(in oklab, var(--accent) 18%, transparent);
+	box-shadow: inset 3px 0 0 var(--accent);
+}
+.explore-app .l.highlight {
+	background: color-mix(in oklab, var(--accent2) 22%, transparent);
+}
+.explore-app .l.subdued {
+	opacity: 0.45;
+}
+.explore-app .l.focus {
+	background: color-mix(in oklab, var(--accent) 14%, transparent);
+	box-shadow: inset 3px 0 0 var(--accent);
+}
+.explore-app .l.not-focused {
+	opacity: 0.35;
+	filter: saturate(0.5);
+}
+
+.explore-app .l.diff-add {
+	background: color-mix(in oklab, #46c66f 22%, transparent);
+	box-shadow: inset 3px 0 0 #46c66f;
+}
+.explore-app .l.diff-del {
+	background: color-mix(in oklab, #d8533c 22%, transparent);
+	box-shadow: inset 3px 0 0 #d8533c;
+}
+.explore-app .l.diff-mod {
+	background: color-mix(in oklab, #c8a64b 20%, transparent);
+	box-shadow: inset 3px 0 0 #c8a64b;
+}
+
+.explore-app .l.error {
+	background: color-mix(in oklab, #d8533c 18%, transparent);
+	box-shadow: inset 3px 0 0 #d8533c;
+}
+.explore-app .l.warning {
+	background: color-mix(in oklab, #d4a13a 18%, transparent);
+	box-shadow: inset 3px 0 0 #d4a13a;
+}
+.explore-app .l.info {
+	background: color-mix(in oklab, #4a90d9 18%, transparent);
+	box-shadow: inset 3px 0 0 #4a90d9;
+}
+
+/* token-mode (sub-line) overlays. the same classifications can attach to
+   individual .tok spans when a marker resolves to a byte range that
+   doesn't span whole lines (phase 2 anchor ranges). drawn lighter than
+   the line variants so they stack legibly with the underlying token
+   color. */
+.explore-app .tok.emphasis {
+	background: color-mix(in oklab, var(--accent) 24%, transparent);
+	border-radius: 1px;
+}
+.explore-app .tok.highlight {
+	background: color-mix(in oklab, var(--accent2) 28%, transparent);
+	border-radius: 1px;
+}
+.explore-app .tok.subdued {
+	opacity: 0.55;
+}
+.explore-app .tok.diff-add {
+	background: color-mix(in oklab, #46c66f 28%, transparent);
+	border-radius: 1px;
+}
+.explore-app .tok.diff-del {
+	background: color-mix(in oklab, #d8533c 28%, transparent);
+	border-radius: 1px;
+}
+.explore-app .tok.diff-mod {
+	background: color-mix(in oklab, #c8a64b 26%, transparent);
+	border-radius: 1px;
+}
+.explore-app .tok.error {
+	text-decoration: underline wavy #d8533c;
+	text-underline-offset: 3px;
+}
+.explore-app .tok.warning {
+	text-decoration: underline wavy #d4a13a;
+	text-underline-offset: 3px;
+}
+.explore-app .tok.info {
+	text-decoration: underline wavy #4a90d9;
+	text-underline-offset: 3px;
+}

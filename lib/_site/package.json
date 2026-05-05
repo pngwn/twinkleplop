@@ -25,6 +25,7 @@
     "@twinkleplop/html": "workspace:*",
     "@twinkleplop/javascript": "workspace:*",
     "@twinkleplop/markdown": "workspace:*",
+    "@twinkleplop/notation": "workspace:*",
     "@twinkleplop/python": "workspace:*",
     "@twinkleplop/rust": "workspace:*",
     "@twinkleplop/sql": "workspace:*",
