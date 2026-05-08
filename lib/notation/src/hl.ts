@@ -1,18 +1,5 @@
-// `hl` — highlight. emits a single line-mode overlay with classification
-// `highlight` covering the resolved range.
+// `hl` — highlight. line-mode for line-ref args, token-mode for anchor args.
 
-import type { NotationPlugin } from "@twinkleplop/core";
+import { style_plugin } from "./style_plugin";
 
-export const hl: NotationPlugin = {
-  verbs: ["hl"],
-  handle: ({ range }) => ({
-    overlays: [
-      {
-        start: range.start,
-        end: range.end,
-        classification: "highlight",
-        line_mode: true,
-      },
-    ],
-  }),
-};
+export const hl = style_plugin("hl", "highlight");

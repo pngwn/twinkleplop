@@ -255,18 +255,28 @@ export interface OverlayContribution {
 }
 
 // argument forms the framework parses for plugins with parse: 'shared'.
-// phase 1 implements: bare, lineCount, lineRef. range and set ship in phase 2.
 //
-// `inclusive` (on lineRef and range) follows the spec's "more dots more
+// `inclusive*` (on lineRef and range) follows the spec's "more dots more
 // content" rule:
-//   `..`  -> inclusive: false (both endpoints excluded)
-//   `...` -> inclusive: true  (both endpoints included)
+//   `..`  -> inclusive: false (endpoint excluded)
+//   `...` -> inclusive: true  (endpoint included)
 // for single-line `lineRef` with no `to`, `inclusive` is ignored.
+//
+// `range` carries independent inclusivity per endpoint so that paired
+// half-open markers (`<a>...` paired with `..<b>`) can preserve each
+// half's chosen inclusivity. closed forms set both flags from the same
+// dot count (`<a>..<b>` -> both false, `<a>...<b>` -> both true).
 export type ParsedArgs =
   | { kind: "bare" }
   | { kind: "lineCount"; count: number }
   | { kind: "lineRef"; from: number; to?: number; inclusive?: boolean }
-  | { kind: "range"; from: Anchor | null; to: Anchor | null; inclusive: boolean }
+  | {
+      kind: "range";
+      from: Anchor | null;
+      to: Anchor | null;
+      inclusive_start: boolean;
+      inclusive_end: boolean;
+    }
   | { kind: "set"; anchor: Anchor };
 
 export type Anchor =

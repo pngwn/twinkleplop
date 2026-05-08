@@ -1,18 +1,5 @@
-// `em` — emphasis. emits a single line-mode overlay with classification
-// `emphasis` covering the resolved range.
+// `em` — emphasis. line-mode for line-ref args, token-mode for anchor args.
 
-import type { NotationPlugin } from "@twinkleplop/core";
+import { style_plugin } from "./style_plugin";
 
-export const em: NotationPlugin = {
-  verbs: ["em"],
-  handle: ({ range }) => ({
-    overlays: [
-      {
-        start: range.start,
-        end: range.end,
-        classification: "emphasis",
-        line_mode: true,
-      },
-    ],
-  }),
-};
+export const em = style_plugin("em", "emphasis");

@@ -22,6 +22,11 @@
     "url": "https://github.com/pngwn/twinkleplop",
     "directory": "languages/markdown"
   },
-  "homepage": "https://github.com/pngwn/twinkleplop",
-  "bugs": "https://github.com/pngwn/twinkleplop/issues"
+  "homepage": "https://twinkleplop.pngwn.dev",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues",
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  }
 }

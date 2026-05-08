@@ -52,8 +52,8 @@ The dot rule is consistent throughout: `..` (two dots) excludes both endpoints, 
 
 - **Word**: bare text — whole-word match (word boundaries on both sides). Identifier rules are language-agnostic: word chars are `[A-Za-z0-9_]`.
 - **Quoted**: `"..."` — substring match, no word-boundary constraint. Escapes: `\"`, `\\`.
-- **Wildcard**: `*` — start of source (in start position) or end of source (in end position).
-- **Resolution**: marker-relative. An anchor matches the **first occurrence at or after the marker's source position**. `*` overrides to absolute boundaries.
+- **Wildcard**: `*` — line-relative to the marker that contains the `*` literal. In start position expands to the start of that marker's line; in end position expands to the end of that marker's line (the byte before its trailing `\n`). For half-open pairs the wildcard can be in the closer marker, so `[!em foo...]` ... `[!em ...*]` spans from `foo` down to the end of the closer's line. `*..*` is invalid (no reference).
+- **Resolution**: marker-relative. An anchor matches the **first occurrence at or after the marker's source position**.
 
 ## Pairing
 

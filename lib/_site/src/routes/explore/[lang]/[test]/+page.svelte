@@ -13,7 +13,7 @@
 	import { theme_mode, hydrate_mode } from '$lib/theme_mode.svelte';
 	import { onMount } from 'svelte';
 	import { GRAMMAR_EXTENSION_CATEGORIES, to_html } from '@twinkleplop/core';
-	import { em, hl } from '@twinkleplop/notation';
+	import { add, del, dim, em, err, hl, info, mod, warn } from '@twinkleplop/notation';
 
 	// core ships no .d.ts yet so we redeclare the result shape locally.
 	interface tokenize_result {
@@ -26,7 +26,7 @@
 	// matches the spec's "always opt-in" rule: when notation is off, the key
 	// is omitted and the language factory takes the zero-cost no-extractor
 	// path inside create_language.
-	const notation_plugins = [em, hl];
+	const notation_plugins = [em, hl, dim, add, del, mod, err, warn, info];
 	import { palette_to_vars } from '$lib/explore/palette_vars';
 	import { measure } from '$lib/explore/measure';
 	import {

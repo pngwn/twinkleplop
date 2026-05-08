@@ -55,5 +55,11 @@
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
     "wrangler": "^4.13.2"
-  }
+  },
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  },
+  "homepage": "https://twinkleplop.pngwn.dev"
 }

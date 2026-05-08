@@ -4,7 +4,11 @@
   "description": "",
   "keywords": [],
   "license": "ISC",
-  "author": "",
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  },
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
@@ -35,5 +39,6 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0"
-  }
+  },
+  "homepage": "https://twinkleplop.pngwn.dev"
 }

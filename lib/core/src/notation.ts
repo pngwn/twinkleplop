@@ -10,13 +10,21 @@
 // LanguageFn closure is identical to today's. see create_language for the
 // integration point.
 //
-// phase 1 supports: bare, +N, :N, :N..M argument forms. anchor ranges, set
-// form (=anchor), and pair resolution land in phase 2.
+// argument forms supported:
+//   bare            line containing the marker (line-mode)
+//   +N              N lines below the marker (line-mode)
+//   :N              absolute line N (line-mode)
+//   :N..M / :N...M  absolute line range, exclusive / inclusive (line-mode)
+//   <a>..<b>        anchor range, both exclusive (token-mode)
+//   <a>...<b>       anchor range, both inclusive (token-mode)
+//   <a>.. / <a>...  half-open start; pairs with a closing marker
+//   ..<b> / ...<b>  half-open end; pairs with an opening marker
+//   =<a>            set form: every occurrence of the anchor (token-mode)
+// anchors: bare word [A-Za-z0-9_]+, "quoted literal", * wildcard.
 
 import type {
   Anchor,
   NotationConfig,
-  NotationInput,
   NotationIssue,
   NotationIssueKind,
   NotationPlugin,
@@ -53,6 +61,12 @@ export function build_notation_extractor(
   // body short-circuits on the first comment-token lookup.
   return (input, result) => {
     if (comment_id < 0) return undefined;
+    // whole-input short-circuit: if `[!` doesn't appear anywhere in the
+    // source, no comment can contain a marker, so we skip the per-comment
+    // walk entirely. native indexOf is far cheaper than the per-comment
+    // charCodeAt loop and turns "notation enabled but no markers" into a
+    // near-free path for the common adopted-but-unused case.
+    if (input.indexOf("[!") < 0) return undefined;
     return run_extraction(input, result, verb_to_plugin, comment_id, config.on_error);
   };
 }
@@ -90,6 +104,17 @@ interface SkipRange {
   line: number;
 }
 
+// per-half-open marker entry on the pair stack. when a closing marker
+// arrives we pop the most recent entry that matches `(verb, id)` and
+// dispatch the combined range to the start marker's plugin.
+interface PendingPair {
+  marker: SourcePosition;
+  verb: string;
+  id?: string;
+  from: Anchor;
+  inclusive_start: boolean;
+}
+
 function run_extraction(
   input: string,
   result: TokenizeResult,
@@ -105,6 +130,13 @@ function run_extraction(
   const class_to_id = new Map<string, number>();
   const classifications: string[] = [];
   let line_index: Int32Array | null = null;
+  // built lazily on the first anchor lookup; pre-extraction grammars without
+  // comment-typed tokens have already been short-circuited above.
+  let comment_ranges: Uint32Array | null = null;
+  const ensure_comment_ranges = (): Uint32Array => {
+    if (comment_ranges === null) comment_ranges = build_comment_ranges(tokens, comment_id);
+    return comment_ranges;
+  };
 
   const class_id_for = (name: string): number => {
     let id = class_to_id.get(name);
@@ -136,6 +168,38 @@ function run_extraction(
     }
   };
 
+  // pair stack scoped by `(verb, id)`. half-open starts push, half-open
+  // ends pop the matching stack and dispatch the combined range. unmatched
+  // entries surface as errors after the comment-token walk completes.
+  const pair_stack = new Map<string, PendingPair[]>();
+  const pair_key = (verb: string, id?: string) => verb + "\0" + (id ?? "");
+
+  // dispatch `args` + `range` to the plugin under `marker`. shared helper
+  // because all argument forms (line-mode, anchor range, set, paired) end
+  // up here once their range is known.
+  const dispatch = (
+    plugin: NotationPlugin,
+    verb: string,
+    id: string | undefined,
+    args: ParsedArgs,
+    range: SourceRange,
+    marker: SourcePosition,
+  ): void => {
+    let output;
+    try {
+      output = plugin.handle({ verb, id, args, range, marker });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      report("malformed", `plugin "${verb}" threw: ${message}`, marker);
+      return;
+    }
+    if (output && output.overlays) {
+      for (const overlay of output.overlays) {
+        push_overlay(overlays, class_id_for, overlay);
+      }
+    }
+  };
+
   for (let i = 0; i < n; i++) {
     if (tokens[i * 3] !== comment_id) continue;
     const start = tokens[i * 3 + 1];
@@ -150,9 +214,9 @@ function run_extraction(
       const found = find_marker_start(input, pos, end);
       if (found < 0) break;
       // escaped form `\[!...]` — consume the backslash, leave the rest as
-      // literal comment text. spec: the leading `\` is consumed during
-      // extraction, but we don't mutate input; the renderer decides what to
-      // emit. for phase 1 we treat escapes as a no-op skip past the `[`.
+      // literal comment text. the leading `\` is consumed during
+      // extraction, but we don't mutate input; the renderer decides what
+      // to emit.
       if (found > start && input.charCodeAt(found - 1) === 92 /* \ */) {
         pos = found + 2;
         continue;
@@ -187,46 +251,127 @@ function run_extraction(
         continue;
       }
 
-      // resolve the marker's source range. phase 1: every supported arg form
-      // maps to a line range, so this is a line-index lookup.
-      const range = resolve_phase1_range(parsed.args, parsed.marker, lines, input.length);
-      if (range === null) {
-        report("malformed", `unable to resolve marker range`, parsed.marker);
-        pos = parsed.marker.end;
-        continue;
-      }
+      // dispatch the marker. shape varies by args.kind.
+      const args = parsed.args;
+      const marker = parsed.marker;
+      let consumed = true; // whether this marker contributes a skip range
 
-      const input_to_plugin: NotationInput = {
-        verb: parsed.verb,
-        id: parsed.id,
-        args: parsed.args,
-        range,
-        marker: parsed.marker,
-      };
-
-      let output;
-      try {
-        output = plugin.handle(input_to_plugin);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        report("malformed", `plugin "${parsed.verb}" threw: ${message}`, parsed.marker);
-        pos = parsed.marker.end;
-        continue;
-      }
-
-      if (output && output.overlays) {
-        for (const overlay of output.overlays) {
-          push_overlay(overlays, class_id_for, overlay);
+      if (args.kind === "set") {
+        // emit one overlay per match; never paired.
+        const matches = resolve_anchor_all(input, args.anchor, ensure_comment_ranges());
+        if (matches.length === 0) {
+          report(
+            "anchor_not_found",
+            `set anchor matched zero occurrences`,
+            marker,
+          );
+        }
+        for (const m of matches) {
+          const range: SourceRange = {
+            start: m.start,
+            end: m.end,
+            start_line: line_of(lines, m.start),
+            end_line: line_of(lines, Math.max(m.start, m.end - 1)),
+          };
+          dispatch(plugin, parsed.verb, parsed.id, args, range, marker);
+        }
+      } else if (args.kind === "range") {
+        if (args.from !== null && args.to !== null) {
+          // closed anchor range → token-mode dispatch.
+          const range = resolve_anchor_range(
+            args.from,
+            args.to,
+            args.inclusive_start,
+            args.inclusive_end,
+            marker,
+            marker,
+            input,
+            lines,
+            ensure_comment_ranges(),
+          );
+          if (range === null) {
+            report("anchor_not_found", `anchor not found`, marker);
+          } else {
+            dispatch(plugin, parsed.verb, parsed.id, args, range, marker);
+          }
+        } else if (args.from !== null) {
+          // half-open start: push and wait for the closing marker.
+          const key = pair_key(parsed.verb, parsed.id);
+          let stack = pair_stack.get(key);
+          if (stack === undefined) {
+            stack = [];
+            pair_stack.set(key, stack);
+          }
+          stack.push({
+            marker,
+            verb: parsed.verb,
+            id: parsed.id,
+            from: args.from,
+            inclusive_start: args.inclusive_start,
+          });
+        } else if (args.to !== null) {
+          // half-open end: pop the matching opener and dispatch the pair.
+          const key = pair_key(parsed.verb, parsed.id);
+          const stack = pair_stack.get(key);
+          const opener = stack && stack.length > 0 ? stack.pop() : undefined;
+          if (opener === undefined) {
+            report(
+              "unmatched_pair",
+              `unmatched close for "[!${parsed.verb}${parsed.id ? "#" + parsed.id : ""}]"`,
+              marker,
+            );
+          } else {
+            const range = resolve_anchor_range(
+              opener.from,
+              args.to,
+              opener.inclusive_start,
+              args.inclusive_end,
+              opener.marker,
+              marker,
+              input,
+              lines,
+              ensure_comment_ranges(),
+            );
+            if (range === null) {
+              report("anchor_not_found", `anchor not found`, marker);
+            } else {
+              // synthesise the fully-resolved args so the plugin sees both
+              // endpoints regardless of which marker carried which side.
+              const merged: ParsedArgs = {
+                kind: "range",
+                from: opener.from,
+                to: args.to,
+                inclusive_start: opener.inclusive_start,
+                inclusive_end: args.inclusive_end,
+              };
+              // dispatch under the OPENER's source position so plugin
+              // diagnostics point at the start of the pair.
+              dispatch(plugin, parsed.verb, parsed.id, merged, range, opener.marker);
+            }
+          }
+        } else {
+          // both null: parser shouldn't have produced this; defensive.
+          report("malformed", `range with no anchors`, marker);
+        }
+      } else {
+        // line-mode args.
+        const range = resolve_line_mode(args, marker, lines, input.length);
+        if (range === null) {
+          report("malformed", `unable to resolve marker range`, marker);
+        } else {
+          dispatch(plugin, parsed.verb, parsed.id, args, range, marker);
         }
       }
 
-      comment_skips.push({
-        start: parsed.marker.start,
-        end: parsed.marker.end,
-        line: parsed.marker.line,
-      });
+      if (consumed) {
+        comment_skips.push({
+          start: marker.start,
+          end: marker.end,
+          line: marker.line,
+        });
+      }
 
-      pos = parsed.marker.end;
+      pos = marker.end;
     }
 
     // a comment whose non-marker bytes are entirely punctuation/whitespace
@@ -255,6 +400,17 @@ function run_extraction(
       } else {
         for (const s of comment_skips) skip_ranges.push(s);
       }
+    }
+  }
+
+  // any leftover half-open opens are unmatched — surface each one.
+  for (const stack of pair_stack.values()) {
+    for (const pending of stack) {
+      report(
+        "unmatched_pair",
+        `unmatched open for "[!${pending.verb}${pending.id ? "#" + pending.id : ""}]"`,
+        pending.marker,
+      );
     }
   }
 
@@ -337,20 +493,55 @@ function parse_marker(
   }
 
   // optional space then args, then `]`. `]` must appear before the next
-  // newline and before the comment ends.
-  let args_text = "";
+  // newline and before the comment ends. quotes are tracked so that `]`
+  // inside `"..."` (with `\"` / `\\` escapes) is treated as anchor content
+  // rather than as the marker close.
+  //
+  // we deliberately don't materialize the args as a string here. the parsers
+  // below all operate on `(input, start, end)` indices, so the only string
+  // allocations down the args parsing path are anchor values that the
+  // overlay resolver actually needs.
+  let args_start = pos;
+  let args_end = pos;
   if (pos < len && input.charCodeAt(pos) === 32 /* space */) {
     pos++;
-    const args_start = pos;
-    while (
-      pos < len &&
-      pos < comment_end &&
-      input.charCodeAt(pos) !== 93 /* ] */ &&
-      input.charCodeAt(pos) !== 10 /* \n */
-    ) {
+    args_start = pos;
+    let in_quote = false;
+    while (pos < len && pos < comment_end) {
+      const c = input.charCodeAt(pos);
+      if (c === 10 /* \n */) break;
+      if (in_quote) {
+        if (c === 92 /* \ */ && pos + 1 < comment_end) {
+          pos += 2;
+          continue;
+        }
+        if (c === 34 /* " */) in_quote = false;
+        pos++;
+        continue;
+      }
+      if (c === 34 /* " */) {
+        in_quote = true;
+        pos++;
+        continue;
+      }
+      if (c === 93 /* ] */) break;
       pos++;
     }
-    args_text = input.slice(args_start, pos);
+    args_end = pos;
+    // inline trim — the parsers expect a tight range, no leading/trailing
+    // whitespace. matches `String.prototype.trim` for the ascii whitespace
+    // we care about (space, tab, cr); newlines never appear here because the
+    // scan above breaks on `\n`.
+    while (args_start < args_end) {
+      const c = input.charCodeAt(args_start);
+      if (c !== 32 && c !== 9 && c !== 13) break;
+      args_start++;
+    }
+    while (args_end > args_start) {
+      const c = input.charCodeAt(args_end - 1);
+      if (c !== 32 && c !== 9 && c !== 13) break;
+      args_end--;
+    }
   }
 
   // either we're at `]`, at `\n`, or at end-of-comment.
@@ -372,7 +563,7 @@ function parse_marker(
     line: line_of(line_starts, open_pos),
   };
 
-  const args = parse_args(args_text.trim());
+  const args = parse_args(input, args_start, args_end);
   if (args === null) {
     return {
       verb,
@@ -381,8 +572,8 @@ function parse_marker(
       marker,
       spans_newline: false,
       error: {
-        kind: "unsupported",
-        message: `unsupported argument form: "${args_text}". phase 1 supports bare, +N, :N, :N..M (exclusive), :N...M (inclusive)`,
+        kind: "malformed",
+        message: `malformed argument: "${input.slice(args_start, args_end)}"`,
       },
     };
   }
@@ -409,55 +600,200 @@ function make_marker_error(
   };
 }
 
-// phase 1 grammar for args:
-//   ""       -> bare
-//   "+N"     -> lineCount (N >= 1)
-//   ":N"     -> lineRef (single line)
-//   ":N..M"  -> lineRef, exclusive: lines (N, M) — endpoints excluded
-//   ":N...M" -> lineRef, inclusive: lines [N, M] — endpoints included
-// the dot rule mirrors the anchor-range syntax (`<a>..<b>` exclusive,
-// `<a>...<b>` inclusive). returns null on any other form.
-function parse_args(text: string): ParsedArgs | null {
-  if (text.length === 0) return { kind: "bare" };
+// the parsers below all operate on `(input, start, end)` triples directly
+// over the source string — never on a sliced/copied substring. this keeps
+// the args parsing path allocation-free apart from the unavoidable anchor
+// values (which the resolver needs as strings for `input.indexOf`).
 
-  const first = text.charCodeAt(0);
+// dispatch on the first character: `+` -> lineCount, `:` -> lineRef, `=` ->
+// set, leading `.` -> half-open end, anything else -> word/quoted/wildcard
+// anchor (closed range or half-open start). returns null on any malformed
+// form so the caller can report it as "unsupported" with the source location.
+function parse_args(input: string, start: number, end: number): ParsedArgs | null {
+  if (start >= end) return { kind: "bare" };
+
+  const first = input.charCodeAt(start);
   if (first === 43 /* + */) {
-    const n = parse_int(text, 1);
+    const n = parse_int(input, start + 1, end);
     if (n === null || n < 1) return null;
     return { kind: "lineCount", count: n };
   }
-  if (first === 58 /* : */) {
-    const rest = text.slice(1);
-    // check for `...` (inclusive) before `..` so the longer separator wins.
-    // indexOf("..") would otherwise greedy-match the first two dots of `...`
-    // and leave a stray `.` glued to the M operand.
-    const tripledot = rest.indexOf("...");
-    if (tripledot >= 0) {
-      const from = parse_int(rest, 0, tripledot);
-      const to = parse_int(rest.slice(tripledot + 3), 0);
-      if (from === null || to === null || from < 1 || to < from) return null;
-      return { kind: "lineRef", from, to, inclusive: true };
-    }
-    const dotdot = rest.indexOf("..");
-    if (dotdot < 0) {
-      const n = parse_int(rest, 0);
-      if (n === null || n < 1) return null;
-      return { kind: "lineRef", from: n };
-    }
-    const from = parse_int(rest, 0, dotdot);
-    const to = parse_int(rest.slice(dotdot + 2), 0);
+  if (first === 58 /* : */) return parse_line_ref(input, start + 1, end);
+  if (first === 61 /* = */) return parse_set(input, start + 1, end);
+  return parse_anchor_range(input, start, end);
+}
+
+function parse_line_ref(input: string, start: number, end: number): ParsedArgs | null {
+  // check for `...` before `..` so the longer separator wins. indexOf("..")
+  // would otherwise greedy-match the first two dots of `...` and leave a
+  // stray `.` glued to the M operand.
+  const tripledot = bounded_index_of(input, "...", start, end);
+  if (tripledot >= 0) {
+    const from = parse_int(input, start, tripledot);
+    const to = parse_int(input, tripledot + 3, end);
     if (from === null || to === null || from < 1 || to < from) return null;
-    return { kind: "lineRef", from, to, inclusive: false };
+    return { kind: "lineRef", from, to, inclusive: true };
+  }
+  const dotdot = bounded_index_of(input, "..", start, end);
+  if (dotdot < 0) {
+    const n = parse_int(input, start, end);
+    if (n === null || n < 1) return null;
+    return { kind: "lineRef", from: n };
+  }
+  const from = parse_int(input, start, dotdot);
+  const to = parse_int(input, dotdot + 2, end);
+  if (from === null || to === null || from < 1 || to < from) return null;
+  return { kind: "lineRef", from, to, inclusive: false };
+}
+
+function parse_set(input: string, start: number, end: number): ParsedArgs | null {
+  // skip optional leading whitespace, then a single anchor, then trailing ws.
+  let pos = skip_ws(input, start, end);
+  const a = parse_anchor(input, pos, end);
+  if (a === null) return null;
+  pos = skip_ws(input, a.next, end);
+  if (pos !== end) return null;
+  // wildcard set is meaningless: it would expand to a single match covering
+  // the whole source. reject so callers see a clear error rather than a
+  // surprising no-op.
+  if (a.anchor.kind === "wildcard") return null;
+  return { kind: "set", anchor: a.anchor };
+}
+
+// anchor range: `a..b`, `a...b`, `a..`, `a...`, `..b`, `...b`. wildcards may
+// stand in for any anchor position (`*..foo`, `bar..*`).
+function parse_anchor_range(input: string, start: number, end: number): ParsedArgs | null {
+  let pos = skip_ws(input, start, end);
+  let from: Anchor | null = null;
+  if (pos < end && input.charCodeAt(pos) !== 46 /* . */) {
+    const a = parse_anchor(input, pos, end);
+    if (a === null) return null;
+    from = a.anchor;
+    pos = a.next;
+  }
+  pos = skip_ws(input, pos, end);
+
+  // separator: `...` (inclusive on this side) or `..` (exclusive). check the
+  // longer one first so `a...b` doesn't tokenize as `a` `..` `.b`.
+  let inclusive_left: boolean;
+  if (pos + 3 <= end && input.startsWith("...", pos)) {
+    inclusive_left = true;
+    pos += 3;
+  } else if (pos + 2 <= end && input.startsWith("..", pos)) {
+    inclusive_left = false;
+    pos += 2;
+  } else {
+    return null;
+  }
+  pos = skip_ws(input, pos, end);
+
+  let to: Anchor | null = null;
+  const inclusive_right = inclusive_left;
+  if (pos < end) {
+    const a = parse_anchor(input, pos, end);
+    if (a === null) return null;
+    to = a.anchor;
+    pos = a.next;
+  }
+  pos = skip_ws(input, pos, end);
+  if (pos !== end) return null;
+
+  // require at least one side present; bare `..` / `...` is meaningless.
+  if (from === null && to === null) return null;
+
+  // for closed ranges the dot count applies to both endpoints (per spec
+  // table). for half-open markers, the dot count picks the inclusivity
+  // of the present anchor only; the missing side gets a placeholder that
+  // will be overwritten when the pair resolves.
+  return {
+    kind: "range",
+    from,
+    to,
+    inclusive_start: from !== null ? inclusive_left : inclusive_right,
+    inclusive_end: to !== null ? inclusive_right : inclusive_left,
+  };
+}
+
+// parse a single anchor at position `pos` within [pos, end). returns the
+// anchor and the index just past it, or null on failure.
+function parse_anchor(
+  input: string,
+  pos: number,
+  end: number,
+): { anchor: Anchor; next: number } | null {
+  if (pos >= end) return null;
+  const c = input.charCodeAt(pos);
+  if (c === 42 /* * */) {
+    return { anchor: { kind: "wildcard" }, next: pos + 1 };
+  }
+  if (c === 34 /* " */) return parse_quoted(input, pos, end);
+  if (is_word_char(c)) {
+    let p = pos;
+    while (p < end && is_word_char(input.charCodeAt(p))) p++;
+    // anchor value is needed as a string by `resolve_anchor` (input.indexOf);
+    // this slice is the only unavoidable allocation in the args path.
+    return { anchor: { kind: "word", value: input.slice(pos, p) }, next: p };
   }
   return null;
 }
 
-function parse_int(text: string, from: number, to?: number): number | null {
-  const limit = to ?? text.length;
-  if (from >= limit) return null;
+function parse_quoted(
+  input: string,
+  pos: number,
+  end: number,
+): { anchor: Anchor; next: number } | null {
+  // already validated input[pos] === '"'; collect until matching closing
+  // quote, honouring `\"` and `\\` escapes per spec.
+  let i = pos + 1;
+  let value = "";
+  let chunk_start = i;
+  while (i < end) {
+    const c = input.charCodeAt(i);
+    if (c === 34 /* " */) {
+      if (i > chunk_start) value += input.slice(chunk_start, i);
+      return { anchor: { kind: "literal", value }, next: i + 1 };
+    }
+    if (c === 92 /* \ */) {
+      if (i + 1 >= end) return null;
+      const next_c = input.charCodeAt(i + 1);
+      if (next_c !== 34 && next_c !== 92) return null;
+      if (i > chunk_start) value += input.slice(chunk_start, i);
+      value += String.fromCharCode(next_c);
+      i += 2;
+      chunk_start = i;
+      continue;
+    }
+    i++;
+  }
+  return null;
+}
+
+function skip_ws(input: string, pos: number, end: number): number {
+  while (pos < end && input.charCodeAt(pos) === 32) pos++;
+  return pos;
+}
+
+// indexOf bounded by `[start, end)`. returns -1 when the needle would extend
+// past `end`, even if it occurs later in `input`.
+function bounded_index_of(input: string, needle: string, start: number, end: number): number {
+  const idx = input.indexOf(needle, start);
+  return idx < 0 || idx + needle.length > end ? -1 : idx;
+}
+
+function is_word_char(c: number): boolean {
+  return (
+    (c >= 48 && c <= 57) ||
+    (c >= 65 && c <= 90) ||
+    (c >= 97 && c <= 122) ||
+    c === 95
+  );
+}
+
+function parse_int(input: string, from: number, to: number): number | null {
+  if (from >= to) return null;
   let v = 0;
-  for (let i = from; i < limit; i++) {
-    const c = text.charCodeAt(i);
+  for (let i = from; i < to; i++) {
+    const c = input.charCodeAt(i);
     if (c < 48 || c > 57) return null;
     v = v * 10 + (c - 48);
   }
@@ -516,7 +852,10 @@ function line_end(line_starts: Int32Array, line_1: number, input_len: number): n
   return line_starts[line_1];
 }
 
-function resolve_phase1_range(
+// resolve a line-mode args (bare / +N / :N / :N..M / :N...M) to a SourceRange
+// covering whole lines. anchor ranges and set form are handled separately
+// (resolve_anchor_range, resolve_set).
+function resolve_line_mode(
   args: ParsedArgs,
   marker: SourcePosition,
   line_starts: Int32Array,
@@ -560,9 +899,8 @@ function resolve_phase1_range(
         }
       }
       break;
-    case "range":
-    case "set":
-      // phase 2 / 3.
+    default:
+      // range / set are not line-mode; caller routes them elsewhere.
       return null;
   }
   return {
@@ -571,6 +909,177 @@ function resolve_phase1_range(
     start_line,
     end_line,
   };
+}
+
+// resolve a closed anchor range to a byte-level SourceRange.
+//
+// anchors point at CODE, not at notation comments — the marker's own bytes
+// (and any other comment) would otherwise shadow the real anchor (consider
+// `// [!em foo..bar]` placed alone on a line: searching forward from the
+// marker would find `foo` inside the marker text first). we pass the
+// sorted comment_ranges in and skip any candidate match that falls inside
+// a comment.
+//
+// FROM is searched from byte 0 (excluding comments) so anchors can sit
+// anywhere in the source — most commonly the line(s) just above the marker
+// comment. the TO anchor is searched from the FROM match's END (not start),
+// so two adjacent occurrences of the same anchor like `"x"..."x"` correctly
+// bracket the pair instead of the parser finding the same byte twice.
+// wildcards are LINE-RELATIVE to the marker that physically contains the
+// `*`. for closed ranges (`foo..*`) that's the single marker. for half-open
+// pairs (`my_users...` paired with `...*`) the wildcard binds to the
+// closer marker's line — so the range spans from the opener's anchor down
+// to the end of the closer's line, which is the natural reading of a
+// "wrap this block" pair. without this bound a stray wildcard would
+// silently pull in unrelated source far away from the marker.
+function resolve_anchor_range(
+  from: Anchor,
+  to: Anchor,
+  inclusive_start: boolean,
+  inclusive_end: boolean,
+  from_marker: SourcePosition,
+  to_marker: SourcePosition,
+  input: string,
+  line_starts: Int32Array,
+  comment_ranges: Uint32Array,
+): SourceRange | null {
+  // both wildcards is malformed: there's no anchor to draw the line from.
+  // the parser doesn't reject this earlier so the diagnostic surfaces
+  // here as anchor_not_found rather than failing silently.
+  if (from.kind === "wildcard" && to.kind === "wildcard") return null;
+
+  const a = from.kind === "wildcard"
+    ? null
+    : resolve_anchor(input, from, 0, comment_ranges);
+  if (from.kind !== "wildcard" && a === null) return null;
+  const search_to_from = a !== null ? a.end : 0;
+  const b = to.kind === "wildcard" ? null : resolve_anchor(input, to, search_to_from, comment_ranges);
+  if (to.kind !== "wildcard" && b === null) return null;
+
+  let start_byte: number;
+  let end_byte: number;
+  if (from.kind === "wildcard") {
+    // `*..b` (or paired `...*` opener): start at the beginning of the
+    // marker that hosts the `*` literal.
+    start_byte = line_starts[from_marker.line - 1];
+  } else {
+    start_byte = inclusive_start ? a!.start : a!.end;
+  }
+  if (to.kind === "wildcard") {
+    // `a..*` (or paired `...*` closer): end at the end of the marker
+    // that hosts the `*` literal — the byte just before its terminating
+    // \n, or input length if the marker sits on the final unterminated
+    // line.
+    const wild_line = to_marker.line;
+    end_byte = wild_line < line_starts.length ? line_starts[wild_line] - 1 : input.length;
+  } else {
+    end_byte = inclusive_end ? b!.end : b!.start;
+  }
+  if (end_byte < start_byte) end_byte = start_byte;
+  return {
+    start: start_byte,
+    end: end_byte,
+    start_line: line_of(line_starts, start_byte),
+    end_line: line_of(line_starts, Math.max(start_byte, end_byte - 1)),
+  };
+}
+
+// find the first occurrence of `anchor` at or after `from_offset` that is
+// NOT inside a comment region. word anchors require word boundaries on
+// both sides; literal anchors are substring matches; wildcard is handled
+// by callers (different start/end semantics).
+function resolve_anchor(
+  input: string,
+  anchor: Anchor,
+  from_offset: number,
+  comment_ranges: Uint32Array,
+): { start: number; end: number } | null {
+  if (anchor.kind === "wildcard") return null;
+  const value = anchor.value;
+  if (value.length === 0) return null;
+  let pos = from_offset;
+  while (pos <= input.length - value.length) {
+    const idx = input.indexOf(value, pos);
+    if (idx < 0) return null;
+    // skip past the enclosing comment if the candidate landed inside one.
+    const cend = comment_end_containing(comment_ranges, idx);
+    if (cend >= 0) {
+      pos = cend;
+      continue;
+    }
+    if (anchor.kind === "word") {
+      const before_ok = idx === 0 || !is_word_char(input.charCodeAt(idx - 1));
+      const after_pos = idx + value.length;
+      const after_ok = after_pos >= input.length || !is_word_char(input.charCodeAt(after_pos));
+      if (!before_ok || !after_ok) {
+        pos = idx + 1;
+        continue;
+      }
+    }
+    return { start: idx, end: idx + value.length };
+  }
+  return null;
+}
+
+// find every occurrence of `anchor` in non-comment regions. used for set form.
+function resolve_anchor_all(
+  input: string,
+  anchor: Anchor,
+  comment_ranges: Uint32Array,
+): { start: number; end: number }[] {
+  const out: { start: number; end: number }[] = [];
+  let pos = 0;
+  while (pos < input.length) {
+    const m = resolve_anchor(input, anchor, pos, comment_ranges);
+    if (m === null) break;
+    out.push(m);
+    // advance at least one byte so zero-length anchors (rejected upstream
+    // via length === 0) can never spin forever.
+    pos = Math.max(m.end, m.start + 1);
+  }
+  return out;
+}
+
+// build a sorted Uint32Array of [start, end, start, end, ...] for every
+// comment-typed token in the result. used by the anchor resolver to skip
+// matches inside marker text.
+function build_comment_ranges(
+  tokens: Uint32Array,
+  comment_id: number,
+): Uint32Array {
+  let n = 0;
+  for (let i = 0; i < tokens.length; i += 3) {
+    if (tokens[i] === comment_id) n++;
+  }
+  const out = new Uint32Array(n * 2);
+  let w = 0;
+  for (let i = 0; i < tokens.length; i += 3) {
+    if (tokens[i] === comment_id) {
+      out[w++] = tokens[i + 1];
+      out[w++] = tokens[i + 2];
+    }
+  }
+  return out;
+}
+
+// returns the end byte of the comment range containing `pos`, or -1 when
+// `pos` isn't inside any comment. binary search over a flat array of
+// [start, end) pairs.
+function comment_end_containing(ranges: Uint32Array, pos: number): number {
+  if (ranges.length === 0) return -1;
+  // find the largest range whose start <= pos
+  let lo = 0;
+  let hi = ranges.length / 2 - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    const s = ranges[mid * 2];
+    if (s <= pos) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  // hi is now the candidate index (or -1).
+  if (hi < 0) return -1;
+  const e = ranges[hi * 2 + 1];
+  return pos < e ? e : -1;
 }
 
 // ---------------------------------------------------------------------------

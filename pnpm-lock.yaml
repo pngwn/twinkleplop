@@ -347,6 +347,9 @@ importers:
       '@twinkleplop/markdown':
         specifier: workspace:*
         version: link:../../languages/markdown
+      '@twinkleplop/notation':
+        specifier: workspace:*
+        version: link:../notation
       '@vitest/ui':
         specifier: ^4.1.5
         version: 4.1.5(vitest@4.1.5)
