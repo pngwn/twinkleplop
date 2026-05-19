@@ -71,6 +71,11 @@
     "url": "https://github.com/pngwn/twinkleplop",
     "directory": "lib/core"
   },
-  "homepage": "https://github.com/pngwn/twinkleplop",
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  },
+  "homepage": "https://twinkleplop.pngwn.dev",
   "bugs": "https://github.com/pngwn/twinkleplop/issues"
 }

@@ -10,6 +10,7 @@
 // pattern elements. token type names in patterns are resolved to integer
 // type_ids once per reclassify call, so the hot loop is integer-only.
 
+import { build_annotation_extractor } from "./annotation";
 import { tokenize } from "./tokenizer";
 import type {
   AnyOfPatternSpec,
@@ -2055,9 +2056,21 @@ export function create_language(
   return (options?: LanguageOptions): LanguageFn => {
     const run = reclassify(select_pipeline(pipeline, options?.fidelity));
     const downgrade = build_downgrade(grammar.token_types, options?.fidelity);
+    // annotation extraction is opt-in. when options.annotation is undefined
+    // the extractor is null and the LanguageFn closure is identical to
+    // today's: a single nullable check, V8 inlines it. when configured, the
+    // closure calls the extractor after reclassification and attaches
+    // overlays for the renderer to consume.
+    const annotation_extractor = options?.annotation
+      ? build_annotation_extractor(options.annotation, grammar.token_types)
+      : null;
     return (input: string) => {
       const result = run(input, tokenize(input, grammar));
       if (downgrade !== null) apply_downgrade(result.tokens, downgrade);
+      if (annotation_extractor !== null) {
+        const overlays = annotation_extractor(input, result);
+        if (overlays !== undefined) result.overlays = overlays;
+      }
       return result;
     };
   };

@@ -7,11 +7,7 @@
 	import Card from "$lib/docs/components/Card.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { language } from "@twinkleplop/bash";
-	import { language as ts_language } from "@twinkleplop/typescript";
-
-	const bash = language();
-	const ts = ts_language();
+	import { bash, ts } from "$lib/docs/highlighters";
 
 	const install_src = `pnpm add "@twinkleplop/typescript" "@twinkleplop/theme"`;
 	const install_code = bash(install_src);
@@ -37,12 +33,12 @@ document.body.innerHTML = html;`
 		<p>
 		Install a language and theme.
 		</p>
-		<CodeBlock fname="terminal" lang="sh" html={install_code} />
+		<CodeBlock fname="terminal" html={install_code} />
 	</Section>
 
 	<Section id="s2" title="first highlight" num="§ 02">
 		<p>Import. Initialize. Highlight.</p>
-		<CodeBlock fname="first-twinkle.ts" lang="typescript" html={first_highlight_code} />
+		<CodeBlock fname="first-twinkle.ts" html={first_highlight_code} />
 	</Section>
 
 

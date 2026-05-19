@@ -84,6 +84,10 @@ export interface CompiledGrammar {
 export interface TokenizeResult {
   tokens: Uint32Array;
   token_types: string[];
+  // populated only when annotation extraction ran during this call (i.e. the
+  // language factory was given an `annotation` config). undefined otherwise so
+  // the renderer's no-overlay fast path is reachable via a single check.
+  overlays?: OverlayResult;
 }
 
 // Reclassifier types
@@ -191,6 +195,147 @@ export type FidelitySpec = FidelityLevel | readonly string[];
 
 export interface LanguageOptions {
   fidelity?: FidelitySpec;
+  // when present, the language factory installs an annotation extractor in
+  // the returned LanguageFn. when absent the factory closure is identical to
+  // today's, preserving the zero-cost-when-disabled invariant.
+  annotation?: AnnotationConfig;
+}
+
+// ---------------------------------------------------------------------------
+// annotation transformer system
+// ---------------------------------------------------------------------------
+//
+// in-source directives `[!verb[#id][ args]]` written inside source-language
+// comments are extracted post-tokenize and produce overlays — additional
+// CSS classes that the renderer applies to token spans (token-mode) or line
+// spans (line-mode). overlays do NOT affect token types; they live in a
+// parallel structure on TokenizeResult.
+
+export interface AnnotationConfig {
+  // plugins claim verbs and produce overlay contributions. order is preserved
+  // for stable error reporting on collisions.
+  plugins: AnnotationPlugin[];
+  // optional sink for extraction errors. when omitted the framework throws.
+  on_error?: (issue: AnnotationIssue) => void;
+}
+
+export interface AnnotationPlugin {
+  // verbs claimed by this plugin. registration-time collision is an error.
+  verbs: string[];
+  // 'shared' (default) means the framework parses the marker args and passes
+  // a ParsedArgs to the plugin. 'raw' passes the raw string and the plugin
+  // parses it itself. phase 1 supports only 'shared'.
+  parse?: "shared" | "raw";
+  handle(input: AnnotationInput): AnnotationOutput;
+}
+
+export interface AnnotationInput {
+  verb: string;
+  id?: string;
+  args: ParsedArgs | string;
+  // resolved source range the marker targets (already includes pair resolution
+  // and anchor lookup, so plugins receive a fully-resolved span).
+  range: SourceRange;
+  marker: SourcePosition;
+}
+
+export interface AnnotationOutput {
+  overlays?: OverlayContribution[];
+}
+
+export interface OverlayContribution {
+  start: number;
+  end: number;
+  // CSS class name (e.g. "emphasis", "highlight", "diff-add").
+  classification: string;
+  // line-mode overlays attach to the <span class="l"> wrapping each line in
+  // the range; token-mode overlays attach to each <span class="tok"> whose
+  // bytes intersect the range. defaults to false (token-mode).
+  line_mode?: boolean;
+}
+
+// argument forms the framework parses for plugins with parse: 'shared'.
+//
+// `inclusive*` (on lineRef and range) follows the spec's "more dots more
+// content" rule:
+//   `..`  -> inclusive: false (endpoint excluded)
+//   `...` -> inclusive: true  (endpoint included)
+// for single-line `lineRef` with no `to`, `inclusive` is ignored.
+//
+// `range` carries independent inclusivity per endpoint so that paired
+// half-open markers (`<a>...` paired with `..<b>`) can preserve each
+// half's chosen inclusivity. closed forms set both flags from the same
+// dot count (`<a>..<b>` -> both false, `<a>...<b>` -> both true).
+export type ParsedArgs =
+  | { kind: "bare" }
+  | { kind: "lineCount"; count: number }
+  | { kind: "lineRef"; from: number; to?: number; inclusive?: boolean }
+  | {
+      kind: "range";
+      from: Anchor | null;
+      to: Anchor | null;
+      inclusive_start: boolean;
+      inclusive_end: boolean;
+    }
+  | { kind: "set"; anchor: Anchor }
+  // `***` shorthand: every byte on the marker's own line, token-mode. the
+  // cleaner equivalent of `*..*` (which the parser rejects as malformed
+  // because it has no anchor reference). use bare `[!em]` for line-mode
+  // styling instead.
+  | { kind: "wholeLine" };
+
+export type Anchor =
+  | { kind: "word"; value: string }
+  | { kind: "literal"; value: string }
+  | { kind: "wildcard" };
+
+export interface SourcePosition {
+  // byte offsets into the original input string.
+  start: number;
+  end: number;
+  // 1-indexed line number containing the marker.
+  line: number;
+}
+
+export interface SourceRange {
+  // byte offsets into the original input.
+  start: number;
+  end: number;
+  // 1-indexed line numbers covering the resolved range.
+  start_line: number;
+  end_line: number;
+}
+
+export type AnnotationIssueKind =
+  | "verb_collision"
+  | "anchor_not_found"
+  | "unmatched_pair"
+  | "marker_spans_newline"
+  | "set_with_pairing"
+  | "malformed"
+  | "unsupported";
+
+export interface AnnotationIssue {
+  kind: AnnotationIssueKind;
+  message: string;
+  position: SourcePosition;
+}
+
+// the result attached to TokenizeResult.overlays. flat typed arrays so the
+// renderer's overlay sweep is integer-only.
+export interface OverlayResult {
+  // sorted by start. Uint32Array of 4-tuples [start, end, class_id, flags].
+  // flags bit 0 = line-mode. other bits reserved (focus-sibling etc.).
+  ranges: Uint32Array;
+  // class_id -> CSS class name.
+  classifications: string[];
+  // sorted Uint32Array pairs [start, end] of marker bytes the renderer
+  // substitutes with whitespace (or omits, depending on phase 1 choice).
+  skip_ranges: Uint32Array;
+  // 1-indexed line numbers (sparse) the renderer should drop entirely:
+  // lines that contained only marker bytes plus whitespace. stored as a
+  // dense Uint8Array indexed by line number; bit 0 of byte n marks line n.
+  elided_lines: Uint8Array;
 }
 
 // a compiled language: call the factory with options to get the tokenize

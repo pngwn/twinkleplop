@@ -181,6 +181,7 @@ export interface tweak_state {
 	inspect: boolean;
 	flavor: flavor_name;
 	show_line_numbers: boolean;
+	annotation: boolean;
 }
 
 export const DEFAULT_TWEAKS: tweak_state = {
@@ -189,5 +190,6 @@ export const DEFAULT_TWEAKS: tweak_state = {
 	density: 'comfortable',
 	inspect: false,
 	flavor: 'paperwhite',
-	show_line_numbers: true
+	show_line_numbers: true,
+	annotation: true
 };

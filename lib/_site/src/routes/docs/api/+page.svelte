@@ -132,7 +132,7 @@
 			grammar+theme cache across calls.
 		</p>
 		<Signature html={create_sig} />
-		<CodeBlock fname="instance.ts" lang="typescript" html={instance_code} />
+		<CodeBlock fname="instance.ts" html={instance_code} />
 	</Section>
 
 	<Section id="registerTheme" title="registerTheme()" num="§ 03">

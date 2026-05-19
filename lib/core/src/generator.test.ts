@@ -1,0 +1,255 @@
+// renderer tests for the overlay-aware path. asserts:
+//   - byte-for-byte equality of no-overlay output (the unchanged fast path).
+//   - line-mode classes attach to <span class="l">.
+//   - skip ranges substitute marker bytes with spaces.
+//   - elided lines are removed entirely (line numbers continue source-aligned).
+
+import { describe, expect, test } from "vitest";
+import { compile } from "./compiler";
+import { to_html } from "./generator";
+import { build_annotation_extractor } from "./annotation";
+import { tokenize } from "./tokenizer";
+import type { Grammar, AnnotationPlugin } from "./types";
+
+const grammar = compile<Grammar>({
+  name: "toy",
+  states: {
+    root: {
+      rules: [
+        { match: "//", token: "comment", state: "line_comment" },
+        { match: " ", token: "punctuation" },
+        { match: "\n", token: "punctuation" },
+        {
+          range: [
+            ["a", "z"],
+            ["A", "Z"],
+            ["0", "9"],
+          ],
+          token: "identifier",
+        },
+        { any: true, token: "punctuation" },
+      ],
+    },
+    line_comment: {
+      rules: [
+        { match: "\n", token: "comment", exit: true },
+        { any: true, token: "comment" },
+      ],
+    },
+  },
+});
+
+// auto line-mode: bare/+N/:N/:N..M render line-mode (whole line styled);
+// anchor ranges and =anchor render token-mode (wrapper hugs the matched
+// content). matches the behaviour of the real @twinkleplop/annotation
+// plugins so generator tests exercise the rendering path each kind takes.
+const em: AnnotationPlugin = {
+  verbs: ["em"],
+  handle: ({ args, range }) => ({
+    overlays: [
+      {
+        start: range.start,
+        end: range.end,
+        classification: "emphasis",
+        line_mode: args.kind === "bare" || args.kind === "lineCount" || args.kind === "lineRef",
+      },
+    ],
+  }),
+};
+
+const hl: AnnotationPlugin = {
+  verbs: ["hl"],
+  handle: ({ args, range }) => ({
+    overlays: [
+      {
+        start: range.start,
+        end: range.end,
+        classification: "highlight",
+        line_mode: args.kind === "bare" || args.kind === "lineCount" || args.kind === "lineRef",
+      },
+    ],
+  }),
+};
+
+function render(input: string, plugins: AnnotationPlugin[] = []): string {
+  const result = tokenize(input, grammar);
+  if (plugins.length > 0) {
+    const extractor = build_annotation_extractor({ plugins }, result.token_types);
+    const overlays = extractor(input, result);
+    if (overlays !== undefined) result.overlays = overlays;
+  }
+  return to_html(input, result);
+}
+
+describe("to_html overlay path", () => {
+  test("no-overlay path is unchanged", () => {
+    // when result.overlays is undefined, output must match the original
+    // generator output for the same input — the fast path.
+    const input = "abc def\nxyz\n";
+    const baseline = render(input, []);
+    // run again with annotation configured but no markers in source: still no
+    // overlays attached, identical output.
+    const alt = render(input, [em]);
+    expect(alt).toBe(baseline);
+  });
+
+  test("line-mode overlay class is added to the line span", () => {
+    const input = "a\nfoo // [!em]\nb\n";
+    const html = render(input, [em]);
+    // line 2 has the marker; emphasis class should appear on its line span.
+    expect(html).toMatch(/<span class="l emphasis">/);
+  });
+
+  test("inline marker is substituted with whitespace", () => {
+    const input = "a // [!em] post\nb\n";
+    const html = render(input, [em]);
+    // the literal `[!em]` must not appear in the output (substituted).
+    expect(html).not.toContain("[!em]");
+    // the trailing text `post` must remain intact.
+    expect(html).toContain("post");
+  });
+
+  test("marker-only comment line is elided from output", () => {
+    const input = "alpha\n// [!em :1]\nbeta\n";
+    const html = render(input, [em]);
+    // the marker comment text is removed and the line is dropped.
+    expect(html).not.toContain("// [!em :1]");
+    // line spans: line 1 (with emphasis), line 3 (beta), line 4 (empty
+    // trailing line after the last \n). line 2 is elided.
+    const line_opens = html.match(/<span class="l[^"]*">/g) ?? [];
+    expect(line_opens.length).toBe(3);
+    // line 1 carries the emphasis class (because [!em :1] targets line 1).
+    expect(html).toMatch(/<span class="l emphasis">/);
+    // beta and alpha both render.
+    expect(html).toContain("alpha");
+    expect(html).toContain("beta");
+  });
+
+  test("multiple overlays compose on the same line", () => {
+    const input = "x // [!em]\nx // [!hl]\nx // [!em]\n";
+    const html = render(input, [em, hl]);
+    expect(html).toMatch(/<span class="l emphasis">/);
+    expect(html).toMatch(/<span class="l highlight">/);
+  });
+
+  test(":N...M (inclusive) ranges apply to every line in the range", () => {
+    // inclusive form: lines 2 and 3 are both highlighted.
+    const input = "one\ntwo\nthree\nfour\n// [!em :2...3]\n";
+    const html = render(input, [em]);
+    const matches = html.match(/<span class="l emphasis">/g) ?? [];
+    expect(matches.length).toBe(2);
+  });
+
+  test(":N..M (exclusive) ranges skip both endpoints", () => {
+    // exclusive form: :1..4 highlights only the interior — lines 2 and 3.
+    const input = "one\ntwo\nthree\nfour\n// [!em :1..4]\n";
+    const html = render(input, [em]);
+    const matches = html.match(/<span class="l emphasis">/g) ?? [];
+    expect(matches.length).toBe(2);
+  });
+
+  test("whitespace inside an overlay span is not wrapped in <span class=\"tok ...\">", () => {
+    // line-mode overlay covers a line with `a b` (whitespace gap between
+    // tokens). the renderer must not wrap that whitespace in a `<span
+    // class="tok emphasis">` — the no-overlay path never wraps inter-token
+    // whitespace and the overlay path should match.
+    const input = "a b // [!em]\n";
+    const html = render(input, [em]);
+    // there is no `<span class="tok emphasis">` wrapping a single space.
+    expect(html).not.toMatch(/<span class="tok emphasis">\s+<\/span>/);
+    expect(html).not.toMatch(/<span class="tok [^"]*emphasis[^"]*">\s+<\/span>/);
+  });
+
+  test("token-mode overlay across whitespace omits span around whitespace", () => {
+    // anchor range that spans `foo bar` — the gap between tokens is just a
+    // space, which should NOT get its own `<span class="tok emphasis">`.
+    const input = "foo bar baz // [!em foo...bar]\n";
+    const html = render(input, [em]);
+    expect(html).not.toMatch(/<span class="tok emphasis"> <\/span>/);
+  });
+
+  test("token-mode overlay opens one wrapper around its tokens", () => {
+    // `foo...bar` should produce a single `<span class="tok emphasis">` that
+    // wraps the inner identifier/whitespace/identifier — NOT three sibling
+    // spans, each with the emphasis class. the whitespace between tokens
+    // sits inside the wrapper so the highlight is visually contiguous.
+    const input = "foo bar baz // [!em foo...bar]\n";
+    const html = render(input, [em]);
+    // exactly one wrapper opens with class "tok emphasis" on the first line.
+    const wrappers = html.match(/<span class="tok emphasis">/g) ?? [];
+    expect(wrappers.length).toBe(1);
+    // the wrapper contains the inner identifier spans for foo and bar.
+    expect(html).toMatch(
+      /<span class="tok emphasis"><span class="tok identifier">foo<\/span> <span class="tok identifier">bar<\/span><\/span>/,
+    );
+    // baz, outside the wrapper, has no emphasis class baked into its tok span.
+    expect(html).toMatch(/<span class="tok identifier">baz<\/span>/);
+  });
+
+  test("token-mode wrapper trims leading/trailing whitespace of overlay range", () => {
+    // overlay covers `   foo  ` with surrounding whitespace; wrapper should
+    // hug the non-whitespace content only.
+    const input = "  foo  bar // [!em foo..bar]\n";
+    const html = render(input, [em]);
+    // exclusive `..` means wrapper covers the gap between foo and bar:
+    // first non-ws after foo's end (the space) gets trimmed, last non-ws
+    // before bar's start ("the space) too — leaves nothing. so no wrapper.
+    // change the input to have content inside the range.
+    const html2 = render("  foo middle bar // [!em foo..bar]\n", [em]);
+    const wrappers = html2.match(/<span class="tok emphasis">/g) ?? [];
+    expect(wrappers.length).toBe(1);
+    // the wrapper opens at "middle" (first non-ws after foo's end) and
+    // closes after "middle" (last non-ws before bar's start).
+    expect(html2).toMatch(/<span class="tok emphasis"><span class="tok identifier">middle<\/span><\/span>/);
+    // sanity — the extra invocation has been used.
+    expect(html.length).toBeGreaterThan(0);
+  });
+
+  test("trailing marker-only comment is trimmed (no run-on whitespace at line end)", () => {
+    // the comment `// [!em]` is fully covered by skip ranges. emitting it
+    // as substituted spaces would leave trailing whitespace on the line;
+    // those bytes must be dropped from the output entirely.
+    const input = "let x = 1; // [!em]\n";
+    const html = render(input, [em]);
+    // the line span ends with the `;` (plus its closing tag), then the
+    // closing `</span>\n` for the line — no run of substituted spaces in
+    // between. assertion: the rendered line has no spaces between `;`'s
+    // closing tag and the line's closing `</span>`.
+    expect(html).toMatch(/;<\/span><\/span>\n/);
+    // sanity: no marker source bytes leaked through.
+    expect(html).not.toContain("[!em");
+  });
+
+  test("elided marker comment leaves no overlay wrapper around whitespace", () => {
+    // a marker-only comment line is elided entirely. on the marker's source
+    // line we still have the leading whitespace + the comment bytes that
+    // got substituted to spaces. neither should produce a `<span
+    // class="tok comment ...">` wrapping the substituted whitespace.
+    const input = "alpha\n  // [!em :1]\nbeta\n";
+    const html = render(input, [em]);
+    // no `<span class="tok comment ...">` containing only whitespace.
+    expect(html).not.toMatch(/<span class="tok comment[^"]*">\s+<\/span>/);
+    // and the marker text bytes are gone, not just classed.
+    expect(html).not.toContain("[!em");
+  });
+
+  test("line numbers renumber after elision (visible position, not source)", () => {
+    function render_with_lines(input: string, plugins: AnnotationPlugin[] = []): string {
+      const result = tokenize(input, grammar);
+      if (plugins.length > 0) {
+        const extractor = build_annotation_extractor({ plugins }, result.token_types);
+        const overlays = extractor(input, result);
+        if (overlays !== undefined) result.overlays = overlays;
+      }
+      return to_html(input, result, { line_numbers: true });
+    }
+    // line 2 is a marker-only comment that gets elided. visible numbering
+    // should be: line 1 (alpha), line 2 (beta) — NOT 1 then 3.
+    const input = "alpha\n// [!em :1]\nbeta\n";
+    const html = render_with_lines(input, [em]);
+    const numbers = [...html.matchAll(/<span class="ln">(\d+)<\/span>/g)].map((m) => m[1]);
+    expect(numbers).toEqual(["1", "2", "3"]);
+    // (line 3 in the visible numbering is the trailing empty line after
+    // beta\n; the elided source line 2 contributes no number to the output.)
+  });
+});

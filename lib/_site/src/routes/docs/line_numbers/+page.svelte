@@ -7,13 +7,7 @@
 	import Card from "$lib/docs/components/Card.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { language as make_ts } from "@twinkleplop/typescript";
-	import { language as make_html } from "@twinkleplop/html";
-	import { language as make_css } from "@twinkleplop/css";
-
-	const ts = make_ts();
-	const html = make_html();
-	const css = make_css();
+	import { ts, html, css } from "$lib/docs/highlighters";
 
 	const line_number_src = `import { language } from "@twinkleplop/typescript";
 
@@ -64,7 +58,7 @@ const html_no_line_numbers = ts("1 + 2");`;
 		  Line numbers ins twinkleplop are a <em>renderer</em> option. </p>
 		<p>This means that you can create a single resuable highlighter and decide whether or not render line numbers on a per-call basis.
 		</p>
-		<CodeBlock fname="line-numbers.ts" lang="typescript" html={line_number} />
+		<CodeBlock fname="line-numbers.ts" html={line_number} />
 	</Section>
 
 	<Section id="s2" title="styling" num="§ 01">
@@ -72,9 +66,9 @@ const html_no_line_numbers = ts("1 + 2");`;
 
 		<p>Line numbers are just an extra HTML element that gets output at the start of the line.</p>
 		<p>The HTML looks like this:</p>
-		<CodeBlock fname="line-numbers.html" lang="html" html={html_output} />
+		<CodeBlock fname="line-numbers.html" html={html_output} />
 		<p>You can style them like this:</p>
-		<CodeBlock fname="line-numbers.css" lang="css" html={css_output} />
+		<CodeBlock fname="line-numbers.css" html={css_output} />
 	</Section>
 
 </ArticleMain>

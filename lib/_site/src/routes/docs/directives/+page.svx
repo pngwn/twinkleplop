@@ -1,0 +1,100 @@
+<script lang="ts">
+	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
+	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
+	import Section from "$lib/docs/components/Section.svelte";
+	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
+	import MiniLab from "$lib/docs/components/MiniLab.svelte";
+	import Card from "$lib/docs/components/Card.svelte";
+	import CardGrid from "$lib/docs/components/CardGrid.svelte";
+	import Callout from "$lib/docs/components/Callout.svelte";
+	import { ts, ts_raw, html, css } from "$lib/docs/highlighters";
+
+	const line_number_src = `import { add } from "math"
+
+const NUM = 100 // [!del]
+const NUM = 50 // [!add]
+
+const v = add(NUM, "hi") // [!err add...*]`;
+
+	const line_number_input = ts_raw(line_number_src);
+	const line_number_output = ts(line_number_src);
+
+	const html_output_src = `<pre class="twinkleplop">
+  <code>
+    <span class="l"><span class="ln">1</span> ...tokens </span>
+    <span class="l"><span class="ln">2</span> ...tokens</span>
+    <span class="l"><span class="ln">3</span> ...tokens</span>
+  </code>
+</pre>`
+
+	const html_output = html(html_output_src);
+
+	const css_output_src = `.twinkleplop .ln {
+  display: inline-block;
+  width: 40px;
+  text-align: right;
+  padding-right: 16px;
+}`
+
+	const css_output = css(css_output_src);
+</script>
+
+<ArticleMain
+	pane_path="docs / directives"
+	title="directives"
+	subtitle="Twinkleplop supports a variety of source directives in comments that can be used to annotate certain parts of the source."
+
+>
+	<Section id="s1" title="intro" num="§ 01">
+		Source directives are an expansion of [Shiki notation transformers](), allowing you to mark certain parts of a snippet for significance without needing to write a complex grammar. Directives live in the source you are highlighting and are generally local to a line or lines.
+
+		They are a way to 'mark' certain lines or spans of characters with a 'tag' that is rendered as a wrapping class or classes.
+
+		Directives have a specific syntax, an accompanying 'verb' (or any word), and are always contained with a language specific comment.
+
+		<SplitCodeBlock
+			lang="typescript"
+			left_html={line_number_input}
+			right_html={line_number_output}
+		/>
+	</Section>
+
+<Section id="s2" title="using directives" num="§ 01">
+
+Directives only take affect if you configure them. By default, comments are just comments. When you configure directives, only the specific directives you configure will take effect.
+
+There are several pre-made directives available, each with their own verbs:
+
+| plugin   | verb   | classification | typical use                          |
+| -------- | ------ | -------------- | ------------------------------------ |
+| `em`     | `em`   | `emphasis`     | draw attention                       |
+| `hl`     | `hl`   | `highlight`    | persistent highlight                 |
+| `dim`    | `dim`  | `subdued`      | fade siblings                        |
+| `add`    | `add`  | `diff-add`     | diff: added                          |
+| `del`    | `del`  | `diff-del`     | diff: removed                        |
+| `mod`    | `mod`  | `diff-mod`     | diff: modified                       |
+| `err`    | `err`  | `error`        | diagnostic squiggle: error           |
+| `warn`   | `warn` | `warning`      | diagnostic squiggle: warning         |
+| `info`   | `info` | `info`         | diagnostic squiggle: info            |
+
+
+</Section>
+
+</ArticleMain>
+
+<ArticleOtp
+	title="getting started"
+	sections={[
+		{ href: "#s1", label: "§01 — install", active: true },
+		{ href: "#s2", label: "§02 — first highlight" },
+		{ href: "#s3", label: "§03 — try it live" },
+		{ href: "#s4", label: "§04 — framework adapters" },
+	]}
+	meta={[
+		{ label: "version", value: "0.4.2" },
+		{ label: "updated", value: "5d ago" },
+		{ label: "authors", value: "pngwn" },
+		{ label: "read", value: "~4 min" },
+	]}
+/>

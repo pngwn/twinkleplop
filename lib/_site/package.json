@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
+    "@twinkleplop/annotation": "workspace:*",
     "@twinkleplop/bash": "workspace:*",
     "@twinkleplop/core": "workspace:*",
     "@twinkleplop/css": "workspace:*",
@@ -38,6 +39,7 @@
     "@twinkleplop/typescript": "workspace:*",
     "@twinkleplop/whitespace": "workspace:*",
     "@twinkleplop/yaml": "workspace:*",
+    "mdsvex": "https://pkg.pr.new/pngwn/MDsveX/mdsvex@010d51c",
     "prismjs": "^1.30.0",
     "shiki": "^4.0.2"
   },
@@ -46,7 +48,6 @@
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@types/node": "^20.19.17",
     "@types/prismjs": "^1.26.6",
-    "mdsvex": "^0.12.3",
     "prettier": "^3.4.2",
     "prettier-plugin-svelte": "^3.3.3",
     "svelte": "^5.55.5",
@@ -54,5 +55,11 @@
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
     "wrangler": "^4.13.2"
-  }
+  },
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  },
+  "homepage": "https://twinkleplop.pngwn.dev"
 }

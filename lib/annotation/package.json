@@ -1,0 +1,33 @@
+{
+  "name": "@twinkleplop/annotation",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@twinkleplop/core": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pngwn/twinkleplop",
+    "directory": "lib/annotation"
+  },
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  },
+  "homepage": "https://twinkleplop.pngwn.dev",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues"
+}

@@ -1,0 +1,224 @@
+<script lang="ts">
+	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
+	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
+	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import FaqList from "$lib/docs/components/FaqList.svelte";
+	import { ts, bash } from "$lib/docs/highlighters";
+	import { bundledThemes } from "shiki";
+
+	const install_html = bash(`# core + one language
+npm install @twinkleplop/core @twinkleplop/html`);
+
+	const lazy_html = ts(`const { language } = await import('@twinkleplop/rust');
+const rust = language();`);
+
+	const tokens_html = ts(`import { tokenizer } from '@twinkleplop/html';
+
+const html_tokenizer = tokenizer();
+
+// get some tokens
+const tokens = html_tokenizer("hello world");`);
+</script>
+
+<ArticleMain
+	pane_path="docs / faq"
+	title="frequently asked"
+	subtitle="Short answers to the things that come up most often. If something here is wrong or missing, the source for this page lives in <code>docs/faq.md</code>."
+>
+
+{#snippet a_another_highlighter()}
+	Probably not, but I built it anyway.
+
+	Jokes aside, _I_ needed a new syntax highlighter maybe you feel the same.
+
+	I found that I was caught between two equally unsuitable options, both excellent in their way, but I wasn't comfortable with the trade-offs of either.
+
+	Prism is small and fast with great language support but the lack of customisation options, outdated package format, and browser-only plugins made it difficult to work with. The long awaited rewrite will address some of these issues but I lost confidence that it will come soon or solve enough of the issues I faced.
+
+	Shiki on the other hand offers very high quality highlighting and great customisation options but the size and performance made it unsuitable some usecases. The Shiki team have done great work optimising the library in recent years but there are a few hard limitations that make significant improvements challenging. The DX of Shiki has suffered due to this in my opinion as much of your setup is dedicated to working around these issues.
+
+	Twinkleplop is my take on a modern syntax highlighter that tries to capture the benefits of both. It is part experiement, and part 'thing that I needed'.
+
+	I wrote about this more extensively [here]().
+
+{/snippet}
+
+{#snippet shiki()}
+	Twinkleplop is significantly smaller than Shiki and an order of magnitude faster. It offers similar quality highlighting in terms of correctness and granularity and also offers a similar toolkit for authoring code snippets.
+
+	Twinkleplop does not emulate Shiki's transformer API and takes a different approach to customisation byt modifying and extending tokenisation through [source directives](#link) and [token reclassifiers](#link).
+
+	Unlike Shiki, Twinkleplop owns _most_ of its stack, grammars are bespoke and not a downstream concern. Bugs in twinkleplop are bugs in twinkleplop.
+{/snippet}
+
+{#snippet prism()}
+	Twinkleplop is a little larger than Prism but faster (the delta is not as great as against shiki, 3-6x typically). Twinkleplop is ESM and bundler friendly, and fully treeshakable.
+	Twinkleplop typically provides higher quality highlighting than Prism and a more options for customisation.
+
+	Twinkleplop's full featureset is available in any environment, unlike Prism plugins which only work in the browser.
+{/snippet}
+
+{#snippet a_switch_to_twinkleplop()}
+	If you are happy with your current setup, then I see no reason why you should. Twinkleplop could be an option if you are frustrated by your current setup.
+
+	If you highlight obscure languages or have complex Shiki transforms, switching could be more costly, though still possible.
+
+	Try to figure out what you would get out of switching and how much effort it would require before committing.
+{/snippet}
+
+{#snippet migrate()}
+    Follow the migration guide for [Shiki]() or [Prism]()
+{/snippet}
+
+{#snippet build_or_runtime()}
+    Twinkleplop is modest in size and very fast, you can use it at runtime without worrying if your usecase requires it.
+
+    That said, less code is always better, so build time generation is recommended for static content.
+{/snippet}
+
+{#snippet a_runtimes()}
+	You can use it anywhere. It is pure, synchronous and has no external dependencies.
+{/snippet}
+
+{#snippet a_one_per_lang()}
+	It is a design choice rather than a requirement. Twinkleplop errs on the side of explicitness.
+
+	You install and import the languages you need. This makes it easier to stay on top of install sizes and bundle sizes.
+
+	Languages like HTML that embed other languages (CSS in `style` tags, JS in `script` tags) are simply dependencies of the parent language. You don't need to think about them.
+{/snippet}
+
+{#snippet a_lazy()}
+	Yes. Every language package is a plain ESM module, so dynamic `import()` works out of the box:
+
+	<CodeBlock fname="lazy.ts" html={lazy_html} />
+
+ 	You can do this when you want to highlight user input but would rather not load multiple languages up front. Any modern bundler will ensure that the shared core is deduplicated.
+{/snippet}
+
+{#snippet a_supported()}
+    A modest number of languages so far. The full list can be found in the [languages section](/docs/languages-ref).
+{/snippet}
+
+{#snippet a_html_or_tokens()}
+	Whatever you desire. The `language` export will give you HTML, the `tokenizer` export will give you the raw token stream.
+
+	<CodeBlock fname="tokenize.ts" html={tokens_html} />
+
+	Tokens are a flat array of <code>[type, value, range]</code>. For advanced usecases, this API provides a lot of flexibility.
+{/snippet}
+
+	{#snippet a_themes()}
+		Tokens are CSS classes, themes are CSS files. The highlighter emits stable class names for each token (`.keyword`, `.string`, etc.).
+
+		Twinkleplop provides a variety of high quality themes and they all come with a dark and light variant, that are easy to integrate into your current theme toggle system.
+
+
+		You can learn more in the [theme guide](/docs/themes) or [theme reference](/docs/themes-ref)
+	{/snippet}
+
+	{#snippet a_buildtime()}
+
+		Yes, and this is recommended for static sites.
+
+		The simplest way is to integrate it with your markdown render or static site generator.
+
+		[We have guides.](/docs/markdown)
+
+	{/snippet}
+
+	{#snippet a_size()}
+			Core is roughly 4kb min+gzip. Each language adds between 2–9kb depending on grammar
+			complexity. There is no shared regex blob — grammars are pre-compiled to small state
+			machines at build time.
+	{/snippet}
+
+	{#snippet a_speed()}
+		Yes. Twinkleplop is the fastest highlighter in the west.
+
+		If you are highlighting large files on every keystroke there are better options as Twinkleplop is optimised for single-pass highlighting. Tools like tree-sitter and lezer (codemirror) are better optimised for this case.
+
+		For simpler cases, twinkleplop can be for this purpose, it is especially nice with the browser's 'Highlight' API. There is a guide [here]().
+	{/snippet}
+
+	{#snippet a_add_lang()}
+		Open and issue and I'll add it. If you want to do it yourself, you can [follow the guide]() and make a PR.
+	{/snippet}
+
+	{#snippet a_bug()}
+		Open and issue with a description and a [playground link]() demonstrating the bug.
+
+		If you want to go a bit deeper and provide more information or submit a PR, you can read [the debugging guide]().
+	{/snippet}
+
+	{#snippet a_stuck()}
+		Open an issue and we'll unstick you.
+	{/snippet}
+
+	<FaqList
+		initial_open="01-0"
+		sections={[
+			{
+				id: "01",
+				title: "getting started",
+				items: [
+				    { q: "Do we really need another Highlighter?", a: a_another_highlighter },
+					{ q: "How does this differ from shiki?", a: shiki },
+					{ q: "How does this differ from prism?", a: prism },
+					{ q: "Should I switch to twinkleplop?", a: a_switch_to_twinkleplop },
+					{ q: "How do I migrate from shiki or prism?", a: migrate },
+
+					{ q: "Should I highlight at build time or runtime?", a: build_or_runtime },
+					{ q: "Does it work in the browser, Node, or both?", a: a_runtimes },
+				],
+			},
+			{
+				id: "02",
+				title: "loading languages",
+				items: [
+					{ q: "Why does each language need its own package?", a: a_one_per_lang },
+					{ q: "Can I load a language at runtime?", a: a_lazy },
+					{ q: "What languages are supported today?", a: a_supported },
+				],
+			},
+			{
+				id: "03",
+				title: "rendering & output",
+				items: [
+					{ q: "Do I get HTML, tokens, or both?", a: a_html_or_tokens },
+					{ q: "How do themes work?", a: a_themes },
+					{ q: "Can I highlight at build time instead of in the browser?", a: a_buildtime },
+				],
+			},
+			{
+				id: "04",
+				title: "performance & bundling",
+				items: [
+					{ q: "How big is the runtime?", a: a_size },
+					{ q: "Can I highlight a 10000-line file?", a: a_speed },
+				],
+			},
+			{
+				id: "05",
+				title: "issues",
+				items: [
+					{ q: "My language isn’t supported, how do I add it?", a: a_add_lang },
+					{ q: "A token is highlighted wrong. What do i do?", a: a_bug },
+					{ q: "I'm stuck.", a: a_stuck },
+				],
+			},
+		]}
+	/>
+
+</ArticleMain>
+
+<ArticleOtp
+	title="faq"
+	sections={[
+		{ href: "#s-01", label: "§01 — getting started", active: true },
+		{ href: "#s-02", label: "§02 — loading languages" },
+		{ href: "#s-03", label: "§03 — rendering & output" },
+		{ href: "#s-04", label: "§04 — performance & bundling" },
+		{ href: "#s-05", label: "§05 — contributing" },
+	]}
+/>

@@ -54,7 +54,7 @@
 	prev={{ dir: "← prev", label: "05. transformers", href: "/docs/transformers" }}
 >
 	<Section id="swap" title="the basic swap" num="§ 01">
-		<CodeBlock fname="before.ts" lang="diff" html={before_code} />
+		<CodeBlock fname="before.ts" html={before_code} />
 		<p>That's enough for 90% of usage. Keep reading if you use advanced shiki features.</p>
 	</Section>
 

@@ -13,12 +13,20 @@
 	import { theme_mode, hydrate_mode } from '$lib/theme_mode.svelte';
 	import { onMount } from 'svelte';
 	import { GRAMMAR_EXTENSION_CATEGORIES, to_html } from '@twinkleplop/core';
+	import { add, del, dim, em, err, hl, info, mod, warn } from '@twinkleplop/annotation';
 
 	// core ships no .d.ts yet so we redeclare the result shape locally.
 	interface tokenize_result {
 		tokens: Uint32Array;
 		token_types: string[];
 	}
+
+	// annotation plugins enabled when the tweak is on. defining the array
+	// once keeps the factory call cheap (no new array every reactive update)
+	// and matches the spec's "always opt-in" rule: when annotation is off,
+	// the key is omitted and the language factory takes the zero-cost
+	// no-extractor path inside create_language.
+	const annotation_plugins = [em, hl, dim, add, del, mod, err, warn, info];
 	import { palette_to_vars } from '$lib/explore/palette_vars';
 	import { measure } from '$lib/explore/measure';
 	import {
@@ -122,7 +130,17 @@
 				: enabled_tags.size === available_tags.length
 					? 'high'
 					: [...enabled_tags];
-		return make_language({ fidelity });
+		// only include the annotation key when the tweak is on. when
+		// omitted, create_language captures a null extractor and the
+		// LanguageFn fast path is byte-for-byte identical to today's.
+		const opts: {
+			fidelity: typeof fidelity;
+			annotation?: { plugins: typeof annotation_plugins };
+		} = {
+			fidelity
+		};
+		if (tweaks.annotation) opts.annotation = { plugins: annotation_plugins };
+		return make_language(opts);
 	});
 
 	function toggle_tag(tag: string) {
