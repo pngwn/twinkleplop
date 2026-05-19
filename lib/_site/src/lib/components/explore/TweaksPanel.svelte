@@ -114,15 +114,15 @@
 		</section>
 
 		<section class="tweaks__sec">
-			<div class="tweaks__label">Notation</div>
+			<div class="tweaks__label">Annotation</div>
 			<div class="tweaks__chips">
 				<button
 					class="tweak-chip"
-					class:is-on={state.notation}
+					class:is-on={state.annotation}
 					type="button"
-					onclick={() => on_update({ notation: !state.notation })}
+					onclick={() => on_update({ annotation: !state.annotation })}
 				>
-					{state.notation ? 'on' : 'off'}
+					{state.annotation ? 'on' : 'off'}
 				</button>
 			</div>
 		</section>

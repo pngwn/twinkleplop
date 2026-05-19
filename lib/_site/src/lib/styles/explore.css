@@ -1331,9 +1331,9 @@
 }
 
 /* ---------------------------------------------------------------------------
-   notation overlays
+   annotation overlays
    ---------------------------------------------------------------------------
-   classes set by @twinkleplop/notation plugins. line-mode overlays land on
+   classes set by @twinkleplop/annotation plugins. line-mode overlays land on
    .l, token-mode overlays land on .tok. the styles below cover the phase 1
    verbs (em, hl) plus the verbs the spec reserves for later phases (dim,
    focus, diff, diagnostic) so themes have something sensible to render

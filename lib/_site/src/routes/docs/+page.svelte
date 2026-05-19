@@ -10,10 +10,7 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import MiniLab from "$lib/docs/components/MiniLab.svelte";
-	import { language as ts_language } from "@twinkleplop/typescript";
-
-
-	const ts = ts_language();
+	import { ts } from "$lib/docs/highlighters";
 
 
 	const first_highlght_src = `import { language } from "@twinkleplop/typescript";
@@ -103,7 +100,7 @@ const pipeline_diagram = `                 ┌───────────�
 	</Section>
 	<Section id="hello" title="hello, twinkle" num="§ 04">
 		<p>Get started in a few lines. Drop this in a browser or Node:</p>
-		<CodeBlock fname="first-twinkle.ts" lang="typescript" html={first_highlight_code} />
+		<CodeBlock fname="first-twinkle.ts" html={first_highlight_code} />
 
 	</Section>
 </ArticleMain>

@@ -3,12 +3,8 @@
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import FaqList from "$lib/docs/components/FaqList.svelte";
-	import { language as ts_language } from "@twinkleplop/typescript";
-	import { language as bash_language } from "@twinkleplop/bash";
+	import { ts, bash } from "$lib/docs/highlighters";
 	import { bundledThemes } from "shiki";
-
-	const ts = ts_language();
-	const bash = bash_language();
 
 	const install_html = bash(`# core + one language
 npm install @twinkleplop/core @twinkleplop/html`);
@@ -95,7 +91,7 @@ const tokens = html_tokenizer("hello world");`);
 {#snippet a_lazy()}
 	Yes. Every language package is a plain ESM module, so dynamic `import()` works out of the box:
 
-	<CodeBlock fname="lazy.ts" lang="typescript" html={lazy_html} />
+	<CodeBlock fname="lazy.ts" html={lazy_html} />
 
  	You can do this when you want to highlight user input but would rather not load multiple languages up front. Any modern bundler will ensure that the shared core is deduplicated.
 {/snippet}
@@ -107,7 +103,7 @@ const tokens = html_tokenizer("hello world");`);
 {#snippet a_html_or_tokens()}
 	Whatever you desire. The `language` export will give you HTML, the `tokenizer` export will give you the raw token stream.
 
-	<CodeBlock fname="tokenize.ts" lang="typescript" html={tokens_html} />
+	<CodeBlock fname="tokenize.ts" html={tokens_html} />
 
 	Tokens are a flat array of <code>[type, value, range]</code>. For advanced usecases, this API provides a lot of flexibility.
 {/snippet}

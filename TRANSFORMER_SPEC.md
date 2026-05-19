@@ -1,8 +1,8 @@
-# Twinkleplop Notation System
+# Twinkleplop Annotation System
 
 In-source directives extracted from comments, resolved against source, dispatched to plugins, emitting overlays. Runs **pre-grammar**; markers are replaced with whitespace of equal byte length so source coordinates remain stable.
 
-This spec covers notation only. Reclassifiers and modifying classifiers (e.g. diff prefix stripping, twoslash) are separate.
+This spec covers annotation only. Reclassifiers and modifying classifiers (e.g. diff prefix stripping, twoslash) are separate.
 
 ## Syntax
 
@@ -22,9 +22,9 @@ This spec covers notation only. Reclassifiers and modifying classifiers (e.g. di
 
 Undecided. 
 
-It may be better to process transformations _after_ initial tokenisation, as notation transformers are contained within a language specific comment.
+It may be better to process transformations _after_ initial tokenisation, as annotation transformers are contained within a language specific comment.
 
-Adding a __SKIP__ token type, that causes the renderer to skip rendering and move onto the next is probably the cleanest way to 'remove' notation comments from the rendered output (and useful for other cases).
+Adding a __SKIP__ token type, that causes the renderer to skip rendering and move onto the next is probably the cleanest way to 'remove' annotation comments from the rendered output (and useful for other cases).
 
 **Trim** at render time: a line that contains only whitespace *after substitution but contained non-whitespace before* is elided. All other whitespace — including substituted whitespace inline — is preserved (so leading indentation under e.g. diff prefixes survives).
 
@@ -80,13 +80,13 @@ The dot rule is consistent throughout: `..` (two dots) excludes both endpoints, 
 ## Plugin Interface
 
 ```ts
-interface NotationPlugin {
+interface AnnotationPlugin {
   verbs: string[];                  // verbs claimed
   parse?: 'shared' | 'raw';         // default 'shared'
-  handle(input: NotationInput): NotationOutput;
+  handle(input: AnnotationInput): AnnotationOutput;
 }
 
-interface NotationInput {
+interface AnnotationInput {
   verb: string;
   id?: string;
   args: ParsedArgs | string;        // string when parse: 'raw'
@@ -94,7 +94,7 @@ interface NotationInput {
   marker: SourcePosition;           // for diagnostics
 }
 
-interface NotationOutput {
+interface AnnotationOutput {
   overlays?: OverlayContribution[];
 }
 
@@ -126,7 +126,7 @@ type Anchor =
 
 Line classifications, get added as classnames to the line by the renderer. Sub-line classifications get added to the _line_ as a class name.
 
-Notations that span lines are not necessaryily 'line annotations', they are token annotations that span lines. Only the explicit line notations affects lines.
+Annotations that span lines are not necessarily 'line annotations', they are token annotations that span lines. Only the explicit line annotations affect lines.
 
 All use the shared grammar.
 
@@ -175,4 +175,4 @@ three();
 - Cross-file / cross-snippet ranges.
 - `[!code ...]` Shiki-compat alias.
 - Modifying classifiers (diff prefix stripping, twoslash, etc.) — separate spec.
-- Notation that emits anything other than overlays.
+- Annotation that emits anything other than overlays.

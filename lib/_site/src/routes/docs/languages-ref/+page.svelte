@@ -70,22 +70,22 @@ const lazy_loading_usage = ts(lazy_loading_src);
 		<p>Languages are self contained packages. You can simply install and import the ones you need.</p>
 		<p>Embedded languages are an implementation detail of the language, you don't need to think about them.</p>
 
-		<CodeBlock lang="typescript" fname="highlight.ts" html={html_usage} />
+		<CodeBlock fname="highlight.ts" html={html_usage} />
 		<p>If you want raw tokens, you can use the tokenizer export:</p>
-		<CodeBlock lang="typescript" fname="tokenize.ts" html={tokenizer_usage} />
+		<CodeBlock fname="tokenize.ts" html={tokenizer_usage} />
 	</Section>
 
 
 	<Section id="multiple-languages" title="multiple languages" num="§ 03">
 		<p>Using two languages is a little bit like using one, except you do it twice:</p>
-		<CodeBlock lang="typescript" fname="multiple-languages.ts" html={multiple_languages_usage} />
+		<CodeBlock fname="multiple-languages.ts" html={multiple_languages_usage} />
 		<p>In this example we import the <code>typescript</code> and <code>html</code> languages. html uses typescript internally, but we don't pay for it twice, any modern bundler will deduplicate internal imports as they point to the same thing.</p>
 		<p>Twinkleplop has modern ESM output with granular imports and exports at all sensible boundaries. This works very nicely with bundlers like Vite. No additional gymnastics required.</p>
 	</Section>
 
 	<Section id="lazy-loading" title="lazy loading" num="§ 04">
 		<p>Twinkleplop does not have a custom module loading API, you can simply use your bundler's native dynamic import capabilities.</p>
-		<CodeBlock lang="typescript" fname="lazy-loading.ts" html={lazy_loading_usage} />
+		<CodeBlock fname="lazy-loading.ts" html={lazy_loading_usage} />
 		<p>This will create chunks for each language so they can be loaded and initialised on demand.</p>
 	</Section>
 

@@ -61,7 +61,7 @@
 			A transformer is a plain function that receives a HAST root and returns a HAST root. Sync or
 			async. Idempotent is strongly recommended.
 		</p>
-		<CodeBlock fname="my-transformer.ts" lang="typescript" html={my_transformer_code} />
+		<CodeBlock fname="my-transformer.ts" html={my_transformer_code} />
 		<Callout variant="tip">
 			Transformer results are cached by <strong>(transformer identity + input hash)</strong>. Keep
 			them pure and you get free caching across calls.

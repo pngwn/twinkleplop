@@ -15,7 +15,7 @@ export function to_html(
   token_result: TokenizeResult,
   options: RenderOptions = {},
 ) {
-  // notation overlays opt-in: when present, dispatch to the overlay-aware
+  // annotation overlays opt-in: when present, dispatch to the overlay-aware
   // renderer below. when absent, the function body matches the original
   // exactly so existing benchmarks remain unaffected.
   if (token_result.overlays !== undefined) {
@@ -121,7 +121,7 @@ function escape_substring_optimized(input: string, start: number, end: number) {
 }
 
 // ---------------------------------------------------------------------------
-// notation overlay rendering
+// annotation overlay rendering
 // ---------------------------------------------------------------------------
 //
 // mirrors the structure of to_html above, with three additions:

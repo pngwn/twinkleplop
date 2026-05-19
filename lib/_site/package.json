@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
+    "@twinkleplop/annotation": "workspace:*",
     "@twinkleplop/bash": "workspace:*",
     "@twinkleplop/core": "workspace:*",
     "@twinkleplop/css": "workspace:*",
@@ -25,7 +26,6 @@
     "@twinkleplop/html": "workspace:*",
     "@twinkleplop/javascript": "workspace:*",
     "@twinkleplop/markdown": "workspace:*",
-    "@twinkleplop/notation": "workspace:*",
     "@twinkleplop/python": "workspace:*",
     "@twinkleplop/rust": "workspace:*",
     "@twinkleplop/sql": "workspace:*",
@@ -39,7 +39,7 @@
     "@twinkleplop/typescript": "workspace:*",
     "@twinkleplop/whitespace": "workspace:*",
     "@twinkleplop/yaml": "workspace:*",
-    "mdsvex": "https://pkg.pr.new/pngwn/MDsveX/mdsvex@a13a8cd",
+    "mdsvex": "https://pkg.pr.new/pngwn/MDsveX/mdsvex@010d51c",
     "prismjs": "^1.30.0",
     "shiki": "^4.0.2"
   },

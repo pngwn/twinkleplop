@@ -7,9 +7,9 @@
 import { describe, expect, test } from "vitest";
 import { compile } from "./compiler";
 import { to_html } from "./generator";
-import { build_notation_extractor } from "./notation";
+import { build_annotation_extractor } from "./annotation";
 import { tokenize } from "./tokenizer";
-import type { Grammar, NotationPlugin } from "./types";
+import type { Grammar, AnnotationPlugin } from "./types";
 
 const grammar = compile<Grammar>({
   name: "toy",
@@ -41,9 +41,9 @@ const grammar = compile<Grammar>({
 
 // auto line-mode: bare/+N/:N/:N..M render line-mode (whole line styled);
 // anchor ranges and =anchor render token-mode (wrapper hugs the matched
-// content). matches the behaviour of the real @twinkleplop/notation
+// content). matches the behaviour of the real @twinkleplop/annotation
 // plugins so generator tests exercise the rendering path each kind takes.
-const em: NotationPlugin = {
+const em: AnnotationPlugin = {
   verbs: ["em"],
   handle: ({ args, range }) => ({
     overlays: [
@@ -57,7 +57,7 @@ const em: NotationPlugin = {
   }),
 };
 
-const hl: NotationPlugin = {
+const hl: AnnotationPlugin = {
   verbs: ["hl"],
   handle: ({ args, range }) => ({
     overlays: [
@@ -71,10 +71,10 @@ const hl: NotationPlugin = {
   }),
 };
 
-function render(input: string, plugins: NotationPlugin[] = []): string {
+function render(input: string, plugins: AnnotationPlugin[] = []): string {
   const result = tokenize(input, grammar);
   if (plugins.length > 0) {
-    const extractor = build_notation_extractor({ plugins }, result.token_types);
+    const extractor = build_annotation_extractor({ plugins }, result.token_types);
     const overlays = extractor(input, result);
     if (overlays !== undefined) result.overlays = overlays;
   }
@@ -87,7 +87,7 @@ describe("to_html overlay path", () => {
     // generator output for the same input — the fast path.
     const input = "abc def\nxyz\n";
     const baseline = render(input, []);
-    // run again with notation configured but no markers in source: still no
+    // run again with annotation configured but no markers in source: still no
     // overlays attached, identical output.
     const alt = render(input, [em]);
     expect(alt).toBe(baseline);
@@ -163,7 +163,7 @@ describe("to_html overlay path", () => {
   test("token-mode overlay across whitespace omits span around whitespace", () => {
     // anchor range that spans `foo bar` — the gap between tokens is just a
     // space, which should NOT get its own `<span class="tok emphasis">`.
-    const input = "foo bar baz\n// [!em foo...bar]\n";
+    const input = "foo bar baz // [!em foo...bar]\n";
     const html = render(input, [em]);
     expect(html).not.toMatch(/<span class="tok emphasis"> <\/span>/);
   });
@@ -173,7 +173,7 @@ describe("to_html overlay path", () => {
     // wraps the inner identifier/whitespace/identifier — NOT three sibling
     // spans, each with the emphasis class. the whitespace between tokens
     // sits inside the wrapper so the highlight is visually contiguous.
-    const input = "foo bar baz\n// [!em foo...bar]\n";
+    const input = "foo bar baz // [!em foo...bar]\n";
     const html = render(input, [em]);
     // exactly one wrapper opens with class "tok emphasis" on the first line.
     const wrappers = html.match(/<span class="tok emphasis">/g) ?? [];
@@ -189,13 +189,13 @@ describe("to_html overlay path", () => {
   test("token-mode wrapper trims leading/trailing whitespace of overlay range", () => {
     // overlay covers `   foo  ` with surrounding whitespace; wrapper should
     // hug the non-whitespace content only.
-    const input = "  foo  bar\n// [!em foo..bar]\n";
+    const input = "  foo  bar // [!em foo..bar]\n";
     const html = render(input, [em]);
     // exclusive `..` means wrapper covers the gap between foo and bar:
     // first non-ws after foo's end (the space) gets trimmed, last non-ws
     // before bar's start ("the space) too — leaves nothing. so no wrapper.
     // change the input to have content inside the range.
-    const html2 = render("  foo middle bar\n// [!em foo..bar]\n", [em]);
+    const html2 = render("  foo middle bar // [!em foo..bar]\n", [em]);
     const wrappers = html2.match(/<span class="tok emphasis">/g) ?? [];
     expect(wrappers.length).toBe(1);
     // the wrapper opens at "middle" (first non-ws after foo's end) and
@@ -234,10 +234,10 @@ describe("to_html overlay path", () => {
   });
 
   test("line numbers renumber after elision (visible position, not source)", () => {
-    function render_with_lines(input: string, plugins: NotationPlugin[] = []): string {
+    function render_with_lines(input: string, plugins: AnnotationPlugin[] = []): string {
       const result = tokenize(input, grammar);
       if (plugins.length > 0) {
-        const extractor = build_notation_extractor({ plugins }, result.token_types);
+        const extractor = build_annotation_extractor({ plugins }, result.token_types);
         const overlays = extractor(input, result);
         if (overlays !== undefined) result.overlays = overlays;
       }

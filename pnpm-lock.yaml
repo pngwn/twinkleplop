@@ -174,6 +174,9 @@ importers:
       '@sveltejs/adapter-static':
         specifier: ^3.0.10
         version: 3.0.10(@sveltejs/kit@2.58.0(@sveltejs/vite-plugin-svelte@7.0.0(svelte@5.55.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)))(svelte@5.55.5)(typescript@6.0.3)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)))
+      '@twinkleplop/annotation':
+        specifier: workspace:*
+        version: link:../annotation
       '@twinkleplop/bash':
         specifier: workspace:*
         version: link:../../languages/bash
@@ -201,9 +204,6 @@ importers:
       '@twinkleplop/markdown':
         specifier: workspace:*
         version: link:../../languages/markdown
-      '@twinkleplop/notation':
-        specifier: workspace:*
-        version: link:../notation
       '@twinkleplop/python':
         specifier: workspace:*
         version: link:../../languages/python
@@ -244,8 +244,8 @@ importers:
         specifier: workspace:*
         version: link:../../languages/yaml
       mdsvex:
-        specifier: https://pkg.pr.new/pngwn/MDsveX/mdsvex@a13a8cd
-        version: https://pkg.pr.new/pngwn/MDsveX/mdsvex@a13a8cd(svelte@5.55.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0))
+        specifier: https://pkg.pr.new/pngwn/MDsveX/mdsvex@010d51c
+        version: https://pkg.pr.new/pngwn/MDsveX/mdsvex@010d51c(svelte@5.55.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0))
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0
@@ -286,6 +286,16 @@ importers:
       wrangler:
         specifier: ^4.13.2
         version: 4.85.0(@cloudflare/workers-types@4.20260424.1)
+
+  lib/annotation:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@types/node@20.19.17)(@vitest/ui@4.1.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0))
 
   lib/bench:
     dependencies:
@@ -335,6 +345,9 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0
     devDependencies:
+      '@twinkleplop/annotation':
+        specifier: workspace:*
+        version: link:../annotation
       '@twinkleplop/core':
         specifier: workspace:*
         version: link:../core
@@ -347,9 +360,6 @@ importers:
       '@twinkleplop/markdown':
         specifier: workspace:*
         version: link:../../languages/markdown
-      '@twinkleplop/notation':
-        specifier: workspace:*
-        version: link:../notation
       '@vitest/ui':
         specifier: ^4.1.5
         version: 4.1.5(vitest@4.1.5)
@@ -380,16 +390,6 @@ importers:
       vite:
         specifier: ^8.0.10
         version: 8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)
-
-  lib/notation:
-    dependencies:
-      '@twinkleplop/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      vitest:
-        specifier: ^4.1.5
-        version: 4.1.5(@types/node@20.19.17)(@vitest/ui@4.1.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0))
 
   lib/theme-atom-one:
     dependencies:
@@ -1235,12 +1235,12 @@ packages:
   '@manypkg/get-packages@1.1.3':
     resolution: {integrity: sha512-fo+QhuU3qE/2TQMQmbVMqaQ6EWbMhi4ABWP+O4AM1NqPBuy0OrApV5LO6BrrgnhtAHS2NH6RrVk9OL181tTi8A==}
 
-  '@mdsvex/parse@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@a13a8cda53bd3bff92ff76798291ff4a5836b506':
-    resolution: {tarball: https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@a13a8cda53bd3bff92ff76798291ff4a5836b506}
+  '@mdsvex/parse@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@010d51c7e1ecaec8bb265f11b15ccca43ad80641':
+    resolution: {tarball: https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@010d51c7e1ecaec8bb265f11b15ccca43ad80641}
     version: 0.1.1
 
-  '@mdsvex/render@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@a13a8cda53bd3bff92ff76798291ff4a5836b506':
-    resolution: {tarball: https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@a13a8cda53bd3bff92ff76798291ff4a5836b506}
+  '@mdsvex/render@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@010d51c7e1ecaec8bb265f11b15ccca43ad80641':
+    resolution: {tarball: https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@010d51c7e1ecaec8bb265f11b15ccca43ad80641}
     version: 0.1.0
     peerDependencies:
       svelte: ^5.0.0
@@ -2436,8 +2436,8 @@ packages:
   mdast-util-to-hast@13.2.0:
     resolution: {integrity: sha512-QGYKEuUsYT9ykKBCMOEDLsU5JRObWQusAolFMeko/tYPufNkRffBAQjIE+99jbA87xv6FgmjLtwjh9wBWajwAA==}
 
-  mdsvex@https://pkg.pr.new/pngwn/MDsveX/mdsvex@a13a8cd:
-    resolution: {tarball: https://pkg.pr.new/pngwn/MDsveX/mdsvex@a13a8cd}
+  mdsvex@https://pkg.pr.new/pngwn/MDsveX/mdsvex@010d51c:
+    resolution: {integrity: sha512-XmOlbMli5otQx0ACagEZ+8nog8Cg9iSmCKpe4XUb9cqa41Z9yQ3efGES03fLNI4zfB9G6Pet/sQgGDn1g9FpWw==, tarball: https://pkg.pr.new/pngwn/MDsveX/mdsvex@010d51c}
     version: 0.12.5
     peerDependencies:
       vite: '>=5.0.0'
@@ -3708,11 +3708,11 @@ snapshots:
       globby: 11.1.0
       read-yaml-file: 1.1.0
 
-  '@mdsvex/parse@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@a13a8cda53bd3bff92ff76798291ff4a5836b506': {}
+  '@mdsvex/parse@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@010d51c7e1ecaec8bb265f11b15ccca43ad80641': {}
 
-  '@mdsvex/render@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@a13a8cda53bd3bff92ff76798291ff4a5836b506(svelte@5.55.5)':
+  '@mdsvex/render@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@010d51c7e1ecaec8bb265f11b15ccca43ad80641(svelte@5.55.5)':
     dependencies:
-      '@mdsvex/parse': https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@a13a8cda53bd3bff92ff76798291ff4a5836b506
+      '@mdsvex/parse': https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@010d51c7e1ecaec8bb265f11b15ccca43ad80641
     optionalDependencies:
       svelte: 5.55.5
 
@@ -4762,11 +4762,11 @@ snapshots:
       unist-util-visit: 5.0.0
       vfile: 6.0.3
 
-  mdsvex@https://pkg.pr.new/pngwn/MDsveX/mdsvex@a13a8cd(svelte@5.55.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)):
+  mdsvex@https://pkg.pr.new/pngwn/MDsveX/mdsvex@010d51c(svelte@5.55.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)):
     dependencies:
       '@ampproject/remapping': 2.3.0
-      '@mdsvex/parse': https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@a13a8cda53bd3bff92ff76798291ff4a5836b506
-      '@mdsvex/render': https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@a13a8cda53bd3bff92ff76798291ff4a5836b506(svelte@5.55.5)
+      '@mdsvex/parse': https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@010d51c7e1ecaec8bb265f11b15ccca43ad80641
+      '@mdsvex/render': https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@010d51c7e1ecaec8bb265f11b15ccca43ad80641(svelte@5.55.5)
     optionalDependencies:
       vite: 8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)
     transitivePeerDependencies:

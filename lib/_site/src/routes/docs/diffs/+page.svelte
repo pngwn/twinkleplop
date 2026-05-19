@@ -42,12 +42,12 @@
 			Pick your flavour. All three packages ship the same core; the wrappers differ only in what
 			they import by default.
 		</p>
-		<CodeBlock fname="terminal" lang="sh" html={install_code} />
+		<CodeBlock fname="terminal" html={install_code} />
 	</Section>
 
 	<Section id="s2" title="first highlight" num="§ 02">
 		<p>One call. One await. One HTML string. That is the whole library from the outside:</p>
-		<CodeBlock fname="first-twinkle.ts" lang="typescript" html={first_highlight_code} />
+		<CodeBlock fname="first-twinkle.ts" html={first_highlight_code} />
 	</Section>
 
 	<Section id="s3" title="try it live" num="§ 03">

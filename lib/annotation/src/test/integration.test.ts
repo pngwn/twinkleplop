@@ -1,4 +1,4 @@
-// end-to-end test: build a language with notation enabled and confirm
+// end-to-end test: build a language with annotation enabled and confirm
 // the rendered output reflects the markers. uses a synthetic JS-like
 // grammar (line + block comments) rather than depending on a real
 // language package, which keeps this package's deps minimal.
@@ -37,25 +37,25 @@ const grammar = compile<Grammar>({
   },
 });
 
-describe("end-to-end: create_language + notation", () => {
-  test("notation disabled -> output identical to a plain factory call", () => {
+describe("end-to-end: create_language + annotation", () => {
+  test("annotation disabled -> output identical to a plain factory call", () => {
     const factory = create_language(grammar);
     const plain = factory();
-    const with_notation = create_language(grammar)({
-      // intentionally no notation key.
+    const with_annotation = create_language(grammar)({
+      // intentionally no annotation key.
     });
     const input = "alpha\nfoo bar\nbaz\n";
-    expect(to_html(input, plain(input))).toBe(to_html(input, with_notation(input)));
+    expect(to_html(input, plain(input))).toBe(to_html(input, with_annotation(input)));
   });
 
-  test("notation enabled but no markers in source -> overlays absent", () => {
-    const fn = create_language(grammar)({ notation: { plugins: [em, hl] } });
+  test("annotation enabled but no markers in source -> overlays absent", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [em, hl] } });
     const result = fn("plain text\nno markers here\n");
     expect(result.overlays).toBeUndefined();
   });
 
   test("em + hl markers compose on rendered html", () => {
-    const fn = create_language(grammar)({ notation: { plugins: [em, hl] } });
+    const fn = create_language(grammar)({ annotation: { plugins: [em, hl] } });
     const input = "first\nfoo // [!em]\nbar // [!hl]\nlast\n";
     const result = fn(input);
     expect(result.overlays).toBeDefined();

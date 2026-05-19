@@ -55,7 +55,7 @@
 			Pass the name as a string. Themes are lazy-loaded on first use and cached — you pay the cost
 			exactly once.
 		</p>
-		<CodeBlock fname="use-theme.ts" lang="typescript" html={use_theme_code} />
+		<CodeBlock fname="use-theme.ts" html={use_theme_code} />
 	</Section>
 
 	<Section id="byo" title="bring your own" num="§ 03">
@@ -63,7 +63,7 @@
 			Feed it any vs-code-compatible theme JSON. TextMate scopes are translated into the internal
 			token tree at load time, then cached on disk.
 		</p>
-		<CodeBlock fname="byo.ts" lang="typescript" html={byo_code} />
+		<CodeBlock fname="byo.ts" html={byo_code} />
 	</Section>
 
 	<Section id="parity" title="shiki parity" num="§ 04">

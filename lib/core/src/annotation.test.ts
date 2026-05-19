@@ -8,9 +8,9 @@
 
 import { describe, expect, test } from "vitest";
 import { compile } from "./compiler";
-import { build_notation_extractor } from "./notation";
+import { build_annotation_extractor } from "./annotation";
 import { tokenize } from "./tokenizer";
-import type { Grammar, NotationPlugin } from "./types";
+import type { Grammar, AnnotationPlugin } from "./types";
 
 const grammar = compile<Grammar>({
   name: "toy",
@@ -47,7 +47,7 @@ const grammar = compile<Grammar>({
   },
 });
 
-function em_plugin(): NotationPlugin {
+function em_plugin(): AnnotationPlugin {
   return {
     verbs: ["em"],
     handle: ({ range }) => ({
@@ -63,7 +63,7 @@ function em_plugin(): NotationPlugin {
   };
 }
 
-function hl_plugin(): NotationPlugin {
+function hl_plugin(): AnnotationPlugin {
   return {
     verbs: ["hl"],
     handle: ({ range }) => ({
@@ -79,13 +79,13 @@ function hl_plugin(): NotationPlugin {
   };
 }
 
-function extract(input: string, plugins: NotationPlugin[]) {
+function extract(input: string, plugins: AnnotationPlugin[]) {
   const result = tokenize(input, grammar);
-  const extractor = build_notation_extractor({ plugins }, result.token_types);
+  const extractor = build_annotation_extractor({ plugins }, result.token_types);
   return extractor(input, result);
 }
 
-describe("notation extractor", () => {
+describe("annotation extractor", () => {
   test("bare marker tags the marker line", () => {
     const input = `a = 1 // [!em]\nb = 2\n`;
     const overlays = extract(input, [em_plugin()]);
@@ -176,7 +176,7 @@ describe("notation extractor", () => {
 
   test("verb collision throws at build time", () => {
     expect(() => {
-      build_notation_extractor(
+      build_annotation_extractor(
         { plugins: [em_plugin(), { verbs: ["em"], handle: () => ({}) }] },
         ["comment"],
       );
@@ -200,7 +200,7 @@ describe("notation extractor", () => {
     let issue: any = null;
     const input = `// [!em\n]\nabc\n`;
     const result = tokenize(input, grammar);
-    const extractor = build_notation_extractor(
+    const extractor = build_annotation_extractor(
       {
         plugins: [em_plugin()],
         on_error: (i) => {
@@ -263,7 +263,7 @@ describe("notation extractor", () => {
     // `..` with no anchors on either side is meaningless; parser rejects.
     const input = `// [!em ..]\nabc\n`;
     const result = tokenize(input, grammar);
-    const extractor = build_notation_extractor(
+    const extractor = build_annotation_extractor(
       {
         plugins: [em_plugin()],
         on_error: (i) => {
@@ -286,7 +286,7 @@ describe("notation extractor", () => {
     const original_warn = console.warn;
     console.warn = () => {};
     try {
-      const extractor = build_notation_extractor({ plugins: [em_plugin()] }, result.token_types);
+      const extractor = build_annotation_extractor({ plugins: [em_plugin()] }, result.token_types);
       const overlays = extractor(input, result);
       expect(overlays).toBeDefined();
       // the second marker still produced an overlay (one 4-tuple).
@@ -299,7 +299,7 @@ describe("notation extractor", () => {
   test("grammar without `comment` token type returns undefined", () => {
     // pretend a grammar that does not emit `comment`.
     const fake_token_types = ["identifier", "punctuation"];
-    const extractor = build_notation_extractor({ plugins: [em_plugin()] }, fake_token_types);
+    const extractor = build_annotation_extractor({ plugins: [em_plugin()] }, fake_token_types);
     const tokens = new Uint32Array(0);
     const out = extractor("abc // [!em]", { tokens, token_types: fake_token_types });
     expect(out).toBeUndefined();
@@ -309,10 +309,10 @@ describe("notation extractor", () => {
 describe("phase 2 — anchors, ranges, set, pairing", () => {
   // helper: extract with a non-throwing on_error so tests don't print
   // warnings to stderr unless they assert on the issue.
-  function quiet_extract(input: string, plugins: NotationPlugin[]) {
+  function quiet_extract(input: string, plugins: AnnotationPlugin[]) {
     const result = tokenize(input, grammar);
     const issues: any[] = [];
-    const extractor = build_notation_extractor(
+    const extractor = build_annotation_extractor(
       { plugins, on_error: (i) => issues.push(i) },
       result.token_types,
     );
@@ -321,7 +321,8 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
 
   test("word anchor: closed range matches whole-word, both excluded by `..`", () => {
     // `foo..bar` exclusive: range starts AFTER foo and ends BEFORE bar.
-    const input = `foo middle bar trailing\n// [!em foo..bar]\n`;
+    // anchors must be on the marker's own line (closed ranges are line-bound).
+    const input = `foo middle bar trailing // [!em foo..bar]\n`;
     const { overlays } = quiet_extract(input, [em_plugin()]);
     expect(overlays).toBeDefined();
     const start = overlays!.ranges[0];
@@ -333,7 +334,7 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
   });
 
   test("word anchor: `...` is inclusive — both endpoints included", () => {
-    const input = `foo middle bar trailing\n// [!em foo...bar]\n`;
+    const input = `foo middle bar trailing // [!em foo...bar]\n`;
     const { overlays } = quiet_extract(input, [em_plugin()]);
     expect(overlays).toBeDefined();
     expect(overlays!.ranges[0]).toBe(0); // start of foo
@@ -341,7 +342,7 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
   });
 
   test("word anchor: respects word boundaries (foobar does not match foo)", () => {
-    const input = `foobar baz\n// [!em foo...baz]\n`;
+    const input = `foobar baz // [!em foo...baz]\n`;
     const { issues } = quiet_extract(input, [em_plugin()]);
     // foo isn't matched as a whole word ('o' is followed by 'b' which is a
     // word char), so the anchor isn't found. expect anchor_not_found.
@@ -350,7 +351,7 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
   });
 
   test("quoted anchor: substring match, no word boundary needed", () => {
-    const input = `let xs = [1, 2, 3];\n// [!em "1, 2"..."3]"]\n`;
+    const input = `let xs = [1, 2, 3]; // [!em "1, 2"..."3]"]\n`;
     const { overlays } = quiet_extract(input, [em_plugin()]);
     expect(overlays).toBeDefined();
     expect(overlays!.ranges[0]).toBe(input.indexOf("1, 2"));
@@ -358,7 +359,7 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
   });
 
   test("quoted anchor: escapes \\\\ and \\\"", () => {
-    const input = `say "hello"\n// [!em "\\""..."\\""]\n`;
+    const input = `say "hello" // [!em "\\""..."\\""]\n`;
     const { overlays } = quiet_extract(input, [em_plugin()]);
     expect(overlays).toBeDefined();
     // first " is at index 4, second " at index 10. inclusive: range covers [4, 11).
@@ -427,7 +428,7 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
   });
 
   test("anchor not found is reported, no overlay emitted", () => {
-    const input = `foo bar\n// [!em foo...zzz]\n`;
+    const input = `foo bar // [!em foo...zzz]\n`;
     const { overlays, issues } = quiet_extract(input, [em_plugin()]);
     // overlay collection ends up empty (and the marker bytes still skipped),
     // so finalize returns a result with empty ranges.
@@ -438,10 +439,11 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
   });
 
   test("set form: `=anchor` emits one overlay per occurrence", () => {
-    const input = `foo bar foo baz foo\n// [!em =foo]\n`;
+    // set form is line-bound: only matches on the marker's own line.
+    const input = `foo bar foo baz foo // [!em =foo]\n`;
     const { overlays } = quiet_extract(input, [em_plugin()]);
     expect(overlays).toBeDefined();
-    // 3 occurrences of foo → 3 4-tuples.
+    // 3 occurrences of foo on the marker line → 3 4-tuples.
     expect(overlays!.ranges.length).toBe(12);
     const starts = [
       overlays!.ranges[0],
@@ -452,14 +454,16 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
   });
 
   test("set form: zero matches reports anchor_not_found", () => {
-    const input = `foo bar\n// [!em =never]\n`;
+    const input = `foo bar // [!em =never]\n`;
     const { issues } = quiet_extract(input, [em_plugin()]);
     expect(issues.length).toBe(1);
     expect(issues[0].kind).toBe("anchor_not_found");
   });
 
   test("half-open pair: opening and closing markers compose into one range", () => {
-    const input = `start middle finish\n// [!em start...]\n// [!em ...finish]\n`;
+    // opener anchor on opener's line, closer anchor on closer's line —
+    // half-open pairs are the only cross-line case allowed.
+    const input = `start middle // [!em start...]\nfinish stuff // [!em ...finish]\n`;
     const { overlays, issues } = quiet_extract(input, [em_plugin()]);
     expect(issues).toEqual([]);
     expect(overlays).toBeDefined();
@@ -471,12 +475,12 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
   test("half-open pair: id scopes pairing", () => {
     // outer pair (#a) wraps inner pair (#b). without ids the closer would
     // pair with the most recently pushed open (LIFO), which is wrong here.
+    // each anchor sits on its own marker's line.
     const input =
-      `alpha beta gamma delta\n` +
-      `// [!em#a alpha...]\n` +
-      `// [!em#b beta...]\n` +
-      `// [!em#b ...gamma]\n` +
-      `// [!em#a ...delta]\n`;
+      `alpha // [!em#a alpha...]\n` +
+      `beta // [!em#b beta...]\n` +
+      `gamma // [!em#b ...gamma]\n` +
+      `delta // [!em#a ...delta]\n`;
     const { overlays, issues } = quiet_extract(input, [em_plugin()]);
     expect(issues).toEqual([]);
     expect(overlays).toBeDefined();
@@ -484,14 +488,14 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
   });
 
   test("unmatched open is reported", () => {
-    const input = `foo bar\n// [!em foo...]\n`;
+    const input = `foo bar // [!em foo...]\n`;
     const { issues } = quiet_extract(input, [em_plugin()]);
     expect(issues.length).toBe(1);
     expect(issues[0].kind).toBe("unmatched_pair");
   });
 
   test("unmatched close is reported", () => {
-    const input = `foo bar\n// [!em ...bar]\n`;
+    const input = `foo bar // [!em ...bar]\n`;
     const { issues } = quiet_extract(input, [em_plugin()]);
     expect(issues.length).toBe(1);
     expect(issues[0].kind).toBe("unmatched_pair");
@@ -504,17 +508,55 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
     expect(issues[0].kind).toBe("malformed");
   });
 
-  test("anchor search starts from marker line, not marker byte", () => {
-    // foo appears BEFORE the marker on the same line. resolution must search
-    // from the start of the marker's line, not from the marker's byte
-    // position, so the same-line anchor is reachable. the in-marker text
-    // "console" must be ignored (comment-skipping); the real `console` after
-    // the marker is the one that bounds the range.
-    const input = `const v = foo(); // [!em foo...console]\nconsole.log(v);\n`;
+  test("anchor search is bounded to marker's line — earlier-line anchors are not reachable", () => {
+    // closed range marker on line 4 references `render`, which only appears
+    // on line 1. under the line-bound rule the marker can't reach back; the
+    // resolver reports anchor_not_found.
+    const input =
+      `function render() {\n` +
+      `  do_thing();\n` +
+      `}\n` +
+      `// [!em render...*]\n`;
+    const { overlays, issues } = quiet_extract(input, [em_plugin()]);
+    expect(overlays).toBeDefined();
+    expect(overlays!.ranges.length).toBe(0);
+    expect(issues.length).toBe(1);
+    expect(issues[0].kind).toBe("anchor_not_found");
+  });
+
+  test("`***` emits a single overlay covering the whole marker line", () => {
+    // shorthand for `*..*` (which the parser rejects because it has no
+    // anchor reference). produces a single range from line start to line
+    // end of the marker's own line. token-mode vs line-mode is decided by
+    // the plugin (style_plugin's auto-mode renders this as token-mode);
+    // the framework only enforces the range.
+    const input = `foo bar baz // [!em ***]\nnext line\n`;
+    const { overlays, issues } = quiet_extract(input, [em_plugin()]);
+    expect(issues).toEqual([]);
+    expect(overlays).toBeDefined();
+    expect(overlays!.ranges.length).toBe(4);
+    expect(overlays!.ranges[0]).toBe(0);
+    expect(overlays!.ranges[1]).toBe(input.indexOf("\n"));
+  });
+
+  test("`***` on an unterminated final line covers to end of input", () => {
+    const input = `let x = 1; // [!em ***]`;
+    const { overlays } = quiet_extract(input, [em_plugin()]);
+    expect(overlays).toBeDefined();
+    expect(overlays!.ranges[0]).toBe(0);
+    expect(overlays!.ranges[1]).toBe(input.length);
+  });
+
+  test("anchor search starts from line start, not marker byte", () => {
+    // anchor appears BEFORE the marker on the SAME line. resolution starts
+    // at the line start, so the same-line anchor is reachable. the in-marker
+    // text "console" must be ignored (comment-skipping); the real `console`
+    // after `foo()` and before the marker bounds the range.
+    const input = `const v = foo(); console.log(v); // [!em foo...console]\n`;
     const { overlays } = quiet_extract(input, [em_plugin()]);
     expect(overlays).toBeDefined();
     expect(overlays!.ranges[0]).toBe(input.indexOf("foo"));
-    // lastIndexOf because the FIRST "console" is inside the marker text.
-    expect(overlays!.ranges[1]).toBe(input.lastIndexOf("console") + "console".length);
+    // first occurrence of `console` (the real one) bounds the range.
+    expect(overlays!.ranges[1]).toBe(input.indexOf("console") + "console".length);
   });
 });

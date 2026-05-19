@@ -115,6 +115,40 @@
 		text-shadow: 0 0 8px color-mix(in oklch, var(--docs-accent) 60%, transparent);
 	}
 
+	.content :global(table) {
+		display: block;
+		overflow-x: auto;
+		max-width: 100%;
+		border-collapse: collapse;
+		font-size: var(--docs-fs-sm);
+		margin: 8px 0 18px;
+		color: var(--docs-fg-dim);
+	}
+	.content :global(thead) {
+		border-bottom: 1px solid var(--docs-line);
+	}
+	.content :global(th),
+	.content :global(td) {
+		text-align: left;
+		padding: 7px 10px;
+		border-bottom: 1px dotted var(--docs-line);
+		vertical-align: top;
+	}
+	.content :global(th) {
+		color: var(--docs-fg-mute);
+		font-weight: 400;
+		font-size: var(--docs-fs-xs);
+		text-transform: uppercase;
+		letter-spacing: 0.6px;
+		background: var(--docs-bg-1);
+	}
+	.content :global(tbody tr:last-child td) {
+		border-bottom: 0;
+	}
+	.content :global(tbody tr:hover) {
+		background: color-mix(in oklch, var(--docs-bg-1) 60%, transparent);
+	}
+
 	.title-block {
 		margin-bottom: 26px;
 	}

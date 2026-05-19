@@ -1,9 +1,9 @@
-// @twinkleplop/notation — built-in notation plugins.
+// @twinkleplop/annotation — built-in annotation plugins.
 //
 // each plugin claims one or more verbs and emits overlay contributions for
-// the resolved range. plugins are pure: they consume a NotationInput and
-// return a NotationOutput. the framework owns dispatch, anchor resolution,
-// pairing, and overlay collection.
+// the resolved range. plugins are pure: they consume an AnnotationInput
+// and return an AnnotationOutput. the framework owns dispatch, anchor
+// resolution, pairing, and overlay collection.
 //
 // phase 1: em, hl. phase 2: dim, add/del/mod (diffs), err/warn/info
 // (diagnostics). phase 3 will add focus (which needs the global

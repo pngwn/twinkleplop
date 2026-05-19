@@ -52,6 +52,16 @@ describe("style_plugin auto-mode", () => {
     expect(out.overlays?.[0].line_mode).toBe(false);
   });
 
+  test("wholeLine args -> token-mode", () => {
+    const out = em.handle({
+      verb: "em",
+      args: { kind: "wholeLine" },
+      range: { start: 0, end: 24, start_line: 1, end_line: 1 },
+      marker: { start: 12, end: 24, line: 1 },
+    });
+    expect(out.overlays?.[0].line_mode).toBe(false);
+  });
+
   test("set args -> token-mode", () => {
     const out = em.handle({
       verb: "em",

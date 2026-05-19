@@ -1,4 +1,4 @@
-// notation transformer extraction.
+// annotation transformer extraction.
 //
 // post-tokenize pass that walks comment tokens, parses `[!verb[#id][ args]]`
 // markers, dispatches to registered plugins, and collects overlay
@@ -6,9 +6,9 @@
 //
 // the extractor is built once at language-factory time. it captures the
 // resolved comment_id, verb -> plugin map, and any parser preflight. when
-// `LanguageOptions.notation` is undefined the extractor is never built; the
-// LanguageFn closure is identical to today's. see create_language for the
-// integration point.
+// `LanguageOptions.annotation` is undefined the extractor is never built;
+// the LanguageFn closure is identical to today's. see create_language for
+// the integration point.
 //
 // argument forms supported:
 //   bare            line containing the marker (line-mode)
@@ -24,10 +24,10 @@
 
 import type {
   Anchor,
-  NotationConfig,
-  NotationIssue,
-  NotationIssueKind,
-  NotationPlugin,
+  AnnotationConfig,
+  AnnotationIssue,
+  AnnotationIssueKind,
+  AnnotationPlugin,
   OverlayContribution,
   OverlayResult,
   ParsedArgs,
@@ -37,46 +37,46 @@ import type {
 } from "./types";
 
 // ---------------------------------------------------------------------------
-// public entry: build_notation_extractor
+// public entry: build_annotation_extractor
 // ---------------------------------------------------------------------------
 //
 // called once per language factory invocation. validates the plugin set,
 // resolves the comment_id against the grammar's token_types, and returns a
 // closure that runs extraction against (input, tokenize_result).
 
-export type NotationExtractor = (
+export type AnnotationExtractor = (
   input: string,
   result: TokenizeResult,
 ) => OverlayResult | undefined;
 
-export function build_notation_extractor(
-  config: NotationConfig,
+export function build_annotation_extractor(
+  config: AnnotationConfig,
   token_types: string[],
-): NotationExtractor {
+): AnnotationExtractor {
   const verb_to_plugin = build_verb_map(config.plugins);
   const comment_id = token_types.indexOf("comment");
-  // when the host grammar has no comment token, notation is inert: every
+  // when the host grammar has no comment token, annotation is inert: every
   // call returns undefined immediately. this is the only no-op the extractor
-  // ever takes when notation IS configured; we still hit the closure but the
-  // body short-circuits on the first comment-token lookup.
+  // ever takes when annotation IS configured; we still hit the closure but
+  // the body short-circuits on the first comment-token lookup.
   return (input, result) => {
     if (comment_id < 0) return undefined;
     // whole-input short-circuit: if `[!` doesn't appear anywhere in the
     // source, no comment can contain a marker, so we skip the per-comment
     // walk entirely. native indexOf is far cheaper than the per-comment
-    // charCodeAt loop and turns "notation enabled but no markers" into a
+    // charCodeAt loop and turns "annotation enabled but no markers" into a
     // near-free path for the common adopted-but-unused case.
     if (input.indexOf("[!") < 0) return undefined;
     return run_extraction(input, result, verb_to_plugin, comment_id, config.on_error);
   };
 }
 
-function build_verb_map(plugins: NotationPlugin[]): Map<string, NotationPlugin> {
-  const map = new Map<string, NotationPlugin>();
+function build_verb_map(plugins: AnnotationPlugin[]): Map<string, AnnotationPlugin> {
+  const map = new Map<string, AnnotationPlugin>();
   for (const plugin of plugins) {
     for (const verb of plugin.verbs) {
       if (map.has(verb)) {
-        throw new Error(`notation: verb "${verb}" claimed by multiple plugins`);
+        throw new Error(`annotation: verb "${verb}" claimed by multiple plugins`);
       }
       map.set(verb, plugin);
     }
@@ -118,9 +118,9 @@ interface PendingPair {
 function run_extraction(
   input: string,
   result: TokenizeResult,
-  verb_to_plugin: Map<string, NotationPlugin>,
+  verb_to_plugin: Map<string, AnnotationPlugin>,
   comment_id: number,
-  on_error: ((issue: NotationIssue) => void) | undefined,
+  on_error: ((issue: AnnotationIssue) => void) | undefined,
 ): OverlayResult | undefined {
   const tokens = result.tokens;
   const n = tokens.length / 3;
@@ -153,8 +153,8 @@ function run_extraction(
     return line_index;
   };
 
-  const report = (kind: NotationIssueKind, message: string, position: SourcePosition) => {
-    const issue: NotationIssue = { kind, message, position };
+  const report = (kind: AnnotationIssueKind, message: string, position: SourcePosition) => {
+    const issue: AnnotationIssue = { kind, message, position };
     if (on_error) {
       on_error(issue);
       return;
@@ -164,7 +164,7 @@ function run_extraction(
     // the editor staring at stale state. consumers that want strict
     // validation can pass an on_error that throws.
     if (typeof console !== "undefined" && typeof console.warn === "function") {
-      console.warn(`twinkleplop notation [${kind}] at line ${position.line}: ${message}`);
+      console.warn(`twinkleplop annotation [${kind}] at line ${position.line}: ${message}`);
     }
   };
 
@@ -178,7 +178,7 @@ function run_extraction(
   // because all argument forms (line-mode, anchor range, set, paired) end
   // up here once their range is known.
   const dispatch = (
-    plugin: NotationPlugin,
+    plugin: AnnotationPlugin,
     verb: string,
     id: string | undefined,
     args: ParsedArgs,
@@ -256,9 +256,26 @@ function run_extraction(
       const marker = parsed.marker;
       let consumed = true; // whether this marker contributes a skip range
 
-      if (args.kind === "set") {
-        // emit one overlay per match; never paired.
-        const matches = resolve_anchor_all(input, args.anchor, ensure_comment_ranges());
+      if (args.kind === "wholeLine") {
+        // `***` — token-mode overlay covering the whole marker line.
+        const range: SourceRange = {
+          start: line_start_of(lines, marker.line),
+          end: line_end_of(lines, marker.line, input.length),
+          start_line: marker.line,
+          end_line: marker.line,
+        };
+        dispatch(plugin, parsed.verb, parsed.id, args, range, marker);
+      } else if (args.kind === "set") {
+        // emit one overlay per match. set form is bounded to the marker's
+        // own line: a `=foo` marker decorates every `foo` ON THAT LINE, not
+        // every `foo` in the file.
+        const matches = resolve_anchor_all(
+          input,
+          args.anchor,
+          line_start_of(lines, marker.line),
+          line_end_of(lines, marker.line, input.length),
+          ensure_comment_ranges(),
+        );
         if (matches.length === 0) {
           report(
             "anchor_not_found",
@@ -443,7 +460,7 @@ interface ParsedMarker {
   args: ParsedArgs;
   marker: SourcePosition;
   spans_newline: boolean;
-  error: { kind: NotationIssueKind; message: string } | null;
+  error: { kind: AnnotationIssueKind; message: string } | null;
 }
 
 // scan for `[!` from `from` up to `end_exclusive`. returns the byte offset of
@@ -588,7 +605,7 @@ function make_marker_error(
   line_starts: Int32Array,
   verb: string,
   id: string | undefined,
-  error: { kind: NotationIssueKind; message: string },
+  error: { kind: AnnotationIssueKind; message: string },
 ): ParsedMarker {
   return {
     verb,
@@ -607,10 +624,21 @@ function make_marker_error(
 
 // dispatch on the first character: `+` -> lineCount, `:` -> lineRef, `=` ->
 // set, leading `.` -> half-open end, anything else -> word/quoted/wildcard
-// anchor (closed range or half-open start). returns null on any malformed
-// form so the caller can report it as "unsupported" with the source location.
+// anchor (closed range or half-open start). `***` is a special token-mode
+// shorthand for the whole marker line. returns null on any malformed form
+// so the caller can report it as "unsupported" with the source location.
 function parse_args(input: string, start: number, end: number): ParsedArgs | null {
   if (start >= end) return { kind: "bare" };
+
+  // `***` (exactly three stars, nothing else) — whole-line token-mode.
+  if (
+    end - start === 3 &&
+    input.charCodeAt(start) === 42 /* * */ &&
+    input.charCodeAt(start + 1) === 42 &&
+    input.charCodeAt(start + 2) === 42
+  ) {
+    return { kind: "wholeLine" };
+  }
 
   const first = input.charCodeAt(start);
   if (first === 43 /* + */) {
@@ -913,25 +941,25 @@ function resolve_line_mode(
 
 // resolve a closed anchor range to a byte-level SourceRange.
 //
-// anchors point at CODE, not at notation comments — the marker's own bytes
-// (and any other comment) would otherwise shadow the real anchor (consider
-// `// [!em foo..bar]` placed alone on a line: searching forward from the
-// marker would find `foo` inside the marker text first). we pass the
-// sorted comment_ranges in and skip any candidate match that falls inside
-// a comment.
+// anchor lookup is bounded to the marker's own line — markers can't reach
+// outside the line they sit on, except for half-open pairs where the
+// opener's anchor is searched on the OPENER's line and the closer's anchor
+// on the CLOSER's line (so the spanning range emerges from two
+// independently bounded lookups, not from a global scan).
 //
-// FROM is searched from byte 0 (excluding comments) so anchors can sit
-// anywhere in the source — most commonly the line(s) just above the marker
-// comment. the TO anchor is searched from the FROM match's END (not start),
-// so two adjacent occurrences of the same anchor like `"x"..."x"` correctly
-// bracket the pair instead of the parser finding the same byte twice.
-// wildcards are LINE-RELATIVE to the marker that physically contains the
-// `*`. for closed ranges (`foo..*`) that's the single marker. for half-open
-// pairs (`my_users...` paired with `...*`) the wildcard binds to the
-// closer marker's line — so the range spans from the opener's anchor down
-// to the end of the closer's line, which is the natural reading of a
-// "wrap this block" pair. without this bound a stray wildcard would
-// silently pull in unrelated source far away from the marker.
+// anchors point at CODE, not at the marker comment itself — the marker's
+// own bytes (and any other comment on the same line) would otherwise shadow
+// the real anchor (consider `foo // [!em foo..bar]` where `foo` literally
+// appears in the marker text). we pass the sorted comment_ranges in and
+// skip any candidate match that falls inside a comment. the TO anchor is
+// searched from the FROM match's END (not start), so two adjacent
+// occurrences of the same anchor like `"x"..."x"` correctly bracket the
+// pair instead of the parser finding the same byte twice.
+//
+// wildcards are line-relative to the marker that physically contains the
+// `*`: `*..b` starts at the opener line's start, `a..*` ends at the
+// closer line's end. for paired half-open `my_users...` ... `...*`, this
+// gives the natural "wrap this block" reading.
 function resolve_anchor_range(
   from: Anchor,
   to: Anchor,
@@ -948,12 +976,24 @@ function resolve_anchor_range(
   // here as anchor_not_found rather than failing silently.
   if (from.kind === "wildcard" && to.kind === "wildcard") return null;
 
+  const from_line_start = line_start_of(line_starts, from_marker.line);
+  const from_line_end = line_end_of(line_starts, from_marker.line, input.length);
+  const to_line_start = line_start_of(line_starts, to_marker.line);
+  const to_line_end = line_end_of(line_starts, to_marker.line, input.length);
+
   const a = from.kind === "wildcard"
     ? null
-    : resolve_anchor(input, from, 0, comment_ranges);
+    : resolve_anchor(input, from, from_line_start, from_line_end, comment_ranges);
   if (from.kind !== "wildcard" && a === null) return null;
-  const search_to_from = a !== null ? a.end : 0;
-  const b = to.kind === "wildcard" ? null : resolve_anchor(input, to, search_to_from, comment_ranges);
+
+  // for the TO anchor, when the markers sit on the same line, start the
+  // search after FROM's match end so `"x"..."x"` correctly brackets the
+  // pair. for paired half-open markers on different lines, FROM is on a
+  // strictly earlier line, so we begin at the closer line's start.
+  const to_search_from = a !== null && from_marker.line === to_marker.line ? a.end : to_line_start;
+  const b = to.kind === "wildcard"
+    ? null
+    : resolve_anchor(input, to, to_search_from, to_line_end, comment_ranges);
   if (to.kind !== "wildcard" && b === null) return null;
 
   let start_byte: number;
@@ -961,17 +1001,14 @@ function resolve_anchor_range(
   if (from.kind === "wildcard") {
     // `*..b` (or paired `...*` opener): start at the beginning of the
     // marker that hosts the `*` literal.
-    start_byte = line_starts[from_marker.line - 1];
+    start_byte = from_line_start;
   } else {
     start_byte = inclusive_start ? a!.start : a!.end;
   }
   if (to.kind === "wildcard") {
     // `a..*` (or paired `...*` closer): end at the end of the marker
-    // that hosts the `*` literal — the byte just before its terminating
-    // \n, or input length if the marker sits on the final unterminated
-    // line.
-    const wild_line = to_marker.line;
-    end_byte = wild_line < line_starts.length ? line_starts[wild_line] - 1 : input.length;
+    // that hosts the `*` literal.
+    end_byte = to_line_end;
   } else {
     end_byte = inclusive_end ? b!.end : b!.start;
   }
@@ -984,23 +1021,35 @@ function resolve_anchor_range(
   };
 }
 
-// find the first occurrence of `anchor` at or after `from_offset` that is
-// NOT inside a comment region. word anchors require word boundaries on
+// byte offset of the first char of line `line_1` (1-indexed).
+function line_start_of(line_starts: Int32Array, line_1: number): number {
+  return line_starts[line_1 - 1];
+}
+
+// byte offset just past the last non-newline char of line `line_1`. for the
+// final unterminated line, returns input length.
+function line_end_of(line_starts: Int32Array, line_1: number, input_len: number): number {
+  return line_1 < line_starts.length ? line_starts[line_1] - 1 : input_len;
+}
+
+// find the first occurrence of `anchor` in `[from_offset, to_offset)` that
+// is NOT inside a comment region. word anchors require word boundaries on
 // both sides; literal anchors are substring matches; wildcard is handled
 // by callers (different start/end semantics).
 function resolve_anchor(
   input: string,
   anchor: Anchor,
   from_offset: number,
+  to_offset: number,
   comment_ranges: Uint32Array,
 ): { start: number; end: number } | null {
   if (anchor.kind === "wildcard") return null;
   const value = anchor.value;
   if (value.length === 0) return null;
   let pos = from_offset;
-  while (pos <= input.length - value.length) {
+  while (pos + value.length <= to_offset) {
     const idx = input.indexOf(value, pos);
-    if (idx < 0) return null;
+    if (idx < 0 || idx + value.length > to_offset) return null;
     // skip past the enclosing comment if the candidate landed inside one.
     const cend = comment_end_containing(comment_ranges, idx);
     if (cend >= 0) {
@@ -1021,16 +1070,19 @@ function resolve_anchor(
   return null;
 }
 
-// find every occurrence of `anchor` in non-comment regions. used for set form.
+// find every occurrence of `anchor` in `[from_offset, to_offset)` outside
+// comment regions. used for set form, scoped to the marker's own line.
 function resolve_anchor_all(
   input: string,
   anchor: Anchor,
+  from_offset: number,
+  to_offset: number,
   comment_ranges: Uint32Array,
 ): { start: number; end: number }[] {
   const out: { start: number; end: number }[] = [];
-  let pos = 0;
-  while (pos < input.length) {
-    const m = resolve_anchor(input, anchor, pos, comment_ranges);
+  let pos = from_offset;
+  while (pos < to_offset) {
+    const m = resolve_anchor(input, anchor, pos, to_offset, comment_ranges);
     if (m === null) break;
     out.push(m);
     // advance at least one byte so zero-length anchors (rejected upstream

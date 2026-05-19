@@ -84,8 +84,8 @@ export interface CompiledGrammar {
 export interface TokenizeResult {
   tokens: Uint32Array;
   token_types: string[];
-  // populated only when notation extraction ran during this call (i.e. the
-  // language factory was given a `notation` config). undefined otherwise so
+  // populated only when annotation extraction ran during this call (i.e. the
+  // language factory was given an `annotation` config). undefined otherwise so
   // the renderer's no-overlay fast path is reachable via a single check.
   overlays?: OverlayResult;
 }
@@ -195,14 +195,14 @@ export type FidelitySpec = FidelityLevel | readonly string[];
 
 export interface LanguageOptions {
   fidelity?: FidelitySpec;
-  // when present, the language factory installs a notation extractor in the
-  // returned LanguageFn. when absent the factory closure is identical to
+  // when present, the language factory installs an annotation extractor in
+  // the returned LanguageFn. when absent the factory closure is identical to
   // today's, preserving the zero-cost-when-disabled invariant.
-  notation?: NotationConfig;
+  annotation?: AnnotationConfig;
 }
 
 // ---------------------------------------------------------------------------
-// notation transformer system
+// annotation transformer system
 // ---------------------------------------------------------------------------
 //
 // in-source directives `[!verb[#id][ args]]` written inside source-language
@@ -211,25 +211,25 @@ export interface LanguageOptions {
 // spans (line-mode). overlays do NOT affect token types; they live in a
 // parallel structure on TokenizeResult.
 
-export interface NotationConfig {
+export interface AnnotationConfig {
   // plugins claim verbs and produce overlay contributions. order is preserved
   // for stable error reporting on collisions.
-  plugins: NotationPlugin[];
+  plugins: AnnotationPlugin[];
   // optional sink for extraction errors. when omitted the framework throws.
-  on_error?: (issue: NotationIssue) => void;
+  on_error?: (issue: AnnotationIssue) => void;
 }
 
-export interface NotationPlugin {
+export interface AnnotationPlugin {
   // verbs claimed by this plugin. registration-time collision is an error.
   verbs: string[];
   // 'shared' (default) means the framework parses the marker args and passes
   // a ParsedArgs to the plugin. 'raw' passes the raw string and the plugin
   // parses it itself. phase 1 supports only 'shared'.
   parse?: "shared" | "raw";
-  handle(input: NotationInput): NotationOutput;
+  handle(input: AnnotationInput): AnnotationOutput;
 }
 
-export interface NotationInput {
+export interface AnnotationInput {
   verb: string;
   id?: string;
   args: ParsedArgs | string;
@@ -239,7 +239,7 @@ export interface NotationInput {
   marker: SourcePosition;
 }
 
-export interface NotationOutput {
+export interface AnnotationOutput {
   overlays?: OverlayContribution[];
 }
 
@@ -277,7 +277,12 @@ export type ParsedArgs =
       inclusive_start: boolean;
       inclusive_end: boolean;
     }
-  | { kind: "set"; anchor: Anchor };
+  | { kind: "set"; anchor: Anchor }
+  // `***` shorthand: every byte on the marker's own line, token-mode. the
+  // cleaner equivalent of `*..*` (which the parser rejects as malformed
+  // because it has no anchor reference). use bare `[!em]` for line-mode
+  // styling instead.
+  | { kind: "wholeLine" };
 
 export type Anchor =
   | { kind: "word"; value: string }
@@ -301,7 +306,7 @@ export interface SourceRange {
   end_line: number;
 }
 
-export type NotationIssueKind =
+export type AnnotationIssueKind =
   | "verb_collision"
   | "anchor_not_found"
   | "unmatched_pair"
@@ -310,8 +315,8 @@ export type NotationIssueKind =
   | "malformed"
   | "unsupported";
 
-export interface NotationIssue {
-  kind: NotationIssueKind;
+export interface AnnotationIssue {
+  kind: AnnotationIssueKind;
   message: string;
   position: SourcePosition;
 }

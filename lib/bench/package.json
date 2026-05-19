@@ -7,7 +7,7 @@
     "prebench": "pnpm -w build",
     "bench:internal": "vitest bench --run ",
     "bench": "vitest  bench --run src/library/comparison-suite.bench.js",
-    "bench:notation": "vitest bench --run src/notation-overhead.bench.js",
+    "bench:annotation": "vitest bench --run src/annotation-overhead.bench.js",
     "bench:ui": "vitest bench --ui"
   },
   "dependencies": {
@@ -28,11 +28,11 @@
     "sugar-high": "^1.1.0"
   },
   "devDependencies": {
+    "@twinkleplop/annotation": "workspace:*",
     "@twinkleplop/core": "workspace:*",
     "@twinkleplop/css": "workspace:*",
     "@twinkleplop/html": "workspace:*",
     "@twinkleplop/markdown": "workspace:*",
-    "@twinkleplop/notation": "workspace:*",
     "@vitest/ui": "^4.1.5",
     "prismjs": "^1.30.0",
     "shiki": "^3.12.0",

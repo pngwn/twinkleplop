@@ -1,5 +1,5 @@
 {
-  "name": "@twinkleplop/notation",
+  "name": "@twinkleplop/annotation",
   "version": "0.1.0",
   "type": "module",
   "main": "src/index.ts",
@@ -21,7 +21,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/pngwn/twinkleplop",
-    "directory": "lib/notation"
+    "directory": "lib/annotation"
   },
   "author": {
     "name": "pngwn",
