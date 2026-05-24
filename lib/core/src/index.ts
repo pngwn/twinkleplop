@@ -27,6 +27,7 @@ export type { TokenView, Scope, ScopeStack, Bracket } from "./scan";
 export { frame_track } from "./frame_track";
 export { param_list, DEFAULT_JS_BRACE_CLASSIFIER } from "./param_list";
 export { merge_adjacent } from "./merge_adjacent";
+export { matched_bracket } from "./matched_bracket";
 export {
   permute_claim_producers,
   tokens_to_named,

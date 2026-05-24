@@ -180,6 +180,32 @@ export interface FrameSpec {
   ) => number;
 }
 
+// matched_bracket primitive — retag a pair of opener / matching closer
+// tokens as a different type. canonical case: Svelte's `{#if ... }` block
+// braces are emitted by the grammar as `expression` tokens (so the inner
+// JS body parses) but render better as `punctuation`. this primitive walks
+// the stream, finds each open token whose follow-on token matches the
+// optional sigil predicate, scans forward for the matching close, and
+// retags both endpoints.
+
+export interface MatchedBracketConfig {
+  // type + text of the opening token (must match exactly).
+  open_type: string;
+  open_text: string;
+  // type + text of the closing token (must match exactly).
+  close_type: string;
+  close_text: string;
+  // optional gate: the next non-trivia token immediately after the open
+  // must have this type AND its source text must be in this set. used to
+  // distinguish block braces (followed by `#` / `:` / `/` / `@`) from
+  // ordinary interpolation braces.
+  post_open_required?: { type: string; text_in: string[] };
+  // type to retag the opener to. defaults to open_type (no retag).
+  retag_open_to?: string;
+  // type to retag the closer to. defaults to close_type (no retag).
+  retag_close_to?: string;
+}
+
 // merge_adjacent primitive — splice anchor + immediately-following token
 // into one. output token count shrinks per merge. portable: a host runtime
 // executes the same spec for every language that needs adjacent-token

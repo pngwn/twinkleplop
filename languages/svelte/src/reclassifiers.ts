@@ -25,8 +25,8 @@
 // braces by their own token type and does not depend on what the
 // expression body has become.
 
-import type { LanguageFn, LanguagePipeline, Reclassifier, TokenizeResult } from "@twinkleplop/core";
-import { always, embed_grammars } from "@twinkleplop/core";
+import type { LanguageFn, LanguagePipeline, Reclassifier } from "@twinkleplop/core";
+import { always, embed_grammars, matched_bracket } from "@twinkleplop/core";
 import { tokenize as css_tokenize } from "@twinkleplop/css";
 import { tokenize as js_tokenize } from "@twinkleplop/javascript";
 
@@ -37,49 +37,21 @@ let css_fn: LanguageFn | undefined;
 const js_default = (src: string) => (js_fn ??= js_tokenize())(src);
 const css_default = (src: string) => (css_fn ??= css_tokenize())(src);
 
-const BLOCK_OR_AT_SIGILS = new Set(["#", ":", "/", "@"]);
-
-const rewrite_block_braces: Reclassifier = (
-  input: string,
-  result: TokenizeResult,
-): TokenizeResult => {
-  const { tokens, token_types } = result;
-  const n = tokens.length / 3;
-  if (n === 0) return result;
-
-  const expression_id = token_types.indexOf("expression");
-  const punctuation_id = token_types.indexOf("punctuation");
-  const comment_id = token_types.indexOf("comment");
-  if (expression_id < 0 || punctuation_id < 0) return result;
-
-  const text = (i: number): string => input.slice(tokens[i * 3 + 1], tokens[i * 3 + 2]);
-
-  const next_non_trivia = (from: number): number => {
-    for (let i = from; i < n; i++) {
-      if (tokens[i * 3] !== comment_id) return i;
-    }
-    return -1;
-  };
-
-  for (let i = 0; i < n; i++) {
-    if (tokens[i * 3] !== expression_id) continue;
-    if (text(i) !== "{") continue;
-    const sigil_idx = next_non_trivia(i + 1);
-    if (sigil_idx === -1) continue;
-    if (tokens[sigil_idx * 3] !== punctuation_id) continue;
-    if (!BLOCK_OR_AT_SIGILS.has(text(sigil_idx))) continue;
-
-    for (let j = sigil_idx + 1; j < n; j++) {
-      if (tokens[j * 3] !== expression_id) continue;
-      if (text(j) !== "}") continue;
-      tokens[i * 3] = punctuation_id;
-      tokens[j * 3] = punctuation_id;
-      i = j;
-      break;
-    }
-  }
-  return result;
-};
+// retag block / at-directive braces from `expression` to `punctuation`.
+// gate: a `{` whose next non-comment neighbour is a punctuation `#`, `:`,
+// `/`, or `@` opens a block form (`{#if ...}`, `{@html ...}`); pair it
+// with the matching `}` and retag both. ordinary interpolation braces
+// without a sigil are left as `expression` so the grammar's embed splices
+// JS inside them.
+const rewrite_block_braces: Reclassifier = matched_bracket({
+  open_type: "expression",
+  open_text: "{",
+  close_type: "expression",
+  close_text: "}",
+  post_open_required: { type: "punctuation", text_in: ["#", ":", "/", "@"] },
+  retag_open_to: "punctuation",
+  retag_close_to: "punctuation",
+});
 
 export const reclassifiers: LanguagePipeline = [
   always(rewrite_block_braces, "type_claim"),
