@@ -29,6 +29,7 @@ export { param_list, DEFAULT_JS_BRACE_CLASSIFIER } from "./param_list";
 export { merge_adjacent } from "./merge_adjacent";
 export { matched_bracket } from "./matched_bracket";
 export { chunker } from "./chunker";
+export { compound_compose } from "./compound_compose";
 export {
   permute_claim_producers,
   tokens_to_named,

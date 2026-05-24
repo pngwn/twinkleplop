@@ -215,6 +215,30 @@ export interface ChunkerConfig {
   type_after_first_strategy?: "go_default";
 }
 
+// compound_compose primitive — stack-driven multi-class type composition.
+// canonical case: markdown inline styling where bold/italic/code can nest
+// and each token inside the nested region gets a composed class like
+// "bold italic code". walks tokens once, maintains an open-style stack
+// via open / close marker pairs, and emits a composed type per token via
+// dynamic interning into the token_types array.
+
+export interface CompoundComposeConfig {
+  // each entry maps a (open marker type, close marker type) pair to a
+  // style name. when an open token appears, the style name is pushed
+  // onto the stack; when the matching close appears, popped.
+  styles: { open_type: string; close_type: string; style_name: string }[];
+  // when true, finding a `\n` in the source gap between two tokens flushes
+  // the entire style stack -- handles grammars that drop back to a block
+  // state on newlines without emitting close markers.
+  auto_pop_on_newline: boolean;
+  // string used to join style names into a composed type (e.g. " " for
+  // HTML class lists).
+  join_separator: string;
+  // when true and the composed token's base type already equals one of
+  // the active style names, don't repeat it in the composed string.
+  dedup_against_base: boolean;
+}
+
 // matched_bracket primitive — retag a pair of opener / matching closer
 // tokens as a different type. canonical case: Svelte's `{#if ... }` block
 // braces are emitted by the grammar as `expression` tokens (so the inner
