@@ -25,6 +25,7 @@ export {
 export { make_token_view, make_scope_stack } from "./scan";
 export type { TokenView, Scope, ScopeStack, Bracket } from "./scan";
 export { frame_track } from "./frame_track";
+export { param_list, DEFAULT_JS_BRACE_CLASSIFIER } from "./param_list";
 export {
   permute_claim_producers,
   tokens_to_named,

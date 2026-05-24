@@ -23,6 +23,11 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   claim_property_scope was rewritten to read frame_track's output instead of
   maintaining its own scope stack. First real consumer of the shared frame
   data. JS pipeline is now (1) js_frame_track → (2..) the rest.
+- `05-after-param-list-primitive.json` — captured after promote_js_parameters
+  was re-modelled as the `param_list` primitive in lib/core. The 470-LOC
+  inline reclassifier became a ~50-line config + a shared primitive
+  consumed by JS / TS / TSX. Per-stage cost essentially unchanged after
+  the bucketed detector dispatch optimisation.
 
 ## How to capture a new snapshot
 
