@@ -2094,10 +2094,13 @@ function flush_claim_batch(
   // sequentially; we apply the merged winners once at the end.
   shared_sink.reset();
   for (let i = 0; i < batch.length; i++) {
-    batch[i].__claim(input, tokens, token_types, shared_sink);
+    batch[i].__claim(input, tokens, token_types, shared_sink, current.frames);
   }
   merge_and_apply_buffer(tokens, shared_sink);
-  return { tokens, token_types };
+  // preserve frames from the input -- the batch cannot have changed token
+  // count or stream shape (claims only rewrite type ids), so the frame
+  // indices computed before the batch remain valid.
+  return { tokens, token_types, frames: current.frames };
 }
 
 // ---------------------------------------------------------------------------
@@ -2153,9 +2156,9 @@ export function as_claim_producer(claim_fn: ClaimFn): ClaimingReclassifier {
     const tokens = new Uint32Array(result.tokens);
     const token_types = result.token_types.slice();
     const sink = new ClaimBuffer(256);
-    claim_fn(input, tokens, token_types, sink);
+    claim_fn(input, tokens, token_types, sink, result.frames);
     merge_and_apply_buffer(tokens, sink);
-    return { tokens, token_types };
+    return { tokens, token_types, frames: result.frames };
   };
   const fn = apply_fn as ClaimingReclassifier;
   fn.__claim = claim_fn;

@@ -239,11 +239,16 @@ export interface ClaimSink {
 // `token_types` (for types it wants to rewrite to) but MUST NOT mutate any
 // slot of `tokens`. Emitted type_ids must be valid for the (possibly
 // extended) `token_types` array at call time.
+//
+// `frames` is the FrameTable produced by an upstream `frame_track` stage,
+// undefined when no such stage ran. ClaimFns that need scope-stack data
+// read from this side table instead of maintaining their own.
 export type ClaimFn = (
   input: string,
   tokens: Uint32Array,
   token_types: string[],
   sink: ClaimSink,
+  frames?: FrameTable,
 ) => void;
 
 // A Reclassifier with a `__claim` property is claim-producing: callable in
