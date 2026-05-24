@@ -28,6 +28,13 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   inline reclassifier became a ~50-line config + a shared primitive
   consumed by JS / TS / TSX. Per-stage cost essentially unchanged after
   the bucketed detector dispatch optimisation.
+- `06-all-primitives.json` — captured after the remaining four primitives
+  landed (merge_adjacent for Rust lifetimes, matched_bracket for Svelte
+  block braces, chunker for Go params, compound_compose for Markdown
+  styles, state_machine for TS `as` casts). All language reclassifiers
+  that were inline procedural code are now data-driven configs over
+  shared lib/core primitives. **Go pipeline improved ~20%** with the
+  chunker primitive; other languages within noise.
 
 ## How to capture a new snapshot
 
