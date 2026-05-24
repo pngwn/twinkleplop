@@ -28,6 +28,11 @@ import {
   FRAME_KIND_TOP,
 } from "./types";
 
+// shared sentinel for the disabled-at_start fast path: a single zero-length
+// Uint8Array reused across calls so we don't pay per-call allocation when
+// the consumer doesn't need at_start.
+const EMPTY_U8 = new Uint8Array(0);
+
 // bracket character codes resolved from the spec, plus pre-computed
 // per-bracket constants. -1 means "this bracket is not configured for
 // this language" -- the corresponding char never matches.
@@ -39,11 +44,23 @@ interface CompiledFrameSpec {
   brace_close: number;
   bracket_open: number;
   bracket_close: number;
+  // at_start config. reset_chars is a small char-code lookup; the empty
+  // string disables at_start tracking entirely.
+  at_start_reset_chars: number[];
+  at_start_transparent: string[];
+  at_start_enabled: boolean;
+  classify_brace: FrameSpec["classify_brace"];
 }
 
 function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
   const single = (s: string | undefined): number =>
     s !== undefined && s.length > 0 ? s.charCodeAt(0) : -1;
+  const at_start_chars: number[] = [];
+  if (spec.at_start !== undefined) {
+    for (let i = 0; i < spec.at_start.reset_chars.length; i++) {
+      at_start_chars.push(spec.at_start.reset_chars.charCodeAt(i));
+    }
+  }
   return {
     punct_type: spec.punct_type,
     paren_open: single(spec.brackets.paren?.open),
@@ -52,6 +69,10 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
     brace_close: single(spec.brackets.brace?.close),
     bracket_open: single(spec.brackets.bracket?.open),
     bracket_close: single(spec.brackets.bracket?.close),
+    at_start_reset_chars: at_start_chars,
+    at_start_transparent: spec.at_start?.transparent_types ?? [],
+    at_start_enabled: spec.at_start !== undefined,
+    classify_brace: spec.classify_brace,
   };
 }
 
@@ -60,24 +81,71 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
 // array reference (the same trick the JS scanner uses for tag_name lookups).
 export function frame_track(spec: FrameSpec): Reclassifier {
   const compiled = compile_frame_spec(spec);
-  const type_id_cache = new WeakMap<string[], number>();
+  const punct_cache = new WeakMap<string[], number>();
+  const trivia_cache = new WeakMap<string[], Uint8Array>();
+  const transparent_cache = new WeakMap<string[], Uint8Array>();
 
   return (input: string, result: TokenizeResult): TokenizeResult => {
-    let punct_id = type_id_cache.get(result.token_types);
+    let punct_id = punct_cache.get(result.token_types);
     if (punct_id === undefined) {
       punct_id = result.token_types.indexOf(compiled.punct_type);
-      type_id_cache.set(result.token_types, punct_id);
+      punct_cache.set(result.token_types, punct_id);
     }
 
-    const { tokens } = result;
+    // trivia + transparent tables are only consulted when at_start tracking
+    // is enabled. resolving them eagerly added noticeable cost on the
+    // at_start-disabled path (~30% slower on plain_js). skip them entirely
+    // when at_start is off.
+    let transparent: Uint8Array | null = null;
+    let trivia: Uint8Array | null = null;
+    if (compiled.at_start_enabled) {
+      transparent = transparent_cache.get(result.token_types) ?? null;
+      if (transparent === null) {
+        transparent = new Uint8Array(result.token_types.length);
+        for (let i = 0; i < compiled.at_start_transparent.length; i++) {
+          const id = result.token_types.indexOf(compiled.at_start_transparent[i]);
+          if (id >= 0) transparent[id] = 1;
+        }
+        transparent_cache.set(result.token_types, transparent);
+      }
+      trivia = trivia_cache.get(result.token_types) ?? null;
+      if (trivia === null) {
+        trivia = new Uint8Array(result.token_types.length);
+        const comment_id = result.token_types.indexOf("comment");
+        if (comment_id >= 0) trivia[comment_id] = 1;
+        trivia_cache.set(result.token_types, trivia);
+      }
+    }
+
+    // hoist hot-path config reads to locals so V8 does not re-read object
+    // properties on every iteration.
+    const at_start_enabled = compiled.at_start_enabled;
+    const paren_open = compiled.paren_open;
+    const paren_close = compiled.paren_close;
+    const brace_open = compiled.brace_open;
+    const brace_close = compiled.brace_close;
+    const bracket_open = compiled.bracket_open;
+    const bracket_close = compiled.bracket_close;
+    const reset_chars = compiled.at_start_reset_chars;
+    const reset_chars_len = reset_chars.length;
+    const classify_brace = compiled.classify_brace;
+
+    const { tokens, token_types } = result;
     const n = tokens.length / 3;
     const active_frame = new Uint32Array(n);
     const depths = new Uint8Array(n * 3);
+    // skip allocating the at_start array when tracking is disabled. consumers
+    // gate their use on whether the spec configured at_start to begin with.
+    const at_start = at_start_enabled ? new Uint8Array(n) : EMPTY_U8;
     const frames: FrameRecord[] = [
       { bracket: -1, kind: FRAME_KIND_TOP, enter_idx: -1 },
     ];
-    // stack of indices into `frames`. starts with index 0 (the TOP sentinel).
     const stack: number[] = [0];
+    // parallel stack of `at_start` flags per frame entry. always allocated
+    // (it is small) so the inner loop can write to it unconditionally when
+    // tracking is enabled. when disabled, the conditional writes are skipped
+    // by the at_start_enabled guard and the array stays at length 1.
+    const stack_at_start: number[] = [1];
 
     let paren_depth = 0;
     let brace_depth = 0;
@@ -90,48 +158,96 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     for (let i = 0; i < n; i++) {
       const base = i * 3;
       const ttype = tokens[base];
+
+      let is_trivia = false;
+      let is_transparent = false;
+      if (at_start_enabled) {
+        is_trivia = trivia![ttype] === 1;
+        is_transparent = transparent![ttype] === 1;
+        at_start[i] = stack_at_start[stack_at_start.length - 1];
+      }
+
       if (punct_id >= 0 && ttype === punct_id) {
         const s = tokens[base + 1];
         const e = tokens[base + 2];
         for (let p = s; p < e; p++) {
           const c = input.charCodeAt(p);
-          if (c === compiled.paren_open) {
+          if (c === paren_open) {
+            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
             const idx = frames.length;
             frames.push({ bracket: FRAME_BRACKET_PAREN, kind: FRAME_KIND_PAREN, enter_idx: i });
             stack.push(idx);
+            stack_at_start.push(0);
             paren_depth++;
-          } else if (c === compiled.paren_close) {
-            if (stack.length > 1) stack.pop();
+          } else if (c === paren_close) {
+            if (stack.length > 1) {
+              stack.pop();
+              stack_at_start.pop();
+            }
             if (paren_depth > 0) paren_depth--;
-          } else if (c === compiled.brace_open) {
+            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
+          } else if (c === brace_open) {
+            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
             const idx = frames.length;
-            // kind for braces is determined by a later pass (brace_classifier).
-            // v0 leaves it at FRAME_KIND_TOP which downstream consumers can
-            // detect as "unclassified."
-            frames.push({ bracket: FRAME_BRACKET_BRACE, kind: FRAME_KIND_TOP, enter_idx: i });
+            let kind: number = FRAME_KIND_TOP;
+            if (classify_brace !== undefined) {
+              kind = classify_brace(
+                input,
+                tokens,
+                token_types,
+                i,
+                paren_depth,
+                brace_depth,
+                bracket_depth,
+              );
+            }
+            frames.push({ bracket: FRAME_BRACKET_BRACE, kind, enter_idx: i });
             stack.push(idx);
+            stack_at_start.push(1);
             brace_depth++;
-          } else if (c === compiled.brace_close) {
-            if (stack.length > 1) stack.pop();
+          } else if (c === brace_close) {
+            if (stack.length > 1) {
+              stack.pop();
+              stack_at_start.pop();
+            }
             if (brace_depth > 0) brace_depth--;
-          } else if (c === compiled.bracket_open) {
+            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
+          } else if (c === bracket_open) {
+            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
             const idx = frames.length;
             frames.push({ bracket: FRAME_BRACKET_BRACKET, kind: FRAME_KIND_BRACKET, enter_idx: i });
             stack.push(idx);
+            stack_at_start.push(0);
             bracket_depth++;
-          } else if (c === compiled.bracket_close) {
-            if (stack.length > 1) stack.pop();
+          } else if (c === bracket_close) {
+            if (stack.length > 1) {
+              stack.pop();
+              stack_at_start.pop();
+            }
             if (bracket_depth > 0) bracket_depth--;
+            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
+          } else if (at_start_enabled) {
+            let is_reset = false;
+            for (let r = 0; r < reset_chars_len; r++) {
+              if (c === reset_chars[r]) {
+                is_reset = true;
+                break;
+              }
+            }
+            stack_at_start[stack_at_start.length - 1] = is_reset ? 1 : 0;
           }
         }
+      } else if (at_start_enabled && !is_trivia && !is_transparent) {
+        stack_at_start[stack_at_start.length - 1] = 0;
       }
+
       active_frame[i] = stack[stack.length - 1];
       depths[base] = paren_depth;
       depths[base + 1] = brace_depth;
       depths[base + 2] = bracket_depth;
     }
 
-    const table: FrameTable = { active_frame, depths, frames };
+    const table: FrameTable = { active_frame, depths, at_start, frames };
     // attach to result -- callers must clone result.tokens before mutating
     // anyway (per the reclassifier contract), and frames is computed off
     // tokens so a later splice-changing reclassifier invalidates it. by

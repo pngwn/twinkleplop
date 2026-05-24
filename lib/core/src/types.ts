@@ -134,6 +134,12 @@ export interface FrameTable {
   // as a flat Uint8Array (length = 3 * tokens.length). depths reflect the
   // state AFTER processing token i.
   depths: Uint8Array;
+  // per-token at_start flag, 1 byte per token. true means: this token
+  // is the first significant content after the active frame opened
+  // (or after a member separator like `,` / `;`). consumed by reclassifiers
+  // that distinguish "key position" from "value position" inside object
+  // and interface bodies. populated only when FrameSpec.at_start is set.
+  at_start: Uint8Array;
   // dense list of all frames ever opened, frames[0] is the implicit TOP
   // frame (kind=FRAME_KIND_TOP, never popped).
   frames: FrameRecord[];
@@ -152,6 +158,43 @@ export interface FrameSpec {
     brace?: { open: string; close: string };
     bracket?: { open: string; close: string };
   };
+  // optional at_start tracking. when set, the frame table's at_start
+  // array is populated per token. otherwise the array is zeroed and
+  // downstream reclassifiers either don't consume it or compute their own.
+  at_start?: AtStartSpec;
+  // optional brace-kind classification. invoked when a `{` opens a new
+  // brace frame, replacing the default FRAME_KIND_TOP placeholder with
+  // a language-defined integer kind. portability tradeoff: this is a
+  // JS callback for now (escape hatch), to be data-driven in a later pass
+  // when more language patterns are known. the callback receives the
+  // index of the punctuation token that contains the opening `{` (a
+  // single token may carry multiple bracket chars, e.g. `({`).
+  classify_brace?: (
+    input: string,
+    tokens: Uint32Array,
+    token_types: string[],
+    open_token_idx: number,
+    paren_depth: number,
+    brace_depth: number,
+    bracket_depth: number,
+  ) => number;
+}
+
+// per-token at_start computation. a frame's "at_start" is true immediately
+// after the frame opens or after a separator token at that frame's depth
+// fires. it is set to false the moment a non-trivia, non-transparent token
+// appears.
+//
+// transparent_types: token types that pass through without changing at_start.
+//   typically comments (handled via the grammar's trivia list) and modifier
+//   keywords (`async`, `static`, `public`, ...). identifier-like tokens are
+//   the canonical "consumer" — they turn at_start off.
+//
+// reset_chars: single-character punctuation that re-arms at_start = true on
+//   the top frame. typically `,` `;` and the language's open-brace char.
+export interface AtStartSpec {
+  transparent_types?: string[];
+  reset_chars: string;
 }
 
 // Reclassifier types

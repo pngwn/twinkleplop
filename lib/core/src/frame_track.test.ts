@@ -207,3 +207,134 @@ describe("frame_track — bracket depth tracking", () => {
     }
   });
 });
+
+describe("frame_track — at_start tracking", () => {
+  function run_with_at_start(input: string): FrameTable {
+    const raw = tokenize(input, compiled);
+    const tracker = frame_track({
+      punct_type: "punctuation",
+      brackets: {
+        paren: { open: "(", close: ")" },
+        brace: { open: "{", close: "}" },
+        bracket: { open: "[", close: "]" },
+      },
+      at_start: {
+        reset_chars: ",;",
+      },
+    });
+    const out = reclassify([tracker])(input, raw);
+    return out.frames as FrameTable;
+  }
+
+  test("first significant token in a brace frame has at_start = true", () => {
+    const f = run_with_at_start("f { a b c }");
+    // tokens: f { a b c }
+    //         0 1 2 3 4 5
+    expect(f.at_start[0]).toBe(1); // f at TOP, fresh
+    expect(f.at_start[1]).toBe(0); // { is itself punctuation, consumes top's at_start
+    expect(f.at_start[2]).toBe(1); // a first token in brace frame
+    expect(f.at_start[3]).toBe(0); // b after a -> consumed
+    expect(f.at_start[4]).toBe(0); // c after b -> still consumed
+  });
+
+  test("commas re-arm at_start on the top frame", () => {
+    const f = run_with_at_start("{ a , b , c }");
+    // tokens: { a , b , c }
+    //         0 1 2 3 4 5 6
+    expect(f.at_start[1]).toBe(1); // a fresh
+    expect(f.at_start[3]).toBe(1); // b after ,
+    expect(f.at_start[5]).toBe(1); // c after ,
+  });
+
+  test("semicolons re-arm at_start", () => {
+    const f = run_with_at_start("{ a ; b ; c }");
+    expect(f.at_start[1]).toBe(1);
+    expect(f.at_start[3]).toBe(1);
+    expect(f.at_start[5]).toBe(1);
+  });
+
+  test("paren frames start with at_start = false but commas still re-arm", () => {
+    const f = run_with_at_start("( a , b )");
+    // tokens: ( a , b )
+    //         0 1 2 3 4
+    // paren frames open with at_start=false so the FIRST token inside a
+    // paren does not see at_start=true. reset chars (`,` `;`) still re-arm
+    // at_start uniformly across frame types -- downstream reclassifiers
+    // that only care about brace-kind frames check active_frame[i] and
+    // gate their at_start consumption on the frame kind.
+    expect(f.at_start[1]).toBe(0); // a is first inside paren -> false
+    expect(f.at_start[3]).toBe(1); // b is first after `,` -> re-armed
+  });
+
+  test("nested frames have independent at_start state", () => {
+    const f = run_with_at_start("{ a , { b } , c }");
+    // tokens: { a , { b } , c }
+    //         0 1 2 3 4 5 6 7 8
+    expect(f.at_start[1]).toBe(1); // a is first in outer brace
+    expect(f.at_start[4]).toBe(1); // b is first in inner brace
+    expect(f.at_start[7]).toBe(1); // c is first after `,` in outer brace
+  });
+});
+
+describe("frame_track — brace classification hook", () => {
+  test("classify_brace receives the open token index and current depths", () => {
+    let captured_idx = -1;
+    let captured_depths: [number, number, number] | null = null;
+    const tracker = frame_track({
+      punct_type: "punctuation",
+      brackets: { brace: { open: "{", close: "}" } },
+      classify_brace: (_input, _tokens, _types, open_idx, p, b, br) => {
+        captured_idx = open_idx;
+        captured_depths = [p, b, br];
+        return 42; // arbitrary language-defined kind
+      },
+    });
+    const src = "f { x }";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([tracker])(src, raw);
+    const f = out.frames as FrameTable;
+    expect(captured_idx).toBe(1); // `{` is token 1
+    expect(captured_depths).toEqual([0, 0, 0]); // depths BEFORE the open
+    expect(f.frames[1].kind).toBe(42);
+  });
+
+  test("nested braces pass the parent depth to the classifier", () => {
+    const calls: number[][] = [];
+    const tracker = frame_track({
+      punct_type: "punctuation",
+      brackets: { brace: { open: "{", close: "}" } },
+      classify_brace: (_input, _tokens, _types, open_idx, p, b, br) => {
+        calls.push([open_idx, p, b, br]);
+        return b + 1; // outer brace=1, inner brace=2
+      },
+    });
+    const src = "{ x { y } z }";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([tracker])(src, raw);
+    const f = out.frames as FrameTable;
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual([0, 0, 0, 0]); // outer { at depth 0
+    expect(calls[1]).toEqual([2, 0, 1, 0]); // inner { at brace depth 1
+    expect(f.frames[1].kind).toBe(1);
+    expect(f.frames[2].kind).toBe(2);
+  });
+
+  test("classifier is not called for non-brace punctuation", () => {
+    let call_count = 0;
+    const tracker = frame_track({
+      punct_type: "punctuation",
+      brackets: {
+        paren: { open: "(", close: ")" },
+        brace: { open: "{", close: "}" },
+      },
+      classify_brace: () => {
+        call_count++;
+        return 7;
+      },
+    });
+    const src = "f ( a ) g [ b ]";
+    const raw = tokenize(src, compiled);
+    reclassify([tracker])(src, raw);
+    expect(call_count).toBe(0);
+  });
+});
