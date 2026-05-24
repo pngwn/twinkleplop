@@ -88,6 +88,70 @@ export interface TokenizeResult {
   // language factory was given an `annotation` config). undefined otherwise so
   // the renderer's no-overlay fast path is reachable via a single check.
   overlays?: OverlayResult;
+  // populated by the `frame_track` reclassifier when present. downstream
+  // reclassifiers query the table instead of reconstructing their own
+  // scope stack. undefined when no frame_track stage ran.
+  frames?: FrameTable;
+}
+
+// Frame tracker types
+//
+// A FrameTable is the output of a `frame_track` reclassifier stage: per-token
+// scope-stack metadata pre-computed in one walk so multiple downstream
+// reclassifiers can read it instead of each maintaining their own stack.
+//
+// The schema is intentionally a superset across the JS/TS/Python/Rust
+// reclassifiers we plan to migrate. Languages that don't use frame tracking
+// simply don't run the stage and `frames` stays undefined.
+
+// integer encodings for Frame.bracket. matches the order in FrameSpec.brackets.
+export const FRAME_BRACKET_PAREN = 0;
+export const FRAME_BRACKET_BRACE = 1;
+export const FRAME_BRACKET_BRACKET = 2;
+
+// integer encodings for Frame.kind. the top-of-stack sentinel is 0 so a
+// freshly-allocated Uint8Array fills with TOP frames naturally. specific
+// brace kinds are language-supplied via FrameSpec.brace_kinds and resolved
+// to small ints at compile time.
+export const FRAME_KIND_TOP = 0;
+export const FRAME_KIND_PAREN = 1;
+export const FRAME_KIND_BRACKET = 2;
+// 3..255 reserved for language-defined brace kinds (class, interface, ...)
+
+export interface FrameRecord {
+  bracket: number; // FRAME_BRACKET_* constant
+  kind: number; // FRAME_KIND_* or language-defined
+  enter_idx: number; // token index of the opening bracket
+}
+
+export interface FrameTable {
+  // active_frame[i] = index into `frames` for the frame on top after
+  // token i has been processed. tokens that are themselves closers point
+  // at the frame they CLOSED so their lookup is consistent with "frame
+  // active during this token's lifetime."
+  active_frame: Uint32Array;
+  // for each token i: paren_depth, brace_depth, bracket_depth interleaved
+  // as a flat Uint8Array (length = 3 * tokens.length). depths reflect the
+  // state AFTER processing token i.
+  depths: Uint8Array;
+  // dense list of all frames ever opened, frames[0] is the implicit TOP
+  // frame (kind=FRAME_KIND_TOP, never popped).
+  frames: FrameRecord[];
+}
+
+export interface FrameSpec {
+  // type name of the token carrying bracket characters in this language's
+  // grammar. nearly always "punctuation" but exposed so grammars that
+  // emit different types (e.g. operator for `<`/`>`) can still be tracked.
+  punct_type: string;
+  // character codes for each bracket pair. each must be a single code unit.
+  // omit a bracket pair if the language doesn't use it (e.g. languages with
+  // no square-bracket scope).
+  brackets: {
+    paren?: { open: string; close: string };
+    brace?: { open: string; close: string };
+    bracket?: { open: string; close: string };
+  };
 }
 
 // Reclassifier types
