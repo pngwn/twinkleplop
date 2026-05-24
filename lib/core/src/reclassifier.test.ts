@@ -160,6 +160,82 @@ describe("reclassifier — rewrite_types", () => {
   });
 });
 
+describe("reclassifier — anchor text_pred", () => {
+  // the toy grammar's identifier range is [a-z A-Z] only, so test inputs
+  // here avoid underscores and digits — upper_snake's defining feature.
+  // the predicate is still meaningfully exercised (length >= 2, first char
+  // uppercase, body all uppercase letters).
+
+  test("upper_snake_case promotes ALL-CAPS identifiers", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", undefined, { text_pred: "upper_snake_case" }),
+      rewrite: "constant",
+    };
+    const src = "const MAX = 10; const items = 0; const HTTP = 200";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "MAX")?.type).toBe("constant");
+    expect(tokens.find((t) => t.value === "HTTP")?.type).toBe("constant");
+    expect(tokens.find((t) => t.value === "items")?.type).toBe("identifier");
+  });
+
+  test("upper_snake_case rejects single-char and PascalCase identifiers", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", undefined, { text_pred: "upper_snake_case" }),
+      rewrite: "constant",
+    };
+    const src = "const T = 1; const Foo = 2; const M = 3";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "T")?.type).toBe("identifier");
+    expect(tokens.find((t) => t.value === "Foo")?.type).toBe("identifier");
+    expect(tokens.find((t) => t.value === "M")?.type).toBe("identifier");
+  });
+
+  test("pascal_case promotes PascalCase identifiers including single-char", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", undefined, { text_pred: "pascal_case" }),
+      rewrite: "class_name",
+    };
+    const src = "const Cat = 1; const dog = 2; const T = 3; const FOO = 4";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "Cat")?.type).toBe("class_name");
+    expect(tokens.find((t) => t.value === "T")?.type).toBe("class_name");
+    expect(tokens.find((t) => t.value === "dog")?.type).toBe("identifier");
+    // all-uppercase multi-char names are upper_snake territory, not pascal.
+    expect(tokens.find((t) => t.value === "FOO")?.type).toBe("identifier");
+  });
+
+  test("text_pred combines with value constraint (AND semantics)", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", ["FOO", "BAR", "items"], {
+        text_pred: "upper_snake_case",
+      }),
+      rewrite: "constant",
+    };
+    const src = "const FOO = 1; const items = 2";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "FOO")?.type).toBe("constant");
+    // "items" passes the value filter but fails the text predicate (lowercase).
+    expect(tokens.find((t) => t.value === "items")?.type).toBe("identifier");
+  });
+
+  test("unknown predicate name silently never matches", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", undefined, {
+        text_pred: "definitely_not_real" as unknown as "upper_snake_case",
+      }),
+      rewrite: "constant",
+    };
+    const src = "const FOO = 1";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "FOO")?.type).toBe("identifier");
+  });
+});
+
 describe("reclassifier — matcher primitives", () => {
   test("seq matches a sequence in order", () => {
     const rule: RewriteRule = {

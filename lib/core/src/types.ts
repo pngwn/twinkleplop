@@ -355,10 +355,21 @@ export interface RenderOptions {
 // build patterns with the exported combinator helpers (`type`, `seq`,
 // `any_of`, `optional`, `capture`, `balanced_parens`).
 
+// Named character-class predicates over a token's source text. Used as a
+// declarative alternative to writing a hand-rolled Reclassifier just to
+// check casing conventions. Adding a new predicate name requires a matching
+// runtime implementation in reclassifier.ts.
+export type CharPredName = "upper_snake_case" | "pascal_case";
+
 export interface TypePatternSpec {
   __kind: "type";
   type_name: string;
   value?: string | string[];
+  // Filter the matched token by a character-class predicate on its source
+  // text. Combinable with `value`: both must pass. Currently only used on
+  // anchor patterns; when used inside `when` it falls back to the runtime
+  // predicate but does not yet skip the type/value bytecode work.
+  text_pred?: CharPredName;
 }
 
 export interface SeqPatternSpec {

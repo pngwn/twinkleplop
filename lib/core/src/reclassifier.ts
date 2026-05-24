@@ -16,6 +16,7 @@ import type {
   AnyOfPatternSpec,
   BalancedPatternSpec,
   CapturePatternSpec,
+  CharPredName,
   ClaimFn,
   ClaimSink,
   ClaimingReclassifier,
@@ -48,9 +49,20 @@ import type {
 // DSL combinators
 // ---------------------------------------------------------------------------
 
-/** Match a single token of the given type, optionally with a source-text value constraint. */
-export function type(type_name: string, value?: string | string[]): TypePatternSpec {
-  return { __kind: "type", type_name, value };
+/**
+ * Match a single token of the given type, optionally with a source-text
+ * value constraint or a character-class predicate over its source text.
+ *
+ * `value` exact-matches against one of the provided strings.
+ * `text_pred` runs a built-in predicate (e.g. "upper_snake_case") against
+ * the token's source. Both filters apply when both are set.
+ */
+export function type(
+  type_name: string,
+  value?: string | string[],
+  options?: { text_pred?: CharPredName },
+): TypePatternSpec {
+  return { __kind: "type", type_name, value, text_pred: options?.text_pred };
 }
 
 /** Match a sequence of sub-patterns in order, skipping trivia between them. */
@@ -599,6 +611,77 @@ function ensure_cap_capacity(slots: number): void {
   }
 }
 
+// char-class predicates keyed by integer id (matches CharPredName order
+// in types.ts). hot path -- one function per predicate, no name lookup.
+//
+// CHAR_PRED_UPPER_SNAKE matches /^[A-Z][A-Z0-9_]+$/ (length >= 2).
+// CHAR_PRED_PASCAL matches an initial uppercase letter plus at least one
+// lowercase letter somewhere in the body (single uppercase letters like
+// generic param `T` are still accepted -- they cannot be upper-snake by
+// the length-2 rule and conventionally read as types).
+const CHAR_PRED_UPPER_SNAKE = 0;
+const CHAR_PRED_PASCAL = 1;
+
+const ASCII_UPPER_MIN_C = 0x41;
+const ASCII_UPPER_MAX_C = 0x5a;
+const ASCII_LOWER_MIN_C = 0x61;
+const ASCII_LOWER_MAX_C = 0x7a;
+const ASCII_DIGIT_MIN_C = 0x30;
+const ASCII_DIGIT_MAX_C = 0x39;
+const ASCII_UNDERSCORE_C = 0x5f;
+
+function pred_upper_snake(input: string, s: number, e: number): boolean {
+  if (e - s < 2) return false;
+  const first = input.charCodeAt(s);
+  if (first < ASCII_UPPER_MIN_C || first > ASCII_UPPER_MAX_C) return false;
+  for (let k = s + 1; k < e; k++) {
+    const c = input.charCodeAt(k);
+    if (
+      !(
+        (c >= ASCII_UPPER_MIN_C && c <= ASCII_UPPER_MAX_C) ||
+        (c >= ASCII_DIGIT_MIN_C && c <= ASCII_DIGIT_MAX_C) ||
+        c === ASCII_UNDERSCORE_C
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function pred_pascal(input: string, s: number, e: number): boolean {
+  const first = input.charCodeAt(s);
+  if (first < ASCII_UPPER_MIN_C || first > ASCII_UPPER_MAX_C) return false;
+  if (e - s <= 1) return true;
+  for (let k = s + 1; k < e; k++) {
+    const c = input.charCodeAt(k);
+    if (c >= ASCII_LOWER_MIN_C && c <= ASCII_LOWER_MAX_C) return true;
+  }
+  return false;
+}
+
+function text_pred_matches(pred_id: number, input: string, s: number, e: number): boolean {
+  switch (pred_id) {
+    case CHAR_PRED_UPPER_SNAKE:
+      return pred_upper_snake(input, s, e);
+    case CHAR_PRED_PASCAL:
+      return pred_pascal(input, s, e);
+    default:
+      return false;
+  }
+}
+
+function resolve_char_pred(name: string): number {
+  switch (name) {
+    case "upper_snake_case":
+      return CHAR_PRED_UPPER_SNAKE;
+    case "pascal_case":
+      return CHAR_PRED_PASCAL;
+    default:
+      return -1;
+  }
+}
+
 // compare a token's source range against one of the packed value sets.
 // returns true if any value in the set equals the token's source text.
 // length mismatch is the fast reject; only on length-match do we compare
@@ -967,6 +1050,11 @@ interface CompiledRule {
   // -1 means no value constraint; otherwise an id into the shared value
   // pool (same layout as the bytecode matcher's value_set_matches).
   anchor_value_id: number;
+  // -1 means no text predicate; otherwise a CHAR_PRED_* id passed to
+  // text_pred_matches() during dispatch. fast pre-filter on the anchor
+  // token's source text -- replaces a whole class of hand-rolled
+  // upper_snake_case / pascal_case promoters.
+  anchor_text_pred_id: number;
   // anchor rewrite target (phase 1 form). -1 means no anchor rewrite.
   anchor_target_id: number;
   // capture rewrite targets (phase 3 form). null if no capture rewrites.
@@ -1043,8 +1131,13 @@ function compile_rewrite(
         ? {
             type_name: rule.anchor,
             value: undefined as string | string[] | undefined,
+            text_pred: undefined as string | undefined,
           }
-        : { type_name: rule.anchor.type_name, value: rule.anchor.value };
+        : {
+            type_name: rule.anchor.type_name,
+            value: rule.anchor.value,
+            text_pred: rule.anchor.text_pred,
+          };
     const anchor_id = name_to_id.get(anchor_spec.type_name);
     if (anchor_id === undefined) continue;
 
@@ -1077,9 +1170,19 @@ function compile_rewrite(
       anchor_value_id = compile_value_set(ctx, values);
     }
 
+    // -1 (default) skips the predicate check. -2 marks an unknown predicate
+    // name: the dispatch loop short-circuits the rule entirely so misspelled
+    // names fail closed rather than fall through to "always match".
+    let anchor_text_pred_id = -1;
+    if (anchor_spec.text_pred !== undefined) {
+      const resolved = resolve_char_pred(anchor_spec.text_pred);
+      anchor_text_pred_id = resolved < 0 ? -2 : resolved;
+    }
+
     compiled.push({
       anchor_id,
       anchor_value_id,
+      anchor_text_pred_id,
       anchor_target_id,
       capture_targets,
       before: rule.before ? compile_pattern(rule.before, name_to_id) : null,
@@ -1273,6 +1376,12 @@ function run_rewrite_loop_claims(
         if (!value_set_matches(value_pool, value_offsets, rule.anchor_value_id, input, s, e)) {
           continue;
         }
+      }
+      if (rule.anchor_text_pred_id !== -1) {
+        if (rule.anchor_text_pred_id === -2) continue;
+        const s = tokens[i * 3 + 1];
+        const e = tokens[i * 3 + 2];
+        if (!text_pred_matches(rule.anchor_text_pred_id, input, s, e)) continue;
       }
       if (rule.before !== null) {
         const behind = match_pattern_backward(rule.before, tokens, i - 1, input, trivia);
