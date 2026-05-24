@@ -180,6 +180,30 @@ export interface FrameSpec {
   ) => number;
 }
 
+// merge_adjacent primitive — splice anchor + immediately-following token
+// into one. output token count shrinks per merge. portable: a host runtime
+// executes the same spec for every language that needs adjacent-token
+// merging (Rust lifetime+type fusion is the canonical case).
+
+export interface MergeAdjacentConfig {
+  // anchor token type that triggers a merge attempt.
+  anchor_type: string;
+  // type names of the token immediately after the anchor that can be
+  // consumed into the merged token.
+  consume_next_types: string[];
+  // refuse the merge when the token at (anchor + offset) is of the given
+  // type AND its source text starts with any of the listed characters.
+  // typically used for the Rust case: refuse to merge `'a Fn` because
+  // `Fn(` is a function-call generic, not a type to fuse into the lifetime.
+  refuse_if?: {
+    offset: number;       // 1-based: 2 means "two tokens after the anchor"
+    type_must_be: string; // token type required for the guard to apply
+    first_char_in: string; // single-char codes that disqualify the merge
+  };
+  // resulting type of the merged token. defaults to anchor's type.
+  result_type?: string;
+}
+
 // param_list primitive — tags identifier-position tokens inside parameter
 // lists across language-specific opener patterns. configured by data, so a
 // host runtime can execute the same spec for every language that has
