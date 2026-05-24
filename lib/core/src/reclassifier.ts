@@ -441,13 +441,21 @@ function compile_pattern_bytecode(
 ): void {
   switch (spec.__kind) {
     case "type": {
-      const type_id = name_to_id.get(spec.type_name) ?? NEVER_MATCHES;
+      let type_id = name_to_id.get(spec.type_name) ?? NEVER_MATCHES;
       let value_values: string[] | null = null;
       if (spec.value !== undefined) {
         value_values = Array.isArray(spec.value) ? spec.value : [spec.value];
       }
       const values_id = compile_value_set(ctx, value_values);
-      emit(ctx, OP_TYPE, type_id, values_id);
+      let pred_id = -1;
+      if (spec.text_pred !== undefined) {
+        const resolved = resolve_char_pred(spec.text_pred);
+        // misspelled predicate -> compile the type into NEVER_MATCHES so
+        // the rule cannot fire, matching the anchor-level fail-closed rule.
+        if (resolved < 0) type_id = NEVER_MATCHES;
+        else pred_id = resolved;
+      }
+      emit(ctx, OP_TYPE, type_id, values_id, pred_id);
       return;
     }
     case "seq": {
@@ -526,8 +534,8 @@ function disassemble_program(program: Int32Array, start_pc: number, end_pc: numb
     let line: string;
     switch (op) {
       case OP_TYPE:
-        line = `${pc}: TYPE type=${program[pc + 1]} values=${program[pc + 2]}`;
-        pc += 3;
+        line = `${pc}: TYPE type=${program[pc + 1]} values=${program[pc + 2]} pred=${program[pc + 3]}`;
+        pc += 4;
         break;
       case OP_ALT:
         line = `${pc}: ALT -> ${program[pc + 1]}`;
@@ -833,8 +841,15 @@ function match_bytecode(
             break;
           }
         }
+        const pred_id = program[pc + 3];
+        if (pred_id >= 0) {
+          if (!text_pred_matches(pred_id, input, tokens[base + 1], tokens[base + 2])) {
+            failed = true;
+            break;
+          }
+        }
         idx++;
-        pc += 3;
+        pc += 4;
         break;
       }
       case OP_ALT: {

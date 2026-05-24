@@ -234,6 +234,31 @@ describe("reclassifier — anchor text_pred", () => {
     const tokens = types_only(result, src);
     expect(tokens.find((t) => t.value === "FOO")?.type).toBe("identifier");
   });
+
+  test("text_pred works inside when clauses, not just anchors", () => {
+    // anchor is `new`; the next identifier must be PascalCase to qualify.
+    const rule: RewriteRule = {
+      anchor: type("keyword", "function"),
+      when: type("identifier", undefined, { text_pred: "pascal_case" }),
+      rewrite: "boolean",
+    };
+    const ok = run("function Foo", [rule]);
+    expect(types_only(ok, "function Foo")[0].type).toBe("boolean");
+    const not_ok = run("function foo", [rule]);
+    expect(types_only(not_ok, "function foo")[0].type).toBe("keyword");
+  });
+
+  test("unknown predicate name inside when clause fails closed", () => {
+    const rule: RewriteRule = {
+      anchor: type("keyword", "function"),
+      when: type("identifier", undefined, {
+        text_pred: "definitely_not_real" as unknown as "upper_snake_case",
+      }),
+      rewrite: "boolean",
+    };
+    const result = run("function Foo", [rule]);
+    expect(types_only(result, "function Foo")[0].type).toBe("keyword");
+  });
 });
 
 describe("reclassifier — matcher primitives", () => {
