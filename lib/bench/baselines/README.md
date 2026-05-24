@@ -14,6 +14,15 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   isolation in JS (incremental composition) plus per-language full-pipeline
   numbers for TS / Rust / Markdown / Go / Svelte (every language with a
   reclassifier the VM migration will touch).
+- `02-after-phase1-and-frame-track.json` — captured after the four Phase 1
+  commits and the initial frame_track v0 (structural-only).
+- `03-after-frame-track-v1.json` — captured after frame_track gained at_start
+  tracking and the classify_brace hook. Still no consumers — pure overhead
+  baseline for the tracker.
+- `04-after-claim-property-scope-migration.json` — captured after
+  claim_property_scope was rewritten to read frame_track's output instead of
+  maintaining its own scope stack. First real consumer of the shared frame
+  data. JS pipeline is now (1) js_frame_track → (2..) the rest.
 
 ## How to capture a new snapshot
 
@@ -35,6 +44,8 @@ regression checks. Times are mean per iteration in microseconds.
 
 The delta between two consecutive rows is that stage's contribution.
 
+**pre-VM baseline (snapshot 01):**
+
 | Stage                            |    ops/sec | mean    |
 | -------------------------------- | ---------: | ------- |
 | 0. empty pipeline                | 24,291,681 | 0.04 µs |
@@ -47,9 +58,25 @@ The delta between two consecutive rows is that stage's contribution.
 | 7. + promote_js_namespaces       |      9,744 | 102 µs  |
 | 8. + embed_interleaved (full)    |      8,885 | 112 µs  |
 
-Phase 2 migrates stages 4 and 6 to read from a shared frame tracker.
-Combined they account for ~75 µs/iter on large_js — the biggest single
-target in the pipeline.
+**post-migration (snapshot 04) — js_frame_track inserted as stage 1:**
+
+| Stage                            |    ops/sec | mean    |
+| -------------------------------- | ---------: | ------- |
+| 0. empty pipeline                | 24,154,879 | 0.04 µs |
+| 1. + js_frame_track              |     79,650 | 12.6 µs |
+| 2. + promote_js_constants        |     56,848 | 17.6 µs |
+| 3. + function_variable_rules     |     32,536 | 30.7 µs |
+| 4. + promote_js_const_bindings   |     24,643 | 40.6 µs |
+| 5. + claim_property_scope        |     17,207 | 58.1 µs |
+| 6. + class_name_promoter         |     15,494 | 64.5 µs |
+| 7. + promote_js_parameters       |      9,482 | 105 µs  |
+| 8. + promote_js_namespaces       |      9,045 | 110 µs  |
+| 9. + embed_interleaved (full)    |      8,403 | 119 µs  |
+
+End-to-end pipeline cost: 112 µs → 119 µs (+6%) on large_js. On medium_js
+the same comparison is 36 µs → 35 µs (-3%, slight improvement). Single
+consumer of frame_track shows roughly break-even — the architectural
+sharing pays off when promote_js_parameters also migrates.
 
 ### Per-language full pipeline (pre-tokenized)
 
