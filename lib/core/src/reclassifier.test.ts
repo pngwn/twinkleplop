@@ -337,6 +337,75 @@ describe("reclassifier — matcher primitives", () => {
     const tokens = types_only(result, "const foo = 1");
     expect(tokens.find((t) => t.value === "foo")?.type).toBe("function");
   });
+
+  test("`before` seq matches children right-to-left", () => {
+    // matches `function async foo` -> seq(keyword "function", keyword "async")
+    // walking left from foo, we see async first then function.
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: seq(type("keyword", "function"), type("keyword", "async")),
+      rewrite: "function",
+    };
+    const ok = run("function async foo", [rule]);
+    expect(types_only(ok, "function async foo").find((t) => t.value === "foo")?.type).toBe(
+      "function",
+    );
+    // wrong order: should not match
+    const wrong = run("async function foo", [rule]);
+    expect(types_only(wrong, "async function foo").find((t) => t.value === "foo")?.type).toBe(
+      "identifier",
+    );
+  });
+
+  test("`before` any_of tries branches in order", () => {
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: any_of(type("keyword", "let"), type("keyword", "var")),
+      rewrite: "function",
+    };
+    expect(types_only(run("let foo = 1", [rule]), "let foo = 1").find((t) => t.value === "foo")?.type).toBe("function");
+    expect(types_only(run("var foo = 1", [rule]), "var foo = 1").find((t) => t.value === "foo")?.type).toBe("function");
+    expect(types_only(run("const foo = 1", [rule]), "const foo = 1").find((t) => t.value === "foo")?.type).toBe("identifier");
+  });
+
+  test("`before` optional matches with or without the inner pattern", () => {
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: seq(type("keyword", "const"), optional(type("keyword", "async"))),
+      rewrite: "function",
+    };
+    expect(types_only(run("const foo = 1", [rule]), "const foo = 1").find((t) => t.value === "foo")?.type).toBe("function");
+    expect(types_only(run("const async foo = 1", [rule]), "const async foo = 1").find((t) => t.value === "foo")?.type).toBe("function");
+  });
+
+  test("`before` value uses ends-with semantics for coalesced punctuation", () => {
+    // when the tokenizer coalesces `;}` into one punctuation token, a
+    // lookbehind for "}" should still match because "}" is the suffix.
+    // build a tiny case using "==" which gets emitted as one operator
+    // token; a lookbehind for "=" should match.
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: type("operator", "="),
+      rewrite: "function",
+    };
+    const result = run("foo === bar", [rule]);
+    // "bar" follows the "===" operator -- the ends-with "=" check matches.
+    expect(types_only(result, "foo === bar").find((t) => t.value === "bar")?.type).toBe(
+      "function",
+    );
+  });
+
+  test("`before` skips trivia (comments) walking left", () => {
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: type("keyword", "const"),
+      rewrite: "function",
+    };
+    const result = run("const /* tag */ foo = 1", [rule]);
+    expect(types_only(result, "const /* tag */ foo = 1").find((t) => t.value === "foo")?.type).toBe(
+      "function",
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

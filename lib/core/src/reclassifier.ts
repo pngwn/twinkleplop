@@ -109,91 +109,6 @@ export function balanced_parens(open = "(", close = ")", max_tokens = 200): Bala
 
 const NEVER_MATCHES = -1;
 
-type CompiledPattern =
-  | CompiledType
-  | CompiledSeq
-  | CompiledAnyOf
-  | CompiledOptional
-  | CompiledCapture
-  | CompiledBalanced;
-
-interface CompiledType {
-  kind: 0;
-  type_id: number;
-  // null -> any value; string -> exact match; string[] -> any of
-  values: string[] | null;
-}
-
-interface CompiledSeq {
-  kind: 1;
-  children: CompiledPattern[];
-}
-
-interface CompiledAnyOf {
-  kind: 2;
-  branches: CompiledPattern[];
-}
-
-interface CompiledOptional {
-  kind: 3;
-  inner: CompiledPattern;
-}
-
-interface CompiledBalanced {
-  kind: 4;
-  punctuation_type_id: number;
-  open_code: number;
-  close_code: number;
-  max_tokens: number;
-}
-
-interface CompiledCapture {
-  kind: 5;
-  name: string;
-  inner: CompiledPattern;
-}
-
-function compile_pattern(spec: TokenPatternSpec, name_to_id: Map<string, number>): CompiledPattern {
-  switch (spec.__kind) {
-    case "type": {
-      const type_id = name_to_id.get(spec.type_name) ?? NEVER_MATCHES;
-      let values: string[] | null = null;
-      if (spec.value !== undefined) {
-        values = Array.isArray(spec.value) ? spec.value : [spec.value];
-      }
-      return { kind: 0, type_id, values };
-    }
-    case "seq":
-      return {
-        kind: 1,
-        children: spec.children.map((c) => compile_pattern(c, name_to_id)),
-      };
-    case "anyOf":
-      return {
-        kind: 2,
-        branches: spec.branches.map((b) => compile_pattern(b, name_to_id)),
-      };
-    case "optional":
-      return { kind: 3, inner: compile_pattern(spec.inner, name_to_id) };
-    case "capture":
-      return {
-        kind: 5,
-        name: spec.name,
-        inner: compile_pattern(spec.inner, name_to_id),
-      };
-    case "balanced": {
-      const punctuation_type_id = name_to_id.get("punctuation") ?? NEVER_MATCHES;
-      return {
-        kind: 4,
-        punctuation_type_id,
-        open_code: spec.open.charCodeAt(0),
-        close_code: spec.close.charCodeAt(0),
-        max_tokens: spec.max_tokens ?? 200,
-      };
-    }
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Matcher engine
 // ---------------------------------------------------------------------------
@@ -202,90 +117,6 @@ function compile_pattern(spec: TokenPatternSpec, name_to_id: Map<string, number>
 // use `=== NO_MATCH` checks rather than sentinel-aware arithmetic so the
 // value is otherwise opaque.
 const NO_MATCH = -2;
-
-function skip_trivia_backward(tokens: Uint32Array, idx: number, trivia: Uint8Array): number {
-  while (idx >= 0 && trivia[tokens[idx * 3]]) idx--;
-  return idx;
-}
-
-// the forward matcher used to be a recursive descent over `CompiledPattern`
-// with a per-match `captures: Map`. it has been replaced by the bytecode
-// interpreter (see match_bytecode below). the `CompiledPattern` tree is
-// retained only for `before` lookbehind, which uses a different scan
-// direction and ends-with value semantics.
-
-// ---------------------------------------------------------------------------
-// backward matcher (for `before` lookbehind patterns)
-// ---------------------------------------------------------------------------
-//
-// matches a compiled pattern against the token stream scanning LEFT from the
-// given index. supports type, seq (right-to-left), any_of, and optional.
-// balanced_parens and capture are not supported in lookbehind — they are
-// forward-only constructs.
-//
-// value matching uses ends-with semantics rather than exact match. this
-// handles token coalescing: adjacent punctuation like `({` is one token,
-// but for lookbehind you care about the trailing character (the part
-// immediately before the anchor). `type("punctuation", ["{"])` matches
-// a token ending with `{`, so `({` and `{` both match.
-
-function match_pattern_backward(
-  pattern: CompiledPattern,
-  tokens: Uint32Array,
-  idx: number,
-  input: string,
-  trivia: Uint8Array,
-): number {
-  idx = skip_trivia_backward(tokens, idx, trivia);
-
-  switch (pattern.kind) {
-    case 0: {
-      // TYPE (ends-with value matching for lookbehind)
-      if (idx < 0) return NO_MATCH;
-      const base = idx * 3;
-      if (tokens[base] !== pattern.type_id) return NO_MATCH;
-      if (pattern.values !== null) {
-        const start = tokens[base + 1];
-        const end = tokens[base + 2];
-        const source = input.slice(start, end);
-        let ok = false;
-        for (let i = 0; i < pattern.values.length; i++) {
-          if (source.endsWith(pattern.values[i])) {
-            ok = true;
-            break;
-          }
-        }
-        if (!ok) return NO_MATCH;
-      }
-      return idx - 1;
-    }
-    case 1: {
-      // SEQ (match children right-to-left)
-      let cur = idx;
-      for (let i = pattern.children.length - 1; i >= 0; i--) {
-        cur = match_pattern_backward(pattern.children[i], tokens, cur, input, trivia);
-        if (cur === NO_MATCH) return NO_MATCH;
-      }
-      return cur;
-    }
-    case 2: {
-      // ANY_OF
-      for (let i = 0; i < pattern.branches.length; i++) {
-        const r = match_pattern_backward(pattern.branches[i], tokens, idx, input, trivia);
-        if (r !== NO_MATCH) return r;
-      }
-      return NO_MATCH;
-    }
-    case 3: {
-      // OPTIONAL
-      const r = match_pattern_backward(pattern.inner, tokens, idx, input, trivia);
-      return r !== NO_MATCH ? r : idx;
-    }
-    default:
-      // balanced_parens and capture are not supported in lookbehind
-      return NO_MATCH;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // bytecode compilation (forward matcher)
@@ -521,6 +352,81 @@ function compile_pattern_bytecode(
   }
 }
 
+// compile a pattern for backward execution (`before` lookbehind clauses).
+//
+// shares opcodes with the forward compiler so the host runtime needs only
+// one instruction set, but seq emits children in reverse order and
+// balanced/capture aren't supported (lookbehind is bounded-left scanning
+// only). misuses compile down to NEVER_MATCHES rather than throwing so a
+// misconfigured rule fails closed at runtime.
+function compile_reverse_pattern_bytecode(
+  spec: TokenPatternSpec,
+  name_to_id: Map<string, number>,
+  ctx: CompileCtx,
+): void {
+  switch (spec.__kind) {
+    case "type": {
+      let type_id = name_to_id.get(spec.type_name) ?? NEVER_MATCHES;
+      let value_values: string[] | null = null;
+      if (spec.value !== undefined) {
+        value_values = Array.isArray(spec.value) ? spec.value : [spec.value];
+      }
+      const values_id = compile_value_set(ctx, value_values);
+      let pred_id = -1;
+      if (spec.text_pred !== undefined) {
+        const resolved = resolve_char_pred(spec.text_pred);
+        if (resolved < 0) type_id = NEVER_MATCHES;
+        else pred_id = resolved;
+      }
+      emit(ctx, OP_TYPE, type_id, values_id, pred_id);
+      return;
+    }
+    case "seq": {
+      for (let i = spec.children.length - 1; i >= 0; i--) {
+        compile_reverse_pattern_bytecode(spec.children[i], name_to_id, ctx);
+      }
+      return;
+    }
+    case "anyOf": {
+      const end_patch_pcs: number[] = [];
+      const branches = spec.branches;
+      for (let i = 0; i < branches.length; i++) {
+        const is_last = i === branches.length - 1;
+        let alt_patch_pc = -1;
+        if (!is_last) {
+          emit(ctx, OP_ALT, 0);
+          alt_patch_pc = ctx.program_len - 1;
+        }
+        compile_reverse_pattern_bytecode(branches[i], name_to_id, ctx);
+        if (!is_last) {
+          emit(ctx, OP_COMMIT);
+          emit(ctx, OP_JUMP, 0);
+          end_patch_pcs.push(ctx.program_len - 1);
+          ctx.program[alt_patch_pc] = ctx.program_len;
+        }
+      }
+      const end_pc = ctx.program_len;
+      for (let i = 0; i < end_patch_pcs.length; i++) {
+        ctx.program[end_patch_pcs[i]] = end_pc;
+      }
+      return;
+    }
+    case "optional": {
+      emit(ctx, OP_ALT, 0);
+      const alt_patch_pc = ctx.program_len - 1;
+      compile_reverse_pattern_bytecode(spec.inner, name_to_id, ctx);
+      emit(ctx, OP_COMMIT);
+      ctx.program[alt_patch_pc] = ctx.program_len;
+      return;
+    }
+    case "capture":
+    case "balanced":
+      // not supported in lookbehind; emit an instruction that always fails.
+      emit(ctx, OP_TYPE, NEVER_MATCHES, -1, -1);
+      return;
+  }
+}
+
 // dev-only helper. prints one-opcode-per-line disassembly starting at
 // start_pc, stopping when it hits the first OP_MATCH. useful for debugging
 // the compiler output when tests disagree with expectations.
@@ -688,6 +594,42 @@ function resolve_char_pred(name: string): number {
     default:
       return -1;
   }
+}
+
+// reverse-direction value match: returns true if any value in the set is
+// a SUFFIX of the token's source text. used by the reverse VM so adjacent
+// coalesced punctuation tokens like `({` still match against a lookbehind
+// that asks for `{` -- the trailing character (closest to the anchor) is
+// what the lookbehind cares about.
+function value_set_ends_with(
+  pool: Uint16Array,
+  offsets: Int32Array,
+  id: number,
+  input: string,
+  s: number,
+  e: number,
+): boolean {
+  const token_len = e - s;
+  const base = id * 2;
+  const start = offsets[base];
+  const n = offsets[base + 1];
+  let p = start;
+  for (let i = 0; i < n; i++) {
+    const len = pool[p++];
+    if (len <= token_len) {
+      let ok = true;
+      const tok_offset = e - len;
+      for (let j = 0; j < len; j++) {
+        if (pool[p + j] !== input.charCodeAt(tok_offset + j)) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) return true;
+    }
+    p += len;
+  }
+  return false;
 }
 
 // compare a token's source range against one of the packed value sets.
@@ -930,6 +872,114 @@ function match_bytecode(
   }
 }
 
+// reverse-direction VM used by `before` lookbehind clauses. shares the
+// forward opcode set but walks LEFT (idx-- on each OP_TYPE), skips trivia
+// backwards, and matches value sets with suffix semantics (so a coalesced
+// punctuation token like `({` still satisfies a lookbehind asking for `{`).
+//
+// the caller passes the token index immediately to the left of the anchor
+// as `idx`; success returns the new idx (further to the left); failure
+// returns NO_MATCH. capture / balanced opcodes are not supported in this
+// direction -- the reverse compiler emits NEVER_MATCHES for them.
+//
+// shares the bt_stack/cap_* module state with the forward VM but lookbehind
+// rules in practice never emit captures, so the dirty-bit clear short-circuits.
+function match_bytecode_reverse(
+  program: Int32Array,
+  start_pc: number,
+  tokens: Uint32Array,
+  idx: number,
+  input: string,
+  trivia: Uint8Array,
+  value_pool: Uint16Array,
+  value_offsets: Int32Array,
+): number {
+  let pc = start_pc;
+  let bt_sp = 0;
+  let bt = bt_stack;
+  let failed = false;
+
+  while (true) {
+    const op = program[pc];
+    switch (op) {
+      case OP_TYPE: {
+        while (idx >= 0 && trivia[tokens[idx * 3]]) idx--;
+        if (idx < 0) {
+          failed = true;
+          break;
+        }
+        const type_id = program[pc + 1];
+        const base = idx * 3;
+        if (tokens[base] !== type_id) {
+          failed = true;
+          break;
+        }
+        const values_id = program[pc + 2];
+        if (values_id >= 0) {
+          if (
+            !value_set_ends_with(
+              value_pool,
+              value_offsets,
+              values_id,
+              input,
+              tokens[base + 1],
+              tokens[base + 2],
+            )
+          ) {
+            failed = true;
+            break;
+          }
+        }
+        const pred_id = program[pc + 3];
+        if (pred_id >= 0) {
+          if (!text_pred_matches(pred_id, input, tokens[base + 1], tokens[base + 2])) {
+            failed = true;
+            break;
+          }
+        }
+        idx--;
+        pc += 4;
+        break;
+      }
+      case OP_ALT: {
+        if (bt_sp + BT_STRIDE > bt.length) {
+          const grown = new Int32Array(bt.length * 2);
+          grown.set(bt);
+          bt = grown;
+          bt_stack = grown;
+        }
+        bt[bt_sp++] = program[pc + 1];
+        bt[bt_sp++] = idx;
+        pc += 2;
+        break;
+      }
+      case OP_JUMP: {
+        pc = program[pc + 1];
+        break;
+      }
+      case OP_COMMIT: {
+        bt_sp -= BT_STRIDE;
+        pc += 1;
+        break;
+      }
+      case OP_MATCH: {
+        return idx;
+      }
+      default: {
+        failed = true;
+        break;
+      }
+    }
+    if (failed) {
+      if (bt_sp === 0) return NO_MATCH;
+      bt_sp -= BT_STRIDE;
+      pc = bt[bt_sp];
+      idx = bt[bt_sp + 1];
+      failed = false;
+    }
+  }
+}
+
 // silence "declared but not used" for the dev-only disassembler until we
 // choose to export it. referenced here so Biome doesn't strip it.
 void disassemble_program;
@@ -1077,7 +1127,10 @@ interface CompiledRule {
   // and used to read cap_starts / cap_ends / cap_dirty_words after a
   // successful match.
   capture_targets: { slot_id: number; target_id: number }[] | null;
-  before: CompiledPattern | null;
+  // bytecode-compiled reverse matcher entry pc, or -1 if the rule has no
+  // `before` clause. emitted into the same shared program buffer as `when`
+  // bytecode -- one VM, two directions.
+  before_pc: number;
   // bytecode-compiled forward matcher: `when_pc` is the entry into the
   // shared program buffer; `max_capture_slots` is how many slots this
   // rule reserves so the interpreter clears only those dirty bits.
@@ -1194,13 +1247,20 @@ function compile_rewrite(
       anchor_text_pred_id = resolved < 0 ? -2 : resolved;
     }
 
+    let before_pc = -1;
+    if (rule.before !== undefined) {
+      before_pc = ctx.program_len;
+      compile_reverse_pattern_bytecode(rule.before, name_to_id, ctx);
+      emit(ctx, OP_MATCH);
+    }
+
     compiled.push({
       anchor_id,
       anchor_value_id,
       anchor_text_pred_id,
       anchor_target_id,
       capture_targets,
-      before: rule.before ? compile_pattern(rule.before, name_to_id) : null,
+      before_pc,
       when_pc,
       max_capture_slots: slots.max_slots,
     });
@@ -1398,8 +1458,17 @@ function run_rewrite_loop_claims(
         const e = tokens[i * 3 + 2];
         if (!text_pred_matches(rule.anchor_text_pred_id, input, s, e)) continue;
       }
-      if (rule.before !== null) {
-        const behind = match_pattern_backward(rule.before, tokens, i - 1, input, trivia);
+      if (rule.before_pc >= 0) {
+        const behind = match_bytecode_reverse(
+          program,
+          rule.before_pc,
+          tokens,
+          i - 1,
+          input,
+          trivia,
+          value_pool,
+          value_offsets,
+        );
         if (behind === NO_MATCH) continue;
       }
       const end = match_bytecode(
