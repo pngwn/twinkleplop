@@ -186,14 +186,17 @@ export interface FrameSpec {
 // appears.
 //
 // transparent_types: token types that pass through without changing at_start.
-//   typically comments (handled via the grammar's trivia list) and modifier
-//   keywords (`async`, `static`, `public`, ...). identifier-like tokens are
-//   the canonical "consumer" — they turn at_start off.
-//
+//   the entire type is transparent (e.g. all comments).
+// transparent_texts_for_type: a map of token type -> set of source texts
+//   that, for that specific type, are transparent. lets a language treat
+//   modifier keywords like `async` `static` `public` as transparent without
+//   also marking every other keyword that way. matched against the token's
+//   raw source via input.slice(start, end) -- exact equality, no regex.
 // reset_chars: single-character punctuation that re-arms at_start = true on
 //   the top frame. typically `,` `;` and the language's open-brace char.
 export interface AtStartSpec {
   transparent_types?: string[];
+  transparent_texts_for_type?: { type: string; texts: string[] }[];
   reset_chars: string;
 }
 

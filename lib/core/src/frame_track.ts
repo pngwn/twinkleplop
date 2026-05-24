@@ -48,6 +48,10 @@ interface CompiledFrameSpec {
   // string disables at_start tracking entirely.
   at_start_reset_chars: number[];
   at_start_transparent: string[];
+  // text-specific transparency, one entry per type that has transparent
+  // texts. resolved against token_types lazily (the type id may not be
+  // known when the spec is compiled).
+  at_start_transparent_texts: { type: string; texts: Set<string> }[];
   at_start_enabled: boolean;
   classify_brace: FrameSpec["classify_brace"];
 }
@@ -61,6 +65,10 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
       at_start_chars.push(spec.at_start.reset_chars.charCodeAt(i));
     }
   }
+  const transparent_texts = (spec.at_start?.transparent_texts_for_type ?? []).map((e) => ({
+    type: e.type,
+    texts: new Set(e.texts),
+  }));
   return {
     punct_type: spec.punct_type,
     paren_open: single(spec.brackets.paren?.open),
@@ -71,6 +79,7 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
     bracket_close: single(spec.brackets.bracket?.close),
     at_start_reset_chars: at_start_chars,
     at_start_transparent: spec.at_start?.transparent_types ?? [],
+    at_start_transparent_texts: transparent_texts,
     at_start_enabled: spec.at_start !== undefined,
     classify_brace: spec.classify_brace,
   };
@@ -98,6 +107,10 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     // when at_start is off.
     let transparent: Uint8Array | null = null;
     let trivia: Uint8Array | null = null;
+    // map from type_id -> set of texts that are transparent for THAT type.
+    // null entry means no text-specific transparency for that type. -1
+    // sentinel slot avoided by sizing to type count.
+    let transparent_texts: (Set<string> | null)[] | null = null;
     if (compiled.at_start_enabled) {
       transparent = transparent_cache.get(result.token_types) ?? null;
       if (transparent === null) {
@@ -114,6 +127,13 @@ export function frame_track(spec: FrameSpec): Reclassifier {
         const comment_id = result.token_types.indexOf("comment");
         if (comment_id >= 0) trivia[comment_id] = 1;
         trivia_cache.set(result.token_types, trivia);
+      }
+      if (compiled.at_start_transparent_texts.length > 0) {
+        transparent_texts = new Array(result.token_types.length).fill(null);
+        for (const entry of compiled.at_start_transparent_texts) {
+          const id = result.token_types.indexOf(entry.type);
+          if (id >= 0) transparent_texts[id] = entry.texts;
+        }
       }
     }
 
@@ -164,6 +184,14 @@ export function frame_track(spec: FrameSpec): Reclassifier {
       if (at_start_enabled) {
         is_trivia = trivia![ttype] === 1;
         is_transparent = transparent![ttype] === 1;
+        if (!is_transparent && transparent_texts !== null) {
+          const text_set = transparent_texts[ttype];
+          if (text_set !== null) {
+            const s = tokens[base + 1];
+            const e = tokens[base + 2];
+            if (text_set.has(input.slice(s, e))) is_transparent = true;
+          }
+        }
         at_start[i] = stack_at_start[stack_at_start.length - 1];
       }
 

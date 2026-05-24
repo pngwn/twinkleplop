@@ -27,6 +27,7 @@ import {
   claim_property_scope,
   class_name_promoter,
   function_variable_rules,
+  js_frame_track,
   promote_boolean_literals,
   promote_call_site_functions,
   promote_js_const_bindings,
@@ -1231,6 +1232,9 @@ export const retag_generic_angles: Reclassifier = (input, result) => {
 };
 
 export const reclassifiers: LanguagePipeline = [
+  // shared scope-stack pre-pass. required by claim_property_scope so it can
+  // read brace depths and at_start instead of maintaining its own.
+  always(js_frame_track, "type_claim"),
   // constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
   // so subsequent passes see the promoted stream (same ordering as JS).
   tag(promote_js_constants, ["constant"]),

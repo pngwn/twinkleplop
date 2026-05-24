@@ -2069,7 +2069,24 @@ export function reclassify(
         current = flush_claim_batch(input, current, batch);
         batch = [];
       }
+      const prior_frames = current.frames;
+      const prior_token_len = current.tokens.length;
       current = fn(input, current);
+      // auto-carry frames across non-claiming reclassifiers that only
+      // rewrite type ids (token count unchanged). reclassifiers that splice
+      // tokens MUST explicitly drop frames by returning a result with
+      // `frames: undefined` -- otherwise their output would carry stale
+      // frame indices. the length-equality heuristic catches the common case
+      // (mutate-in-place) without burdening every reclassifier with an
+      // explicit `frames: result.frames` pass-through.
+      if (current.frames === undefined && prior_frames !== undefined && current.tokens.length === prior_token_len) {
+        current = {
+          tokens: current.tokens,
+          token_types: current.token_types,
+          overlays: current.overlays,
+          frames: prior_frames,
+        };
+      }
     }
     if (batch.length > 0) {
       current = flush_claim_batch(input, current, batch);

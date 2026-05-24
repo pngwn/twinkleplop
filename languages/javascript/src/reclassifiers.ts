@@ -21,7 +21,7 @@ import {
   as_claim_producer,
   balanced_parens,
   embed_interleaved,
-  make_scope_stack,
+  frame_track,
   make_token_view,
   promote_by_text_set,
   promote_by_upper_snake_case,
@@ -174,17 +174,6 @@ const BLOCK_LEADING_KEYWORDS = new Set(["do", "try", "else", "finally"]);
 
 type BraceClass = "class" | "interface" | "object" | "type_literal" | "block";
 
-// per-scope data tracked by claim_property_scope's scope stack. for `(` /
-// `[` scopes, brace_class is unused (the code only checks it on `{`
-// scopes). at_start is true immediately after the scope's opening token
-// or a member separator (`,` / `;`); any significant token past that
-// point resets it to false. claim emission requires at_start && brace_class
-// in {object, interface, type_literal}.
-interface PropertyScopeData {
-  brace_class?: BraceClass;
-  at_start: boolean;
-}
-
 // step-6 precedence scheme. the goal is "one claim per token" — no two
 // passes should emit different target types for the same position. this
 // pass is now the SOLE owner of `ident :` classification:
@@ -204,9 +193,13 @@ interface PropertyScopeData {
 const PROP_PREC = 20;
 const PROP_FN_PREC = 30; // matches the default `function` precedence.
 
-const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink) => {
+const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink, frames) => {
   const view = make_token_view(input, tokens, token_types);
   if (view.count === 0) return;
+  // requires a frame_track stage upstream. without it, scope-aware claims
+  // cannot fire -- skip the pass cleanly so a misconfigured pipeline produces
+  // no claims rather than throwing in the hot path.
+  if (frames === undefined) return;
 
   const identifier_id = token_types.indexOf("identifier");
   const keyword_id = token_types.indexOf("keyword");
@@ -228,7 +221,11 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink) => {
     token_types.push("function");
   }
 
-  const stack = make_scope_stack<PropertyScopeData>();
+  // brace_class indexed parallel to the brace stack: each `{` pushes a
+  // BraceClass, each `}` pops. paren/bracket frames don't get an entry --
+  // the stack reflects only brace frames since those are the only ones
+  // we read brace_class from.
+  const brace_class_stack: BraceClass[] = [];
   let expecting_class_body = false;
   let expecting_interface_body = false;
   // tracks generic-parameter angle-bracket depth between a `class` /
@@ -322,82 +319,28 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink) => {
     return false;
   };
 
-  // apply a single punctuation character (part of a possibly-merged
-  // punctuation token at index `i`) to the scope stack and bookkeeping.
-  const process_punct_char = (ch: string, i: number): void => {
-    if (ch === "{") {
-      let brace_class: BraceClass;
-      // the class/interface body `{` is the one at the TOP LEVEL of
-      // the header — not nested inside generic angles or a paren/
-      // bracket expression. examples:
-      //   class C<T extends { id: V }> { ... }
-      //     inner `{` is at angle_depth=1 → type_literal.
-      //   class C extends f({ key: 1 }) { ... }
-      //     inner `{` is at paren_depth=1 → falls through to default
-      //     classification (object literal). expecting_class_body
-      //     survives; the outer `{` after `)` becomes the real body.
-      //   class C extends Base<U> { ... }
-      //     no `{` during the header; the `{` after `>` is top-level.
-      const nested_under_angles = angle_depth > 0;
-      const nested_under_structural = stack.paren_depth > 0 || stack.bracket_depth > 0;
-      if (expecting_class_body && !nested_under_angles && !nested_under_structural) {
-        brace_class = "class";
-        expecting_class_body = false;
-      } else if (expecting_interface_body && !nested_under_angles && !nested_under_structural) {
-        brace_class = "interface";
-        expecting_interface_body = false;
-      } else if ((expecting_class_body || expecting_interface_body) && nested_under_angles) {
-        // `{` inside a generic parameter constraint during a class or
-        // interface header — always a type literal. expecting_* flags
-        // survive, waiting for the real body.
-        brace_class = "type_literal";
-      } else {
-        brace_class = classify_open_brace(i);
-      }
-      stack.push("{", { brace_class, at_start: true });
-      return;
+  // classify an opening `{` against the current state machine. shared
+  // between the migrated main loop and the original inline logic via
+  // closure access to expecting_*_body and angle_depth.
+  const classify_brace_open = (open_idx: number, paren_d: number, bracket_d: number): BraceClass => {
+    const nested_under_angles = angle_depth > 0;
+    const nested_under_structural = paren_d > 0 || bracket_d > 0;
+    if (expecting_class_body && !nested_under_angles && !nested_under_structural) {
+      expecting_class_body = false;
+      return "class";
     }
-    if (ch === "}") {
-      stack.pop();
-      const top = stack.top();
-      if (top !== undefined) top.data.at_start = false;
-      return;
+    if (expecting_interface_body && !nested_under_angles && !nested_under_structural) {
+      expecting_interface_body = false;
+      return "interface";
     }
-    if (ch === "(") {
-      stack.push("(", { at_start: false });
-      return;
+    if ((expecting_class_body || expecting_interface_body) && nested_under_angles) {
+      return "type_literal";
     }
-    if (ch === ")") {
-      stack.pop();
-      const top = stack.top();
-      if (top !== undefined) top.data.at_start = false;
-      return;
-    }
-    if (ch === "[") {
-      stack.push("[", { at_start: false });
-      return;
-    }
-    if (ch === "]") {
-      stack.pop();
-      const top = stack.top();
-      if (top !== undefined) top.data.at_start = false;
-      return;
-    }
-    if (ch === "," || ch === ";") {
-      // member separators in object/interface/type-literal scope set
-      // at_start true again so the next identifier can be a key. in
-      // other scopes (block, paren, bracket) the flag is unused, so
-      // setting it true is harmless. leave expecting_* flags alone so
-      // they survive commas in class/interface headers (`class C<T, U>`,
-      // `implements A, B`).
-      const top = stack.top();
-      if (top !== undefined) top.data.at_start = true;
-      return;
-    }
-    // any other punctuation character (`.`, `@`, etc.) resets at_start.
-    const top = stack.top();
-    if (top !== undefined) top.data.at_start = false;
+    return classify_open_brace(open_idx);
   };
+
+  const depths = frames.depths;
+  const at_start_arr = frames.at_start;
 
   for (let i = 0; i < view.count; i++) {
     const k = view.kind_of(i);
@@ -413,30 +356,32 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink) => {
         expecting_interface_body = true;
         continue;
       }
-      if (MEMBER_MODIFIERS.has(t)) {
-        // transparent to at_start — next identifier is still a key.
-        continue;
-      }
-      // any other keyword consumes the member-start position.
-      const top = stack.top();
-      if (top !== undefined) top.data.at_start = false;
+      // modifiers (async/static/...) are transparent for at_start tracking;
+      // frame_track was configured to keep at_start true through them.
+      // non-modifier keywords (do/try/else/...) reset at_start, which
+      // frame_track also handles. nothing extra to do here.
       continue;
     }
 
     if (k === punctuation_id) {
       const t = view.text_of(i);
+      const base = i * 3;
+      // we only walk the chars to maintain brace_class_stack: frame_track
+      // already handled bracket depth tracking and at_start updates.
       for (let c = 0; c < t.length; c++) {
-        process_punct_char(t[c], i);
+        const ch = t[c];
+        if (ch === "{") {
+          const brace_class = classify_brace_open(i, depths[base], depths[base + 2]);
+          brace_class_stack.push(brace_class);
+        } else if (ch === "}") {
+          brace_class_stack.pop();
+        }
       }
       continue;
     }
 
     if (k === operator_id) {
       const t = view.text_of(i);
-      // update angle_depth for generic-parameter tracking. `<<`,
-      // `<=`, `>=`, etc. are comparison/shift operators — leave the
-      // counter alone for those; they don't appear in well-formed
-      // generic brackets.
       if (t === "<") {
         angle_depth++;
       } else if (t === ">") {
@@ -448,28 +393,19 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink) => {
         if (angle_depth >= 3) angle_depth -= 3;
         else if (angle_depth > 0) angle_depth = 0;
       }
-      // operators consume at_start like any other significant token.
-      const top = stack.top();
-      if (top !== undefined) top.data.at_start = false;
       continue;
     }
 
     if (k === identifier_id) {
-      const top = stack.top();
+      const top = brace_class_stack[brace_class_stack.length - 1];
       if (
-        top !== undefined &&
-        top.data.at_start &&
-        (top.data.brace_class === "object" ||
-          top.data.brace_class === "interface" ||
-          top.data.brace_class === "type_literal")
+        at_start_arr[i] === 1 &&
+        (top === "object" || top === "interface" || top === "type_literal")
       ) {
         const nxt = view.next_non_trivia(i + 1);
         if (nxt >= 0) {
           const nk = view.kind_of(nxt);
           const nt = view.text_of(nxt);
-          // `:` is punctuation. some grammars emit `?:` as a single
-          // operator token; others tokenize the optional marker as
-          // separate `?` (operator) + `:` (punctuation). accept both.
           let is_colon =
             (nk === punctuation_id && nt === ":") ||
             (nk === operator_id && nt === "?:");
@@ -486,23 +422,13 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink) => {
             }
           }
           if (is_colon) {
-            // label exclusion: `ident : <stmt_keyword>` is a label.
             const after = view.next_non_trivia(colon_idx + 1);
             let is_label = false;
             if (after >= 0 && view.kind_of(after) === keyword_id) {
               is_label = LABEL_STATEMENT_KEYWORDS.has(view.text_of(after));
             }
             if (!is_label) {
-              // OBJECT literal keys whose value is an arrow or
-              // function expression are method shorthands — claim
-              // function (30). every other object/interface/type-
-              // literal key is a data property — claim property (20).
-              // class/paren/bracket scopes never reach here because
-              // of the brace_class filter above.
-              if (
-                top.data.brace_class === "object" &&
-                is_function_value(colon_idx)
-              ) {
+              if (top === "object" && is_function_value(colon_idx)) {
                 sink.emit(i, function_id, PROP_FN_PREC);
               } else {
                 sink.emit(i, property_id, PROP_PREC);
@@ -511,20 +437,47 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink) => {
           }
         }
       }
-      // consuming the identifier retires the member-start marker.
-      if (top !== undefined) top.data.at_start = false;
       continue;
     }
-
-    // any other token (operator, number, string, ...) consumes the
-    // member-start position.
-    const top = stack.top();
-    if (top !== undefined) top.data.at_start = false;
   }
 };
 
 export const claim_property_scope: ClaimingReclassifier =
   as_claim_producer(claim_property_scope_fn);
+
+// shared frame_track config for JS/TS/TSX/Svelte. exported so language
+// packages that reuse claim_property_scope insert the same frame_track stage
+// upstream in their own pipelines -- otherwise claim_property_scope has no
+// frames to read from and emits no claims.
+export const js_frame_track = frame_track({
+  punct_type: "punctuation",
+  brackets: {
+    paren: { open: "(", close: ")" },
+    brace: { open: "{", close: "}" },
+    bracket: { open: "[", close: "]" },
+  },
+  at_start: {
+    reset_chars: ",;",
+    transparent_texts_for_type: [
+      {
+        type: "keyword",
+        texts: [
+          "readonly",
+          "public",
+          "private",
+          "protected",
+          "static",
+          "abstract",
+          "override",
+          "accessor",
+          "declare",
+          "class",
+          "interface",
+        ],
+      },
+    ],
+  },
+});
 
 
 // ---------------------------------------------------------------------------
@@ -1661,6 +1614,11 @@ export const promote_js_namespaces: Reclassifier = (input, result) => {
 // tagged-template embedder is always-on — embeds are not an identifier
 // fidelity axis.
 export const reclassifiers: LanguagePipeline = [
+  // frame_track first: every subsequent claim reclassifier that needs
+  // scope-aware data reads from `result.frames`. languages that reuse
+  // claim_property_scope (TS, TSX, Svelte) must include js_frame_track in
+  // their own pipelines too.
+  always(js_frame_track, "type_claim"),
   // constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
   // so subsequent passes see the promoted stream. function / property /
   // class_name predicates all key on `identifier`, so converting an
