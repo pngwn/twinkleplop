@@ -21,6 +21,7 @@ import {
   as_claim_producer,
   balanced_parens,
   embed_interleaved,
+  FRAME_BRACKET_BRACE,
   frame_track,
   make_token_view,
   param_list,
@@ -122,11 +123,11 @@ export const function_variable_rules = [
 // property claim pass — scope-aware, single-pass, claim-producing
 // ---------------------------------------------------------------------------
 //
-// walks the token stream once, tracks a stack of lexical scopes, and emits
-// a `property` claim for every identifier that sits in property-key
-// position (after `{`, `,` within an object literal, type literal, or
-// interface body, or after `;` within an interface body; modifiers like
-// `readonly` / `public` keep the member-start marker live).
+// emits a `property` claim for every identifier in property-key position
+// (member start of an object literal, type literal, or interface body).
+// scope classification, at_start tracking, and modifier transparency all
+// come from the upstream frame_track stage -- this pass only reads the
+// frame table and inspects the tokens around each candidate identifier.
 //
 // this single pass replaces three older reclassifiers:
 //   - property_rules (rewrite_types DSL with exclusion rules)
@@ -134,46 +135,20 @@ export const function_variable_rules = [
 //   - class_field_demoter (post-hoc fixup)
 //
 // the key design decision: scope-aware claim EMISSION rather than
-// claim-then-demote. class fields never get a property claim (class-scope
-// is excluded at emit time), so no fixup pass is needed. interface members
-// emit at a HIGHER precedence (35) than the `function` precedence (30) so
-// they beat a competing function-variable claim for `cb: () => X` without
-// needing a separate re-promotion pass.
+// claim-then-demote. class fields never get a property claim (class-kind
+// frames are excluded at emit time), so no fixup pass is needed.
 //
-// scope kinds:
+// frame kinds (from js_frame_track's brace_kinds spec):
 //   class       — body of `class Foo { ... }` — NEVER claim.
-//   interface   — body of `interface Foo { ... }` — claim at prec 35.
-//   object      — object literal / type literal / destructure pattern —
-//                 claim at prec 20.
-//   block       — function body, if/while/for/do block, arrow body —
-//                 NEVER claim (blocks may contain labeled statements that
-//                 look syntactically like `ident : stmt`, but they're not
-//                 property keys).
-//   paren       — inside `(...)` — NEVER claim (function params, grouped
-//                 expressions).
-//   bracket     — inside `[...]` — NEVER claim (arrays, computed keys).
-
-const MEMBER_MODIFIERS = new Set([
-  "readonly",
-  "public",
-  "private",
-  "protected",
-  "static",
-  "abstract",
-  "override",
-  "accessor",
-  "declare",
-]);
+//   interface   — body of `interface Foo { ... }` — claim.
+//   object      — object literal / destructure pattern — claim.
+//   type_literal — `: { ... }` annotation shapes — claim.
+//   block / paren / bracket — NEVER claim (labeled statements, params,
+//                 arrays, computed keys).
 
 // a `:` whose next non-trivia is one of these keywords is a labeled
 // statement introducer, not an object-property separator.
 const LABEL_STATEMENT_KEYWORDS = new Set(["for", "while", "do", "if", "switch", "try", "with"]);
-
-// keywords / operators that, when they immediately precede a `{`, mark the
-// brace as opening a block rather than an object literal.
-const BLOCK_LEADING_KEYWORDS = new Set(["do", "try", "else", "finally"]);
-
-type BraceClass = "class" | "interface" | "object" | "type_literal" | "block";
 
 // step-6 precedence scheme. the goal is "one claim per token" — no two
 // passes should emit different target types for the same position. this
@@ -222,46 +197,14 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink, fram
     token_types.push("function");
   }
 
-  // brace_class indexed parallel to the brace stack: each `{` pushes a
-  // BraceClass, each `}` pops. paren/bracket frames don't get an entry --
-  // the stack reflects only brace frames since those are the only ones
-  // we read brace_class from.
-  const brace_class_stack: BraceClass[] = [];
-  let expecting_class_body = false;
-  let expecting_interface_body = false;
-  // tracks generic-parameter angle-bracket depth between a `class` /
-  // `interface` keyword and its body `{`. without this, a type literal
-  // nested inside a type parameter constraint — e.g. `class C<T extends
-  // { id: V }> { ... }` — would be mistaken for the class body on its
-  // opening `{`, consuming expecting_class_body and leaving the real
-  // body misclassified as `object`. angle tracking is live outside of
-  // the class/interface-header window too, but the effect is only
-  // consulted by the `{` classifier; in pure JS (no TS generics) the
-  // counter gets incremented by comparison operators but never affects
-  // classification because no expecting_* flag is set.
-  let angle_depth = 0;
-
-  // classify an opening `{` not already claimed by a pending class/interface
-  // header. returns the brace_class tag stored alongside the scope entry.
-  //
-  // `{` preceded by `:` is a type literal (annotation or return position):
-  // `let o: { k: V }`, `function f(): { k: V }`. keys inside behave like
-  // interface members (claim property, never function) because the braces
-  // describe a TYPE shape, not a runtime value.
-  const classify_open_brace = (open_idx: number): BraceClass => {
-    const prev = view.prev_non_trivia(open_idx - 1);
-    if (prev < 0) return "block";
-    const pk = view.kind_of(prev);
-    const pt = view.text_of(prev);
-    if (pk === operator_id && pt === "=>") return "block";
-    // `:` is now punctuation in the grammar (separator, not operator).
-    if (pk === punctuation_id && pt === ":") return "type_literal";
-    if (pk === keyword_id && BLOCK_LEADING_KEYWORDS.has(pt)) return "block";
-    if (pk === punctuation_id && pt.length > 0 && pt[pt.length - 1] === ")") {
-      return "block";
-    }
-    return "object";
-  };
+  // brace kinds come from the frame table -- js_frame_track's brace_kinds
+  // spec owns the class / interface / object / type_literal / block
+  // classification. resolve the claimable kind ids once per call.
+  const kind_names = frames.kind_names;
+  const object_kind = kind_names.indexOf("object");
+  const interface_kind = kind_names.indexOf("interface");
+  const type_literal_kind = kind_names.indexOf("type_literal");
+  if (object_kind < 0 && interface_kind < 0 && type_literal_kind < 0) return;
 
   // peek past `:` at idx (the colon itself) to decide whether the value
   // is an arrow or function expression — i.e. whether the key of an
@@ -320,128 +263,58 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink, fram
     return false;
   };
 
-  // classify an opening `{` against the current state machine. shared
-  // between the migrated main loop and the original inline logic via
-  // closure access to expecting_*_body and angle_depth.
-  const classify_brace_open = (
-    open_idx: number,
-    paren_d: number,
-    bracket_d: number,
-  ): BraceClass => {
-    const nested_under_angles = angle_depth > 0;
-    const nested_under_structural = paren_d > 0 || bracket_d > 0;
-    if (expecting_class_body && !nested_under_angles && !nested_under_structural) {
-      expecting_class_body = false;
-      return "class";
-    }
-    if (expecting_interface_body && !nested_under_angles && !nested_under_structural) {
-      expecting_interface_body = false;
-      return "interface";
-    }
-    if ((expecting_class_body || expecting_interface_body) && nested_under_angles) {
-      return "type_literal";
-    }
-    return classify_open_brace(open_idx);
-  };
-
-  const depths = frames.depths;
   const at_start_arr = frames.at_start;
+  const active = frames.active_frame;
+  const frame_list = frames.frames;
 
+  // only identifiers at member-start positions need any work -- frame_track
+  // owns scope classification and at_start, so every other token type falls
+  // through with two integer compares.
   for (let i = 0; i < view.count; i++) {
-    const k = view.kind_of(i);
-    if (view.is_trivia(i)) continue;
+    if (view.kind_of(i) !== identifier_id) continue;
+    if (at_start_arr[i] !== 1) continue;
 
-    if (k === keyword_id) {
-      const t = view.text_of(i);
-      if (t === "class") {
-        expecting_class_body = true;
-        continue;
-      }
-      if (t === "interface") {
-        expecting_interface_body = true;
-        continue;
-      }
-      // modifiers (async/static/...) are transparent for at_start tracking;
-      // frame_track was configured to keep at_start true through them.
-      // non-modifier keywords (do/try/else/...) reset at_start, which
-      // frame_track also handles. nothing extra to do here.
-      continue;
+    // nearest enclosing BRACE frame: the active frame may be a paren or
+    // bracket (e.g. after a `,` re-arm inside an argument list); walk the
+    // parent chain so the kind test matches the old brace-only stack.
+    let fi = active[i];
+    let fr = frame_list[fi];
+    while (fi > 0 && fr.bracket !== FRAME_BRACKET_BRACE) {
+      fi = fr.parent;
+      fr = frame_list[fi];
     }
+    if (fr.bracket !== FRAME_BRACKET_BRACE) continue;
+    const top = fr.kind;
+    if (top !== object_kind && top !== interface_kind && top !== type_literal_kind) continue;
 
-    if (k === punctuation_id) {
-      const t = view.text_of(i);
-      const base = i * 3;
-      // we only walk the chars to maintain brace_class_stack: frame_track
-      // already handled bracket depth tracking and at_start updates.
-      for (let c = 0; c < t.length; c++) {
-        const ch = t[c];
-        if (ch === "{") {
-          const brace_class = classify_brace_open(i, depths[base], depths[base + 2]);
-          brace_class_stack.push(brace_class);
-        } else if (ch === "}") {
-          brace_class_stack.pop();
-        }
-      }
-      continue;
-    }
-
-    if (k === operator_id) {
-      const t = view.text_of(i);
-      if (t === "<") {
-        angle_depth++;
-      } else if (t === ">") {
-        if (angle_depth > 0) angle_depth--;
-      } else if (t === ">>") {
-        if (angle_depth >= 2) angle_depth -= 2;
-        else if (angle_depth > 0) angle_depth = 0;
-      } else if (t === ">>>") {
-        if (angle_depth >= 3) angle_depth -= 3;
-        else if (angle_depth > 0) angle_depth = 0;
-      }
-      continue;
-    }
-
-    if (k === identifier_id) {
-      const top = brace_class_stack[brace_class_stack.length - 1];
+    const nxt = view.next_non_trivia(i + 1);
+    if (nxt < 0) continue;
+    const nk = view.kind_of(nxt);
+    const nt = view.text_of(nxt);
+    let is_colon = (nk === punctuation_id && nt === ":") || (nk === operator_id && nt === "?:");
+    let colon_idx = nxt;
+    if (!is_colon && nk === operator_id && nt === "?") {
+      const after_q = view.next_non_trivia(nxt + 1);
       if (
-        at_start_arr[i] === 1 &&
-        (top === "object" || top === "interface" || top === "type_literal")
+        after_q >= 0 &&
+        view.kind_of(after_q) === punctuation_id &&
+        view.text_of(after_q) === ":"
       ) {
-        const nxt = view.next_non_trivia(i + 1);
-        if (nxt >= 0) {
-          const nk = view.kind_of(nxt);
-          const nt = view.text_of(nxt);
-          let is_colon =
-            (nk === punctuation_id && nt === ":") || (nk === operator_id && nt === "?:");
-          let colon_idx = nxt;
-          if (!is_colon && nk === operator_id && nt === "?") {
-            const after_q = view.next_non_trivia(nxt + 1);
-            if (
-              after_q >= 0 &&
-              view.kind_of(after_q) === punctuation_id &&
-              view.text_of(after_q) === ":"
-            ) {
-              is_colon = true;
-              colon_idx = after_q;
-            }
-          }
-          if (is_colon) {
-            const after = view.next_non_trivia(colon_idx + 1);
-            let is_label = false;
-            if (after >= 0 && view.kind_of(after) === keyword_id) {
-              is_label = LABEL_STATEMENT_KEYWORDS.has(view.text_of(after));
-            }
-            if (!is_label) {
-              if (top === "object" && is_function_value(colon_idx)) {
-                sink.emit(i, function_id, PROP_FN_PREC);
-              } else {
-                sink.emit(i, property_id, PROP_PREC);
-              }
-            }
-          }
-        }
+        is_colon = true;
+        colon_idx = after_q;
       }
-      continue;
+    }
+    if (!is_colon) continue;
+    const after = view.next_non_trivia(colon_idx + 1);
+    let is_label = false;
+    if (after >= 0 && view.kind_of(after) === keyword_id) {
+      is_label = LABEL_STATEMENT_KEYWORDS.has(view.text_of(after));
+    }
+    if (is_label) continue;
+    if (top === object_kind && is_function_value(colon_idx)) {
+      sink.emit(i, function_id, PROP_FN_PREC);
+    } else {
+      sink.emit(i, property_id, PROP_PREC);
     }
   }
 };
