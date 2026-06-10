@@ -35,6 +35,17 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   that were inline procedural code are now data-driven configs over
   shared lib/core primitives. **Go pipeline improved ~20%** with the
   chunker primitive; other languages within noise.
+- `07-frame-track-consolidation.json` — captured after brace-kind
+  classification became a declarative frame_track spec and both consumers
+  (claim_property_scope, param_list) migrated onto the shared frame table,
+  deleting their private scope stacks. frame_track itself costs ~30% more
+  per call (markers, angle tracking, classification, at_start re-arm) but
+  the consumers more than repay it: claim_property_scope stage cost fell
+  ~38% and param_list ~58% on large_js. **JS end-to-end improved 13-17%
+  vs snapshot 06** (large_js 8.6k -> 10.0k ops/s, plain_js 9.8k -> 11.1k,
+  complex_js 6.5k -> 7.4k); the plain_js regression vs the pre-VM
+  baseline is fully erased (now ~+2%). TypeScript improved ~5%. other
+  languages within machine variance (~4-5%, per the empty-pipeline rows).
 
 ## How to capture a new snapshot
 
