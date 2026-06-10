@@ -323,7 +323,11 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink, fram
   // classify an opening `{` against the current state machine. shared
   // between the migrated main loop and the original inline logic via
   // closure access to expecting_*_body and angle_depth.
-  const classify_brace_open = (open_idx: number, paren_d: number, bracket_d: number): BraceClass => {
+  const classify_brace_open = (
+    open_idx: number,
+    paren_d: number,
+    bracket_d: number,
+  ): BraceClass => {
     const nested_under_angles = angle_depth > 0;
     const nested_under_structural = paren_d > 0 || bracket_d > 0;
     if (expecting_class_body && !nested_under_angles && !nested_under_structural) {
@@ -408,8 +412,7 @@ const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink, fram
           const nk = view.kind_of(nxt);
           const nt = view.text_of(nxt);
           let is_colon =
-            (nk === punctuation_id && nt === ":") ||
-            (nk === operator_id && nt === "?:");
+            (nk === punctuation_id && nt === ":") || (nk === operator_id && nt === "?:");
           let colon_idx = nxt;
           if (!is_colon && nk === operator_id && nt === "?") {
             const after_q = view.next_non_trivia(nxt + 1);
@@ -457,8 +460,39 @@ export const js_frame_track = frame_track({
     brace: { open: "{", close: "}" },
     bracket: { open: "[", close: "]" },
   },
+  brace_kinds: {
+    body_markers: [
+      { type: "keyword", text: "class", kind: "class" },
+      { type: "keyword", text: "interface", kind: "interface" },
+    ],
+    // a `{` inside a generic constraint while a body marker is armed is a
+    // type literal -- `class C<T extends { id: V }> { ... }`.
+    pending_in_angles_kind: "type_literal",
+    angles: {
+      type: "operator",
+      open: "<",
+      closes: [
+        { text: ">", pops: 1 },
+        { text: ">>", pops: 2 },
+        { text: ">>>", pops: 3 },
+      ],
+    },
+    prev_rules: [
+      { prev_type: "operator", prev_texts: ["=>"], kind: "block" },
+      // `:` is punctuation in the grammar (separator, not operator); a
+      // brace after it is an annotation / return-position type literal.
+      { prev_type: "punctuation", prev_texts: [":"], kind: "type_literal" },
+      { prev_type: "keyword", prev_texts: ["do", "try", "else", "finally"], kind: "block" },
+      { prev_type: "punctuation", prev_last_char_in: ")", kind: "block" },
+    ],
+    default_kind: "object",
+    start_kind: "block",
+  },
   at_start: {
     reset_chars: ",;",
+    // class / interface members have no separator between a method's
+    // closing `}` and the next member name.
+    rearm_after_close_kinds: ["class", "interface"],
     transparent_texts_for_type: [
       {
         type: "keyword",
@@ -474,12 +508,17 @@ export const js_frame_track = frame_track({
           "declare",
           "class",
           "interface",
+          "get",
+          "set",
+          "async",
         ],
       },
+      // generator marker stays transparent so `*gen() {}` still sees the
+      // method name at member start.
+      { type: "operator", texts: ["*"] },
     ],
   },
 });
-
 
 // ---------------------------------------------------------------------------
 // Tagged template literal embedding
@@ -935,11 +974,7 @@ export const promote_js_const_bindings: Reclassifier = (input, result) => {
             }
             at_binding_start = false;
           } else if (ch === ",") {
-            if (
-              skipping_rhs &&
-              depth === skip_base_depth &&
-              angle_depth === 0
-            ) {
+            if (skipping_rhs && depth === skip_base_depth && angle_depth === 0) {
               skipping_rhs = false;
             }
             if (!skipping_rhs) at_binding_start = true;
@@ -1012,16 +1047,11 @@ export const promote_js_const_bindings: Reclassifier = (input, result) => {
       }
 
       if (kind === identifier_id && !skipping_rhs && at_binding_start) {
-        const in_object_pattern =
-          depth > 0 && is_object_pattern[is_object_pattern.length - 1];
+        const in_object_pattern = depth > 0 && is_object_pattern[is_object_pattern.length - 1];
         let is_source_key = false;
         if (in_object_pattern) {
           const nxt = view.next_non_trivia(k + 1);
-          if (
-            nxt >= 0 &&
-            view.kind_of(nxt) === punctuation_id &&
-            view.text_of(nxt) === ":"
-          ) {
+          if (nxt >= 0 && view.kind_of(nxt) === punctuation_id && view.text_of(nxt) === ":") {
             is_source_key = true;
           }
         }
@@ -1108,7 +1138,6 @@ export const promote_js_parameters: Reclassifier = param_list({
     { kind: "single_ident_arrow" },
   ],
 });
-
 
 // namespace promotion: targets positions where the syntax unambiguously
 // marks an identifier as a module/namespace binding. covers:

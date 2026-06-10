@@ -85,6 +85,7 @@ describe("frame_track — bracket depth tracking", () => {
       bracket: FRAME_BRACKET_PAREN,
       kind: FRAME_KIND_PAREN,
       enter_idx: 1,
+      parent: 0,
     });
   });
 
@@ -156,6 +157,7 @@ describe("frame_track — bracket depth tracking", () => {
       bracket: FRAME_BRACKET_BRACKET,
       kind: FRAME_KIND_BRACKET,
       enter_idx: 1,
+      parent: 0,
     });
     expect(depths_at(f, 2)).toEqual({ paren: 0, brace: 0, bracket: 1 });
   });
@@ -276,65 +278,143 @@ describe("frame_track — at_start tracking", () => {
   });
 });
 
-describe("frame_track — brace classification hook", () => {
-  test("classify_brace receives the open token index and current depths", () => {
-    let captured_idx = -1;
-    let captured_depths: [number, number, number] | null = null;
-    const tracker = frame_track({
-      punct_type: "punctuation",
-      brackets: { brace: { open: "{", close: "}" } },
-      classify_brace: (_input, _tokens, _types, open_idx, p, b, br) => {
-        captured_idx = open_idx;
-        captured_depths = [p, b, br];
-        return 42; // arbitrary language-defined kind
+describe("frame_track — declarative brace kinds", () => {
+  // JS-shaped toy: keywords for body markers and block-leading shapes,
+  // operators for arrows and angles, `:` as punctuation.
+  const kinds_toy: Grammar = {
+    name: "kinds_toy",
+    states: {
+      root: {
+        rules: [
+          { match: ["class", "interface", "do", "else"], boundary: true, token: "keyword" },
+          { match: ["=>", "<", ">>", ">"], token: "operator" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { match: ["(", ")", "{", "}", "[", "]", ",", ";", ":", "="], token: "punctuation" },
+          { match: [" ", "\n"] },
+        ],
       },
-    });
-    const src = "f { x }";
-    const raw = tokenize(src, compiled);
-    const out = reclassify([tracker])(src, raw);
-    const f = out.frames as FrameTable;
-    expect(captured_idx).toBe(1); // `{` is token 1
-    expect(captured_depths).toEqual([0, 0, 0]); // depths BEFORE the open
-    expect(f.frames[1].kind).toBe(42);
+    },
+  };
+  const kinds_compiled = compile(kinds_toy);
+
+  const tracker = frame_track({
+    punct_type: "punctuation",
+    brackets: {
+      paren: { open: "(", close: ")" },
+      brace: { open: "{", close: "}" },
+      bracket: { open: "[", close: "]" },
+    },
+    brace_kinds: {
+      body_markers: [
+        { type: "keyword", text: "class", kind: "class" },
+        { type: "keyword", text: "interface", kind: "interface" },
+      ],
+      pending_in_angles_kind: "type_literal",
+      angles: {
+        type: "operator",
+        open: "<",
+        closes: [
+          { text: ">", pops: 1 },
+          { text: ">>", pops: 2 },
+        ],
+      },
+      prev_rules: [
+        { prev_type: "operator", prev_texts: ["=>"], kind: "block" },
+        { prev_type: "punctuation", prev_texts: [":"], kind: "type_literal" },
+        { prev_type: "keyword", prev_texts: ["do", "else"], kind: "block" },
+        { prev_type: "punctuation", prev_last_char_in: ")", kind: "block" },
+      ],
+      default_kind: "object",
+      start_kind: "block",
+    },
+    at_start: {
+      reset_chars: ",;",
+      rearm_after_close_kinds: ["class", "interface"],
+    },
   });
 
-  test("nested braces pass the parent depth to the classifier", () => {
-    const calls: number[][] = [];
-    const tracker = frame_track({
-      punct_type: "punctuation",
-      brackets: { brace: { open: "{", close: "}" } },
-      classify_brace: (_input, _tokens, _types, open_idx, p, b, br) => {
-        calls.push([open_idx, p, b, br]);
-        return b + 1; // outer brace=1, inner brace=2
-      },
-    });
-    const src = "{ x { y } z }";
-    const raw = tokenize(src, compiled);
+  function run_kinds(src: string): FrameTable {
+    const raw = tokenize(src, kinds_compiled);
     const out = reclassify([tracker])(src, raw);
-    const f = out.frames as FrameTable;
-    expect(calls).toHaveLength(2);
-    expect(calls[0]).toEqual([0, 0, 0, 0]); // outer { at depth 0
-    expect(calls[1]).toEqual([2, 0, 1, 0]); // inner { at brace depth 1
-    expect(f.frames[1].kind).toBe(1);
-    expect(f.frames[2].kind).toBe(2);
+    return out.frames as FrameTable;
+  }
+
+  function kind_of(f: FrameTable, frame_idx: number): string {
+    return f.kind_names[f.frames[frame_idx].kind];
+  }
+
+  test("kind_names exposes builtins followed by spec kinds", () => {
+    const f = run_kinds("x");
+    expect(f.kind_names.slice(0, 3)).toEqual(["top", "paren", "bracket"]);
+    for (const name of ["class", "interface", "type_literal", "block", "object"]) {
+      expect(f.kind_names.indexOf(name)).toBeGreaterThan(2);
+    }
   });
 
-  test("classifier is not called for non-brace punctuation", () => {
-    let call_count = 0;
-    const tracker = frame_track({
-      punct_type: "punctuation",
-      brackets: {
-        paren: { open: "(", close: ")" },
-        brace: { open: "{", close: "}" },
-      },
-      classify_brace: () => {
-        call_count++;
-        return 7;
-      },
-    });
-    const src = "f ( a ) g [ b ]";
-    const raw = tokenize(src, compiled);
-    reclassify([tracker])(src, raw);
-    expect(call_count).toBe(0);
+  test("body marker claims the next top-level brace", () => {
+    const f = run_kinds("class C { x }");
+    expect(kind_of(f, 1)).toBe("class");
+  });
+
+  test("marker survives a generic-constraint type literal", () => {
+    const f = run_kinds("class C < T extends { x } > { y }");
+    // first brace opens inside angles: type literal, marker stays armed.
+    expect(kind_of(f, 1)).toBe("type_literal");
+    // second brace is the real body.
+    expect(kind_of(f, 2)).toBe("class");
+  });
+
+  test("marker is not consumed inside paren nesting", () => {
+    const f = run_kinds("interface I ( { x } )");
+    // brace inside parens: falls through to prev rules (prev is `(` ->
+    // no rule matches -> object); the marker stays armed.
+    expect(kind_of(f, 2)).toBe("object");
+  });
+
+  test("prev rules classify arrow, annotation, keyword, and call shapes", () => {
+    expect(kind_of(run_kinds("a => { x }"), 1)).toBe("block");
+    expect(kind_of(run_kinds("a : { x }"), 1)).toBe("type_literal");
+    expect(kind_of(run_kinds("do { x }"), 1)).toBe("block");
+    const f = run_kinds("f ( ) { x }");
+    expect(kind_of(f, 2)).toBe("block");
+  });
+
+  test("default and start kinds", () => {
+    expect(kind_of(run_kinds("a = { x }"), 1)).toBe("object");
+    expect(kind_of(run_kinds("{ x }"), 1)).toBe("block");
+  });
+
+  test("member close re-arms at_start when the parent kind is listed", () => {
+    const f = run_kinds("class C { m ( ) { } n ( ) }");
+    // tokens: class C { m ( ) { } n ( ) }
+    //         0     1 2 3 4 5 6 7 8 9 ...
+    const n_idx = 8;
+    expect(f.at_start[n_idx]).toBe(1);
+  });
+
+  test("member close does not re-arm inside unlisted kinds", () => {
+    const f = run_kinds("a = { m ( ) { } b }");
+    // tokens: a = { m ( ) { } b }
+    //         0 1 2 3 4 5 6 7 8 9
+    expect(kind_of(f, 1)).toBe("object");
+    expect(f.at_start[8]).toBe(0);
+  });
+
+  test("parent links chain frames to their enclosing scope", () => {
+    const f = run_kinds("a ( { b } )");
+    expect(f.frames[1].parent).toBe(0); // paren -> TOP
+    expect(f.frames[2].parent).toBe(1); // brace -> paren
+  });
+
+  test("braces keep the TOP placeholder kind when brace_kinds is omitted", () => {
+    const f = run_frames("a { b }");
+    expect(f.frames[1].kind).toBe(FRAME_KIND_TOP);
+    expect(f.kind_names).toEqual(["top", "paren", "bracket"]);
   });
 });

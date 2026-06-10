@@ -122,6 +122,10 @@ export interface FrameRecord {
   bracket: number; // FRAME_BRACKET_* constant
   kind: number; // FRAME_KIND_* or language-defined
   enter_idx: number; // token index of the opening bracket
+  // index into FrameTable.frames of the enclosing frame, -1 for TOP.
+  // consumers walk this chain to find e.g. the nearest brace frame when
+  // the active frame is a paren or bracket.
+  parent: number;
 }
 
 export interface FrameTable {
@@ -143,6 +147,11 @@ export interface FrameTable {
   // dense list of all frames ever opened, frames[0] is the implicit TOP
   // frame (kind=FRAME_KIND_TOP, never popped).
   frames: FrameRecord[];
+  // kind id -> name. indices 0..2 are the built-in "top" / "paren" /
+  // "bracket"; language-defined brace kinds from BraceKindSpec follow.
+  // consumers resolve their kind names against this once per call and
+  // compare integer ids in the loop.
+  kind_names: string[];
 }
 
 export interface FrameSpec {
@@ -162,22 +171,62 @@ export interface FrameSpec {
   // array is populated per token. otherwise the array is zeroed and
   // downstream reclassifiers either don't consume it or compute their own.
   at_start?: AtStartSpec;
-  // optional brace-kind classification. invoked when a `{` opens a new
-  // brace frame, replacing the default FRAME_KIND_TOP placeholder with
-  // a language-defined integer kind. portability tradeoff: this is a
-  // JS callback for now (escape hatch), to be data-driven in a later pass
-  // when more language patterns are known. the callback receives the
-  // index of the punctuation token that contains the opening `{` (a
-  // single token may carry multiple bracket chars, e.g. `({`).
-  classify_brace?: (
-    input: string,
-    tokens: Uint32Array,
-    token_types: string[],
-    open_token_idx: number,
-    paren_depth: number,
-    brace_depth: number,
-    bracket_depth: number,
-  ) => number;
+  // optional declarative brace-kind classification. when set, every `{`
+  // frame gets a language-defined kind resolved during the walk and the
+  // table's kind_names array maps kind ids back to spec names. when
+  // omitted, brace frames keep the FRAME_KIND_TOP placeholder.
+  brace_kinds?: BraceKindSpec;
+}
+
+// declarative brace-kind classification. the language describes how to
+// decide what kind of scope a `{` opens and frame_track evaluates the
+// rules during its single walk, so downstream reclassifiers share one
+// classification instead of each maintaining their own.
+//
+// evaluation order at each opening brace:
+//   1. a pending body marker (armed earlier by a body_markers entry) is
+//      consumed when the brace opens outside all angle / paren / bracket
+//      nesting -- the frame takes the marker's kind.
+//   2. a pending marker with angle nesting yields pending_in_angles_kind
+//      without consuming the marker (generic constraints like
+//      `class C<T extends { x: V }>` -- the constraint's `{` is a type
+//      literal, the real body brace still claims the marker).
+//   3. otherwise the previous non-trivia token is tested against
+//      prev_rules in order; the first matching rule's kind wins.
+//   4. no rule matches: default_kind (or start_kind when the brace has
+//      no previous token).
+export interface BraceKindRule {
+  // token type name of the previous non-trivia token.
+  prev_type: string;
+  // exact source texts to match. omit to match any text of prev_type.
+  prev_texts?: string[];
+  // match when the previous token's LAST character is in this set. used
+  // for shapes like "punctuation ending in `)`" where the grammar may
+  // coalesce `)` with adjacent punctuation chars.
+  prev_last_char_in?: string;
+  kind: string;
+}
+
+export interface BraceKindSpec {
+  // pending markers: a token of `type` with source text `text` arms the
+  // marker; the next top-level `{` takes `kind` and consumes it.
+  body_markers?: { type: string; text: string; kind: string }[];
+  // kind assigned when a marker is pending but the `{` opens inside
+  // angle brackets. the marker stays armed for the real body brace.
+  pending_in_angles_kind?: string;
+  // angle-bracket depth tracking feeding the pending-marker rules.
+  // exact-text matching against tokens of `type`; coalesced closers
+  // (`>>`, `>>>`) pop multiple levels.
+  angles?: {
+    type: string;
+    open: string;
+    closes: { text: string; pops: number }[];
+  };
+  prev_rules?: BraceKindRule[];
+  // fallback kind when no rule matches.
+  default_kind: string;
+  // kind when the brace has no previous token. defaults to default_kind.
+  start_kind?: string;
 }
 
 // chunker primitive — walk a `(...)` argument-list-like construct, split
@@ -313,7 +362,7 @@ export interface MergeAdjacentConfig {
   // typically used for the Rust case: refuse to merge `'a Fn` because
   // `Fn(` is a function-call generic, not a type to fuse into the lifetime.
   refuse_if?: {
-    offset: number;       // 1-based: 2 means "two tokens after the anchor"
+    offset: number; // 1-based: 2 means "two tokens after the anchor"
     type_must_be: string; // token type required for the guard to apply
     first_char_in: string; // single-char codes that disqualify the merge
   };
@@ -415,6 +464,13 @@ export interface AtStartSpec {
   transparent_types?: string[];
   transparent_texts_for_type?: { type: string; texts: string[] }[];
   reset_chars: string;
+  // brace kinds (names from BraceKindSpec) whose member close re-arms
+  // at_start: when a `}` pops a frame and the PARENT frame's kind is in
+  // this list, at_start re-arms on the parent. class and interface
+  // bodies need this because consecutive members have no separator
+  // between a method's closing `}` and the next member name. all other
+  // closers consume at_start. requires brace_kinds to be configured.
+  rearm_after_close_kinds?: string[];
 }
 
 // Reclassifier types
