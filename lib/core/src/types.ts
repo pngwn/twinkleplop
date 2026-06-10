@@ -398,7 +398,7 @@ export interface KeywordParamListDetector {
 
 export interface MemberMethodDetector {
   kind: "member_method";
-  // brace kind names (from FrameSpec.classify_brace's enum) where an
+  // brace kind names (from the frame_track stage's BraceKindSpec) where an
   // identifier-at-member-start followed by `(` is a method definition.
   in_brace_kinds: string[];
   // method-leading keywords that act as the method name (e.g.

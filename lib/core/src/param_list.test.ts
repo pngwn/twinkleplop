@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { compile } from "./compiler";
 import { tokenize } from "./tokenizer";
+import { frame_track } from "./frame_track";
 import { param_list } from "./param_list";
 import { reclassify } from "./reclassifier";
 import type { Grammar, TokenizeResult } from "./types";
@@ -52,6 +53,44 @@ const toy: Grammar = {
 };
 const compiled = compile(toy);
 
+// frame_track stage mirroring the js_frame_track config -- param_list reads
+// brace kinds and at_start from the shared frame table.
+const test_frame_track = frame_track({
+  punct_type: "punctuation",
+  brackets: {
+    paren: { open: "(", close: ")" },
+    brace: { open: "{", close: "}" },
+    bracket: { open: "[", close: "]" },
+  },
+  brace_kinds: {
+    body_markers: [
+      { type: "keyword", text: "class", kind: "class" },
+      { type: "keyword", text: "interface", kind: "interface" },
+    ],
+    pending_in_angles_kind: "type_literal",
+    angles: {
+      type: "operator",
+      open: "<",
+      closes: [{ text: ">", pops: 1 }],
+    },
+    prev_rules: [
+      { prev_type: "operator", prev_texts: ["=>"], kind: "block" },
+      { prev_type: "punctuation", prev_texts: [":"], kind: "type_literal" },
+      { prev_type: "punctuation", prev_last_char_in: ")", kind: "block" },
+    ],
+    default_kind: "object",
+    start_kind: "block",
+  },
+  at_start: {
+    reset_chars: ",;",
+    rearm_after_close_kinds: ["class", "interface"],
+    transparent_texts_for_type: [
+      { type: "keyword", texts: ["get", "set", "async", "static", "class", "interface"] },
+      { type: "operator", texts: ["*"] },
+    ],
+  },
+});
+
 const js_param_list = param_list({
   result_type: "parameter",
   default_introducer: "=",
@@ -80,7 +119,7 @@ const js_param_list = param_list({
 
 function run(input: string): { type: string; value: string }[] {
   const raw = tokenize(input, compiled);
-  const out = reclassify([js_param_list])(input, raw);
+  const out = reclassify([test_frame_track, js_param_list])(input, raw);
   return tokens_for(out, input);
 }
 
