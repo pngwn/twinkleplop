@@ -8,8 +8,10 @@ import {
   create_language,
   embed_grammars,
   embed_interleaved,
+  not,
   optional,
   reclassify,
+  repeat,
   rewrite_types,
   seq,
   type,
@@ -157,6 +159,141 @@ describe("reclassifier — rewrite_types", () => {
     const result = run("const f /* wat */ = () => 1", [fn_var_rule]);
     const tokens = types_only(result, "const f /* wat */ = () => 1");
     expect(tokens.find((t) => t.value === "f")?.type).toBe("function");
+  });
+});
+
+describe("reclassifier — repeat combinator", () => {
+  test("matches a dotted chain and captures the last element", () => {
+    // `new pkg.util.Foo` shape: chain-last promotion via last-iteration
+    // capture semantics.
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "var" },
+        when: seq(
+          capture("last", type("identifier")),
+          repeat(seq(type("operator", "*"), capture("last", type("identifier")))),
+        ),
+        rewrite: { last: "function" },
+      },
+    ];
+    const src = "var a * b * c ;";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("identifier");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("identifier");
+    expect(tokens.find((t) => t.value === "c")?.type).toBe("function");
+  });
+
+  test("zero iterations match (repeat is optional)", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(repeat(type("keyword", "async")), type("operator", "=>")),
+        rewrite: "function",
+      },
+    ];
+    const src = "x => 1";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "x")?.type).toBe("function");
+  });
+
+  test("separated repeat matches comma lists", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "let" },
+        when: seq(repeat(type("identifier"), type("punctuation", ",")), type("punctuation", ";")),
+        rewrite: "keyword",
+      },
+    ];
+    for (const src of ["let ;", "let a ;", "let a , b , c ;"]) {
+      const tokens = types_only(run(src, rules), src);
+      expect(tokens[0].type).toBe("keyword");
+    }
+    // trailing separator without an item does not match the `;`.
+    const bad = "let a , ;";
+    const tokens = types_only(run(bad, rules), bad);
+    // the rule still needs the `;` right after the list; `a ,` consumed
+    // the comma expecting another item, so the match fails and the
+    // anchor target type stays untouched. keyword anchor rewrite to
+    // keyword is unobservable, so assert via a distinct marker instead.
+    const marker_rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "let" },
+        when: seq(repeat(type("identifier"), type("punctuation", ",")), type("punctuation", ";")),
+        rewrite: "boolean",
+      },
+    ];
+    const ok = types_only(run("let a , b ;", marker_rules), "let a , b ;");
+    expect(ok[0].type).toBe("boolean");
+    const fail = types_only(run(bad, marker_rules), bad);
+    expect(fail[0].type).toBe("keyword");
+  });
+
+  test("an empty-matching body terminates instead of looping forever", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(repeat(optional(type("keyword", "async"))), type("operator", "=>")),
+        rewrite: "function",
+      },
+    ];
+    const src = "x => 1";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "x")?.type).toBe("function");
+  });
+});
+
+describe("reclassifier — not combinator", () => {
+  const colon_not_keyword: RewriteRule[] = [
+    {
+      anchor: "identifier",
+      when: seq(type("operator", ":"), not(type("keyword"))),
+      rewrite: "function",
+    },
+  ];
+
+  test("succeeds when the next token differs", () => {
+    const src = "a : b";
+    const tokens = types_only(run(src, colon_not_keyword), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("function");
+  });
+
+  test("fails when the next token matches", () => {
+    const src = "a : var b";
+    const tokens = types_only(run(src, colon_not_keyword), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("identifier");
+  });
+
+  test("succeeds at end of stream and consumes nothing", () => {
+    const src = "a :";
+    const tokens = types_only(run(src, colon_not_keyword), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("function");
+  });
+
+  test("value-constrained negation", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(type("operator", ":"), not(type("keyword", ["var", "let"]))),
+        rewrite: "function",
+      },
+    ];
+    const blocked = types_only(run("a : var b", rules), "a : var b");
+    expect(blocked.find((t) => t.value === "a")?.type).toBe("identifier");
+    const allowed = types_only(run("a : const b", rules), "a : const b");
+    expect(allowed.find((t) => t.value === "a")?.type).toBe("function");
+  });
+
+  test("unknown inner type fails the rule closed", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(type("operator", ":"), not(type("no_such_type"))),
+        rewrite: "function",
+      },
+    ];
+    const src = "a : b";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("identifier");
   });
 });
 

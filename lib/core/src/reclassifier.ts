@@ -30,12 +30,14 @@ import type {
   LanguageFn,
   LanguageOptions,
   LanguagePipeline,
+  NotPatternSpec,
   OptionalPatternSpec,
   Reclassifier,
   ReclassifierEntry,
   ReclassifierLayer,
   ReclassifierPipeline,
   Region,
+  RepeatPatternSpec,
   RewriteOptions,
   RewriteRule,
   SeqPatternSpec,
@@ -97,6 +99,29 @@ export function balanced_parens(open = "(", close = ")", max_tokens = 200): Bala
   return { __kind: "balanced", open, close, max_tokens };
 }
 
+/**
+ * Match `inner` zero or more times, separated by `separator` when given
+ * (`item`, `item sep item`, ... — the empty sequence also matches).
+ *
+ * The repetition is POSSESSIVE: once an iteration matches it is never
+ * given back, so a pattern after the repeat must not also match an
+ * iteration's start. An iteration that consumes nothing ends the loop.
+ * Captures inside the body keep their LAST iteration's range.
+ */
+export function repeat(inner: TokenPatternSpec, separator?: TokenPatternSpec): RepeatPatternSpec {
+  return { __kind: "repeat", inner, separator };
+}
+
+/**
+ * Zero-width negative lookahead: succeed when the next non-trivia token
+ * does NOT match `inner` (or the stream has ended), consuming nothing.
+ * An `inner` naming an unknown type or predicate fails the whole pattern
+ * (fail closed), consistent with the rest of the pattern language.
+ */
+export function not(inner: TypePatternSpec): NotPatternSpec {
+  return { __kind: "not", inner };
+}
+
 // ---------------------------------------------------------------------------
 // Pattern compilation
 // ---------------------------------------------------------------------------
@@ -131,7 +156,7 @@ const NO_MATCH = -2;
 // semantics that don't share the same implementation.
 //
 // opcode shapes (int32 slots):
-//   OP_TYPE       type_id values_id          — 3 slots
+//   OP_TYPE       type_id values_id pred_id  — 4 slots
 //   OP_ALT        alt_pc                     — 2 slots  (push backtrack)
 //   OP_JUMP       target_pc                  — 2 slots
 //   OP_COMMIT                                — 1 slot   (pop backtrack)
@@ -139,6 +164,8 @@ const NO_MATCH = -2;
 //   OP_CAP_END    slot_id                    — 2 slots
 //   OP_BALANCED   punct_id open close maxtok — 5 slots
 //   OP_MATCH                                 — 1 slot
+//   OP_LOOP       body_pc                    — 2 slots  (possessive repeat)
+//   OP_NOT_TYPE   type_id values_id pred_id  — 4 slots  (zero-width negation)
 //
 // any_of(A, B, C):
 //   ALT L1; <A>; COMMIT; JUMP end;
@@ -148,6 +175,16 @@ const NO_MATCH = -2;
 //
 // optional(inner):
 //   ALT end; <inner>; COMMIT; end:
+//
+// repeat(inner):
+//   L: ALT end; <inner>; LOOP L; end:
+// LOOP pops the iteration's ALT frame: no progress since the ALT ->
+// fall through to the ALT's target (end); progress -> jump back to L.
+// popping each iteration's frame is what makes the repeat possessive --
+// the matcher can never backtrack into fewer iterations.
+//
+// repeat(inner, sep):
+//   ALT end; <inner>; COMMIT; L: ALT end; <sep>; <inner>; LOOP L; end:
 //
 // value_id -1 means "no value constraint". otherwise indexes a packed
 // Uint16Array value pool with an int32 offsets side table — see
@@ -161,6 +198,8 @@ const OP_CAP_BEGIN = 4;
 const OP_CAP_END = 5;
 const OP_BALANCED = 6;
 const OP_MATCH = 7;
+const OP_LOOP = 8;
+const OP_NOT_TYPE = 9;
 
 // per-rule-group compilation context. one `CompileCtx` is built per
 // `rewrite_types` call and threaded through every rule compile. the program
@@ -349,6 +388,57 @@ function compile_pattern_bytecode(
       );
       return;
     }
+    case "repeat": {
+      if (spec.separator !== undefined) {
+        // ALT end; <inner>; COMMIT; L: ALT end; <sep>; <inner>; LOOP L; end:
+        emit(ctx, OP_ALT, 0);
+        const zero_patch_pc = ctx.program_len - 1;
+        compile_pattern_bytecode(spec.inner, name_to_id, ctx, slots);
+        emit(ctx, OP_COMMIT);
+        const loop_pc = ctx.program_len;
+        emit(ctx, OP_ALT, 0);
+        const iter_patch_pc = ctx.program_len - 1;
+        compile_pattern_bytecode(spec.separator, name_to_id, ctx, slots);
+        compile_pattern_bytecode(spec.inner, name_to_id, ctx, slots);
+        emit(ctx, OP_LOOP, loop_pc);
+        const end_pc = ctx.program_len;
+        ctx.program[zero_patch_pc] = end_pc;
+        ctx.program[iter_patch_pc] = end_pc;
+        return;
+      }
+      // L: ALT end; <inner>; LOOP L; end:
+      const loop_pc = ctx.program_len;
+      emit(ctx, OP_ALT, 0);
+      const iter_patch_pc = ctx.program_len - 1;
+      compile_pattern_bytecode(spec.inner, name_to_id, ctx, slots);
+      emit(ctx, OP_LOOP, loop_pc);
+      ctx.program[iter_patch_pc] = ctx.program_len;
+      return;
+    }
+    case "not": {
+      const inner = spec.inner;
+      let type_id = name_to_id.get(inner.type_name) ?? NEVER_MATCHES;
+      let pred_id = -1;
+      if (inner.text_pred !== undefined) {
+        const resolved = resolve_char_pred(inner.text_pred);
+        if (resolved < 0) type_id = NEVER_MATCHES;
+        else pred_id = resolved;
+      }
+      // an inner spec that can never match would make the negation always
+      // succeed -- fail OPEN. emit an always-fail instruction instead so a
+      // misspelled name disables the rule, like everywhere else.
+      if (type_id === NEVER_MATCHES) {
+        emit(ctx, OP_TYPE, NEVER_MATCHES, -1, -1);
+        return;
+      }
+      let value_values: string[] | null = null;
+      if (inner.value !== undefined) {
+        value_values = Array.isArray(inner.value) ? inner.value : [inner.value];
+      }
+      const values_id = compile_value_set(ctx, value_values);
+      emit(ctx, OP_NOT_TYPE, type_id, values_id, pred_id);
+      return;
+    }
   }
 }
 
@@ -421,6 +511,8 @@ function compile_reverse_pattern_bytecode(
     }
     case "capture":
     case "balanced":
+    case "repeat":
+    case "not":
       // not supported in lookbehind; emit an instruction that always fails.
       emit(ctx, OP_TYPE, NEVER_MATCHES, -1, -1);
       return;
@@ -470,6 +562,14 @@ function disassemble_program(program: Int32Array, start_pc: number, end_pc: numb
       case OP_MATCH:
         line = `${pc}: MATCH`;
         pc += 1;
+        break;
+      case OP_LOOP:
+        line = `${pc}: LOOP -> ${program[pc + 1]}`;
+        pc += 2;
+        break;
+      case OP_NOT_TYPE:
+        line = `${pc}: NOT_TYPE type=${program[pc + 1]} values=${program[pc + 2]} pred=${program[pc + 3]}`;
+        pc += 4;
         break;
       default:
         line = `${pc}: <unknown op ${op}>`;
@@ -851,6 +951,56 @@ function match_bytecode(
         }
         idx = new_idx;
         pc += 5;
+        break;
+      }
+      case OP_LOOP: {
+        // pop the iteration's ALT frame: (end_pc, entry_idx). progress
+        // since the ALT -> loop back for another iteration; an empty
+        // iteration falls through to the ALT's target instead. popping
+        // the frame makes the repeat possessive -- completed iterations
+        // are never backtracked into.
+        bt_sp -= BT_STRIDE;
+        if (idx === bt[bt_sp + 1]) {
+          pc = bt[bt_sp];
+        } else {
+          pc = program[pc + 1];
+        }
+        break;
+      }
+      case OP_NOT_TYPE: {
+        while (idx < count && trivia[tokens[idx * 3]]) idx++;
+        if (idx >= count) {
+          // nothing follows: the negation holds. zero width, no consume.
+          pc += 4;
+          break;
+        }
+        const type_id = program[pc + 1];
+        const base = idx * 3;
+        let hit = tokens[base] === type_id;
+        if (hit) {
+          const values_id = program[pc + 2];
+          if (values_id >= 0) {
+            hit = value_set_matches(
+              value_pool,
+              value_offsets,
+              values_id,
+              input,
+              tokens[base + 1],
+              tokens[base + 2],
+            );
+          }
+        }
+        if (hit) {
+          const pred_id = program[pc + 3];
+          if (pred_id >= 0) {
+            hit = text_pred_matches(pred_id, input, tokens[base + 1], tokens[base + 2]);
+          }
+        }
+        if (hit) {
+          failed = true;
+          break;
+        }
+        pc += 4;
         break;
       }
       case OP_MATCH: {

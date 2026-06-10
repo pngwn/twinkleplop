@@ -795,13 +795,37 @@ export interface BalancedPatternSpec {
   max_tokens?: number;
 }
 
+// Match the inner pattern zero or more times, optionally separated. The
+// repetition is POSSESSIVE: once an iteration matches, the matcher never
+// backtracks into fewer iterations -- design patterns so the token after
+// the repetition cannot also start an iteration. An iteration that
+// consumes no tokens terminates the loop (no infinite repeats). Captures
+// inside the body keep their LAST iteration's range.
+export interface RepeatPatternSpec {
+  __kind: "repeat";
+  inner: TokenPatternSpec;
+  separator?: TokenPatternSpec;
+}
+
+// Zero-width negative lookahead over a single token: succeeds when the
+// next non-trivia token does NOT match the inner spec (or the stream has
+// ended), without consuming anything. An inner spec naming an unknown
+// type or predicate fails CLOSED -- the assertion (and so the rule)
+// never matches, consistent with the rest of the pattern language.
+export interface NotPatternSpec {
+  __kind: "not";
+  inner: TypePatternSpec;
+}
+
 export type TokenPatternSpec =
   | TypePatternSpec
   | SeqPatternSpec
   | AnyOfPatternSpec
   | OptionalPatternSpec
   | CapturePatternSpec
-  | BalancedPatternSpec;
+  | BalancedPatternSpec
+  | RepeatPatternSpec
+  | NotPatternSpec;
 
 // A rewrite rule says: starting at a token matching `anchor` (a bare type
 // name, or `type(name, value)` to also constrain source text), if the
