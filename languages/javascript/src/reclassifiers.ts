@@ -25,6 +25,7 @@ import {
   frame_track,
   make_token_view,
   param_list,
+  precedence_for,
   promote_by_text_set,
   promote_by_upper_snake_case,
   promote_function_calls,
@@ -590,15 +591,16 @@ export function scan_tagged_template(tokens, input, i, token_types) {
 //   new pkg.util.Foo()                Foo       (last-in-chain)
 //   x instanceof Foo                  Foo
 //
-// This pass runs AFTER function_variable_rules and (in TypeScript) AFTER
-// type_position_promoter, so it can upgrade either `identifier` or `type`
-// tokens that sit in these positions.
+// claims emit at the class_name table precedence (50), which outranks the
+// function (30) and type (45) claims that may target the same token in a
+// shared batch -- matching the old sequential behaviour where this pass ran
+// last and re-promoted `identifier` / `type` / `function` tokens in these
+// positions.
 
-export const class_name_promoter: Reclassifier = (input, result) => {
-  const { tokens, token_types } = result;
+const class_name_promoter_fn: ClaimFn = (input, tokens, token_types, sink) => {
   const view = make_token_view(input, tokens, token_types);
   const n = view.count;
-  if (n === 0) return result;
+  if (n === 0) return;
 
   const identifier_id = token_types.indexOf("identifier");
   const keyword_id = token_types.indexOf("keyword");
@@ -607,13 +609,14 @@ export const class_name_promoter: Reclassifier = (input, result) => {
   const type_id = token_types.indexOf("type");
   const function_id = token_types.indexOf("function");
 
-  if (identifier_id < 0 || keyword_id < 0) return result;
+  if (identifier_id < 0 || keyword_id < 0) return;
 
   let class_name_id = token_types.indexOf("class_name");
   if (class_name_id < 0) {
     class_name_id = token_types.length;
     token_types.push("class_name");
   }
+  const class_name_prec = precedence_for("class_name");
 
   // next-non-trivia convention for this pass matches the rest: returns
   // the index of the first non-trivia at or after `from`, or -1. the old
@@ -666,7 +669,7 @@ export const class_name_promoter: Reclassifier = (input, result) => {
       }
       break;
     }
-    if (last >= 0) tokens[last * 3] = class_name_id;
+    if (last >= 0) sink.emit(last, class_name_id, class_name_prec);
     return j < 0 ? n : j;
   };
 
@@ -700,7 +703,7 @@ export const class_name_promoter: Reclassifier = (input, result) => {
       // head: [name] [<...>] [extends LIST]* [implements LIST]?  {
       let j = skip_trivia(i + 1);
       if (is_name_token(j)) {
-        tokens[j * 3] = class_name_id;
+        sink.emit(j, class_name_id, class_name_prec);
         j = skip_trivia(j + 1);
       }
       if (j >= 0 && view.kind_of(j) === operator_id && view.text_of(j) === "<") {
@@ -730,9 +733,9 @@ export const class_name_promoter: Reclassifier = (input, result) => {
       continue;
     }
   }
-
-  return result;
 };
+
+export const class_name_promoter: ClaimingReclassifier = as_claim_producer(class_name_promoter_fn);
 
 // restoration of distinctions the grammar no longer emits. the grammar
 // emits every call-site name and every "true"/"false" as `identifier`;
@@ -763,21 +766,23 @@ export const promote_js_constants: Reclassifier = promote_by_upper_snake_case(
 // covers simple bindings (`const x = 1`), comma-separated bindings
 // (`const x = 1, y = 2`), object destructuring with renaming / defaults
 // / rest (`const { a, b: c, d = 5, ...rest } = o`), array destructuring
-// (`const [a, , b, ...r] = arr`), and nested patterns. the pass only
-// rewrites tokens whose current kind is still `identifier`, so anything
-// already promoted upstream (e.g. `const foo = () => ...` → `function`
-// via function_variable_rules) keeps its upstream classification. TS-
-// style type annotations (`const x: Map<K, V> = foo`) are treated as
-// RHS and their contents aren't tagged; the binding identifier (`x`)
-// is still tagged.
-export const promote_js_const_bindings: Reclassifier = (input, result) => {
-  const { tokens, token_types } = result;
+// (`const [a, , b, ...r] = arr`), and nested patterns. TS-style type
+// annotations (`const x: Map<K, V> = foo`) are treated as RHS and their
+// contents aren't tagged; the binding identifier (`x`) is still tagged.
+//
+// claims emit BELOW the function precedence (30): a function-valued const
+// (`const foo = () => ...`) gets a competing function claim from
+// function_variable_rules in the same batch, and the function claim is
+// the one that should win.
+const CONST_BINDING_PREC = 25;
+
+const promote_js_const_bindings_fn: ClaimFn = (input, tokens, token_types, sink) => {
   const identifier_id = token_types.indexOf("identifier");
   const keyword_id = token_types.indexOf("keyword");
   const operator_id = token_types.indexOf("operator");
   const punctuation_id = token_types.indexOf("punctuation");
   if (identifier_id < 0 || keyword_id < 0 || operator_id < 0 || punctuation_id < 0) {
-    return result;
+    return;
   }
   let constant_id = token_types.indexOf("constant");
   if (constant_id < 0) {
@@ -929,15 +934,17 @@ export const promote_js_const_bindings: Reclassifier = (input, result) => {
           }
         }
         if (!is_source_key) {
-          tokens[k * 3] = constant_id;
+          sink.emit(k, constant_id, CONST_BINDING_PREC);
         }
       }
       at_binding_start = false;
     }
   }
-
-  return { tokens, token_types };
 };
+
+export const promote_js_const_bindings: ClaimingReclassifier = as_claim_producer(
+  promote_js_const_bindings_fn,
+);
 
 // parameter promotion: tag identifiers in parameter position as `parameter`.
 // covers every function form:
@@ -1021,17 +1028,25 @@ export const promote_js_parameters: Reclassifier = param_list({
 //   - `module X { ... }`          → X = namespace  (TS, deprecated)
 // everything else (default imports, dotted property chains) is left alone
 // because identifying those as namespace would need scope tracking.
-export const promote_js_namespaces: Reclassifier = (input, result) => {
-  const { tokens, token_types } = result;
+// namespace positions are syntactically unambiguous (`* as X`,
+// `namespace X {`), so they outrank positional inferences that can
+// overclaim the same token -- specifically the TS type promoter's
+// `as`-cast heuristic firing on `import * as X` (type, 45). casing
+// constants (55) still win: `import * as FOO` reads as a constant
+// binding by author convention.
+const NAMESPACE_PREC = 46;
+
+const promote_js_namespaces_fn: ClaimFn = (input, tokens, token_types, sink) => {
   const identifier_id = token_types.indexOf("identifier");
   const keyword_id = token_types.indexOf("keyword");
   const operator_id = token_types.indexOf("operator");
-  if (identifier_id < 0 || keyword_id < 0) return result;
+  if (identifier_id < 0 || keyword_id < 0) return;
   let namespace_id = token_types.indexOf("namespace");
   if (namespace_id < 0) {
     namespace_id = token_types.length;
     token_types.push("namespace");
   }
+  const namespace_prec = NAMESPACE_PREC;
   const view = make_token_view(input, tokens, token_types);
   const n = view.count;
 
@@ -1054,7 +1069,7 @@ export const promote_js_namespaces: Reclassifier = (input, result) => {
       }
       const name = view.next_non_trivia(as + 1);
       if (name >= 0 && view.kind_of(name) === identifier_id) {
-        tokens[name * 3] = namespace_id;
+        sink.emit(name, namespace_id, namespace_prec);
       }
       continue;
     }
@@ -1063,14 +1078,15 @@ export const promote_js_namespaces: Reclassifier = (input, result) => {
     if (kw === "namespace" || kw === "module") {
       const name = view.next_non_trivia(i + 1);
       if (name >= 0 && view.kind_of(name) === identifier_id) {
-        tokens[name * 3] = namespace_id;
+        sink.emit(name, namespace_id, namespace_prec);
       }
       continue;
     }
   }
-
-  return { tokens, token_types };
 };
+
+export const promote_js_namespaces: ClaimingReclassifier =
+  as_claim_producer(promote_js_namespaces_fn);
 
 // pipeline entries are either fidelity-gated (wrapped with `tag(...)`) or
 // always-on (plain reclassifier). the language factory drops every tagged
@@ -1084,29 +1100,25 @@ export const reclassifiers: LanguagePipeline = [
   // claim_property_scope (TS, TSX, Svelte) must include js_frame_track in
   // their own pipelines too.
   always(js_frame_track, "type_claim"),
-  // constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
-  // so subsequent passes see the promoted stream. function / property /
-  // class_name predicates all key on `identifier`, so converting an
-  // identifier to `constant` upstream simply removes it from their view.
+  // every pass below except the embedder is a claim producer: the runner
+  // batches them against the same frozen base stream, claims merge by
+  // precedence (ties resolve to the earlier pipeline entry), and the
+  // winners apply in one flush. ordering between these entries no longer
+  // decides conflicts -- the precedences do: constant (55) beats
+  // class_name (50) beats function (30) beats const-binding constant
+  // claims (25) beats property (20) beats parameter (15).
   tag(promote_js_constants, ["constant"]),
   tag(rewrite_types(function_variable_rules, { trivia: ["comment"] }), ["function"]),
-  // const-binding promotion runs AFTER function_variable_rules so a
-  // function-valued const (`const f = () => ...`) stays `function` —
-  // this pass only rewrites tokens whose current kind is identifier,
-  // which naturally excludes already-promoted binding names.
   tag(promote_js_const_bindings, ["constant"]),
   // claim_property_scope replaces three previous passes (property_rules,
   // interface_member_promoter, class_field_demoter) with a single scope-
-  // aware claim producer. it batches with function_variable_rules above
-  // so both see the base stream and merge by precedence — interface
-  // members with function-type values resolve to property (prec 35 >
-  // function's 30), object method shorthands to function (prec 30 >
-  // object-property prec 20), and class fields never get a property
-  // claim at all, so no post-hoc fixup is needed.
+  // aware claim producer. class fields never get a property claim at all
+  // (class-kind frames are excluded at emit time), and object method
+  // shorthands emit `function` at 30 directly, so no post-hoc fixup pass
+  // is needed.
   tag(claim_property_scope, ["property"]),
   tag(class_name_promoter, ["class_name"]),
   tag(promote_js_parameters, ["parameter"]),
-  // namespace promotion (import * as X, TS `namespace X { ... }`).
   tag(promote_js_namespaces, ["namespace"]),
   always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
 ];
