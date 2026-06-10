@@ -11,16 +11,23 @@
 // `at_start`: member_method detection reads the active frame's kind and the
 // per-token at_start flag from the shared frame table instead of walking
 // its own scope stack. without frames the primitive is a silent no-op.
+//
+// runs as a claim producer: matches emit claims into the pipeline's sink
+// (at the `parameter` table precedence) instead of mutating the stream, so
+// the pass batches with other claim producers and never touches the
+// caller's tokens or shared token_types array.
 
+import { as_claim_producer, precedence_for } from "./reclassifier";
 import type {
   ArrowParenDetector,
+  ClaimFn,
+  ClaimingReclassifier,
+  ClaimSink,
   FrameTable,
   KeywordParamListDetector,
   MemberMethodDetector,
   ParamListConfig,
   ParamListDetector,
-  Reclassifier,
-  TokenizeResult,
 } from "./types";
 import { FRAME_BRACKET_BRACE } from "./types";
 
@@ -127,6 +134,8 @@ function walk_params(
   open_off: number,
   ids: ResolvedIds,
   cfg: CompiledConfig,
+  sink: ClaimSink,
+  result_prec: number,
 ): void {
   const n = tokens.length / 3;
   let depth = 1;
@@ -190,7 +199,7 @@ function walk_params(
         continue;
       }
       if (kt === ids.identifier) {
-        tokens[base] = ids.result_id;
+        sink.emit(k, ids.result_id, result_prec);
         expect_param = false;
         k++;
         continue;
@@ -456,20 +465,19 @@ function run_detector(
   }
 }
 
-export function param_list(config: ParamListConfig): Reclassifier {
+export function param_list(config: ParamListConfig): ClaimingReclassifier {
   const compiled = compile_config(config);
 
-  return (input: string, result: TokenizeResult): TokenizeResult => {
-    const { tokens, token_types } = result;
-    const frames = result.frames;
+  const claim_fn: ClaimFn = (input, tokens, token_types, sink, frames) => {
     // no upstream frame_track stage (or one without at_start): fail closed.
     // member detection cannot run safely without shared scope data.
-    if (frames === undefined || frames.at_start.length === 0) return result;
+    if (frames === undefined || frames.at_start.length === 0) return;
 
     const ids = resolve_ids(token_types, compiled.result_type);
     if (ids.identifier < 0 || ids.keyword < 0 || ids.punctuation < 0 || ids.operator < 0) {
-      return result;
+      return;
     }
+    const result_prec = precedence_for(compiled.result_type);
 
     // resolve member_method brace-kind names against this frame table's
     // vocabulary. unknown names resolve to nothing and the detector never
@@ -501,14 +509,14 @@ export function param_list(config: ParamListConfig): Reclassifier {
         const r = run_detector(detector, tokens, input, i, ids, frames, object_kind);
         if (r === null) continue;
         if (r.kind === "tag_identifier") {
-          tokens[r.idx * 3] = ids.result_id;
+          sink.emit(r.idx, ids.result_id, result_prec);
         } else {
-          walk_params(tokens, input, r.open_idx, r.open_off, ids, compiled);
+          walk_params(tokens, input, r.open_idx, r.open_off, ids, compiled, sink, result_prec);
         }
         break;
       }
     }
-
-    return { tokens, token_types, overlays: result.overlays, frames: result.frames };
   };
+
+  return as_claim_producer(claim_fn);
 }
