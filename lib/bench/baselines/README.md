@@ -74,6 +74,16 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   for every language on both metrics except Go's reclassifier-only number
   (-21%, ~1.4 us absolute on a tiny budget; its `language()` path is at
   parity).
+- `10-frame-gated-rules.json` — captured after the pattern VM grew
+  `repeat` (possessive zero-or-more with separators) and `not`
+  (zero-width single-token negation) combinators plus anchor frame gates
+  (`at_start`, `frame_kinds` against the shared frame table), and
+  claim_property_scope became two declarative rewrite rules -- the last
+  imperative claim walker in the JS package. all pipelines within noise
+  of snapshot 09 (machine ~3% slower per the empty-pipeline rows); the
+  declarative pass costs ~+0.4 us per call on medium_js vs the
+  specialized loop (generic anchor dispatch + bytecode), ~2% of the
+  pipeline.
 
 ## How to capture a new snapshot
 
