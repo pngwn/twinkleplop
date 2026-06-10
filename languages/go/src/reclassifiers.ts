@@ -11,8 +11,23 @@
 // exported names in Go are PascalCase regardless of whether they're types,
 // functions, variables, or constants, so a blind case-based promotion overfits.
 
-import { chunker, make_token_view, promote_by_upper_snake_case, tag } from "@twinkleplop/core";
-import type { LanguagePipeline, Reclassifier } from "@twinkleplop/core";
+import {
+  as_claim_producer,
+  chunker,
+  make_token_view,
+  promote_by_upper_snake_case,
+  tag,
+} from "@twinkleplop/core";
+import type { ClaimFn, LanguagePipeline, Reclassifier } from "@twinkleplop/core";
+
+// go's pipeline priority is structural-over-casing: namespace position
+// beats parameter position beats function position beats the upper-snake
+// constant convention (table precedence 55). the shared precedence table
+// encodes the inverse, js-style casing-first convention, so the go passes
+// state their ordering explicitly.
+const GO_NAMESPACE_PREC = 65;
+const GO_PARAMETER_PREC = 60;
+const GO_FUNCTION_PREC = 58;
 
 export const promote_go_constants: Reclassifier = promote_by_upper_snake_case(
   "identifier",
@@ -25,11 +40,10 @@ export const promote_go_constants: Reclassifier = promote_by_upper_snake_case(
 // Go's square-bracket generic call syntax is lexically indistinguishable from
 // indexing followed by a call (`table[key](x)`), so the bracket+paren branch
 // intentionally favors useful highlighting over parser-level precision.
-export const promote_go_functions: Reclassifier = (input, result) => {
-  const { tokens, token_types } = result;
+const promote_go_functions_fn: ClaimFn = (input, tokens, token_types, sink) => {
   const identifier_id = token_types.indexOf("identifier");
   const punctuation_id = token_types.indexOf("punctuation");
-  if (identifier_id < 0 || punctuation_id < 0) return result;
+  if (identifier_id < 0 || punctuation_id < 0) return;
   let function_id = token_types.indexOf("function");
   if (function_id < 0) {
     function_id = token_types.length;
@@ -84,11 +98,11 @@ export const promote_go_functions: Reclassifier = (input, result) => {
 
   for (let i = 0; i < n; i++) {
     if (view.kind_of(i) !== identifier_id) continue;
-    if (is_function_position(i)) tokens[i * 3] = function_id;
+    if (is_function_position(i)) sink.emit(i, function_id, GO_FUNCTION_PREC);
   }
-
-  return { tokens, token_types };
 };
+
+export const promote_go_functions: Reclassifier = as_claim_producer(promote_go_functions_fn);
 
 // namespace promotion for Go package declarations and aliased imports:
 //   - `package foo`               → foo = namespace
@@ -97,13 +111,12 @@ export const promote_go_functions: Reclassifier = (input, result) => {
 // un-aliased imports `import "fmt"` use a string literal so there's no
 // identifier to promote. use-site package references (`fmt.Println`) need
 // scope tracking and are left as identifier.
-export const promote_go_namespaces: Reclassifier = (input, result) => {
-  const { tokens, token_types } = result;
+const promote_go_namespaces_fn: ClaimFn = (input, tokens, token_types, sink) => {
   const identifier_id = token_types.indexOf("identifier");
   const keyword_id = token_types.indexOf("keyword");
   const punctuation_id = token_types.indexOf("punctuation");
   const string_id = token_types.indexOf("string");
-  if (identifier_id < 0 || keyword_id < 0) return result;
+  if (identifier_id < 0 || keyword_id < 0) return;
   let namespace_id = token_types.indexOf("namespace");
   if (namespace_id < 0) {
     namespace_id = token_types.length;
@@ -121,7 +134,7 @@ export const promote_go_namespaces: Reclassifier = (input, result) => {
     if (kw === "package") {
       const j = view.next_non_trivia(i + 1);
       if (j >= 0 && view.kind_of(j) === identifier_id) {
-        tokens[j * 3] = namespace_id;
+        sink.emit(j, namespace_id, GO_NAMESPACE_PREC);
       }
       continue;
     }
@@ -153,7 +166,7 @@ export const promote_go_namespaces: Reclassifier = (input, result) => {
         if (k === identifier_id) {
           const after = view.next_non_trivia(j + 1);
           if (after >= 0 && view.kind_of(after) === string_id) {
-            tokens[j * 3] = namespace_id;
+            sink.emit(j, namespace_id, GO_NAMESPACE_PREC);
             j = view.next_non_trivia(after + 1);
             continue;
           }
@@ -176,9 +189,9 @@ export const promote_go_namespaces: Reclassifier = (input, result) => {
       }
     }
   }
-
-  return { tokens, token_types };
 };
+
+export const promote_go_namespaces: Reclassifier = as_claim_producer(promote_go_namespaces_fn);
 
 // Parameter promotion: after `func name(...)`, `func name[T any](...)`, or
 // `func (recv *R) name(...)`, tag declared parameter names. Go permits
@@ -197,6 +210,7 @@ export const promote_go_parameters: Reclassifier = chunker({
     { open: "{", close: "}" },
   ],
   result_type: "parameter",
+  precedence: GO_PARAMETER_PREC,
   carry_pending_names: true,
   type_after_first_strategy: "go_default",
 });

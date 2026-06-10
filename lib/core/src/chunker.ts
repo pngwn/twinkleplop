@@ -284,7 +284,7 @@ export function chunker(config: ChunkerConfig): ClaimingReclassifier {
     if (ids.identifier < 0 || ids.keyword < 0 || ids.punctuation < 0) {
       return;
     }
-    const result_prec = precedence_for(config.result_type);
+    const result_prec = config.precedence ?? precedence_for(config.result_type);
 
     const n = tokens.length / 3;
     for (let i = 0; i < n; i++) {

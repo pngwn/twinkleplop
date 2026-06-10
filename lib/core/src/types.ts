@@ -253,6 +253,11 @@ export interface ChunkerConfig {
   depth_brackets: { open: string; close: string }[];
   // result type to tag identifiers as.
   result_type: string;
+  // claim precedence for emitted tags. defaults to the result type's table
+  // precedence. languages whose pipeline priority differs from the shared
+  // table (e.g. go ranks structural parameter position above upper-snake
+  // constants) override this explicitly.
+  precedence?: number;
   // pending-name carryover: when a chunk has a type-shape after the first
   // identifier, promote that first identifier AND any pending names from
   // prior single-ident chunks. matches Go's `x, y int` semantics.
