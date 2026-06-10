@@ -2134,14 +2134,20 @@ function flush_claim_batch(
   current: TokenizeResult,
   batch: ClaimingReclassifier[],
 ): TokenizeResult {
-  const tokens = new Uint32Array(current.tokens);
   const token_types = current.token_types.slice();
   // reuse the module-level sink. all batch producers emit into it
-  // sequentially; we apply the merged winners once at the end.
+  // sequentially; we apply the merged winners once at the end. producers
+  // receive the CURRENT tokens uncloned -- the ClaimFn contract forbids
+  // mutating token slots, so the clone is deferred until we know at least
+  // one claim needs applying. batches that fire nothing skip the copy.
   shared_sink.reset();
   for (let i = 0; i < batch.length; i++) {
-    batch[i].__claim(input, tokens, token_types, shared_sink, current.frames);
+    batch[i].__claim(input, current.tokens, token_types, shared_sink, current.frames);
   }
+  if (shared_sink.count === 0) {
+    return { tokens: current.tokens, token_types, frames: current.frames };
+  }
+  const tokens = new Uint32Array(current.tokens);
   merge_and_apply_buffer(tokens, shared_sink);
   // preserve frames from the input -- the batch cannot have changed token
   // count or stream shape (claims only rewrite type ids), so the frame
