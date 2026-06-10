@@ -61,6 +61,19 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   tiny budgets: emit + merge + apply replaces direct token writes
   (go 4.6 -> 6.0 us, rust 19.6 -> 23.3 us per call). the user-facing
   `language()` entry point is at parity or better for every language.
+- `09-compile-caching.json` — captured after rewrite_types started caching
+  its compiled bytecode per vocabulary CONTENT instead of array identity.
+  the batch runner clones token_types per flush, so the identity key
+  missed on every call and the bytecode, value pools, and anchor tables
+  recompiled per highlight. content comparison is a pointer walk (clones
+  copy string references). also caches frame_track's per-call transparent
+  text table. machine-adjusted gains vs 08: **Svelte +39%** (its embedded
+  JS pipeline recompiled rules per script block), **Rust +11%** (back
+  above the pre-R2 level), medium_js +16%, TypeScript +5%, large_js +9%.
+  the cumulative claims-architecture arc (07 -> 09) is now net positive
+  for every language on both metrics except Go's reclassifier-only number
+  (-21%, ~1.4 us absolute on a tiny budget; its `language()` path is at
+  parity).
 
 ## How to capture a new snapshot
 
