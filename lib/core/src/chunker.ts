@@ -4,8 +4,14 @@
 // canonical use: Go function parameters. supports the shared-type
 // `x, y int` form where bare identifiers in earlier chunks get promoted
 // retroactively once a later chunk has a type.
+//
+// runs as a claim producer: matches emit claims at the result type's table
+// precedence instead of mutating the stream, so the pass batches with
+// other claim producers and never touches the caller's tokens or shared
+// token_types array.
 
-import type { ChunkerConfig, Reclassifier, TokenizeResult } from "./types";
+import { as_claim_producer, precedence_for } from "./reclassifier";
+import type { ChunkerConfig, ClaimFn, ClaimingReclassifier, ClaimSink } from "./types";
 
 interface ResolvedIds {
   identifier: number;
@@ -155,6 +161,8 @@ function walk_and_chunk(
   open: OpenPosition,
   ids: ResolvedIds,
   config: ChunkerConfig,
+  sink: ClaimSink,
+  result_prec: number,
 ): number {
   const n = tokens.length / 3;
   let paren_depth = 1;
@@ -219,7 +227,7 @@ function walk_and_chunk(
   }
   if (current.length > 0) chunks.push(current);
 
-  apply_chunk_strategy(tokens, input, chunks, ids, config);
+  apply_chunk_strategy(tokens, input, chunks, ids, config, sink, result_prec);
   return k;
 }
 
@@ -229,6 +237,8 @@ function apply_chunk_strategy(
   chunks: number[][],
   ids: ResolvedIds,
   config: ChunkerConfig,
+  sink: ClaimSink,
+  result_prec: number,
 ): void {
   let pending: number[] = [];
   for (const chunk of chunks) {
@@ -239,13 +249,13 @@ function apply_chunk_strategy(
       continue;
     }
     if (!config.carry_pending_names) {
-      tokens[first * 3] = ids.result_id;
+      sink.emit(first, ids.result_id, result_prec);
       continue;
     }
     const has_type = type_after_first_go(input, tokens, chunk, ids);
     if (has_type) {
-      for (const idx of pending) tokens[idx * 3] = ids.result_id;
-      tokens[first * 3] = ids.result_id;
+      for (const idx of pending) sink.emit(idx, ids.result_id, result_prec);
+      sink.emit(first, ids.result_id, result_prec);
       pending = [];
       continue;
     }
@@ -268,13 +278,13 @@ function find_param_open_after_name(
   return find_open_paren(tokens, input, after, ids);
 }
 
-export function chunker(config: ChunkerConfig): Reclassifier {
-  return (input: string, result: TokenizeResult): TokenizeResult => {
-    const { tokens, token_types } = result;
+export function chunker(config: ChunkerConfig): ClaimingReclassifier {
+  const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
     const ids = resolve_ids(token_types, config.result_type);
     if (ids.identifier < 0 || ids.keyword < 0 || ids.punctuation < 0) {
-      return result;
+      return;
     }
+    const result_prec = precedence_for(config.result_type);
 
     const n = tokens.length / 3;
     for (let i = 0; i < n; i++) {
@@ -289,7 +299,7 @@ export function chunker(config: ChunkerConfig): Reclassifier {
         // `func name(...)` — direct shape.
         const open = find_param_open_after_name(tokens, input, j, ids);
         if (open !== null) {
-          j = walk_and_chunk(tokens, input, open, ids, config);
+          j = walk_and_chunk(tokens, input, open, ids, config, sink, result_prec);
           i = j - 1;
         }
         continue;
@@ -301,18 +311,18 @@ export function chunker(config: ChunkerConfig): Reclassifier {
       // receiver, walk past it, then look for a name + a second `(`.
       const first_open = find_open_paren(tokens, input, j, ids);
       if (first_open === null) continue;
-      j = walk_and_chunk(tokens, input, first_open, ids, config);
+      j = walk_and_chunk(tokens, input, first_open, ids, config, sink, result_prec);
 
       j = next_non_trivia(tokens, j, ids.comment);
       if (j >= 0 && is_name_like(tokens, j, ids)) {
         const param_open = find_param_open_after_name(tokens, input, j, ids);
         if (param_open !== null) {
-          j = walk_and_chunk(tokens, input, param_open, ids, config);
+          j = walk_and_chunk(tokens, input, param_open, ids, config, sink, result_prec);
         }
       }
       if (j > i) i = j - 1;
     }
-
-    return result;
   };
+
+  return as_claim_producer(claim_fn);
 }
