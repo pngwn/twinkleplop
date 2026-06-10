@@ -7,13 +7,27 @@
 // factored here so a language's reclassifier pipeline is just a few calls
 // plus any language-specific stateful passes.
 //
-// every helper returns a `Reclassifier`: `(input, result) -> result`. they
-// mutate the result in place and return it — consistent with the other
-// reclassifiers in this package — but allocate a fresh `token_types` array
-// because they frequently add new type entries.
+// every helper returns a claim-producing reclassifier: matches emit claims
+// at the target type's table precedence, so consecutive promoters batch
+// together (one flush, conflicts resolved by precedence) and never mutate
+// the caller's tokens or shared token_types array.
 
-import { rewrite_types, seq, type, any_of, balanced_parens } from "./reclassifier";
-import type { Reclassifier, RewriteOptions, TokenizeResult, TokenPatternSpec } from "./types";
+import {
+  any_of,
+  as_claim_producer,
+  balanced_parens,
+  precedence_for,
+  rewrite_types,
+  seq,
+  type,
+} from "./reclassifier";
+import type {
+  ClaimFn,
+  ClaimingReclassifier,
+  Reclassifier,
+  RewriteOptions,
+  TokenPatternSpec,
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // promote_by_text_set
@@ -32,28 +46,28 @@ export function promote_by_text_set(
   source_type: string,
   target_type: string,
   text_set: Iterable<string>,
-): Reclassifier {
+): ClaimingReclassifier {
   const set = text_set instanceof Set ? text_set : new Set(text_set);
-  return (input: string, result: TokenizeResult): TokenizeResult => {
-    const { tokens, token_types } = result;
+  const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
     const source_id = token_types.indexOf(source_type);
-    if (source_id < 0) return result;
+    if (source_id < 0) return;
     let target_id = token_types.indexOf(target_type);
     if (target_id < 0) {
       target_id = token_types.length;
       token_types.push(target_type);
     }
+    const prec = precedence_for(target_type);
     const n = tokens.length / 3;
     for (let i = 0; i < n; i++) {
       if (tokens[i * 3] !== source_id) continue;
       const s = tokens[i * 3 + 1];
       const e = tokens[i * 3 + 2];
       if (set.has(input.slice(s, e))) {
-        tokens[i * 3] = target_id;
+        sink.emit(i, target_id, prec);
       }
     }
-    return result;
   };
+  return as_claim_producer(claim_fn);
 }
 
 // ---------------------------------------------------------------------------
@@ -71,16 +85,19 @@ export function promote_by_text_set(
 const ASCII_UPPER_MIN = 0x41;
 const ASCII_UPPER_MAX = 0x5a;
 
-export function promote_pascal_case(source_type: string, target_type: string): Reclassifier {
-  return (input: string, result: TokenizeResult): TokenizeResult => {
-    const { tokens, token_types } = result;
+export function promote_pascal_case(
+  source_type: string,
+  target_type: string,
+): ClaimingReclassifier {
+  const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
     const source_id = token_types.indexOf(source_type);
-    if (source_id < 0) return result;
+    if (source_id < 0) return;
     let target_id = token_types.indexOf(target_type);
     if (target_id < 0) {
       target_id = token_types.length;
       token_types.push(target_type);
     }
+    const prec = precedence_for(target_type);
     const n = tokens.length / 3;
     for (let i = 0; i < n; i++) {
       if (tokens[i * 3] !== source_id) continue;
@@ -105,10 +122,10 @@ export function promote_pascal_case(source_type: string, target_type: string): R
         }
         if (!has_lower) continue;
       }
-      tokens[i * 3] = target_id;
+      sink.emit(i, target_id, prec);
     }
-    return result;
   };
+  return as_claim_producer(claim_fn);
 }
 
 // ---------------------------------------------------------------------------
@@ -141,16 +158,16 @@ function is_upper_snake_char(code: number): boolean {
 export function promote_by_upper_snake_case(
   source_type: string,
   target_type: string,
-): Reclassifier {
-  return (input: string, result: TokenizeResult): TokenizeResult => {
-    const { tokens, token_types } = result;
+): ClaimingReclassifier {
+  const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
     const source_id = token_types.indexOf(source_type);
-    if (source_id < 0) return result;
+    if (source_id < 0) return;
     let target_id = token_types.indexOf(target_type);
     if (target_id < 0) {
       target_id = token_types.length;
       token_types.push(target_type);
     }
+    const prec = precedence_for(target_type);
     const n = tokens.length / 3;
     for (let i = 0; i < n; i++) {
       if (tokens[i * 3] !== source_id) continue;
@@ -166,10 +183,10 @@ export function promote_by_upper_snake_case(
           break;
         }
       }
-      if (all_ok) tokens[i * 3] = target_id;
+      if (all_ok) sink.emit(i, target_id, prec);
     }
-    return result;
   };
+  return as_claim_producer(claim_fn);
 }
 
 // ---------------------------------------------------------------------------
