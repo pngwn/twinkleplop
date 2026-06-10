@@ -21,9 +21,10 @@ import {
   as_claim_producer,
   balanced_parens,
   embed_interleaved,
-  FRAME_BRACKET_BRACE,
   frame_track,
   make_token_view,
+  not,
+  optional,
   param_list,
   precedence_for,
   promote_by_text_set,
@@ -39,6 +40,7 @@ import type {
   ClaimingReclassifier,
   LanguagePipeline,
   Reclassifier,
+  RewriteRule,
 } from "@twinkleplop/core";
 
 import { tokenize as css_tokenize } from "@twinkleplop/css";
@@ -121,207 +123,80 @@ export const function_variable_rules = [
 ];
 
 // ---------------------------------------------------------------------------
-// property claim pass — scope-aware, single-pass, claim-producing
+// property claim pass — scope-aware, declarative
 // ---------------------------------------------------------------------------
 //
-// emits a `property` claim for every identifier in property-key position
-// (member start of an object literal, type literal, or interface body).
-// scope classification, at_start tracking, and modifier transparency all
-// come from the upstream frame_track stage -- this pass only reads the
-// frame table and inspects the tokens around each candidate identifier.
+// claims `property` (and `function` for method shorthand) for identifiers
+// in property-key position: member start of an object literal, type
+// literal, or interface body. scope classification, at_start tracking, and
+// modifier transparency all come from the upstream frame_track stage; the
+// rules below gate their anchors on that frame data directly.
 //
-// this single pass replaces three older reclassifiers:
-//   - property_rules (rewrite_types DSL with exclusion rules)
-//   - interface_member_promoter (stateful walker)
-//   - class_field_demoter (post-hoc fixup)
-//
-// the key design decision: scope-aware claim EMISSION rather than
-// claim-then-demote. class fields never get a property claim (class-kind
-// frames are excluded at emit time), so no fixup pass is needed.
+// this pass replaces three older reclassifiers (property_rules,
+// interface_member_promoter, class_field_demeter) with scope-aware claim
+// EMISSION rather than claim-then-demote: class fields never get a
+// property claim (class-kind frames are excluded by the anchor gate), so
+// no fixup pass is needed. target precedences come from the shared table:
+// function (30) and property (20), so a method-shorthand key resolves to
+// function over a competing property claim within the batch.
 //
 // frame kinds (from js_frame_track's brace_kinds spec):
-//   class       — body of `class Foo { ... }` — NEVER claim.
-//   interface   — body of `interface Foo { ... }` — claim.
-//   object      — object literal / destructure pattern — claim.
-//   type_literal — `: { ... }` annotation shapes — claim.
+//   class        — body of `class Foo { ... }` — NEVER claim.
+//   interface    — body of `interface Foo { ... }` — claim property.
+//   object       — object literal / destructure pattern — claim property,
+//                  or function when the value is an arrow / function.
+//   type_literal — `: { ... }` annotation shapes — claim property.
 //   block / paren / bracket — NEVER claim (labeled statements, params,
-//                 arrays, computed keys).
+//                  arrays, computed keys).
 
-// a `:` whose next non-trivia is one of these keywords is a labeled
-// statement introducer, not an object-property separator.
-const LABEL_STATEMENT_KEYWORDS = new Set(["for", "while", "do", "if", "switch", "try", "with"]);
+// the member separator in all its forms: `x:`, `x?:` (single operator
+// token or split `?` + `:`).
+const member_colon = any_of(
+  type("punctuation", ":"),
+  type("operator", "?:"),
+  seq(type("operator", "?"), type("punctuation", ":")),
+);
 
-// step-6 precedence scheme. the goal is "one claim per token" — no two
-// passes should emit different target types for the same position. this
-// pass is now the SOLE owner of `ident :` classification:
-//
-//   OBJECT  literal `{ k : v }`:
-//     - value is arrow / function  → claim FUNCTION at 30 (method shorthand)
-//     - otherwise                  → claim PROPERTY at 20
-//   INTERFACE body / TYPE LITERAL:
-//     - always                     → claim PROPERTY at 20
-//   CLASS / PAREN / BRACKET / BLOCK:
-//     - never claims
-//
-// function_variable_rules was simultaneously narrowed to handle only `ident
-// = value` (assignment), so there's no longer any overlap between the two
-// passes. TPP dropped its annotation-position identifier claim at the same
-// time — it's no longer needed because fn_var doesn't overclaim.
-const PROP_PREC = 20;
-const PROP_FN_PREC = 30; // matches the default `function` precedence.
+// value shapes that make an object key a method: `function`,
+// `async function`, `ident =>`, `async ident =>`, `(...) =>`,
+// `async (...) =>`. mirrors what function_variable_rules matches for `=`.
+const function_value = seq(
+  optional(type("keyword", "async")),
+  any_of(
+    type("keyword", "function"),
+    seq(type("identifier"), type("operator", "=>")),
+    seq(balanced_parens("(", ")"), type("operator", "=>")),
+  ),
+);
 
-const claim_property_scope_fn: ClaimFn = (input, tokens, token_types, sink, frames) => {
-  const view = make_token_view(input, tokens, token_types);
-  if (view.count === 0) return;
-  // requires a frame_track stage upstream. without it, scope-aware claims
-  // cannot fire -- skip the pass cleanly so a misconfigured pipeline produces
-  // no claims rather than throwing in the hot path.
-  if (frames === undefined) return;
+export const property_scope_rules: RewriteRule[] = [
+  // object method shorthand: the key of a function-valued member reads as
+  // a function, not a property.
+  {
+    anchor: { type_name: "identifier", at_start: true, frame_kinds: ["object"] },
+    when: seq(member_colon, function_value),
+    rewrite: "function",
+  },
+  // property keys at member start. a `:` introducing a labeled statement
+  // (`loop: for (...)`) is excluded; label keywords cannot start the
+  // function-value shapes above, so the first rule needs no exclusion.
+  {
+    anchor: {
+      type_name: "identifier",
+      at_start: true,
+      frame_kinds: ["object", "interface", "type_literal"],
+    },
+    when: seq(
+      member_colon,
+      not(type("keyword", ["for", "while", "do", "if", "switch", "try", "with"])),
+    ),
+    rewrite: "property",
+  },
+];
 
-  const identifier_id = token_types.indexOf("identifier");
-  const keyword_id = token_types.indexOf("keyword");
-  const punctuation_id = token_types.indexOf("punctuation");
-  const operator_id = token_types.indexOf("operator");
-
-  if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0 || operator_id < 0) {
-    return;
-  }
-
-  let property_id = token_types.indexOf("property");
-  if (property_id < 0) {
-    property_id = token_types.length;
-    token_types.push("property");
-  }
-  let function_id = token_types.indexOf("function");
-  if (function_id < 0) {
-    function_id = token_types.length;
-    token_types.push("function");
-  }
-
-  // brace kinds come from the frame table -- js_frame_track's brace_kinds
-  // spec owns the class / interface / object / type_literal / block
-  // classification. resolve the claimable kind ids once per call.
-  const kind_names = frames.kind_names;
-  const object_kind = kind_names.indexOf("object");
-  const interface_kind = kind_names.indexOf("interface");
-  const type_literal_kind = kind_names.indexOf("type_literal");
-  if (object_kind < 0 && interface_kind < 0 && type_literal_kind < 0) return;
-
-  // peek past `:` at idx (the colon itself) to decide whether the value
-  // is an arrow or function expression — i.e. whether the key of an
-  // OBJECT literal should be classified as `function` (method shorthand)
-  // rather than `property`. returns true when the value shape is any of
-  // `function`, `async function`, `(...) =>`, `async (...) =>`,
-  // `ident =>`, `async ident =>`. mirrors the patterns that
-  // `function_variable_rules` used to match for `:`.
-  const is_function_value = (colon_idx: number): boolean => {
-    let j = view.next_non_trivia(colon_idx + 1);
-    if (j < 0) return false;
-    // optional leading `async`.
-    if (view.kind_of(j) === keyword_id && view.text_of(j) === "async") {
-      j = view.next_non_trivia(j + 1);
-      if (j < 0) return false;
-    }
-    // `function` keyword → function expression.
-    if (view.kind_of(j) === keyword_id && view.text_of(j) === "function") {
-      return true;
-    }
-    // `ident =>` — single-param arrow without parens.
-    if (view.kind_of(j) === identifier_id) {
-      const after = view.next_non_trivia(j + 1);
-      if (after >= 0 && view.kind_of(after) === operator_id && view.text_of(after) === "=>") {
-        return true;
-      }
-      return false;
-    }
-    // `(...) =>` — arrow with parameter list. walk balanced parens in
-    // punctuation tokens and look for `=>` after the matching `)`.
-    if (view.kind_of(j) === punctuation_id) {
-      const t = view.text_of(j);
-      if (t.length === 0 || t[0] !== "(") return false;
-      let depth = 0;
-      let end_idx = -1;
-      const max = Math.min(view.count, j + 200);
-      outer: for (let k = j; k < max; k++) {
-        if (view.kind_of(k) !== punctuation_id) continue;
-        const tt = view.text_of(k);
-        for (let c = 0; c < tt.length; c++) {
-          const ch = tt[c];
-          if (ch === "(") depth++;
-          else if (ch === ")") {
-            depth--;
-            if (depth === 0) {
-              end_idx = k;
-              break outer;
-            }
-          }
-        }
-      }
-      if (end_idx < 0) return false;
-      const after = view.next_non_trivia(end_idx + 1);
-      return after >= 0 && view.kind_of(after) === operator_id && view.text_of(after) === "=>";
-    }
-    return false;
-  };
-
-  const at_start_arr = frames.at_start;
-  const active = frames.active_frame;
-  const frame_list = frames.frames;
-
-  // only identifiers at member-start positions need any work -- frame_track
-  // owns scope classification and at_start, so every other token type falls
-  // through with two integer compares.
-  for (let i = 0; i < view.count; i++) {
-    if (view.kind_of(i) !== identifier_id) continue;
-    if (at_start_arr[i] !== 1) continue;
-
-    // nearest enclosing BRACE frame: the active frame may be a paren or
-    // bracket (e.g. after a `,` re-arm inside an argument list); walk the
-    // parent chain so the kind test matches the old brace-only stack.
-    let fi = active[i];
-    let fr = frame_list[fi];
-    while (fi > 0 && fr.bracket !== FRAME_BRACKET_BRACE) {
-      fi = fr.parent;
-      fr = frame_list[fi];
-    }
-    if (fr.bracket !== FRAME_BRACKET_BRACE) continue;
-    const top = fr.kind;
-    if (top !== object_kind && top !== interface_kind && top !== type_literal_kind) continue;
-
-    const nxt = view.next_non_trivia(i + 1);
-    if (nxt < 0) continue;
-    const nk = view.kind_of(nxt);
-    const nt = view.text_of(nxt);
-    let is_colon = (nk === punctuation_id && nt === ":") || (nk === operator_id && nt === "?:");
-    let colon_idx = nxt;
-    if (!is_colon && nk === operator_id && nt === "?") {
-      const after_q = view.next_non_trivia(nxt + 1);
-      if (
-        after_q >= 0 &&
-        view.kind_of(after_q) === punctuation_id &&
-        view.text_of(after_q) === ":"
-      ) {
-        is_colon = true;
-        colon_idx = after_q;
-      }
-    }
-    if (!is_colon) continue;
-    const after = view.next_non_trivia(colon_idx + 1);
-    let is_label = false;
-    if (after >= 0 && view.kind_of(after) === keyword_id) {
-      is_label = LABEL_STATEMENT_KEYWORDS.has(view.text_of(after));
-    }
-    if (is_label) continue;
-    if (top === object_kind && is_function_value(colon_idx)) {
-      sink.emit(i, function_id, PROP_FN_PREC);
-    } else {
-      sink.emit(i, property_id, PROP_PREC);
-    }
-  }
-};
-
-export const claim_property_scope: ClaimingReclassifier =
-  as_claim_producer(claim_property_scope_fn);
+export const claim_property_scope: ClaimingReclassifier = rewrite_types(property_scope_rules, {
+  trivia: ["comment"],
+});
 
 // shared frame_track config for JS/TS/TSX/Svelte. exported so language
 // packages that reuse claim_property_scope insert the same frame_track stage
