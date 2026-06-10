@@ -160,6 +160,57 @@ describe("reclassifier — rewrite_types", () => {
   });
 });
 
+describe("reclassifier — compiled state cache", () => {
+  // two grammars whose vocabularies contain the same names at DIFFERENT
+  // indices (rule order swapped). one rewrite_types instance serves both:
+  // the per-vocabulary cache must compile a separate state per content
+  // rather than reusing the first state, whose baked matcher ids would
+  // point at the wrong types under the other grammar.
+  const sigil_first: Grammar = {
+    name: "sigil_first",
+    states: {
+      root: {
+        rules: [
+          { match: "!", token: "sigil" },
+          { range: [["a", "z"]], token: "identifier" },
+          { match: [" "] },
+        ],
+      },
+    },
+  };
+  const ident_first: Grammar = {
+    name: "ident_first",
+    states: {
+      root: {
+        rules: [
+          { range: [["a", "z"]], token: "identifier" },
+          { match: "!", token: "sigil" },
+          { match: [" "] },
+        ],
+      },
+    },
+  };
+  const sigil_first_compiled = compile(sigil_first);
+  const ident_first_compiled = compile(ident_first);
+
+  test("one instance serves vocabularies with differing id layouts", () => {
+    const pass = rewrite_types([
+      { anchor: "identifier", when: type("sigil", "!"), rewrite: "function" },
+    ]);
+    const pipeline = reclassify([pass]);
+    const src = "foo !";
+
+    const run_with = (grammar: typeof sigil_first_compiled) =>
+      types_only(pipeline(src, tokenize(src, grammar)), src).find((t) => t.value === "foo")?.type;
+
+    expect(run_with(sigil_first_compiled)).toBe("function");
+    expect(run_with(ident_first_compiled)).toBe("function");
+    // back to the first vocabulary: the cached first state must be the
+    // one reused, not the second.
+    expect(run_with(sigil_first_compiled)).toBe("function");
+  });
+});
+
 describe("reclassifier — anchor text_pred", () => {
   // the toy grammar's identifier range is [a-z A-Z] only, so test inputs
   // here avoid underscores and digits — upper_snake's defining feature.
@@ -363,9 +414,16 @@ describe("reclassifier — matcher primitives", () => {
       before: any_of(type("keyword", "let"), type("keyword", "var")),
       rewrite: "function",
     };
-    expect(types_only(run("let foo = 1", [rule]), "let foo = 1").find((t) => t.value === "foo")?.type).toBe("function");
-    expect(types_only(run("var foo = 1", [rule]), "var foo = 1").find((t) => t.value === "foo")?.type).toBe("function");
-    expect(types_only(run("const foo = 1", [rule]), "const foo = 1").find((t) => t.value === "foo")?.type).toBe("identifier");
+    expect(
+      types_only(run("let foo = 1", [rule]), "let foo = 1").find((t) => t.value === "foo")?.type,
+    ).toBe("function");
+    expect(
+      types_only(run("var foo = 1", [rule]), "var foo = 1").find((t) => t.value === "foo")?.type,
+    ).toBe("function");
+    expect(
+      types_only(run("const foo = 1", [rule]), "const foo = 1").find((t) => t.value === "foo")
+        ?.type,
+    ).toBe("identifier");
   });
 
   test("`before` optional matches with or without the inner pattern", () => {
@@ -374,8 +432,15 @@ describe("reclassifier — matcher primitives", () => {
       before: seq(type("keyword", "const"), optional(type("keyword", "async"))),
       rewrite: "function",
     };
-    expect(types_only(run("const foo = 1", [rule]), "const foo = 1").find((t) => t.value === "foo")?.type).toBe("function");
-    expect(types_only(run("const async foo = 1", [rule]), "const async foo = 1").find((t) => t.value === "foo")?.type).toBe("function");
+    expect(
+      types_only(run("const foo = 1", [rule]), "const foo = 1").find((t) => t.value === "foo")
+        ?.type,
+    ).toBe("function");
+    expect(
+      types_only(run("const async foo = 1", [rule]), "const async foo = 1").find(
+        (t) => t.value === "foo",
+      )?.type,
+    ).toBe("function");
   });
 
   test("`before` value uses ends-with semantics for coalesced punctuation", () => {
@@ -390,9 +455,7 @@ describe("reclassifier — matcher primitives", () => {
     };
     const result = run("foo === bar", [rule]);
     // "bar" follows the "===" operator -- the ends-with "=" check matches.
-    expect(types_only(result, "foo === bar").find((t) => t.value === "bar")?.type).toBe(
-      "function",
-    );
+    expect(types_only(result, "foo === bar").find((t) => t.value === "bar")?.type).toBe("function");
   });
 
   test("`before` skips trivia (comments) walking left", () => {

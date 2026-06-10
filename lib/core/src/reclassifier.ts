@@ -1393,21 +1393,37 @@ export function rewrite_types(
   rules: RewriteRule[],
   options: RewriteOptions = {},
 ): ClaimingReclassifier {
-  // cache the compiled state, keyed on the input token_types reference.
-  // in apply mode this rarely hits (tokenize returns fresh arrays) but the
-  // cache is cheap to maintain and avoids recompiling for repeated calls
-  // that happen to share an input. the batch-mode pipeline hits the cache
-  // reliably for consecutive calls within one invocation.
-  let cached_input_types: string[] | null = null;
-  let cached_state: CompiledRewriteState | null = null;
+  // compiled states cached per vocabulary CONTENT, not array identity.
+  // the batch runner hands every call a freshly sliced token_types, so an
+  // identity key would miss on each call and recompile the bytecode per
+  // highlight. content is deterministic per (pipeline, grammar, fidelity):
+  // the same instance sees the same names in the same order every run, and
+  // since slices copy string references the comparison is a pointer walk.
+  // exact match (not prefix) so a shared instance running under different
+  // fidelity configs -- where earlier producers append different names --
+  // never reuses a state whose fail-closed name resolution would differ.
+  interface CompiledCacheEntry {
+    snapshot: string[];
+    state: CompiledRewriteState;
+  }
+  const compiled_cache: CompiledCacheEntry[] = [];
 
   function get_state(input_types: string[]): CompiledRewriteState {
-    if (cached_input_types === input_types && cached_state !== null) {
-      return cached_state;
+    outer: for (let c = 0; c < compiled_cache.length; c++) {
+      const snap = compiled_cache[c].snapshot;
+      if (snap.length !== input_types.length) continue;
+      for (let k = 0; k < snap.length; k++) {
+        if (snap[k] !== input_types[k]) continue outer;
+      }
+      return compiled_cache[c].state;
     }
-    cached_state = compile_rewrite(rules, options, input_types);
-    cached_input_types = input_types;
-    return cached_state;
+    const state = compile_rewrite(rules, options, input_types);
+    // bound the cache defensively: embed-merged vocabularies could in
+    // principle vary per input. distinct vocabularies per instance are
+    // 1-2 in practice (one per language/fidelity config sharing the rules).
+    if (compiled_cache.length >= 8) compiled_cache.length = 0;
+    compiled_cache.push({ snapshot: input_types.slice(), state });
+    return state;
   }
 
   function collect(
