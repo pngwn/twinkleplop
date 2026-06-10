@@ -158,11 +158,7 @@ export const promote_ts_type_only_bindings: Reclassifier = (input, result) => {
     // `import type ...` / `export type ...`
     if (t === "import" || t === "export") {
       const j = view.next_non_trivia(i + 1);
-      if (
-        j < 0 ||
-        view.kind_of(j) !== keyword_id ||
-        view.text_of(j) !== "type"
-      ) {
+      if (j < 0 || view.kind_of(j) !== keyword_id || view.text_of(j) !== "type") {
         continue;
       }
       const k = view.next_non_trivia(j + 1);
@@ -372,11 +368,14 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) =>
   const keyword_id = token_types.indexOf("keyword");
   const punctuation_id = token_types.indexOf("punctuation");
   const operator_id = token_types.indexOf("operator");
-  const type_id = token_types.indexOf("type");
-
-  // only run in grammars that emit a `type` token (typescript). plain JS
-  // doesn't register this type, so the pass is a no-op there.
-  if (type_id < 0) return;
+  // append the target type if absent. the pass must NOT depend on a
+  // sibling having registered "type" first -- batch members all read the
+  // same frozen base and may run in any order.
+  let type_id = token_types.indexOf("type");
+  if (type_id < 0) {
+    type_id = token_types.length;
+    token_types.push("type");
+  }
   if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0 || operator_id < 0) {
     return;
   }
@@ -882,10 +881,7 @@ const type_position_promoter_fn: ClaimFn = (input, tokens, token_types, sink) =>
             const nk = kind_of(nxt);
             const nt = text_of(nxt);
             // `:` is now punctuation; `?:` is still an operator token.
-            if (
-              (nk === punctuation_id && nt === ":") ||
-              (nk === operator_id && nt === "?:")
-            ) {
+            if ((nk === punctuation_id && nt === ":") || (nk === operator_id && nt === "?:")) {
               skip = true;
             }
           }
@@ -1067,10 +1063,7 @@ export const promote_ts_generic_calls: Reclassifier = (input, result) => {
     if (matched_close < 0) continue;
     const after = view.next_non_trivia(matched_close + 1);
     if (after < 0) continue;
-    if (
-      view.kind_of(after) !== punctuation_id ||
-      !view.text_of(after).startsWith("(")
-    ) {
+    if (view.kind_of(after) !== punctuation_id || !view.text_of(after).startsWith("(")) {
       continue;
     }
     tokens[i * 3] = function_id;
@@ -1107,10 +1100,7 @@ export const retag_generic_angles: Reclassifier = (input, result) => {
   const n = view.count;
 
   const is_name_kind = (k: number): boolean =>
-    k === identifier_id ||
-    k === type_id ||
-    k === class_name_id ||
-    k === function_id;
+    k === identifier_id || k === type_id || k === class_name_id || k === function_id;
 
   const after_acceptable = (after: number): boolean => {
     if (after < 0) return true;
@@ -1184,10 +1174,7 @@ export const retag_generic_angles: Reclassifier = (input, result) => {
         if (t === "<") {
           depth++;
           angles.push(j);
-        } else if (
-          brace_depth === 0 &&
-          (t === ">" || t === ">>" || t === ">>>")
-        ) {
+        } else if (brace_depth === 0 && (t === ">" || t === ">>" || t === ">>>")) {
           depth -= t.length;
           angles.push(j);
           if (depth <= 0) {
