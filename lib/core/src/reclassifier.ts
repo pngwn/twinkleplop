@@ -12,6 +12,7 @@
 
 import { build_annotation_extractor } from "./annotation";
 import { tokenize } from "./tokenizer";
+import { FRAME_BRACKET_BRACE, FRAME_KIND_TOP } from "./types";
 import type {
   AnyOfPatternSpec,
   BalancedPatternSpec,
@@ -25,6 +26,7 @@ import type {
   EmbedInterleavedConfig,
   EmbedMapping,
   FidelitySpec,
+  FrameTable,
   GroupDescriptor,
   LanguageFactory,
   LanguageFn,
@@ -1311,6 +1313,11 @@ interface CompiledRule {
   // rule reserves so the interpreter clears only those dirty bits.
   when_pc: number;
   max_capture_slots: number;
+  // frame gates from the anchor spec. kind names stay symbolic -- they
+  // resolve against the frame table's kind_names per call, since the
+  // table comes from whichever frame_track stage the pipeline runs.
+  anchor_at_start: boolean;
+  anchor_frame_kinds: string[] | null;
 }
 
 /**
@@ -1341,6 +1348,9 @@ interface CompiledRewriteState {
   program: Int32Array;
   value_pool: Uint16Array;
   value_offsets: Int32Array;
+  // true when any rule carries an anchor frame gate -- lets the dispatch
+  // loop skip the per-call kind resolution entirely for gate-free groups.
+  has_frame_gates: boolean;
 }
 
 function compile_rewrite(
@@ -1375,11 +1385,15 @@ function compile_rewrite(
             type_name: rule.anchor,
             value: undefined as string | string[] | undefined,
             text_pred: undefined as string | undefined,
+            at_start: undefined as boolean | undefined,
+            frame_kinds: undefined as string[] | undefined,
           }
         : {
             type_name: rule.anchor.type_name,
             value: rule.anchor.value,
             text_pred: rule.anchor.text_pred,
+            at_start: rule.anchor.at_start,
+            frame_kinds: rule.anchor.frame_kinds,
           };
     const anchor_id = name_to_id.get(anchor_spec.type_name);
     if (anchor_id === undefined) continue;
@@ -1438,6 +1452,11 @@ function compile_rewrite(
       before_pc,
       when_pc,
       max_capture_slots: slots.max_slots,
+      anchor_at_start: anchor_spec.at_start === true,
+      anchor_frame_kinds:
+        anchor_spec.frame_kinds !== undefined && anchor_spec.frame_kinds.length > 0
+          ? anchor_spec.frame_kinds
+          : null,
     });
   }
 
@@ -1484,6 +1503,7 @@ function compile_rewrite(
     program,
     value_pool,
     value_offsets,
+    has_frame_gates: compiled.some((r) => r.anchor_at_start || r.anchor_frame_kinds !== null),
   };
 }
 
@@ -1582,10 +1602,11 @@ export function rewrite_types(
     token_types: string[],
     state: CompiledRewriteState,
     sink: ClaimSink,
+    frames: FrameTable | undefined,
   ): void {
     if (state.compiled.length === 0) return;
     const remap = resolve_appended(state, token_types);
-    run_rewrite_loop_claims(input, tokens, token_types, state, remap, sink);
+    run_rewrite_loop_claims(input, tokens, token_types, state, remap, sink, frames);
   }
 
   const apply_fn: Reclassifier = (input, result) => {
@@ -1595,14 +1616,14 @@ export function rewrite_types(
     // local sink — apply_fn may be called reentrantly while the shared
     // sink is in use by an outer batch.
     const sink = new ClaimBuffer(256);
-    collect(input, tokens, token_types, state, sink);
+    collect(input, tokens, token_types, state, sink, result.frames);
     merge_and_apply_buffer(tokens, sink);
-    return { tokens, token_types };
+    return { tokens, token_types, frames: result.frames };
   };
 
-  const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
+  const claim_fn: ClaimFn = (input, tokens, token_types, sink, frames) => {
     const state = get_state(token_types);
-    collect(input, tokens, token_types, state, sink);
+    collect(input, tokens, token_types, state, sink, frames);
   };
 
   const fn = apply_fn as ClaimingReclassifier;
@@ -1623,10 +1644,27 @@ function run_rewrite_loop_claims(
   state: CompiledRewriteState,
   remap: Int32Array,
   sink: ClaimSink,
+  frames: FrameTable | undefined,
 ): void {
   const count = tokens.length / 3;
   const { anchor_offset, anchor_count, rule_table, trivia, program, value_pool, value_offsets } =
     state;
+
+  // resolve each gated rule's frame-kind names against this table's
+  // vocabulary, aligned with rule_table. unknown names resolve to -1 and
+  // never equal a real kind -- the gate (and so the rule) fails closed.
+  let resolved_kinds: (Int32Array | null)[] | null = null;
+  if (state.has_frame_gates && frames !== undefined) {
+    resolved_kinds = rule_table.map((r) => {
+      if (r.anchor_frame_kinds === null) return null;
+      const out = new Int32Array(r.anchor_frame_kinds.length);
+      for (let k = 0; k < r.anchor_frame_kinds.length; k++) {
+        out[k] = frames.kind_names.indexOf(r.anchor_frame_kinds[k]);
+      }
+      return out;
+    });
+  }
+
   for (let i = 0; i < count; i++) {
     const type = tokens[i * 3];
     if (trivia[type]) continue;
@@ -1636,6 +1674,31 @@ function run_rewrite_loop_claims(
 
     for (let r = 0; r < rcount; r++) {
       const rule = rule_table[offset + r];
+      if (rule.anchor_at_start || rule.anchor_frame_kinds !== null) {
+        // frame gates fail closed when no frame_track stage ran.
+        if (frames === undefined) continue;
+        if (rule.anchor_at_start && frames.at_start[i] !== 1) continue;
+        if (rule.anchor_frame_kinds !== null) {
+          const wanted = resolved_kinds![offset + r]!;
+          // nearest enclosing BRACE frame: paren / bracket frames are
+          // transparent; ending on TOP matches the built-in "top" kind.
+          let fi = frames.active_frame[i];
+          let fr = frames.frames[fi];
+          while (fi > 0 && fr.bracket !== FRAME_BRACKET_BRACE) {
+            fi = fr.parent;
+            fr = frames.frames[fi];
+          }
+          const kind = fr.bracket === FRAME_BRACKET_BRACE ? fr.kind : FRAME_KIND_TOP;
+          let kind_ok = false;
+          for (let k = 0; k < wanted.length; k++) {
+            if (wanted[k] === kind) {
+              kind_ok = true;
+              break;
+            }
+          }
+          if (!kind_ok) continue;
+        }
+      }
       if (rule.anchor_value_id !== -1) {
         const s = tokens[i * 3 + 1];
         const e = tokens[i * 3 + 2];

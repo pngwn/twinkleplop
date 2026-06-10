@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { compile } from "./compiler";
+import { frame_track } from "./frame_track";
 import { tokenize } from "./tokenizer";
 import {
   any_of,
@@ -294,6 +295,97 @@ describe("reclassifier — not combinator", () => {
     const src = "a : b";
     const tokens = types_only(run(src, rules), src);
     expect(tokens.find((t) => t.value === "a")?.type).toBe("identifier");
+  });
+});
+
+describe("reclassifier — anchor frame gates", () => {
+  // js-shaped frame_track so rules can gate on member position and the
+  // enclosing brace kind. mirrors the js_frame_track shape minimally.
+  const tracker = frame_track({
+    punct_type: "punctuation",
+    brackets: {
+      paren: { open: "(", close: ")" },
+      brace: { open: "{", close: "}" },
+      bracket: { open: "[", close: "]" },
+    },
+    brace_kinds: {
+      body_markers: [{ type: "keyword", text: "function", kind: "class" }],
+      prev_rules: [{ prev_type: "operator", prev_texts: ["=>"], kind: "block" }],
+      default_kind: "object",
+      start_kind: "block",
+    },
+    at_start: { reset_chars: ",;" },
+  });
+
+  const gated_rules: RewriteRule[] = [
+    {
+      anchor: {
+        type_name: "identifier",
+        at_start: true,
+        frame_kinds: ["object"],
+      },
+      when: type("operator", ":"),
+      rewrite: "boolean",
+    },
+  ];
+
+  function run_gated(src: string): { type: string; value: string }[] {
+    const raw = tokenize(src, compiled);
+    const out = reclassify([tracker, rewrite_types(gated_rules, { trivia: ["comment"] })])(
+      src,
+      raw,
+    );
+    return types_only(out, src);
+  }
+
+  test("fires at member start of a matching brace kind", () => {
+    const t = run_gated("x = { a : 1 , b : 2 }");
+    expect(t.find((tok) => tok.value === "a")?.type).toBe("boolean");
+    expect(t.find((tok) => tok.value === "b")?.type).toBe("boolean");
+  });
+
+  test("does not fire when at_start was consumed", () => {
+    // `c` sits after `a` with no separator, so it is not at member start.
+    const t = run_gated("x = { a c : 1 }");
+    expect(t.find((tok) => tok.value === "c")?.type).toBe("identifier");
+  });
+
+  test("does not fire in non-matching brace kinds", () => {
+    // the body_markers spec classifies a `function`-keyword brace as
+    // "class", which the rule's frame_kinds excludes.
+    const t = run_gated("function f { a : 1 }");
+    expect(t.find((tok) => tok.value === "a")?.type).toBe("identifier");
+  });
+
+  test("walks past paren frames to the nearest brace", () => {
+    // `b` re-arms at_start after the comma inside the parens; the nearest
+    // BRACE frame is the object, so the gate passes.
+    const t = run_gated("x = { a : f ( c , b : 1 ) }");
+    expect(t.find((tok) => tok.value === "b")?.type).toBe("boolean");
+  });
+
+  test("fails closed without a frame_track stage", () => {
+    const src = "x = { a : 1 }";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([rewrite_types(gated_rules, { trivia: ["comment"] })])(src, raw);
+    const t = types_only(out, src);
+    expect(t.find((tok) => tok.value === "a")?.type).toBe("identifier");
+  });
+
+  test("top kind matches tokens outside any brace", () => {
+    const top_rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "identifier", frame_kinds: ["top"] },
+        when: type("operator", ":"),
+        rewrite: "boolean",
+      },
+    ];
+    const src = "a : 1 ; x = { b : 2 }";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([tracker, rewrite_types(top_rules, { trivia: ["comment"] })])(src, raw);
+    const t = types_only(out, src);
+    expect(t.find((tok) => tok.value === "a")?.type).toBe("boolean");
+    expect(t.find((tok) => tok.value === "b")?.type).toBe("identifier");
   });
 });
 

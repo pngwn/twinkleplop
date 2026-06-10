@@ -836,11 +836,32 @@ export type TokenPatternSpec =
 //                  capture() with that name in `when` and rewrite every
 //                  token inside the captured range to the target type
 //                  (Phase 3). Missing captures silently skip.
+// anchor form of a rewrite rule. extends the single-token filters with
+// optional gates over the shared frame table produced by an upstream
+// frame_track stage:
+//
+//   at_start     — the token must sit at member start (frames.at_start).
+//   frame_kinds  — the kind of the nearest enclosing BRACE frame must be
+//                  one of these names (paren / bracket frames are walked
+//                  through via parent links; "top" matches tokens no
+//                  brace encloses).
+//
+// either gate failing — or the pipeline having no frame_track stage at
+// all — means the rule never fires (fail closed). `type(...)` helper
+// output is assignable here for gate-free anchors.
+export interface AnchorSpec {
+  type_name: string;
+  value?: string | string[];
+  text_pred?: CharPredName;
+  at_start?: boolean;
+  frame_kinds?: string[];
+}
+
 export interface RewriteRule {
   // The anchor identifies the token to rewrite. A bare type name is
-  // sugar for `type(name)` with no value constraint; `type(name, value)`
-  // also filters on the anchor token's source text.
-  anchor: string | TypePatternSpec;
+  // sugar for `type(name)` with no value constraint; the object form
+  // also filters on source text, character class, and frame gates.
+  anchor: string | AnchorSpec;
   before?: TokenPatternSpec;
   // when is optional: a rule with only `before` (and optionally an
   // anchor value constraint) runs a no-op forward scan that always
