@@ -1010,11 +1010,22 @@ const PRECEDENCE_TABLE: Record<string, number> = {
   punctuation: 5,
   operator: 5,
   variable: 10,
+  // parameter sits below property and function: a token claimed as both a
+  // parameter and a member key (TS method-shorthand params with
+  // annotations) keeps the member classification, matching the old
+  // sequential pipelines where param tagging ran last and gated on the
+  // token still being a bare identifier.
+  parameter: 15,
   property: 20,
   function: 30,
   builtin: 40,
   type: 45,
   class_name: 50,
+  // casing-convention constants are an explicit author signal, so they
+  // beat positional inferences (function-call shape, new/extends chains).
+  // matches the old sequential pipelines where upper-snake promotion ran
+  // first and later passes gated on bare identifiers.
+  constant: 55,
   lifetime: 55,
   keyword: 70,
   boolean: 75,
@@ -1025,7 +1036,9 @@ const PRECEDENCE_TABLE: Record<string, number> = {
 };
 const DEFAULT_PRECEDENCE = 25;
 
-function precedence_for(type_name: string): number {
+// exported for claim-producing primitives and language ClaimFns that need
+// table-consistent precedences for their emitted claims.
+export function precedence_for(type_name: string): number {
   const p = PRECEDENCE_TABLE[type_name];
   return p === undefined ? DEFAULT_PRECEDENCE : p;
 }
@@ -1080,15 +1093,27 @@ class ClaimBuffer implements ClaimSink {
 // and never nested (pipeline entries run sequentially).
 const shared_sink = new ClaimBuffer();
 
+// module-scope winner-table scratch reused across merges. claim batches
+// flush once per pipeline run, and with most passes claim-producing the
+// flush is on the hot path -- reallocating two token-count arrays per
+// flush showed up as GC churn in the pipeline benches.
+let winner_type = new Int32Array(1024);
+let winner_prec = new Int32Array(1024);
+
 // merge buffered claims into a dense per-token winner table and apply in
 // one pass. higher precedence wins; on tie, the first-emitted claim wins
 // (we use strict greater-than on later claims).
 function merge_and_apply_buffer(tokens: Uint32Array, buf: ClaimBuffer): void {
   if (buf.count === 0) return;
   const token_count = tokens.length / 3;
+  if (winner_type.length < token_count) {
+    let next = winner_type.length * 2;
+    while (next < token_count) next *= 2;
+    winner_type = new Int32Array(next);
+    winner_prec = new Int32Array(next);
+  }
   // -1 sentinel marks "no winner yet" since valid type_ids are >= 0.
-  const winner_type = new Int32Array(token_count).fill(-1);
-  const winner_prec = new Int32Array(token_count);
+  winner_type.fill(-1, 0, token_count);
   const bti = buf.token_idx;
   const btt = buf.type_id;
   const btp = buf.precedence;
@@ -2079,7 +2104,11 @@ export function reclassify(
       // frame indices. the length-equality heuristic catches the common case
       // (mutate-in-place) without burdening every reclassifier with an
       // explicit `frames: result.frames` pass-through.
-      if (current.frames === undefined && prior_frames !== undefined && current.tokens.length === prior_token_len) {
+      if (
+        current.frames === undefined &&
+        prior_frames !== undefined &&
+        current.tokens.length === prior_token_len
+      ) {
         current = {
           tokens: current.tokens,
           token_types: current.token_types,

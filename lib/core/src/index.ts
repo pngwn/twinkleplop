@@ -8,6 +8,7 @@ export {
   create_language,
   embed_grammars,
   embed_interleaved,
+  precedence_for,
   reclassify,
   rewrite_types,
   tag,
