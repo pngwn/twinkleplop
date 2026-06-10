@@ -46,6 +46,21 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   complex_js 6.5k -> 7.4k); the plain_js regression vs the pre-VM
   baseline is fully erased (now ~+2%). TypeScript improved ~5%. other
   languages within machine variance (~4-5%, per the empty-pipeline rows).
+- `08-claim-contract-unification.json` — captured after every type-only
+  pass became a claim producer (param_list, chunker, matched_bracket, the
+  three fidelity promoters, the js/go custom walkers). pipelines now run
+  as large claim batches against a frozen base stream: claims merge by
+  precedence instead of first-writer-wins, in-place mutation of the
+  caller's tokens / shared token_types is gone, and the TS permutation
+  suite verifies order-independence across the whole batch (it caught one
+  real hidden coupling: TPP silently no-opped unless a sibling had
+  registered "type" first). adjusted for the ~6% slower machine state
+  (see empty-pipeline rows), JS / TS / Svelte / Markdown improved or held
+  vs 07 on both metrics. the reclassifier-only metric for **Go (-18%)
+  and Rust (-10%)** shows the honest cost of claims on promotion-heavy
+  tiny budgets: emit + merge + apply replaces direct token writes
+  (go 4.6 -> 6.0 us, rust 19.6 -> 23.3 us per call). the user-facing
+  `language()` entry point is at parity or better for every language.
 
 ## How to capture a new snapshot
 

@@ -133,7 +133,12 @@ Every language package exports three things at the same name level:
 
 #### 2.3.6. Pure Transforms
 
-Every reclassifier transform follows the same contract: `(input, TokenizeResult) → TokenizeResult`. Transforms clone both `tokens` (Uint32Array memcpy) and `tokenTypes` (small string[] slice) so they never mutate the caller's input. Empty pipelines return the input reference unchanged, so `reclassify([])` is free (~40 ns per call). The convenience `language()` function has no measurable overhead vs a manually composed pipeline.
+Reclassifiers come in two contracts, both pure with respect to the caller's input:
+
+- **Claim producers** (the common case — every type-only pass): expose a `__claim` method that reads a frozen token stream and emits `(token_idx, type_id, precedence)` claims into a sink. They never write token slots; they may append new names to the batch's cloned `token_types`. The pipeline runner batches consecutive claim producers against the same base stream, merges claims by precedence (ties resolve to the earlier pipeline entry), and applies the winners in one flush — cloning `tokens` only when at least one claim fired. Within a batch, ordering does not decide conflicts; precedences do, and this is enforced by permutation tests.
+- **Shape and embed transforms** (`(input, TokenizeResult) → TokenizeResult`): passes that change token count or splice sub-language streams. These clone `tokens` and `token_types` before mutating, run sequentially, and break claim batches.
+
+Empty pipelines return the input reference unchanged, so `reclassify([])` is free (~40 ns per call). The convenience `language()` function has no measurable overhead vs a manually composed pipeline.
 
 ## 3. Language Definition Schema
 
