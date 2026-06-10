@@ -296,6 +296,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
   const punct_cache = new WeakMap<string[], number>();
   const flags_cache = new WeakMap<string[], Uint8Array>();
   const kind_table_cache = new WeakMap<string[], ResolvedKindTables>();
+  const transparent_texts_cache = new WeakMap<string[], (CompiledText[] | null)[]>();
 
   return (input: string, result: TokenizeResult): TokenizeResult => {
     let punct_id = punct_cache.get(result.token_types);
@@ -349,10 +350,14 @@ export function frame_track(spec: FrameSpec): Reclassifier {
         flags_cache.set(result.token_types, type_flags);
       }
       if (compiled.at_start_transparent_texts.length > 0) {
-        transparent_texts = new Array(result.token_types.length).fill(null);
-        for (const entry of compiled.at_start_transparent_texts) {
-          const id = result.token_types.indexOf(entry.type);
-          if (id >= 0) transparent_texts[id] = entry.texts;
+        transparent_texts = transparent_texts_cache.get(result.token_types) ?? null;
+        if (transparent_texts === null) {
+          transparent_texts = new Array(result.token_types.length).fill(null);
+          for (const entry of compiled.at_start_transparent_texts) {
+            const id = result.token_types.indexOf(entry.type);
+            if (id >= 0) transparent_texts[id] = entry.texts;
+          }
+          transparent_texts_cache.set(result.token_types, transparent_texts);
         }
       }
     }
