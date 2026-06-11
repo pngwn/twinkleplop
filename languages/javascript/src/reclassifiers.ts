@@ -38,6 +38,7 @@ import {
 import type {
   ClaimFn,
   ClaimingReclassifier,
+  FrameSpec,
   LanguagePipeline,
   Reclassifier,
   RewriteRule,
@@ -198,11 +199,14 @@ export const claim_property_scope: ClaimingReclassifier = rewrite_types(property
   trivia: ["comment"],
 });
 
-// shared frame_track config for JS/TS/TSX/Svelte. exported so language
-// packages that reuse claim_property_scope insert the same frame_track stage
-// upstream in their own pipelines -- otherwise claim_property_scope has no
-// frames to read from and emits no claims.
-export const js_frame_track = frame_track({
+// shared frame_track config for JS/TS/TSX/Svelte. the spec object is
+// exported separately so TS-family packages can extend it (ternary and
+// stmt flag tracking for type-position rules) without re-stating the
+// bracket / brace-kind / at_start configuration; consumers of
+// claim_property_scope must run a tracker built from this spec (or a
+// superset) upstream -- otherwise it has no frames to read from and
+// emits no claims.
+export const js_frame_spec: FrameSpec = {
   punct_type: "punctuation",
   brackets: {
     paren: { open: "(", close: ")" },
@@ -267,7 +271,9 @@ export const js_frame_track = frame_track({
       { type: "operator", texts: ["*"] },
     ],
   },
-});
+};
+
+export const js_frame_track = frame_track(js_frame_spec);
 
 // ---------------------------------------------------------------------------
 // Tagged template literal embedding

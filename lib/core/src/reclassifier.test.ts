@@ -428,6 +428,160 @@ describe("reclassifier — anchor frame gates", () => {
   });
 });
 
+describe("reclassifier — anchor signal gates", () => {
+  // grammar with a `?` operator and `:` punctuation so the tracker's
+  // ternary counting and stmt flags have something to bite on. the main
+  // toy grammar emits `:` as an operator, which the signal walk ignores.
+  const sig_grammar: Grammar = {
+    name: "sig",
+    states: {
+      root: {
+        rules: [
+          { match: ["let", "const", "if"], boundary: true, token: "keyword" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { range: [["0", "9"]], token: "number" },
+          { match: ["?", "="], token: "operator" },
+          { match: ["(", ")", "{", "}", ",", ";", ":"], token: "punctuation" },
+          { match: [" ", "\t", "\n"] },
+        ],
+      },
+    },
+  };
+  const sig_compiled = compile(sig_grammar);
+
+  const sig_tracker = frame_track({
+    punct_type: "punctuation",
+    brackets: {
+      paren: { open: "(", close: ")" },
+      brace: { open: "{", close: "}" },
+    },
+    ternary: { qmark: { type: "operator", text: "?" }, colon_char: ":" },
+    stmt_flags: [
+      {
+        name: "var_decl",
+        arm: { type: "keyword", texts: ["let", "const"] },
+        clear: { type: "keyword", texts: ["if"] },
+        clear_chars: ";",
+        clear_on_brace_close: true,
+      },
+    ],
+  });
+
+  function run_sig(src: string, rules: RewriteRule[], tracker = sig_tracker) {
+    const raw = tokenize(src, sig_compiled);
+    const out = reclassify([tracker, rewrite_types(rules, { trivia: ["comment"] })])(src, raw);
+    return types_only(out, src);
+  }
+
+  function colon_types(t: { type: string; value: string }[]): string[] {
+    return t.filter((tok) => tok.value === ":").map((tok) => tok.type);
+  }
+
+  test("ternary_colon false fires only on non-ternary colons", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", ternary_colon: false },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("a ? b : c ; x : y", rules);
+    expect(colon_types(t)).toEqual(["punctuation", "boolean"]);
+  });
+
+  test("ternary_colon true fires only on ternary colons", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", ternary_colon: true },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("a ? b : c ; x : y", rules);
+    expect(colon_types(t)).toEqual(["boolean", "punctuation"]);
+  });
+
+  test("stmt_flags_all requires the named flag armed at the anchor", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", stmt_flags_all: ["var_decl"] },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("let a : b ; c : d", rules);
+    expect(colon_types(t)).toEqual(["boolean", "punctuation"]);
+  });
+
+  test("stmt_flags_none rejects while the named flag is armed", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", stmt_flags_none: ["var_decl"] },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("let a : b ; c : d", rules);
+    expect(colon_types(t)).toEqual(["punctuation", "boolean"]);
+  });
+
+  test("signal gates combine", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: {
+          type_name: "punctuation",
+          value: ":",
+          ternary_colon: false,
+          stmt_flags_all: ["var_decl"],
+        },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    // comma does not clear the flag, so the second colon still sees
+    // var_decl armed; the first is blocked by the ternary gate.
+    const t = run_sig("let a = b ? c : d , e : f", rules);
+    expect(colon_types(t)).toEqual(["punctuation", "boolean"]);
+  });
+
+  test("an unknown flag name fails closed", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", stmt_flags_all: ["no_such_flag"] },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("let a : b", rules);
+    expect(colon_types(t)).toEqual(["punctuation"]);
+  });
+
+  test("signal gates fail closed when the tracker has no signal config", () => {
+    const plain_tracker = frame_track({
+      punct_type: "punctuation",
+      brackets: {
+        paren: { open: "(", close: ")" },
+        brace: { open: "{", close: "}" },
+      },
+    });
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", ternary_colon: false },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("x : y", rules, plain_tracker);
+    expect(colon_types(t)).toEqual(["punctuation"]);
+  });
+});
+
 describe("reclassifier — per-rule precedence override", () => {
   // two claim producers in one batch claiming the same token. by the
   // shared table, boolean (75) beats function (30); a rule-level override

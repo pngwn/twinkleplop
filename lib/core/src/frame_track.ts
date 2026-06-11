@@ -27,6 +27,7 @@ import {
   FRAME_KIND_BRACKET,
   FRAME_KIND_PAREN,
   FRAME_KIND_TOP,
+  SIGNAL_TERNARY_COLON,
 } from "./types";
 
 // shared sentinel for the disabled-at_start fast path: a single zero-length
@@ -38,6 +39,9 @@ const EMPTY_U8 = new Uint8Array(0);
 // BraceKindSpec are interned after these.
 const BUILTIN_KIND_NAMES = ["top", "paren", "bracket"];
 
+// stmt flags occupy signals bits 1..7; bit 0 is the ternary colon.
+const MAX_STMT_FLAGS = 7;
+
 // per-type flag bits combined into one Uint8Array so the walk loop does a
 // single table load per token.
 const FLAG_TRIVIA = 1;
@@ -45,6 +49,8 @@ const FLAG_TRANSPARENT = 2;
 const FLAG_TRANSPARENT_TEXTS = 4;
 const FLAG_MARKER = 8;
 const FLAG_ANGLE = 16;
+const FLAG_QMARK = 32;
+const FLAG_STMT = 64;
 
 // a text candidate compiled to char codes for slice-free comparison in
 // the walk loop.
@@ -203,6 +209,72 @@ function resolve_kind_tables(
   };
 }
 
+// per-token_types resolution of ternary / stmt-flag trigger types. cached
+// by token_types reference like the kind tables.
+interface ResolvedSignalTables {
+  qmark_type_id: number;
+  // dense by type id, then by the candidate text's FIRST char code; null
+  // means no stmt trigger on that type / leading char. trigger lists can
+  // run to a couple dozen keywords (statement starters), so the per-token
+  // dispatch buckets by leading char to keep the walk at 1-3 candidates.
+  stmt_lists: ((CompiledStmtRule[] | null)[] | null)[];
+}
+
+// ascii-only first-char bucket table size.
+const STMT_BUCKETS = 128;
+
+function resolve_signal_tables(
+  compiled: CompiledFrameSpec,
+  token_types: string[],
+): ResolvedSignalTables {
+  let qmark_type_id = -1;
+  if (compiled.ternary_qmark_type !== null) {
+    qmark_type_id = token_types.indexOf(compiled.ternary_qmark_type);
+    if (qmark_type_id < 0) {
+      warn_once(
+        "frame_track",
+        `qmark-type:${compiled.ternary_qmark_type}`,
+        `ternary qmark type "${compiled.ternary_qmark_type}" is not in the token vocabulary; ternary colons are never marked`,
+      );
+    }
+  }
+  const stmt_lists: ((CompiledStmtRule[] | null)[] | null)[] = new Array(token_types.length).fill(
+    null,
+  );
+  for (const rule of compiled.stmt_rules) {
+    const id = token_types.indexOf(rule.type);
+    if (id < 0) {
+      warn_once(
+        "frame_track",
+        `stmt-type:${rule.type}`,
+        `stmt flag trigger type "${rule.type}" is not in the token vocabulary; the trigger can never fire`,
+      );
+      continue;
+    }
+    const first = rule.text.codes.length > 0 ? rule.text.codes[0] : 0;
+    if (first >= STMT_BUCKETS) {
+      warn_once(
+        "frame_track",
+        `stmt-text:${rule.type}`,
+        `stmt flag trigger text starting with a non-ascii char cannot be bucketed; the trigger can never fire`,
+      );
+      continue;
+    }
+    let by_char = stmt_lists[id];
+    if (by_char === null) {
+      by_char = new Array(STMT_BUCKETS).fill(null);
+      stmt_lists[id] = by_char;
+    }
+    let list = by_char[first];
+    if (list === null) {
+      list = [];
+      by_char[first] = list;
+    }
+    list.push(rule);
+  }
+  return { qmark_type_id, stmt_lists };
+}
+
 // prev-token classification for a `{` with no pending marker claim. module
 // level (no captures) so the walk loop's depth counters stay in registers
 // instead of a closure context. called once per opening brace.
@@ -243,6 +315,16 @@ function classify_by_prev(
   return kinds.default_kind;
 }
 
+// a (type, text) stmt-flag trigger with its combined arm / clear masks.
+// arm and clear entries sharing a trigger merge into one so the walk does
+// a single text compare per candidate.
+interface CompiledStmtRule {
+  type: string;
+  text: CompiledText;
+  arm_mask: number;
+  clear_mask: number;
+}
+
 // bracket character codes resolved from the spec, plus pre-computed
 // per-bracket constants. -1 means "this bracket is not configured for
 // this language" -- the corresponding char never matches.
@@ -269,6 +351,19 @@ interface CompiledFrameSpec {
   // at_start on the parent frame. null when not configured.
   rearm_kind_ids: Set<number> | null;
   brace_kinds: CompiledBraceKinds | null;
+  // ternary counting. -1 colon code / null qmark when not configured.
+  ternary_qmark_type: string | null;
+  ternary_qmark_text: CompiledText | null;
+  ternary_colon_code: number;
+  // stmt flag tracking. flag i occupies mask bit i (signals bit i + 1).
+  stmt_flag_names: string[];
+  stmt_rules: CompiledStmtRule[];
+  stmt_clear_char_codes: number[];
+  stmt_clear_char_masks: number[];
+  stmt_brace_close_clear_mask: number;
+  // true when ternary or stmt_flags is configured -- gates the signals
+  // array allocation and all per-frame counter work.
+  signals_enabled: boolean;
 }
 
 function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
@@ -309,6 +404,55 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
       "rearm_after_close_kinds is set but brace_kinds is not configured; re-arm never happens",
     );
   }
+
+  const stmt_specs = spec.stmt_flags ?? [];
+  if (stmt_specs.length > MAX_STMT_FLAGS) {
+    warn_once(
+      "frame_track",
+      "stmt-flags-overflow",
+      `stmt_flags declares ${stmt_specs.length} flags but only ${MAX_STMT_FLAGS} signal bits exist; extras are ignored`,
+    );
+  }
+  const stmt_flag_names: string[] = [];
+  const stmt_rule_map = new Map<string, CompiledStmtRule>();
+  const stmt_clear_char_codes: number[] = [];
+  const stmt_clear_char_masks: number[] = [];
+  let stmt_brace_close_clear_mask = 0;
+  const stmt_rule = (type: string, text: string): CompiledStmtRule => {
+    const key = `${type} ${text}`;
+    let rule = stmt_rule_map.get(key);
+    if (rule === undefined) {
+      rule = { type, text: compile_text(text), arm_mask: 0, clear_mask: 0 };
+      stmt_rule_map.set(key, rule);
+    }
+    return rule;
+  };
+  for (let f = 0; f < stmt_specs.length && f < MAX_STMT_FLAGS; f++) {
+    const flag = stmt_specs[f];
+    const mask = 1 << f;
+    stmt_flag_names.push(flag.name);
+    for (const text of flag.arm.texts) {
+      stmt_rule(flag.arm.type, text).arm_mask |= mask;
+    }
+    if (flag.clear !== undefined) {
+      for (const text of flag.clear.texts) {
+        stmt_rule(flag.clear.type, text).clear_mask |= mask;
+      }
+    }
+    if (flag.clear_chars !== undefined) {
+      for (let c = 0; c < flag.clear_chars.length; c++) {
+        const code = flag.clear_chars.charCodeAt(c);
+        const existing = stmt_clear_char_codes.indexOf(code);
+        if (existing >= 0) stmt_clear_char_masks[existing] |= mask;
+        else {
+          stmt_clear_char_codes.push(code);
+          stmt_clear_char_masks.push(mask);
+        }
+      }
+    }
+    if (flag.clear_on_brace_close === true) stmt_brace_close_clear_mask |= mask;
+  }
+
   return {
     punct_type: spec.punct_type,
     paren_open: single(spec.brackets.paren?.open),
@@ -323,7 +467,128 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
     at_start_enabled: spec.at_start !== undefined,
     rearm_kind_ids,
     brace_kinds,
+    ternary_qmark_type: spec.ternary?.qmark.type ?? null,
+    ternary_qmark_text: spec.ternary !== undefined ? compile_text(spec.ternary.qmark.text) : null,
+    ternary_colon_code:
+      spec.ternary !== undefined && spec.ternary.colon_char.length > 0
+        ? spec.ternary.colon_char.charCodeAt(0)
+        : -1,
+    stmt_flag_names,
+    stmt_rules: Array.from(stmt_rule_map.values()),
+    stmt_clear_char_codes,
+    stmt_clear_char_masks,
+    stmt_brace_close_clear_mask,
+    signals_enabled: spec.ternary !== undefined || stmt_flag_names.length > 0,
   };
+}
+
+// dedicated signals pass: per-frame ternary counters and stmt flag masks,
+// walked over the same bracket structure as the main loop but in its own
+// tight function. kept OUT of the main walk on purpose -- signal branches
+// woven into that loop degraded its jit code for every frame_track
+// instance in the process once a signals-enabled tracker had run. module
+// level so the loop closes over nothing.
+function compute_signals(
+  input: string,
+  tokens: Uint32Array,
+  n: number,
+  compiled: CompiledFrameSpec,
+  tables: ResolvedSignalTables,
+  type_flags: Uint8Array,
+  punct_id: number,
+  signals: Uint8Array,
+): void {
+  const qmark_text = compiled.ternary_qmark_text;
+  const colon_code = compiled.ternary_colon_code;
+  const stmt_lists = tables.stmt_lists;
+  const clear_codes = compiled.stmt_clear_char_codes;
+  const clear_masks = compiled.stmt_clear_char_masks;
+  const clear_count = clear_codes.length;
+  const brace_close_clear_mask = compiled.stmt_brace_close_clear_mask;
+  const paren_open = compiled.paren_open;
+  const paren_close = compiled.paren_close;
+  const brace_open = compiled.brace_open;
+  const brace_close = compiled.brace_close;
+  const bracket_open = compiled.bracket_open;
+  const bracket_close = compiled.bracket_close;
+
+  // parallel per-frame stacks, mirroring the main walk's push / pop
+  // conditions exactly so frame identity lines up between the passes.
+  const stack_qmark: number[] = [0];
+  const stack_flags: number[] = [0];
+
+  for (let i = 0; i < n; i++) {
+    const base = i * 3;
+    const ttype = tokens[base];
+    const flags = type_flags[ttype];
+    let signal = 0;
+
+    if ((flags & (FLAG_QMARK | FLAG_STMT)) !== 0) {
+      if ((flags & FLAG_QMARK) !== 0 && qmark_text !== null) {
+        const s = tokens[base + 1];
+        const e = tokens[base + 2];
+        if (text_matches(input, s, e, qmark_text)) {
+          stack_qmark[stack_qmark.length - 1]++;
+        }
+      }
+      if ((flags & FLAG_STMT) !== 0) {
+        const by_char = stmt_lists[ttype];
+        if (by_char !== null) {
+          const s = tokens[base + 1];
+          const e = tokens[base + 2];
+          const first = input.charCodeAt(s);
+          const candidates = first < STMT_BUCKETS ? by_char[first] : null;
+          if (candidates !== null) {
+            for (let m = 0; m < candidates.length; m++) {
+              if (text_matches(input, s, e, candidates[m].text)) {
+                const top = stack_flags.length - 1;
+                stack_flags[top] =
+                  (stack_flags[top] | candidates[m].arm_mask) & ~candidates[m].clear_mask;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (ttype === punct_id) {
+      const s = tokens[base + 1];
+      const e = tokens[base + 2];
+      for (let p = s; p < e; p++) {
+        const c = input.charCodeAt(p);
+        if (c === paren_open || c === brace_open || c === bracket_open) {
+          stack_qmark.push(0);
+          stack_flags.push(0);
+        } else if (c === paren_close || c === bracket_close) {
+          if (stack_qmark.length > 1) {
+            stack_qmark.pop();
+            stack_flags.pop();
+          }
+        } else if (c === brace_close) {
+          if (stack_qmark.length > 1) {
+            stack_qmark.pop();
+            stack_flags.pop();
+            // a closing brace ends the statement that armed any
+            // close-cleared flag on the parent frame.
+            stack_flags[stack_flags.length - 1] &= ~brace_close_clear_mask;
+          }
+        } else if (c === colon_code && stack_qmark[stack_qmark.length - 1] > 0) {
+          stack_qmark[stack_qmark.length - 1]--;
+          signal |= SIGNAL_TERNARY_COLON;
+        } else if (clear_count > 0) {
+          for (let m = 0; m < clear_count; m++) {
+            if (c === clear_codes[m]) {
+              stack_flags[stack_flags.length - 1] &= ~clear_masks[m];
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    signals[i] = signal | (stack_flags[stack_flags.length - 1] << 1);
+  }
 }
 
 // pre-compile spec once. closures over the compiled spec capture the
@@ -337,6 +602,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
   const flags_cache = new WeakMap<string[], Uint8Array>();
   const kind_table_cache = new WeakMap<string[], ResolvedKindTables>();
   const transparent_texts_cache = new WeakMap<string[], (CompiledText[] | null)[]>();
+  const signal_table_cache = new WeakMap<string[], ResolvedSignalTables>();
 
   return (input: string, result: TokenizeResult): TokenizeResult => {
     let punct_id = punct_cache.get(result.token_types);
@@ -362,6 +628,16 @@ export function frame_track(spec: FrameSpec): Reclassifier {
       }
     }
 
+    const signals_enabled = compiled.signals_enabled;
+    let signal_tables: ResolvedSignalTables | null = null;
+    if (signals_enabled) {
+      signal_tables = signal_table_cache.get(result.token_types) ?? null;
+      if (signal_tables === null) {
+        signal_tables = resolve_signal_tables(compiled, result.token_types);
+        signal_table_cache.set(result.token_types, signal_tables);
+      }
+    }
+
     // single per-type flags byte combining every per-token table lookup
     // (trivia, transparency, marker / angle membership) -- the hot loop
     // reads one Uint8Array slot per token and branches off bits. the
@@ -371,7 +647,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     // at_start nor brace_kinds is configured.
     let type_flags: Uint8Array | null = null;
     let transparent_texts: (CompiledText[] | null)[] | null = null;
-    if (compiled.at_start_enabled || kinds !== null) {
+    if (compiled.at_start_enabled || kinds !== null || signals_enabled) {
       type_flags = flags_cache.get(result.token_types) ?? null;
       if (type_flags === null) {
         const types = result.token_types;
@@ -392,6 +668,14 @@ export function frame_track(spec: FrameSpec): Reclassifier {
           }
           if (kind_tables.angle_type_id >= 0) {
             type_flags[kind_tables.angle_type_id] |= FLAG_ANGLE;
+          }
+        }
+        if (signal_tables !== null) {
+          if (signal_tables.qmark_type_id >= 0) {
+            type_flags[signal_tables.qmark_type_id] |= FLAG_QMARK;
+          }
+          for (let id = 0; id < signal_tables.stmt_lists.length; id++) {
+            if (signal_tables.stmt_lists[id] !== null) type_flags[id] |= FLAG_STMT;
           }
         }
         flags_cache.set(result.token_types, type_flags);
@@ -430,6 +714,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     // skip allocating the at_start array when tracking is disabled. consumers
     // gate their use on whether the spec configured at_start to begin with.
     const at_start = at_start_enabled ? new Uint8Array(n) : EMPTY_U8;
+    const signals = signals_enabled ? new Uint8Array(n) : EMPTY_U8;
     const frames: FrameRecord[] = [
       { bracket: -1, kind: FRAME_KIND_TOP, enter_idx: -1, parent: -1 },
     ];
@@ -640,7 +925,25 @@ export function frame_track(spec: FrameSpec): Reclassifier {
       depths[base + 2] = bracket_depth;
     }
 
-    const table: FrameTable = { active_frame, depths, at_start, frames, kind_names };
+    // signals run as a second, self-contained pass so the main walk's code
+    // is untouched for the (vastly more common) configs that don't track
+    // them. weaving the signal branches into the loop above measurably
+    // degraded the jit code shared by ALL frame_track instances once one
+    // signals-enabled tracker had run (~14% on signal-free pipelines);
+    // the dedicated pass keeps that cost on the opted-in pipeline only.
+    if (signals_enabled && type_flags !== null && signal_tables !== null) {
+      compute_signals(input, tokens, n, compiled, signal_tables, type_flags, punct_id, signals);
+    }
+
+    const table: FrameTable = {
+      active_frame,
+      depths,
+      at_start,
+      frames,
+      kind_names,
+      signals,
+      flag_names: compiled.stmt_flag_names,
+    };
     // attach to result -- callers must clone result.tokens before mutating
     // anyway (per the reclassifier contract), and frames is computed off
     // tokens so a later splice-changing reclassifier invalidates it. by

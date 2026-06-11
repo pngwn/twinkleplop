@@ -13,7 +13,7 @@
 import { build_annotation_extractor } from "./annotation";
 import { debug_enabled, warn_once } from "./debug";
 import { tokenize } from "./tokenizer";
-import { FRAME_BRACKET_BRACE, FRAME_KIND_TOP } from "./types";
+import { FRAME_BRACKET_BRACE, FRAME_KIND_TOP, SIGNAL_TERNARY_COLON } from "./types";
 import type {
   AnyOfPatternSpec,
   BalancedPatternSpec,
@@ -196,6 +196,10 @@ const NEVER_MATCHES = -1;
 // use `=== NO_MATCH` checks rather than sentinel-aware arithmetic so the
 // value is otherwise opaque.
 const NO_MATCH = -2;
+
+// shared empty signals array for dispatch when no frame table is present,
+// so the signal-gate path is a single length check either way.
+const EMPTY_SIGNALS = new Uint8Array(0);
 
 // ---------------------------------------------------------------------------
 // bytecode compilation (forward matcher)
@@ -2007,6 +2011,11 @@ export function disassemble_rules(
     const gates: string[] = [];
     if (r.anchor_at_start) gates.push("at_start");
     if (r.anchor_frame_kinds !== null) gates.push(`frame_kinds=${r.anchor_frame_kinds.join(",")}`);
+    if (r.anchor_ternary_colon >= 0) gates.push(`ternary_colon=${r.anchor_ternary_colon === 1}`);
+    if (r.anchor_flags_all !== null) gates.push(`stmt_flags_all=${r.anchor_flags_all.join(",")}`);
+    if (r.anchor_flags_none !== null) {
+      gates.push(`stmt_flags_none=${r.anchor_flags_none.join(",")}`);
+    }
     const target =
       r.anchor_target_id >= 0
         ? target_name(r.anchor_target_id)
@@ -2229,6 +2238,12 @@ interface CompiledRule {
   anchor_at_start: boolean;
   anchor_frame_kinds: string[] | null;
   anchor_frame_direct: boolean;
+  // signal gates over the frame table's per-token signals array. ternary
+  // is -1 unset / 0 require-clear / 1 require-set; flag names stay
+  // symbolic and resolve to bit masks against flag_names per call.
+  anchor_ternary_colon: number;
+  anchor_flags_all: string[] | null;
+  anchor_flags_none: string[] | null;
   // dispatch fast paths derived at compile time, both -1 when unused:
   // anchor_must_contain rejects anchors whose source text lacks this char
   // before any vm entry (arrow-mode params rules anchor every punctuation
@@ -2278,6 +2293,8 @@ interface CompiledRewriteState {
   // true when any rule carries an anchor frame gate -- lets the dispatch
   // loop skip the per-call kind resolution entirely for gate-free groups.
   has_frame_gates: boolean;
+  // true when any rule gates on the signals array (ternary / stmt flags).
+  has_signal_gates: boolean;
 }
 
 function compile_rewrite(
@@ -2315,6 +2332,9 @@ function compile_rewrite(
             at_start: undefined as boolean | undefined,
             frame_kinds: undefined as string[] | undefined,
             frame_direct: undefined as boolean | undefined,
+            ternary_colon: undefined as boolean | undefined,
+            stmt_flags_all: undefined as string[] | undefined,
+            stmt_flags_none: undefined as string[] | undefined,
           }
         : {
             type_name: rule.anchor.type_name,
@@ -2323,6 +2343,9 @@ function compile_rewrite(
             at_start: rule.anchor.at_start,
             frame_kinds: rule.anchor.frame_kinds,
             frame_direct: rule.anchor.frame_direct,
+            ternary_colon: rule.anchor.ternary_colon,
+            stmt_flags_all: rule.anchor.stmt_flags_all,
+            stmt_flags_none: rule.anchor.stmt_flags_none,
           };
     const anchor_id = name_to_id.get(anchor_spec.type_name);
     if (anchor_id === undefined) {
@@ -2441,6 +2464,16 @@ function compile_rewrite(
           ? anchor_spec.frame_kinds
           : null,
       anchor_frame_direct: anchor_spec.frame_direct === true,
+      anchor_ternary_colon:
+        anchor_spec.ternary_colon === undefined ? -1 : anchor_spec.ternary_colon ? 1 : 0,
+      anchor_flags_all:
+        anchor_spec.stmt_flags_all !== undefined && anchor_spec.stmt_flags_all.length > 0
+          ? anchor_spec.stmt_flags_all
+          : null,
+      anchor_flags_none:
+        anchor_spec.stmt_flags_none !== undefined && anchor_spec.stmt_flags_none.length > 0
+          ? anchor_spec.stmt_flags_none
+          : null,
       anchor_must_contain,
       inline_when_type,
       inline_when_values,
@@ -2494,6 +2527,10 @@ function compile_rewrite(
     value_offsets,
     params_specs: ctx.params_specs,
     has_frame_gates: compiled.some((r) => r.anchor_at_start || r.anchor_frame_kinds !== null),
+    has_signal_gates: compiled.some(
+      (r) =>
+        r.anchor_ternary_colon >= 0 || r.anchor_flags_all !== null || r.anchor_flags_none !== null,
+    ),
   };
 }
 
@@ -2677,6 +2714,57 @@ function run_rewrite_loop_claims(
     );
   }
 
+  // resolve signal-gate flag names to bit masks against this table's
+  // flag_names, aligned with rule_table. an unknown name in EITHER list
+  // poisons the require-all mask with a bit no signal byte can carry, so
+  // the rule fails closed instead of silently widening.
+  let flags_all_masks: Int32Array | null = null;
+  let flags_none_masks: Int32Array | null = null;
+  const signals = frames !== undefined ? frames.signals : EMPTY_SIGNALS;
+  if (state.has_signal_gates && frames !== undefined && signals.length > 0) {
+    flags_all_masks = new Int32Array(rule_table.length);
+    flags_none_masks = new Int32Array(rule_table.length);
+    for (let r = 0; r < rule_table.length; r++) {
+      const rule = rule_table[r];
+      if (rule.anchor_flags_all === null && rule.anchor_flags_none === null) continue;
+      let all_mask = 0;
+      let none_mask = 0;
+      let dead = false;
+      const resolve = (names: string[] | null): number => {
+        if (names === null) return 0;
+        let mask = 0;
+        for (const name of names) {
+          const idx = frames.flag_names.indexOf(name);
+          if (idx < 0) {
+            dead = true;
+            if (debug_enabled()) {
+              warn_once(
+                "rewrite_types",
+                `stmt-flag:${name}`,
+                `anchor stmt flag "${name}" is not in the frame table's flag names; the gate can never pass`,
+              );
+            }
+            continue;
+          }
+          mask |= 1 << (idx + 1);
+        }
+        return mask;
+      };
+      all_mask = resolve(rule.anchor_flags_all);
+      none_mask = resolve(rule.anchor_flags_none);
+      if (dead) all_mask |= 1 << 30;
+      flags_all_masks[r] = all_mask;
+      flags_none_masks[r] = none_mask;
+    }
+  }
+  if (state.has_signal_gates && signals.length === 0 && debug_enabled()) {
+    warn_once(
+      "rewrite_types",
+      "signals-missing",
+      "rules with signal gates ran without ternary / stmt_flags configured in the frame_track stage; gated rules are disabled",
+    );
+  }
+
   for (let i = 0; i < count; i++) {
     const type = tokens[i * 3];
     if (trivia[type]) continue;
@@ -2718,6 +2806,26 @@ function run_rewrite_loop_claims(
             }
           }
           if (!kind_ok) continue;
+        }
+      }
+      if (
+        rule.anchor_ternary_colon >= 0 ||
+        rule.anchor_flags_all !== null ||
+        rule.anchor_flags_none !== null
+      ) {
+        // signal gates fail closed when the upstream frame_track stage
+        // did not configure ternary / stmt_flags tracking.
+        if (i >= signals.length) continue;
+        const sig = signals[i];
+        if (rule.anchor_ternary_colon >= 0) {
+          if ((sig & SIGNAL_TERNARY_COLON) !== rule.anchor_ternary_colon) continue;
+        }
+        if (flags_all_masks !== null) {
+          const all = flags_all_masks[offset + r];
+          if ((sig & all) !== all) continue;
+          if ((sig & flags_none_masks![offset + r]) !== 0) continue;
+        } else if (rule.anchor_flags_all !== null || rule.anchor_flags_none !== null) {
+          continue;
         }
       }
       if (rule.anchor_value_id !== -1) {

@@ -128,6 +128,11 @@ export interface FrameRecord {
   parent: number;
 }
 
+// bit 0 of FrameTable.signals: a colon character in this token consumed a
+// pending ternary qmark on the active frame. stmt flags occupy bits 1..7
+// (stmt_flags[i] maps to bit i + 1).
+export const SIGNAL_TERNARY_COLON = 1;
+
 export interface FrameTable {
   // active_frame[i] = index into `frames` for the frame on top after
   // token i has been processed. tokens that are themselves closers point
@@ -152,6 +157,15 @@ export interface FrameTable {
   // consumers resolve their kind names against this once per call and
   // compare integer ids in the loop.
   kind_names: string[];
+  // per-token signal bits. bit 0 (SIGNAL_TERNARY_COLON) marks tokens whose
+  // colon char consumed a pending ternary qmark; bits 1..7 snapshot the
+  // active frame's stmt flags AFTER the token was processed. empty when
+  // neither FrameSpec.ternary nor FrameSpec.stmt_flags is configured --
+  // gates over signals fail closed against the empty array.
+  signals: Uint8Array;
+  // stmt flag bit positions by name: flag_names[i] occupies signals bit
+  // i + 1. empty when stmt_flags is not configured.
+  flag_names: string[];
 }
 
 export interface FrameSpec {
@@ -176,6 +190,48 @@ export interface FrameSpec {
   // table's kind_names array maps kind ids back to spec names. when
   // omitted, brace frames keep the FRAME_KIND_TOP placeholder.
   brace_kinds?: BraceKindSpec;
+  // optional per-frame ternary counting. when set, the table's signals
+  // array marks colons that consumed a pending ternary qmark so colon
+  // anchor rules can tell `cond ? a : b` from annotation colons.
+  ternary?: TernarySpec;
+  // optional named statement-context flags surfaced per token in the
+  // signals array. at most 7 flags (signals bits 1..7).
+  stmt_flags?: StmtFlagSpec[];
+}
+
+// per-frame ternary tracking. a token matching `qmark` increments the
+// active frame's counter; a `colon_char` inside a punct_type token with a
+// positive counter decrements it and sets SIGNAL_TERNARY_COLON on that
+// token instead of leaving the colon to read as an annotation. counters
+// live on the frame that saw the qmark, so a ternary inside parens never
+// marks a colon outside them. counting is mode-blind: type-level `? :`
+// pairs (conditional types) are balanced, so the net effect at any later
+// colon matches a type-aware walker.
+export interface TernarySpec {
+  // token type + exact source text that increments the counter. exact
+  // matching keeps `?.` `??` `?:` from counting.
+  qmark: { type: string; text: string };
+  // single colon character consumed against pending qmarks during the
+  // punct_type char walk.
+  colon_char: string;
+}
+
+// a named statement-context flag. armed by exact-text tokens, cleared by
+// other exact-text tokens, separator chars, or a brace-frame close. the
+// flag lives on the frame that armed it: nested frames open with the flag
+// clear and a pop discards it. canonical case: TS var-decl annotations,
+// where a colon rule needs "a let/const/var appeared earlier in this
+// statement at this nesting level".
+export interface StmtFlagSpec {
+  name: string;
+  arm: { type: string; texts: string[] };
+  clear?: { type: string; texts: string[] };
+  // single chars (inside punct_type tokens) that clear the flag on the
+  // active frame. typically ";".
+  clear_chars?: string;
+  // also clear the flag on the parent frame when a brace frame pops --
+  // a closing `}` ends the statement that armed the flag.
+  clear_on_brace_close?: boolean;
 }
 
 // declarative brace-kind classification. the language describes how to
@@ -759,6 +815,12 @@ export type TokenPatternSpec =
 //                  inside parens then only matches the built-in "paren"
 //                  kind, so member-position rules can require the brace
 //                  body itself rather than any nesting depth within it.
+//   ternary_colon — require (true) or forbid (false) that a colon char in
+//                  the anchor consumed a pending ternary qmark. needs
+//                  FrameSpec.ternary configured upstream.
+//   stmt_flags_all / stmt_flags_none — every named stmt flag must be
+//                  armed / no named flag may be armed on the anchor's
+//                  frame. needs FrameSpec.stmt_flags configured upstream.
 //
 // either gate failing — or the pipeline having no frame_track stage at
 // all — means the rule never fires (fail closed). `type(...)` helper
@@ -770,6 +832,9 @@ export interface AnchorSpec {
   at_start?: boolean;
   frame_kinds?: string[];
   frame_direct?: boolean;
+  ternary_colon?: boolean;
+  stmt_flags_all?: string[];
+  stmt_flags_none?: string[];
 }
 
 export interface RewriteRule {

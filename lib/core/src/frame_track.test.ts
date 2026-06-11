@@ -9,6 +9,7 @@ import {
   FRAME_KIND_BRACKET,
   FRAME_KIND_PAREN,
   FRAME_KIND_TOP,
+  SIGNAL_TERNARY_COLON,
 } from "./types";
 import { reclassify } from "./reclassifier";
 import type { Grammar, FrameTable } from "./types";
@@ -416,5 +417,149 @@ describe("frame_track — declarative brace kinds", () => {
     const f = run_frames("a { b }");
     expect(f.frames[1].kind).toBe(FRAME_KIND_TOP);
     expect(f.kind_names).toEqual(["top", "paren", "bracket"]);
+  });
+});
+
+describe("frame_track — ternary and stmt flag signals", () => {
+  // grammar with a `?` operator and `:` punctuation so ternary pairs and
+  // annotation colons are distinguishable, plus declarator keywords for
+  // the stmt flag.
+  const sig: Grammar = {
+    name: "sig",
+    states: {
+      root: {
+        rules: [
+          { match: ["let", "const", "if", "return"], boundary: true, token: "keyword" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { range: [["0", "9"]], token: "number" },
+          { match: ["?", "="], token: "operator" },
+          { match: ["(", ")", "{", "}", "[", "]", ",", ";", ":"], token: "punctuation" },
+          { match: [" ", "\t", "\n"] },
+        ],
+      },
+    },
+  };
+  const sig_compiled = compile(sig);
+
+  const tracker = frame_track({
+    punct_type: "punctuation",
+    brackets: {
+      paren: { open: "(", close: ")" },
+      brace: { open: "{", close: "}" },
+      bracket: { open: "[", close: "]" },
+    },
+    ternary: { qmark: { type: "operator", text: "?" }, colon_char: ":" },
+    stmt_flags: [
+      {
+        name: "var_decl",
+        arm: { type: "keyword", texts: ["let", "const"] },
+        clear: { type: "keyword", texts: ["if", "return"] },
+        clear_chars: ";",
+        clear_on_brace_close: true,
+      },
+    ],
+  });
+
+  // flag 0 occupies signals bit 1.
+  const VAR_DECL = 1 << 1;
+
+  function run_signals(input: string): { table: FrameTable; toks: string[] } {
+    const raw = tokenize(input, sig_compiled);
+    const out = reclassify([tracker])(input, raw);
+    expect(out.frames).toBeDefined();
+    const table = out.frames as FrameTable;
+    const toks: string[] = [];
+    for (let i = 0; i < out.tokens.length / 3; i++) {
+      toks.push(input.slice(out.tokens[i * 3 + 1], out.tokens[i * 3 + 2]));
+    }
+    return { table, toks };
+  }
+
+  // index of the nth token whose text contains needle. containment rather
+  // than equality so coalesced punctuation bundles still match.
+  function find_tok(toks: string[], needle: string, nth = 0): number {
+    let seen = 0;
+    for (let i = 0; i < toks.length; i++) {
+      if (toks[i].includes(needle)) {
+        if (seen === nth) return i;
+        seen++;
+      }
+    }
+    throw new Error(`token containing "${needle}" #${nth} not found in [${toks.join(" ")}]`);
+  }
+
+  test("ternary colon is marked, annotation colon is not", () => {
+    const { table, toks } = run_signals("a ? b : c ; x : y");
+    const ternary = find_tok(toks, ":", 0);
+    const annotation = find_tok(toks, ":", 1);
+    expect(table.signals[ternary] & SIGNAL_TERNARY_COLON).toBe(SIGNAL_TERNARY_COLON);
+    expect(table.signals[annotation] & SIGNAL_TERNARY_COLON).toBe(0);
+  });
+
+  test("counters are per frame", () => {
+    const { table, toks } = run_signals("x ? f ( a ? b : c ) : d");
+    const inner = find_tok(toks, ":", 0);
+    const outer = find_tok(toks, ":", 1);
+    expect(table.signals[inner] & SIGNAL_TERNARY_COLON).toBe(SIGNAL_TERNARY_COLON);
+    expect(table.signals[outer] & SIGNAL_TERNARY_COLON).toBe(SIGNAL_TERNARY_COLON);
+  });
+
+  test("a qmark dies with its frame", () => {
+    const { table, toks } = run_signals("f ( a ? b ) : c");
+    const colon = find_tok(toks, ":");
+    expect(table.signals[colon] & SIGNAL_TERNARY_COLON).toBe(0);
+  });
+
+  test("chars in a coalesced punctuation token process in order", () => {
+    // the close pops the paren frame before the colon is tested against
+    // the top frame's pending qmark, even when both share one token.
+    const { table, toks } = run_signals("x ? f ( a ): b");
+    const colon = find_tok(toks, ":");
+    expect(table.signals[colon] & SIGNAL_TERNARY_COLON).toBe(SIGNAL_TERNARY_COLON);
+  });
+
+  test("stmt flag arms on a declarator and clears on the separator char", () => {
+    const { table, toks } = run_signals("let a : b ; c : d");
+    const first = find_tok(toks, ":", 0);
+    const second = find_tok(toks, ":", 1);
+    expect(table.signals[first] & VAR_DECL).toBe(VAR_DECL);
+    expect(table.signals[second] & VAR_DECL).toBe(0);
+  });
+
+  test("stmt flag is frame local", () => {
+    const { table, toks } = run_signals("let a = f ( b : c ) : d");
+    const inner = find_tok(toks, ":", 0);
+    const outer = find_tok(toks, ":", 1);
+    expect(table.signals[inner] & VAR_DECL).toBe(0);
+    expect(table.signals[outer] & VAR_DECL).toBe(VAR_DECL);
+  });
+
+  test("clear keywords disarm the flag", () => {
+    const { table, toks } = run_signals("let a if b : c");
+    const colon = find_tok(toks, ":");
+    expect(table.signals[colon] & VAR_DECL).toBe(0);
+  });
+
+  test("a brace close clears the parent frame's flag", () => {
+    const { table, toks } = run_signals("let a = { b } : c");
+    const colon = find_tok(toks, ":");
+    expect(table.signals[colon] & VAR_DECL).toBe(0);
+  });
+
+  test("flag_names exposes declared flags in bit order", () => {
+    const { table } = run_signals("a");
+    expect(table.flag_names).toEqual(["var_decl"]);
+  });
+
+  test("signals stays empty when neither ternary nor stmt_flags is configured", () => {
+    const f = run_frames("a ( b )");
+    expect(f.signals.length).toBe(0);
+    expect(f.flag_names).toEqual([]);
   });
 });

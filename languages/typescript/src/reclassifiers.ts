@@ -17,6 +17,7 @@ import {
   always,
   as_claim_producer,
   embed_interleaved,
+  frame_track,
   make_token_view,
   promote_by_text_set,
   rewrite_types,
@@ -27,7 +28,7 @@ import {
   claim_property_scope,
   class_name_promoter,
   function_variable_rules,
-  js_frame_track,
+  js_frame_spec,
   promote_boolean_literals,
   promote_call_site_functions,
   promote_js_const_bindings,
@@ -56,6 +57,54 @@ export const promote_builtin_types: Reclassifier = promote_by_text_set(
   "type",
   BUILTIN_TYPES,
 );
+
+// the shared js frame spec extended with the stream-continuous state the
+// type-position rules need: per-frame ternary counting (so an annotation
+// colon is distinguishable from `cond ? a : b`) and a var_decl flag
+// mirroring type_position_promoter's in_var_decl (armed by a declarator
+// keyword, cleared by statement starters, `;`, and a closing brace).
+// counting is mode-blind, but type-level `? :` pairs (conditional types)
+// are balanced, so the net effect at any later colon matches TPP's
+// mode-aware walker.
+export const ts_frame_track = frame_track({
+  ...js_frame_spec,
+  ternary: { qmark: { type: "operator", text: "?" }, colon_char: ":" },
+  stmt_flags: [
+    {
+      name: "var_decl",
+      arm: { type: "keyword", texts: ["let", "const", "var"] },
+      clear: {
+        type: "keyword",
+        texts: [
+          "if",
+          "else",
+          "for",
+          "while",
+          "do",
+          "switch",
+          "case",
+          "break",
+          "continue",
+          "throw",
+          "try",
+          "catch",
+          "finally",
+          "function",
+          "class",
+          "interface",
+          "enum",
+          "namespace",
+          "module",
+          "import",
+          "export",
+          "return",
+        ],
+      },
+      clear_chars: ";",
+      clear_on_brace_close: true,
+    },
+  ],
+});
 
 // type-only declarations whose name positions aren't reached by
 // type_position_promoter:
@@ -1220,8 +1269,10 @@ export const retag_generic_angles: Reclassifier = (input, result) => {
 
 export const reclassifiers: LanguagePipeline = [
   // shared scope-stack pre-pass. required by claim_property_scope so it can
-  // read brace depths and at_start instead of maintaining its own.
-  always(js_frame_track, "type_claim"),
+  // read brace depths and at_start instead of maintaining its own. the TS
+  // tracker extends the js spec with ternary / var_decl signals for the
+  // type-position rules.
+  always(ts_frame_track, "type_claim"),
   // constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
   // so subsequent passes see the promoted stream (same ordering as JS).
   tag(promote_js_constants, ["constant"]),
