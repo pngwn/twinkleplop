@@ -748,6 +748,58 @@ export interface NotPatternSpec {
   inner: TypePatternSpec;
 }
 
+// Char-aware parameter-list walker: locate an opening "(" from the current
+// position, walk its separator-split chunks, and record each tagged name
+// token as one capture span under `into` (claimed by a `{ into: type }`
+// rewrite map like any capture). The construct exists because grammars
+// coalesce adjacent punctuation ("((", "({"), so paren walking needs
+// character offsets the token-granular combinators cannot express:
+// detection composes from ordinary anchors, gates, and combinators; the
+// walk runs as one opcode.
+export interface ParamsPatternSpec {
+  __kind: "params";
+  // capture name receiving one single-token span per tagged parameter.
+  into: string;
+  // how to locate the opening paren:
+  //  "starts_with" — the next non-trivia token must be punctuation whose
+  //                  text begins with "(" (function / method shapes).
+  //  "scan"        — scan forward through punctuation counting [] and {}
+  //                  depth to the first "(" at top depth (rides over
+  //                  go-style [T any] generics). the first non-trivia
+  //                  token must be punctuation; an unbalanced close or
+  //                  the scan bound fails the branch.
+  //  "arrow"       — the ANCHOR token carries the "(": try each "("
+  //                  offset and accept the first whose matching close
+  //                  ends its token and is followed by "=>". must be the
+  //                  first element of `when`.
+  find_open: "starts_with" | "scan" | "arrow";
+  // chunk strategies:
+  //  "first_ident"   — tag the first identifier at depth 1 of each chunk;
+  //                    `default_introducer` suspends tagging until the
+  //                    next chunk; `transparent_operators` pass through.
+  //  "carry_pending" — bare single-name chunks pend; a chunk with a type
+  //                    after its first name promotes itself and all
+  //                    pending names (go's `x, y int`).
+  strategy: "first_ident" | "carry_pending";
+  // single-char chunk separator at top depth. usually ",".
+  separator: string;
+  default_introducer?: string;
+  transparent_operators?: string[];
+  // skip a leading generics group before locating the paren: token-text
+  // angle counting over operator tokens (`<` `>` `>>` `>>>`).
+  skip_generics: boolean;
+  // arrow mode: allow `(...): T =>` by scanning a return type annotation
+  // between the close and the arrow.
+  skip_ts_return_type: boolean;
+  // arrow mode: reject a candidate whose preceding token ends with ":"
+  // unless directly inside an object-kind brace frame (a `: (x) => y`
+  // type signature vs an object-literal function value). requires an
+  // upstream frame_track stage; fails closed without one.
+  skip_in_type_position: boolean;
+  // scan mode bound on tokens examined while locating the paren.
+  scan_max_tokens: number;
+}
+
 export type TokenPatternSpec =
   | TypePatternSpec
   | SeqPatternSpec
@@ -756,7 +808,8 @@ export type TokenPatternSpec =
   | CapturePatternSpec
   | BalancedPatternSpec
   | RepeatPatternSpec
-  | NotPatternSpec;
+  | NotPatternSpec
+  | ParamsPatternSpec;
 
 // A rewrite rule says: starting at a token matching `anchor` (a bare type
 // name, or `type(name, value)` to also constrain source text), if the
@@ -777,6 +830,11 @@ export type TokenPatternSpec =
 //                  one of these names (paren / bracket frames are walked
 //                  through via parent links; "top" matches tokens no
 //                  brace encloses).
+//   frame_direct — with frame_kinds, match the token's INNERMOST frame
+//                  instead of walking to the nearest brace. a token
+//                  inside parens then only matches the built-in "paren"
+//                  kind, so member-position rules can require the brace
+//                  body itself rather than any nesting depth within it.
 //
 // either gate failing — or the pipeline having no frame_track stage at
 // all — means the rule never fires (fail closed). `type(...)` helper
@@ -787,6 +845,7 @@ export interface AnchorSpec {
   text_pred?: CharPredName;
   at_start?: boolean;
   frame_kinds?: string[];
+  frame_direct?: boolean;
 }
 
 export interface RewriteRule {

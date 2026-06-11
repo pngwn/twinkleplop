@@ -35,6 +35,7 @@ import type {
   LanguagePipeline,
   NotPatternSpec,
   OptionalPatternSpec,
+  ParamsPatternSpec,
   Reclassifier,
   ReclassifierEntry,
   ReclassifierLayer,
@@ -137,6 +138,44 @@ export function not(inner: TypePatternSpec): NotPatternSpec {
   return { __kind: "not", inner };
 }
 
+/**
+ * Char-aware parameter-list walk: locate an opening `(` from the current
+ * position (see `find_open` modes), walk its separator chunks, and record
+ * each tagged name token as one capture span under `into` — a
+ * `{ into: type }` rewrite map then claims every parameter found.
+ *
+ * Grammars coalesce adjacent punctuation (`((`, `({`), so the paren body
+ * is walked at character granularity. The walk itself never fails once
+ * the open paren is located: an unterminated list still records the
+ * names it reached, matching the imperative walkers this replaces.
+ */
+export function params(options: {
+  into: string;
+  find_open?: "starts_with" | "scan" | "arrow";
+  strategy?: "first_ident" | "carry_pending";
+  separator?: string;
+  default_introducer?: string;
+  transparent_operators?: string[];
+  skip_generics?: boolean;
+  skip_ts_return_type?: boolean;
+  skip_in_type_position?: boolean;
+  scan_max_tokens?: number;
+}): ParamsPatternSpec {
+  return {
+    __kind: "params",
+    into: options.into,
+    find_open: options.find_open ?? "starts_with",
+    strategy: options.strategy ?? "first_ident",
+    separator: options.separator ?? ",",
+    default_introducer: options.default_introducer,
+    transparent_operators: options.transparent_operators,
+    skip_generics: options.skip_generics ?? false,
+    skip_ts_return_type: options.skip_ts_return_type ?? false,
+    skip_in_type_position: options.skip_in_type_position ?? false,
+    scan_max_tokens: options.scan_max_tokens ?? 64,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Pattern compilation
 // ---------------------------------------------------------------------------
@@ -181,6 +220,7 @@ const NO_MATCH = -2;
 //   OP_MATCH                                 — 1 slot
 //   OP_LOOP       body_pc                    — 2 slots  (possessive repeat)
 //   OP_NOT_TYPE   type_id values_id pred_id  — 4 slots  (zero-width negation)
+//   OP_PARAMS     spec_id slot_id            — 3 slots  (param-list walk)
 //
 // any_of(A, B, C):
 //   ALT L1; <A>; COMMIT; JUMP end;
@@ -215,6 +255,32 @@ const OP_BALANCED = 6;
 const OP_MATCH = 7;
 const OP_LOOP = 8;
 const OP_NOT_TYPE = 9;
+const OP_PARAMS = 10;
+
+// resolved form of a ParamsPatternSpec: enum-coded modes, char codes, and
+// type ids resolved against the compile-time vocabulary. referenced from
+// OP_PARAMS by spec_id via the compile context's side table.
+interface CompiledParamsSpec {
+  find_open: number; // PARAMS_FIND_*
+  strategy: number; // PARAMS_STRATEGY_*
+  separator_code: number;
+  default_introducer: string | null;
+  transparent_operators: string[] | null;
+  skip_generics: boolean;
+  skip_ts_return_type: boolean;
+  skip_in_type_position: boolean;
+  scan_max_tokens: number;
+  ident_id: number;
+  function_id: number; // -1 when the vocabulary has no "function"
+  punct_id: number;
+  operator_id: number; // -1 when the vocabulary has no "operator"
+}
+
+const PARAMS_FIND_STARTS_WITH = 0;
+const PARAMS_FIND_SCAN = 1;
+const PARAMS_FIND_ARROW = 2;
+const PARAMS_STRATEGY_FIRST_IDENT = 0;
+const PARAMS_STRATEGY_CARRY_PENDING = 1;
 
 // per-rule-group compilation context. one `CompileCtx` is built per
 // `rewrite_types` call and threaded through every rule compile. the program
@@ -228,6 +294,12 @@ interface CompileCtx {
   value_pool_len: number;
   value_offsets: Int32Array; // [2 * id] = offset, [2 * id + 1] = n_values
   value_offsets_len: number; // # of allocated value sets (entries = 2 * this)
+  // side table for OP_PARAMS: resolved walk configs referenced by spec_id.
+  params_specs: CompiledParamsSpec[];
+  // pc of the current rule's `when` entry, set by compile_rewrite before
+  // each rule. lets position-sensitive constructs (arrow-mode params)
+  // verify they sit first in the pattern.
+  rule_start_pc: number;
 }
 
 function make_compile_ctx(): CompileCtx {
@@ -238,6 +310,8 @@ function make_compile_ctx(): CompileCtx {
     value_pool_len: 0,
     value_offsets: new Int32Array(16),
     value_offsets_len: 0,
+    params_specs: [],
+    rule_start_pc: 0,
   };
 }
 
@@ -480,6 +554,60 @@ function compile_pattern_bytecode(
       emit(ctx, OP_NOT_TYPE, type_id, values_id, pred_id);
       return;
     }
+    case "params": {
+      const ident_id = name_to_id.get("identifier") ?? NEVER_MATCHES;
+      const punct_id = name_to_id.get("punctuation") ?? NEVER_MATCHES;
+      if (ident_id === NEVER_MATCHES || punct_id === NEVER_MATCHES) {
+        warn_once(
+          "rewrite_types",
+          "params-base-types",
+          'params() needs "identifier" and "punctuation" in the token vocabulary; the branch can never match',
+        );
+        emit(ctx, OP_TYPE, NEVER_MATCHES, -1, -1);
+        return;
+      }
+      // arrow mode inspects the anchor token, which is only addressable
+      // when nothing has consumed tokens before it. fail closed elsewhere.
+      if (spec.find_open === "arrow" && ctx.program_len !== ctx.rule_start_pc) {
+        warn_once(
+          "rewrite_types",
+          "params-arrow-position",
+          'params({find_open: "arrow"}) must be the first element of when; the branch can never match',
+        );
+        emit(ctx, OP_TYPE, NEVER_MATCHES, -1, -1);
+        return;
+      }
+      const slot = allocate_slot(slots, spec.into);
+      const spec_id = ctx.params_specs.length;
+      ctx.params_specs.push({
+        find_open:
+          spec.find_open === "starts_with"
+            ? PARAMS_FIND_STARTS_WITH
+            : spec.find_open === "scan"
+              ? PARAMS_FIND_SCAN
+              : PARAMS_FIND_ARROW,
+        strategy:
+          spec.strategy === "carry_pending"
+            ? PARAMS_STRATEGY_CARRY_PENDING
+            : PARAMS_STRATEGY_FIRST_IDENT,
+        separator_code: spec.separator.charCodeAt(0),
+        default_introducer: spec.default_introducer ?? null,
+        transparent_operators:
+          spec.transparent_operators !== undefined && spec.transparent_operators.length > 0
+            ? spec.transparent_operators
+            : null,
+        skip_generics: spec.skip_generics,
+        skip_ts_return_type: spec.skip_ts_return_type,
+        skip_in_type_position: spec.skip_in_type_position,
+        scan_max_tokens: spec.scan_max_tokens,
+        ident_id,
+        function_id: name_to_id.get("function") ?? -1,
+        punct_id,
+        operator_id: name_to_id.get("operator") ?? -1,
+      });
+      emit(ctx, OP_PARAMS, spec_id, slot);
+      return;
+    }
   }
 }
 
@@ -567,6 +695,7 @@ function compile_reverse_pattern_bytecode(
     case "balanced":
     case "repeat":
     case "not":
+    case "params":
       // not supported in lookbehind; emit an instruction that always fails.
       warn_once(
         "rewrite_types",
@@ -637,6 +766,10 @@ function disassemble_program(
       case OP_NOT_TYPE:
         line = `${pc}: NOT_TYPE type=${name_of(program[pc + 1])} values=${program[pc + 2]} pred=${program[pc + 3]}`;
         pc += 4;
+        break;
+      case OP_PARAMS:
+        line = `${pc}: PARAMS spec=${program[pc + 1]} slot=${program[pc + 2]}`;
+        pc += 3;
         break;
       default:
         line = `${pc}: <unknown op ${op}>`;
@@ -886,6 +1019,632 @@ function run_balanced(
   return NO_MATCH;
 }
 
+// ---------------------------------------------------------------------------
+// params construct runtime (OP_PARAMS)
+// ---------------------------------------------------------------------------
+//
+// char-aware parameter-list walker. grammars coalesce adjacent punctuation
+// ("((", "({"), so locating and walking paren bodies needs character
+// offsets the token-granular opcodes cannot see. tagged name tokens are
+// recorded as single-token capture spans via push_cap_log, so a rule's
+// `{ name: type }` rewrite map claims every parameter the walk found --
+// the per-occurrence capture log is what makes the walk composable with
+// ordinary rewrite rules (and what lets one rule walk several lists, e.g.
+// a go method receiver plus its parameter list).
+
+const CH_PAREN_OPEN = 0x28;
+const CH_PAREN_CLOSE = 0x29;
+const CH_BRACKET_OPEN = 0x5b;
+const CH_BRACKET_CLOSE = 0x5d;
+const CH_BRACE_OPEN = 0x7b;
+const CH_BRACE_CLOSE = 0x7d;
+const CH_COLON = 0x3a;
+const CH_COMMA = 0x2c;
+const CH_SEMI = 0x3b;
+const CH_DOT = 0x2e;
+const CH_LT = 0x3c;
+const CH_GT = 0x3e;
+const CH_EQ = 0x3d;
+
+// open-paren location result scratch (token index + char offset within the
+// token). module scope, valid until the next find call -- same reuse
+// discipline as the capture state above.
+let params_open_idx = 0;
+let params_open_off = 0;
+let params_close_idx = 0;
+let params_close_off = 0;
+
+function params_next_non_trivia(
+  tokens: Uint32Array,
+  from: number,
+  count: number,
+  trivia: Uint8Array,
+): number {
+  for (let i = from; i < count; i++) {
+    if (!trivia[tokens[i * 3]]) return i;
+  }
+  return -1;
+}
+
+function params_prev_non_trivia(tokens: Uint32Array, from: number, trivia: Uint8Array): number {
+  for (let i = from; i >= 0; i--) {
+    if (!trivia[tokens[i * 3]]) return i;
+  }
+  return -1;
+}
+
+// "starts_with": the next non-trivia token must be punctuation whose text
+// begins with the open paren.
+function params_find_starts_with(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  idx: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+): boolean {
+  while (idx < count && trivia[tokens[idx * 3]]) idx++;
+  if (idx >= count) return false;
+  const base = idx * 3;
+  if (tokens[base] !== spec.punct_id) return false;
+  if (input.charCodeAt(tokens[base + 1]) !== CH_PAREN_OPEN) return false;
+  params_open_idx = idx;
+  params_open_off = 0;
+  return true;
+}
+
+// "scan": ride over bracket/brace groups (go's `[T any]` generics) to the
+// first "(" at top depth. the first non-trivia token must be punctuation;
+// an unbalanced close or the scan bound means we left the construct.
+function params_find_scan(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  idx: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+): boolean {
+  while (idx < count && trivia[tokens[idx * 3]]) idx++;
+  if (idx >= count || tokens[idx * 3] !== spec.punct_id) return false;
+  let bracket = 0;
+  let brace = 0;
+  const limit = Math.min(count, idx + spec.scan_max_tokens);
+  for (let k = idx; k < limit; k++) {
+    const base = k * 3;
+    if (trivia[tokens[base]] || tokens[base] !== spec.punct_id) continue;
+    const s = tokens[base + 1];
+    const e = tokens[base + 2];
+    for (let p = s; p < e; p++) {
+      const c = input.charCodeAt(p);
+      if (c === CH_BRACKET_OPEN) bracket++;
+      else if (c === CH_BRACKET_CLOSE) {
+        if (bracket === 0) return false;
+        bracket--;
+      } else if (c === CH_BRACE_OPEN) brace++;
+      else if (c === CH_BRACE_CLOSE) {
+        if (brace === 0) return false;
+        brace--;
+      } else if (c === CH_PAREN_OPEN) {
+        if (bracket === 0 && brace === 0) {
+          params_open_idx = k;
+          params_open_off = p - s;
+          return true;
+        }
+      } else if (c === CH_PAREN_CLOSE) {
+        if (bracket === 0 && brace === 0) return false;
+      }
+    }
+  }
+  return false;
+}
+
+// matching close for the paren at (open_idx, open_off). all bracket types
+// count toward depth, mirroring the imperative arrow detector. result in
+// params_close_idx / params_close_off.
+function params_find_matching_close(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  open_idx: number,
+  open_off: number,
+  count: number,
+  input: string,
+): boolean {
+  let depth = 1;
+  const open_s = tokens[open_idx * 3 + 1];
+  const open_e = tokens[open_idx * 3 + 2];
+  for (let p = open_s + open_off + 1; p < open_e; p++) {
+    const ch = input.charCodeAt(p);
+    if (ch === CH_PAREN_OPEN || ch === CH_BRACKET_OPEN || ch === CH_BRACE_OPEN) depth++;
+    else if (ch === CH_PAREN_CLOSE || ch === CH_BRACKET_CLOSE || ch === CH_BRACE_CLOSE) {
+      depth--;
+      if (depth === 0) {
+        params_close_idx = open_idx;
+        params_close_off = p - open_s;
+        return true;
+      }
+    }
+  }
+  for (let k = open_idx + 1; k < count; k++) {
+    const base = k * 3;
+    if (tokens[base] !== spec.punct_id) continue;
+    const s = tokens[base + 1];
+    const e = tokens[base + 2];
+    for (let p = s; p < e; p++) {
+      const ch = input.charCodeAt(p);
+      if (ch === CH_PAREN_OPEN || ch === CH_BRACKET_OPEN || ch === CH_BRACE_OPEN) depth++;
+      else if (ch === CH_PAREN_CLOSE || ch === CH_BRACKET_CLOSE || ch === CH_BRACE_CLOSE) {
+        depth--;
+        if (depth === 0) {
+          params_close_idx = k;
+          params_close_off = p - s;
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// arrow validation for the paren at (open_idx, open_off): the matching
+// close must end its token and be followed by "=>", optionally through a
+// `: ReturnType` annotation when skip_ts_return_type is set.
+function params_detect_arrow(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  open_idx: number,
+  open_off: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+): boolean {
+  if (!params_find_matching_close(spec, tokens, open_idx, open_off, count, input)) return false;
+  const close_idx = params_close_idx;
+  const cs = tokens[close_idx * 3 + 1];
+  const ce = tokens[close_idx * 3 + 2];
+  if (params_close_off + 1 < ce - cs) return false;
+  const j = params_next_non_trivia(tokens, close_idx + 1, count, trivia);
+  if (j < 0) return false;
+  const jb = j * 3;
+  if (spec.skip_ts_return_type && tokens[jb] === spec.punct_id) {
+    const js = tokens[jb + 1];
+    const je = tokens[jb + 2];
+    if (je - js === 1 && input.charCodeAt(js) === CH_COLON) {
+      // scan the annotation to "=>" at depth 0; any top-level close or
+      // statement separator means this paren was not an arrow head.
+      let td = 0;
+      let m = j + 1;
+      while (m < count) {
+        const mb = m * 3;
+        const mt = tokens[mb];
+        if (trivia[mt]) {
+          m++;
+          continue;
+        }
+        if (mt === spec.punct_id) {
+          const s = tokens[mb + 1];
+          const e = tokens[mb + 2];
+          for (let p = s; p < e; p++) {
+            const ch = input.charCodeAt(p);
+            if (ch === CH_PAREN_OPEN || ch === CH_BRACKET_OPEN || ch === CH_BRACE_OPEN) td++;
+            else if (ch === CH_PAREN_CLOSE || ch === CH_BRACKET_CLOSE || ch === CH_BRACE_CLOSE) {
+              if (td === 0) return false;
+              td--;
+            } else if ((ch === CH_COMMA || ch === CH_SEMI) && td === 0) return false;
+          }
+        } else if (mt === spec.operator_id && td === 0) {
+          const s = tokens[mb + 1];
+          if (
+            tokens[mb + 2] - s === 2 &&
+            input.charCodeAt(s) === CH_EQ &&
+            input.charCodeAt(s + 1) === CH_GT
+          ) {
+            return true;
+          }
+        }
+        m++;
+      }
+      return false;
+    }
+  }
+  if (tokens[jb] !== spec.operator_id) return false;
+  const js = tokens[jb + 1];
+  return (
+    tokens[jb + 2] - js === 2 &&
+    input.charCodeAt(js) === CH_EQ &&
+    input.charCodeAt(js + 1) === CH_GT
+  );
+}
+
+// "arrow": the anchor token (one to the left of the pattern cursor)
+// carries the "(". try each offset, cheapest checks first.
+function params_find_arrow(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  anchor_idx: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+  frames: FrameTable | undefined,
+): boolean {
+  if (anchor_idx < 0) return false;
+  const base = anchor_idx * 3;
+  if (tokens[base] !== spec.punct_id) return false;
+  const s = tokens[base + 1];
+  const e = tokens[base + 2];
+  let object_kind = -2;
+  for (let off = 0; off < e - s; off++) {
+    if (input.charCodeAt(s + off) !== CH_PAREN_OPEN) continue;
+    if (spec.skip_in_type_position && off === 0 && frames !== undefined) {
+      // `: (x: T) => Y` is a function TYPE except directly inside an
+      // object literal, where `key: (x) => x` is a function value. the
+      // enclosing frame is read after the previous token -- this token's
+      // own "(" has not pushed yet.
+      const prev = params_prev_non_trivia(tokens, anchor_idx - 1, trivia);
+      if (prev >= 0 && tokens[prev * 3] === spec.punct_id) {
+        const ps = tokens[prev * 3 + 1];
+        const pe = tokens[prev * 3 + 2];
+        if (pe > ps && input.charCodeAt(pe - 1) === CH_COLON) {
+          if (object_kind === -2) object_kind = frames.kind_names.indexOf("object");
+          const enclosing = frames.frames[anchor_idx > 0 ? frames.active_frame[anchor_idx - 1] : 0];
+          const in_object =
+            enclosing.bracket === FRAME_BRACKET_BRACE && enclosing.kind === object_kind;
+          if (!in_object) continue;
+        }
+      }
+    }
+    if (params_detect_arrow(spec, tokens, anchor_idx, off, count, input, trivia)) {
+      params_open_idx = anchor_idx;
+      params_open_off = off;
+      return true;
+    }
+  }
+  return false;
+}
+
+// leading generics skip before locating the paren: token-text angle
+// counting over operator tokens ("<" ">" ">>" ">>>"), mirroring the
+// imperative after_keyword detector. returns the index after the group,
+// or the input index when no "<" leads.
+function params_skip_generics(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  idx: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+): number {
+  while (idx < count && trivia[tokens[idx * 3]]) idx++;
+  if (idx >= count) return idx;
+  const base = idx * 3;
+  if (tokens[base] !== spec.operator_id) return idx;
+  const s = tokens[base + 1];
+  if (tokens[base + 2] - s !== 1 || input.charCodeAt(s) !== CH_LT) return idx;
+  let d = 1;
+  let m = idx + 1;
+  while (m < count && d > 0) {
+    const mb = m * 3;
+    if (trivia[tokens[mb]]) {
+      m++;
+      continue;
+    }
+    if (tokens[mb] === spec.operator_id) {
+      const ms = tokens[mb + 1];
+      const len = tokens[mb + 2] - ms;
+      if (len === 1 && input.charCodeAt(ms) === CH_LT) d++;
+      else if (len >= 1 && len <= 3 && input.charCodeAt(ms) === CH_GT) {
+        let pops = 1;
+        if (len >= 2 && input.charCodeAt(ms + 1) === CH_GT) pops = 2;
+        if (len === 3 && input.charCodeAt(ms + 2) === CH_GT) pops = 3;
+        if (pops === len) d = Math.max(0, d - pops);
+      }
+    }
+    m++;
+  }
+  return m;
+}
+
+// first_ident chunk walk (the js-family shape): tag the first identifier
+// at depth 1 of each separator chunk; the default introducer suspends
+// tagging until the next chunk; transparent operators pass through.
+// returns the token index after the close-carrying token (count when the
+// list is unterminated -- the names reached are still recorded).
+function params_walk_first_ident(
+  spec: CompiledParamsSpec,
+  slot: number,
+  tokens: Uint32Array,
+  open_idx: number,
+  open_off: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+): number {
+  let depth = 1;
+  let expect_param = true;
+  let saw_default = false;
+  const sep = spec.separator_code;
+
+  const open_s = tokens[open_idx * 3 + 1];
+  const open_e = tokens[open_idx * 3 + 2];
+  for (let p = open_s + open_off + 1; p < open_e; p++) {
+    const ch = input.charCodeAt(p);
+    if (ch === CH_PAREN_OPEN || ch === CH_BRACKET_OPEN || ch === CH_BRACE_OPEN) depth++;
+    else if (ch === CH_PAREN_CLOSE || ch === CH_BRACKET_CLOSE || ch === CH_BRACE_CLOSE) {
+      depth--;
+      if (depth === 0) return open_idx + 1;
+    } else if (ch === sep && depth === 1) {
+      expect_param = true;
+      saw_default = false;
+    }
+  }
+
+  let k = open_idx + 1;
+  while (k < count && depth > 0) {
+    const base = k * 3;
+    const kt = tokens[base];
+    if (trivia[kt]) {
+      k++;
+      continue;
+    }
+    if (kt === spec.punct_id) {
+      const s = tokens[base + 1];
+      const e = tokens[base + 2];
+      for (let p = s; p < e; p++) {
+        const ch = input.charCodeAt(p);
+        if (ch === CH_PAREN_OPEN || ch === CH_BRACKET_OPEN || ch === CH_BRACE_OPEN) depth++;
+        else if (ch === CH_PAREN_CLOSE || ch === CH_BRACKET_CLOSE || ch === CH_BRACE_CLOSE) {
+          depth--;
+          if (depth === 0) break;
+        } else if (ch === sep && depth === 1) {
+          expect_param = true;
+          saw_default = false;
+        }
+      }
+      k++;
+      continue;
+    }
+    if (depth === 1 && expect_param && !saw_default) {
+      if (kt === spec.operator_id) {
+        const text = input.slice(tokens[base + 1], tokens[base + 2]);
+        if (spec.default_introducer !== null && text === spec.default_introducer) {
+          expect_param = false;
+          saw_default = true;
+          k++;
+          continue;
+        }
+        if (spec.transparent_operators !== null && spec.transparent_operators.indexOf(text) >= 0) {
+          k++;
+          continue;
+        }
+        expect_param = false;
+        k++;
+        continue;
+      }
+      if (kt === spec.ident_id) {
+        push_cap_log(slot, k, k + 1);
+        expect_param = false;
+        k++;
+        continue;
+      }
+      expect_param = false;
+    }
+    k++;
+  }
+  return k;
+}
+
+// type-after-first heuristic for carry_pending chunks: a "."-led second
+// token is a receiver chain (no type); a "["-led one is a type only when
+// content follows the matching "]".
+function params_chunk_has_type(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  chunk: number[],
+  input: string,
+): boolean {
+  if (chunk.length < 2) return false;
+  const second = chunk[1];
+  if (tokens[second * 3] === spec.punct_id) {
+    const first_ch = input.charCodeAt(tokens[second * 3 + 1]);
+    if (first_ch === CH_DOT) return false;
+    if (first_ch === CH_BRACKET_OPEN) {
+      return params_square_has_trailing_type(spec, tokens, chunk, 1, input);
+    }
+  }
+  return true;
+}
+
+function params_square_has_trailing_type(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  chunk: number[],
+  start_pos: number,
+  input: string,
+): boolean {
+  let depth = 0;
+  let seen_open = false;
+  for (let pos = start_pos; pos < chunk.length; pos++) {
+    const idx = chunk[pos];
+    if (tokens[idx * 3] !== spec.punct_id) continue;
+    const text = input.slice(tokens[idx * 3 + 1], tokens[idx * 3 + 2]);
+    for (let offset = 0; offset < text.length; offset++) {
+      const ch = text[offset];
+      if (ch === "[") {
+        depth++;
+        seen_open = true;
+      } else if (ch === "]" && depth > 0) {
+        depth--;
+        if (seen_open && depth === 0) {
+          for (let rest = offset + 1; rest < text.length; rest++) {
+            const trailing = text[rest];
+            if (trailing !== ")" && trailing !== ",") return true;
+          }
+          return pos < chunk.length - 1;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+// carry_pending chunk walk (the go shape): split the body into chunks at
+// top-depth separators; a chunk with a type after its first name promotes
+// that name and any pending bare names from earlier single-name chunks.
+// returns the token index after the close-carrying token.
+function params_walk_carry_pending(
+  spec: CompiledParamsSpec,
+  slot: number,
+  tokens: Uint32Array,
+  open_idx: number,
+  open_off: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+): number {
+  let paren_depth = 1;
+  let bracket_depth = 0;
+  let brace_depth = 0;
+  const chunks: number[][] = [];
+  let current: number[] = [];
+  let k = open_idx;
+  let offset = open_off + 1;
+  const sep = spec.separator_code;
+
+  while (k < count && paren_depth > 0) {
+    const base = k * 3;
+    if (trivia[tokens[base]]) {
+      k++;
+      offset = 0;
+      continue;
+    }
+    if (tokens[base] !== spec.punct_id) {
+      current.push(k);
+      k++;
+      offset = 0;
+      continue;
+    }
+    const s = tokens[base + 1];
+    const e = tokens[base + 2];
+    let include = false;
+    for (let p = s + offset; p < e; p++) {
+      const code = input.charCodeAt(p);
+      if (code === sep && paren_depth === 1 && bracket_depth === 0 && brace_depth === 0) {
+        if (include) current.push(k);
+        chunks.push(current);
+        current = [];
+        include = false;
+        continue;
+      }
+      if (code === CH_PAREN_OPEN) {
+        paren_depth++;
+        include = true;
+      } else if (code === CH_PAREN_CLOSE) {
+        paren_depth--;
+        if (paren_depth === 0) break;
+        include = true;
+      } else if (code === CH_BRACKET_OPEN) {
+        bracket_depth++;
+        include = true;
+      } else if (code === CH_BRACKET_CLOSE) {
+        bracket_depth = Math.max(0, bracket_depth - 1);
+        include = true;
+      } else if (code === CH_BRACE_OPEN) {
+        brace_depth++;
+        include = true;
+      } else if (code === CH_BRACE_CLOSE) {
+        brace_depth = Math.max(0, brace_depth - 1);
+        include = true;
+      } else {
+        include = true;
+      }
+    }
+    if (include) current.push(k);
+    k++;
+    offset = 0;
+  }
+  if (current.length > 0) chunks.push(current);
+
+  let pending: number[] = [];
+  for (const chunk of chunks) {
+    if (chunk.length === 0) continue;
+    const first = chunk[0];
+    const ft = tokens[first * 3];
+    if (ft !== spec.ident_id && !(spec.function_id >= 0 && ft === spec.function_id)) {
+      pending = [];
+      continue;
+    }
+    if (params_chunk_has_type(spec, tokens, chunk, input)) {
+      for (const idx of pending) push_cap_log(slot, idx, idx + 1);
+      push_cap_log(slot, first, first + 1);
+      pending = [];
+      continue;
+    }
+    if (chunk.length === 1) {
+      pending.push(first);
+    } else {
+      pending = [];
+    }
+  }
+  return k;
+}
+
+// OP_PARAMS entry: locate the open paren per the spec's mode, then run
+// the chunk walk. NO_MATCH only when the paren cannot be located (or a
+// frame-dependent mode runs without frames) -- a located list always
+// matches, however short.
+function run_params(
+  spec: CompiledParamsSpec,
+  slot: number,
+  tokens: Uint32Array,
+  idx: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+  frames: FrameTable | undefined,
+): number {
+  let found: boolean;
+  if (spec.find_open === PARAMS_FIND_ARROW) {
+    if (spec.skip_in_type_position && frames === undefined) {
+      warn_once(
+        "rewrite_types",
+        "params-frames-missing",
+        "params() with skip_in_type_position ran without a frame_track stage upstream; the branch is disabled",
+      );
+      return NO_MATCH;
+    }
+    found = params_find_arrow(spec, tokens, idx - 1, count, input, trivia, frames);
+  } else {
+    if (spec.skip_generics) {
+      idx = params_skip_generics(spec, tokens, idx, count, input, trivia);
+    }
+    found =
+      spec.find_open === PARAMS_FIND_SCAN
+        ? params_find_scan(spec, tokens, idx, count, input, trivia)
+        : params_find_starts_with(spec, tokens, idx, count, input, trivia);
+  }
+  if (!found) return NO_MATCH;
+  return spec.strategy === PARAMS_STRATEGY_CARRY_PENDING
+    ? params_walk_carry_pending(
+        spec,
+        slot,
+        tokens,
+        params_open_idx,
+        params_open_off,
+        count,
+        input,
+        trivia,
+      )
+    : params_walk_first_ident(
+        spec,
+        slot,
+        tokens,
+        params_open_idx,
+        params_open_off,
+        count,
+        input,
+        trivia,
+      );
+}
+
 // iterative bytecode VM for the forward matcher. returns the token idx
 // after the last matched token on success, or NO_MATCH on full failure.
 // resets the capture log at entry; on return the log holds the successful
@@ -911,6 +1670,8 @@ function match_bytecode(
   value_pool: Uint16Array,
   value_offsets: Int32Array,
   max_capture_slots: number,
+  params_specs: CompiledParamsSpec[],
+  frames: FrameTable | undefined,
 ): number {
   if (max_capture_slots > 0) ensure_cap_capacity(max_capture_slots);
   cap_log_len = 0;
@@ -1070,6 +1831,25 @@ function match_bytecode(
           break;
         }
         pc += 4;
+        break;
+      }
+      case OP_PARAMS: {
+        const new_idx = run_params(
+          params_specs[program[pc + 1]],
+          program[pc + 2],
+          tokens,
+          idx,
+          count,
+          input,
+          trivia,
+          frames,
+        );
+        if (new_idx === NO_MATCH) {
+          failed = true;
+          break;
+        }
+        idx = new_idx;
+        pc += 3;
         break;
       }
       case OP_MATCH: {
@@ -1444,8 +2224,11 @@ interface CompiledRule {
   // frame gates from the anchor spec. kind names stay symbolic -- they
   // resolve against the frame table's kind_names per call, since the
   // table comes from whichever frame_track stage the pipeline runs.
+  // frame_direct matches the token's innermost frame instead of walking
+  // to the nearest enclosing brace.
   anchor_at_start: boolean;
   anchor_frame_kinds: string[] | null;
+  anchor_frame_direct: boolean;
   // claim precedence for this rule's targets, -1 to use the target
   // type's shared-table precedence.
   precedence_override: number;
@@ -1479,6 +2262,7 @@ interface CompiledRewriteState {
   program: Int32Array;
   value_pool: Uint16Array;
   value_offsets: Int32Array;
+  params_specs: CompiledParamsSpec[];
   // true when any rule carries an anchor frame gate -- lets the dispatch
   // loop skip the per-call kind resolution entirely for gate-free groups.
   has_frame_gates: boolean;
@@ -1518,6 +2302,7 @@ function compile_rewrite(
             text_pred: undefined as string | undefined,
             at_start: undefined as boolean | undefined,
             frame_kinds: undefined as string[] | undefined,
+            frame_direct: undefined as boolean | undefined,
           }
         : {
             type_name: rule.anchor.type_name,
@@ -1525,6 +2310,7 @@ function compile_rewrite(
             text_pred: rule.anchor.text_pred,
             at_start: rule.anchor.at_start,
             frame_kinds: rule.anchor.frame_kinds,
+            frame_direct: rule.anchor.frame_direct,
           };
     const anchor_id = name_to_id.get(anchor_spec.type_name);
     if (anchor_id === undefined) {
@@ -1538,6 +2324,7 @@ function compile_rewrite(
 
     const slots = make_capture_slots();
     const when_pc = ctx.program_len;
+    ctx.rule_start_pc = when_pc;
     if (rule.when !== undefined) {
       compile_pattern_bytecode(rule.when, name_to_id, ctx, slots);
     }
@@ -1616,6 +2403,7 @@ function compile_rewrite(
         anchor_spec.frame_kinds !== undefined && anchor_spec.frame_kinds.length > 0
           ? anchor_spec.frame_kinds
           : null,
+      anchor_frame_direct: anchor_spec.frame_direct === true,
       precedence_override: rule.precedence ?? -1,
     });
   }
@@ -1663,6 +2451,7 @@ function compile_rewrite(
     program,
     value_pool,
     value_offsets,
+    params_specs: ctx.params_specs,
     has_frame_gates: compiled.some((r) => r.anchor_at_start || r.anchor_frame_kinds !== null),
   };
 }
@@ -1807,8 +2596,16 @@ function run_rewrite_loop_claims(
   frames: FrameTable | undefined,
 ): void {
   const count = tokens.length / 3;
-  const { anchor_offset, anchor_count, rule_table, trivia, program, value_pool, value_offsets } =
-    state;
+  const {
+    anchor_offset,
+    anchor_count,
+    rule_table,
+    trivia,
+    program,
+    value_pool,
+    value_offsets,
+    params_specs,
+  } = state;
 
   // resolve each gated rule's frame-kind names against this table's
   // vocabulary, aligned with rule_table. unknown names resolve to -1 and
@@ -1854,15 +2651,24 @@ function run_rewrite_loop_claims(
         if (rule.anchor_at_start && frames.at_start[i] !== 1) continue;
         if (rule.anchor_frame_kinds !== null) {
           const wanted = resolved_kinds![offset + r]!;
-          // nearest enclosing BRACE frame: paren / bracket frames are
-          // transparent; ending on TOP matches the built-in "top" kind.
-          let fi = frames.active_frame[i];
-          let fr = frames.frames[fi];
-          while (fi > 0 && fr.bracket !== FRAME_BRACKET_BRACE) {
-            fi = fr.parent;
-            fr = frames.frames[fi];
+          let kind: number;
+          if (rule.anchor_frame_direct) {
+            // direct mode: the token's innermost frame, no parent walk.
+            // paren / bracket frames carry their built-in kinds, so a
+            // member-position rule requiring a brace kind rejects tokens
+            // nested inside parens within the body.
+            kind = frames.frames[frames.active_frame[i]].kind;
+          } else {
+            // nearest enclosing BRACE frame: paren / bracket frames are
+            // transparent; ending on TOP matches the built-in "top" kind.
+            let fi = frames.active_frame[i];
+            let fr = frames.frames[fi];
+            while (fi > 0 && fr.bracket !== FRAME_BRACKET_BRACE) {
+              fi = fr.parent;
+              fr = frames.frames[fi];
+            }
+            kind = fr.bracket === FRAME_BRACKET_BRACE ? fr.kind : FRAME_KIND_TOP;
           }
-          const kind = fr.bracket === FRAME_BRACKET_BRACE ? fr.kind : FRAME_KIND_TOP;
           let kind_ok = false;
           for (let k = 0; k < wanted.length; k++) {
             if (wanted[k] === kind) {
@@ -1910,6 +2716,8 @@ function run_rewrite_loop_claims(
         value_pool,
         value_offsets,
         rule.max_capture_slots,
+        params_specs,
+        frames,
       );
       if (end === NO_MATCH) continue;
 

@@ -23,6 +23,7 @@ export {
   balanced_parens,
   repeat,
   not,
+  params,
   GRAMMAR_EXTENSION_DOWNGRADES,
   GRAMMAR_EXTENSION_CATEGORIES,
 } from "./reclassifier";

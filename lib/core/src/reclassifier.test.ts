@@ -11,6 +11,7 @@ import {
   embed_interleaved,
   not,
   optional,
+  params,
   reclassify,
   repeat,
   rewrite_types,
@@ -1752,5 +1753,215 @@ describe("create_language — fidelity downgrade for grammar extensions", () => 
     const t = tokens_of(lang, "true fn other");
     expect(t.find((x) => x.value === "true")?.type).toBe("identifier");
     expect(t.find((x) => x.value === "fn")?.type).toBe("identifier");
+  });
+});
+
+describe("reclassifier — params construct", () => {
+  // dedicated grammar with COALESCED punctuation runs ("((", "({", "](",
+  // "})", "))") so the char-aware walk is exercised the way real grammars
+  // emit it. ":" and "." are punctuation, matching the js family.
+  const ptoy: Grammar = {
+    name: "ptoy",
+    states: {
+      root: {
+        rules: [
+          { match: ["function", "func", "class"], boundary: true, token: "keyword" },
+          { match: "/*", token: "comment", state: "comment" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { range: [["0", "9"]], token: "number" },
+          { match: ["=>", "...", "<", ">", "*", "="], token: "operator" },
+          {
+            match: ["((", "({", "})", "))", "]("],
+            token: "punctuation",
+          },
+          { match: ["(", ")", "{", "}", "[", "]", ",", ";", ":", "."], token: "punctuation" },
+          { match: [" ", "\n"] },
+        ],
+      },
+      comment: {
+        rules: [
+          { match: "*/", token: "comment", exit: true },
+          { any: true, token: "comment" },
+        ],
+      },
+    },
+  };
+  const pcompiled = compile(ptoy);
+
+  const ptrack = frame_track({
+    punct_type: "punctuation",
+    brackets: {
+      paren: { open: "(", close: ")" },
+      brace: { open: "{", close: "}" },
+      bracket: { open: "[", close: "]" },
+    },
+    brace_kinds: {
+      body_markers: [{ type: "keyword", text: "class", kind: "class" }],
+      default_kind: "object",
+      start_kind: "block",
+    },
+    at_start: { reset_chars: ",;", rearm_after_close_kinds: ["class"] },
+  });
+
+  function prun(input: string, rules: RewriteRule[], with_frames = false) {
+    const raw = tokenize(input, pcompiled);
+    const rewrite = rewrite_types(rules, { trivia: ["comment"] });
+    const passes = with_frames ? [ptrack, rewrite] : [rewrite];
+    return types_only(reclassify(passes)(input, raw), input);
+  }
+
+  const JS_WALK = { into: "p", default_introducer: "=", transparent_operators: ["..."] };
+
+  test("function declaration walk tags first identifier per chunk", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: type("keyword", "function"),
+        when: seq(optional(type("operator", "*")), optional(type("identifier")), params(JS_WALK)),
+        rewrite: { p: "parameter" },
+      },
+    ];
+    const src = "function f(a, b = 1, ...rest) {}";
+    const tokens = prun(src, rules);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "rest")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "1")?.type).toBe("number");
+    expect(tokens.find((t) => t.value === "f")?.type).toBe("identifier");
+
+    // destructured chunks have no depth-1 identifier; later chunks resume.
+    const src2 = "function g(({x}), y) {}";
+    const tokens2 = prun(src2, rules);
+    expect(tokens2.find((t) => t.value === "x")?.type).toBe("identifier");
+    expect(tokens2.find((t) => t.value === "y")?.type).toBe("parameter");
+
+    // unterminated list still records the names it reached.
+    const src3 = "function h(a, b";
+    const tokens3 = prun(src3, rules);
+    expect(tokens3.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens3.find((t) => t.value === "b")?.type).toBe("parameter");
+  });
+
+  test("skip_generics rides over a leading angle group", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: type("keyword", "function"),
+        when: seq(optional(type("identifier")), params({ ...JS_WALK, skip_generics: true })),
+        rewrite: { p: "parameter" },
+      },
+    ];
+    const src = "function f<T>(a) {}";
+    const tokens = prun(src, rules);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "T")?.type).toBe("identifier");
+  });
+
+  test("arrow mode validates each open offset in a coalesced token", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "punctuation",
+        when: params({ ...JS_WALK, find_open: "arrow", skip_ts_return_type: true }),
+        rewrite: { p: "parameter" },
+      },
+    ];
+    // "((" carries both parens; only the inner one is an arrow head.
+    const src = "f((a) => a)";
+    const tokens = prun(src, rules);
+    expect(tokens[2]).toEqual({ type: "parameter", value: "a" });
+    expect(tokens[5]).toEqual({ type: "identifier", value: "a" });
+
+    // plain call parens are not arrows.
+    const src2 = "f(b, c)";
+    const tokens2 = prun(src2, rules);
+    expect(tokens2.find((t) => t.value === "b")?.type).toBe("identifier");
+    expect(tokens2.find((t) => t.value === "c")?.type).toBe("identifier");
+
+    // a ts return annotation between close and arrow.
+    const src3 = "(a) : T => a";
+    const tokens3 = prun(src3, rules);
+    expect(tokens3.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens3.find((t) => t.value === "T")?.type).toBe("identifier");
+  });
+
+  test("frame_direct member gate rejects paren-nested member starts", () => {
+    const member_rule = (frame_direct: boolean): RewriteRule => ({
+      anchor: {
+        type_name: "identifier",
+        at_start: true,
+        frame_kinds: ["object"],
+        frame_direct,
+      },
+      when: params(JS_WALK),
+      rewrite: { p: "parameter" },
+    });
+
+    const src = "y = { m(a) {} }";
+    const tokens = prun(src, [member_rule(true)], true);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+
+    // b sits at a comma-armed member start INSIDE call parens. the direct
+    // gate sees the paren frame and rejects; the walking gate would reach
+    // the object brace and tag c.
+    const src2 = "y = { m : f(a, b(c)) }";
+    const direct = prun(src2, [member_rule(true)], true);
+    expect(direct.find((t) => t.value === "c")?.type).toBe("identifier");
+    const walking = prun(src2, [member_rule(false)], true);
+    expect(walking.find((t) => t.value === "c")?.type).toBe("parameter");
+  });
+
+  test("scan + carry_pending walks go-style lists", () => {
+    const GO_WALK = {
+      into: "p",
+      strategy: "carry_pending",
+      find_open: "scan",
+    } as const;
+    const rules: RewriteRule[] = [
+      {
+        anchor: type("keyword", "func"),
+        when: seq(type("identifier"), params(GO_WALK)),
+        rewrite: { p: "parameter" },
+      },
+      {
+        anchor: type("keyword", "func"),
+        when: seq(params(GO_WALK), optional(seq(type("identifier"), params(GO_WALK)))),
+        rewrite: { p: "parameter" },
+      },
+    ];
+
+    // shared-type chunks promote pending bare names retroactively.
+    const src = "func f(x, y int) {}";
+    const tokens = prun(src, rules);
+    expect(tokens.find((t) => t.value === "x")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "y")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "int")?.type).toBe("identifier");
+
+    // unnamed lists (types only) tag nothing.
+    const src2 = "func g(int, string) {}";
+    const tokens2 = prun(src2, rules);
+    expect(tokens2.find((t) => t.value === "int")?.type).toBe("identifier");
+    expect(tokens2.find((t) => t.value === "string")?.type).toBe("identifier");
+
+    // method receiver: both the receiver and the param list are walked.
+    const src3 = "func (r T) m(a B) {}";
+    const tokens3 = prun(src3, rules);
+    expect(tokens3.find((t) => t.value === "r")?.type).toBe("parameter");
+    expect(tokens3.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens3.find((t) => t.value === "m")?.type).toBe("identifier");
+
+    // generics between name and paren: scan rides the bracket group,
+    // including the coalesced "](" open.
+    const src4 = "func h[T any](x T) {}";
+    const tokens4 = prun(src4, rules);
+    expect(tokens4.find((t) => t.value === "x")?.type).toBe("parameter");
+
+    // anonymous func literal: the optional name+params tail is absent.
+    const src5 = "func(x int) {}";
+    const tokens5 = prun(src5, rules);
+    expect(tokens5.find((t) => t.value === "x")?.type).toBe("parameter");
   });
 });
