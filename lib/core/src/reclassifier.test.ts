@@ -17,6 +17,7 @@ import {
   rewrite_types,
   seq,
   type,
+  type_span,
 } from "./reclassifier";
 import type {
   Grammar,
@@ -2117,5 +2118,145 @@ describe("reclassifier — params construct", () => {
     const src5 = "func(x int) {}";
     const tokens5 = prun(src5, rules);
     expect(tokens5.find((t) => t.value === "x")?.type).toBe("parameter");
+  });
+});
+
+describe("reclassifier — type_span construct", () => {
+  // ts-shaped grammar: `:` punctuation, `?` / `<` / `>` operators, and a
+  // few keywords so terminator classes have something to bite on. the
+  // main toy grammar emits `:` as an operator, which the span's colon
+  // checks ignore.
+  const span_grammar: Grammar = {
+    name: "span",
+    states: {
+      root: {
+        rules: [
+          { match: ["let", "return", "void", "this"], boundary: true, token: "keyword" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { range: [["0", "9"]], token: "number" },
+          { match: ["=>", "?:"], token: "operator" },
+          { match: ["=", "?", "<", ">", "+", "|"], token: "operator" },
+          { match: ["(", ")", "{", "}", "[", "]", ",", ";", ":", "."], token: "punctuation" },
+          { match: [" ", "\t", "\n"] },
+        ],
+      },
+    },
+  };
+  const span_compiled = compile(span_grammar);
+
+  function span_rule(options: Parameters<typeof type_span>[0] = { into: "types" }): RewriteRule[] {
+    return [
+      {
+        anchor: { type_name: "punctuation", value: ":" },
+        when: type_span({ ...options, into: "types" }),
+        rewrite: { types: "type" },
+      },
+    ];
+  }
+
+  function srun(src: string, rules: RewriteRule[]): string[] {
+    const raw = tokenize(src, span_compiled);
+    const out = reclassify([rewrite_types(rules, { trivia: ["comment"] })])(src, raw);
+    return types_only(out, src)
+      .filter((t) => t.type === "type")
+      .map((t) => t.value);
+  }
+
+  test("claims identifiers and stops at a semicolon", () => {
+    expect(srun("x : a . b ; c", span_rule())).toEqual(["a", "b"]);
+  });
+
+  test("exits on assignment by default", () => {
+    expect(srun("x : a = b ;", span_rule())).toEqual(["a"]);
+  });
+
+  test("exit_on_eq false rides over default types", () => {
+    expect(srun("x : a = b ;", span_rule({ into: "types", exit_on_eq: false }))).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  test("comma exits by default; exit_on_comma false continues", () => {
+    expect(srun("x : a , b ;", span_rule())).toEqual(["a"]);
+    expect(srun("x : a , b ;", span_rule({ into: "types", exit_on_comma: false }))).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  test("function type: parameter names skip, their types and the result claim", () => {
+    expect(srun("x : ( a : b , c : d ) => e ;", span_rule())).toEqual(["b", "d", "e"]);
+  });
+
+  test("arrow not preceded by a close paren ends the span", () => {
+    expect(srun("x : a => b ;", span_rule())).toEqual(["a"]);
+  });
+
+  test("object type: keys skip, value types claim, the union continues", () => {
+    expect(srun("x : { a : b } | c ;", span_rule())).toEqual(["b", "c"]);
+  });
+
+  test("value op terminators end the span", () => {
+    expect(srun("x : a + b ;", span_rule({ into: "types", value_op_terminators: ["+"] }))).toEqual([
+      "a",
+    ]);
+  });
+
+  test("stmt keyword terminators end the span at entry depth", () => {
+    expect(
+      srun("x : a return b ;", span_rule({ into: "types", stmt_keyword_terminators: ["return"] })),
+    ).toEqual(["a"]);
+  });
+
+  test("angle groups ride along with their commas", () => {
+    expect(srun("x : a < b , c > d ;", span_rule())).toEqual(["a", "b", "c", "d"]);
+  });
+
+  test("enter_angle exits at the unmatched close", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "operator", value: "<" },
+        when: type_span({ into: "types", enter_angle: true, exit_on_comma: false }),
+        rewrite: { types: "type" },
+      },
+    ];
+    expect(srun("f < a , b > c ;", rules)).toEqual(["a", "b"]);
+  });
+
+  test("stray close angle without enter_angle is inert", () => {
+    expect(srun("x : a > b ;", span_rule())).toEqual(["a", "b"]);
+  });
+
+  test("qmark exits only when configured", () => {
+    expect(srun("x : a ? b ;", span_rule({ into: "types", exit_on_qmark: true }))).toEqual(["a"]);
+    expect(srun("x : a ? b ;", span_rule())).toEqual(["a", "b"]);
+  });
+
+  test("brace exit on type closer ends return-type spans at the body", () => {
+    const rules = span_rule({
+      into: "types",
+      brace_exit_on_closer: true,
+      type_terminal_keywords: ["void", "this"],
+    });
+    expect(srun("f ( ) : a { b ; }", rules)).toEqual(["a"]);
+    expect(srun("f ( ) : void { b ; }", rules)).toEqual([]);
+    // an annotation's object type is NOT a body: the brace follows the
+    // anchor colon directly, which never reads as a type closer.
+    expect(srun("x : { a : b } ;", rules)).toEqual(["b"]);
+  });
+
+  test("a close below entry depth ends the span", () => {
+    expect(srun("f ( x : a ) b ;", span_rule())).toEqual(["a"]);
+  });
+
+  test("an unterminated span records what it reached", () => {
+    expect(srun("x : a b", span_rule())).toEqual(["a", "b"]);
   });
 });

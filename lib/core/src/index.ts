@@ -24,6 +24,7 @@ export {
   repeat,
   not,
   params,
+  type_span,
   GRAMMAR_EXTENSION_DOWNGRADES,
   GRAMMAR_EXTENSION_CATEGORIES,
 } from "./reclassifier";

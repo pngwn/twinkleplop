@@ -49,6 +49,7 @@ import type {
   TokenizeResult,
   TokenPatternSpec,
   TypePatternSpec,
+  TypeSpanPatternSpec,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -176,6 +177,39 @@ export function params(options: {
   };
 }
 
+/**
+ * Type-expression span walk: consume tokens in "type mode" from the
+ * current position until a terminator, recording every identifier in
+ * type position as one capture span under `into` — a `{ into: type }`
+ * rewrite map then claims them all. See TypeSpanPatternSpec for the
+ * exit rules. The walk itself never fails: an immediately-terminated
+ * span matches empty and records nothing.
+ */
+export function type_span(options: {
+  into: string;
+  exit_on_comma?: boolean;
+  exit_on_eq?: boolean;
+  exit_on_qmark?: boolean;
+  enter_angle?: boolean;
+  brace_exit_on_closer?: boolean;
+  value_op_terminators?: string[];
+  stmt_keyword_terminators?: string[];
+  type_terminal_keywords?: string[];
+}): TypeSpanPatternSpec {
+  return {
+    __kind: "type_span",
+    into: options.into,
+    exit_on_comma: options.exit_on_comma ?? true,
+    exit_on_eq: options.exit_on_eq ?? true,
+    exit_on_qmark: options.exit_on_qmark ?? false,
+    enter_angle: options.enter_angle ?? false,
+    brace_exit_on_closer: options.brace_exit_on_closer ?? false,
+    value_op_terminators: options.value_op_terminators,
+    stmt_keyword_terminators: options.stmt_keyword_terminators,
+    type_terminal_keywords: options.type_terminal_keywords,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Pattern compilation
 // ---------------------------------------------------------------------------
@@ -225,6 +259,7 @@ const EMPTY_SIGNALS = new Uint8Array(0);
 //   OP_LOOP       body_pc                    — 2 slots  (possessive repeat)
 //   OP_NOT_TYPE   type_id values_id pred_id  — 4 slots  (zero-width negation)
 //   OP_PARAMS     spec_id slot_id            — 3 slots  (param-list walk)
+//   OP_TYPE_SPAN  spec_id slot_id            — 3 slots  (type-mode walk)
 //
 // any_of(A, B, C):
 //   ALT L1; <A>; COMMIT; JUMP end;
@@ -260,6 +295,7 @@ const OP_MATCH = 7;
 const OP_LOOP = 8;
 const OP_NOT_TYPE = 9;
 const OP_PARAMS = 10;
+const OP_TYPE_SPAN = 11;
 
 // resolved form of a ParamsPatternSpec: enum-coded modes, char codes, and
 // type ids resolved against the compile-time vocabulary. referenced from
@@ -286,6 +322,27 @@ const PARAMS_FIND_ARROW = 2;
 const PARAMS_STRATEGY_FIRST_IDENT = 0;
 const PARAMS_STRATEGY_CARRY_PENDING = 1;
 
+// resolved form of a TypeSpanPatternSpec: per-mode flags plus terminator
+// sets compiled into the shared value pool, referenced from OP_TYPE_SPAN
+// by spec_id via the compile context's side table.
+interface CompiledTypeSpanSpec {
+  exit_on_comma: boolean;
+  exit_on_eq: boolean;
+  exit_on_qmark: boolean;
+  enter_angle: boolean;
+  brace_exit_on_closer: boolean;
+  // value-pool set ids, -1 when the set is empty / not configured.
+  value_ops_id: number;
+  stmt_keywords_id: number;
+  terminal_keywords_id: number;
+  ident_id: number;
+  punct_id: number;
+  // -1 when the vocabulary lacks the type; the related checks never match.
+  keyword_id: number;
+  operator_id: number;
+  type_id: number;
+}
+
 // per-rule-group compilation context. one `CompileCtx` is built per
 // `rewrite_types` call and threaded through every rule compile. the program
 // buffer grows monotonically; all rules' code shares it with per-rule
@@ -300,6 +357,8 @@ interface CompileCtx {
   value_offsets_len: number; // # of allocated value sets (entries = 2 * this)
   // side table for OP_PARAMS: resolved walk configs referenced by spec_id.
   params_specs: CompiledParamsSpec[];
+  // side table for OP_TYPE_SPAN, same referencing scheme.
+  span_specs: CompiledTypeSpanSpec[];
   // pc of the current rule's `when` entry, set by compile_rewrite before
   // each rule. lets position-sensitive constructs (arrow-mode params)
   // verify they sit first in the pattern.
@@ -315,6 +374,7 @@ function make_compile_ctx(): CompileCtx {
     value_offsets: new Int32Array(16),
     value_offsets_len: 0,
     params_specs: [],
+    span_specs: [],
     rule_start_pc: 0,
   };
 }
@@ -612,6 +672,40 @@ function compile_pattern_bytecode(
       emit(ctx, OP_PARAMS, spec_id, slot);
       return;
     }
+    case "type_span": {
+      const ident_id = name_to_id.get("identifier") ?? NEVER_MATCHES;
+      const punct_id = name_to_id.get("punctuation") ?? NEVER_MATCHES;
+      if (ident_id === NEVER_MATCHES || punct_id === NEVER_MATCHES) {
+        warn_once(
+          "rewrite_types",
+          "type-span-base-types",
+          'type_span() needs "identifier" and "punctuation" in the token vocabulary; the branch can never match',
+        );
+        emit(ctx, OP_TYPE, NEVER_MATCHES, -1, -1);
+        return;
+      }
+      const slot = allocate_slot(slots, spec.into);
+      const spec_id = ctx.span_specs.length;
+      const set_id = (values: string[] | undefined): number =>
+        values !== undefined && values.length > 0 ? compile_value_set(ctx, values) : -1;
+      ctx.span_specs.push({
+        exit_on_comma: spec.exit_on_comma,
+        exit_on_eq: spec.exit_on_eq,
+        exit_on_qmark: spec.exit_on_qmark,
+        enter_angle: spec.enter_angle,
+        brace_exit_on_closer: spec.brace_exit_on_closer,
+        value_ops_id: set_id(spec.value_op_terminators),
+        stmt_keywords_id: set_id(spec.stmt_keyword_terminators),
+        terminal_keywords_id: set_id(spec.type_terminal_keywords),
+        ident_id,
+        punct_id,
+        keyword_id: name_to_id.get("keyword") ?? -1,
+        operator_id: name_to_id.get("operator") ?? -1,
+        type_id: name_to_id.get("type") ?? -1,
+      });
+      emit(ctx, OP_TYPE_SPAN, spec_id, slot);
+      return;
+    }
   }
 }
 
@@ -700,6 +794,7 @@ function compile_reverse_pattern_bytecode(
     case "repeat":
     case "not":
     case "params":
+    case "type_span":
       // not supported in lookbehind; emit an instruction that always fails.
       warn_once(
         "rewrite_types",
@@ -773,6 +868,10 @@ function disassemble_program(
         break;
       case OP_PARAMS:
         line = `${pc}: PARAMS spec=${program[pc + 1]} slot=${program[pc + 2]}`;
+        pc += 3;
+        break;
+      case OP_TYPE_SPAN:
+        line = `${pc}: TYPE_SPAN spec=${program[pc + 1]} slot=${program[pc + 2]}`;
         pc += 3;
         break;
       default:
@@ -1591,6 +1690,237 @@ function params_walk_carry_pending(
   return k;
 }
 
+// ---------------------------------------------------------------------------
+// type_span construct runtime (OP_TYPE_SPAN)
+// ---------------------------------------------------------------------------
+//
+// type-mode walker. consumes tokens from the match position until a
+// terminator (see TypeSpanPatternSpec for the exit rules), recording each
+// type-position identifier as a single-token capture span via
+// push_cap_log. depths are tracked RELATIVE to entry: the span doesn't
+// know or care how deeply the anchor itself was nested -- a close that
+// drops below zero belongs to an enclosing scope and ends the span.
+
+const CH_QMARK = 0x3f;
+
+// does the token before `idx` read as the END of a type expression?
+// used by the brace-exit check so `(): T {`, `(): T | undefined {` and
+// `extends Foo<T> {` terminate at the body brace. mirrors the imperative
+// promoter: a punctuation token ending in `]` / `)`, an identifier (or
+// already-promoted type), a lone `>`, or a terminal keyword (`this`,
+// `void`, ...).
+function type_span_prev_is_closer(
+  spec: CompiledTypeSpanSpec,
+  tokens: Uint32Array,
+  idx: number,
+  input: string,
+  trivia: Uint8Array,
+  value_pool: Uint16Array,
+  value_offsets: Int32Array,
+): boolean {
+  const prev = params_prev_non_trivia(tokens, idx - 1, trivia);
+  if (prev < 0) return false;
+  const base = prev * 3;
+  const pt = tokens[base];
+  const ps = tokens[base + 1];
+  const pe = tokens[base + 2];
+  if (pt === spec.punct_id) {
+    const last = input.charCodeAt(pe - 1);
+    return last === CH_BRACKET_CLOSE || last === CH_PAREN_CLOSE;
+  }
+  if (pt === spec.ident_id || (spec.type_id >= 0 && pt === spec.type_id)) return true;
+  if (pt === spec.operator_id && pe - ps === 1 && input.charCodeAt(ps) === CH_GT) return true;
+  if (pt === spec.keyword_id && spec.terminal_keywords_id >= 0) {
+    return value_set_matches(value_pool, value_offsets, spec.terminal_keywords_id, input, ps, pe);
+  }
+  return false;
+}
+
+// OP_TYPE_SPAN entry: walk from `idx` until a terminator. always matches;
+// returns the index of the FIRST unconsumed token (the terminator's token,
+// or count for an unterminated span). identifiers in key position --
+// nested depth, directly followed by `:` or `?:` -- are parameter names /
+// property keys and are not recorded.
+function run_type_span(
+  spec: CompiledTypeSpanSpec,
+  slot: number,
+  tokens: Uint32Array,
+  idx: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+  value_pool: Uint16Array,
+  value_offsets: Int32Array,
+): number {
+  let paren_rel = 0;
+  let brace_rel = 0;
+  let bracket_rel = 0;
+  let angle_rel = 0;
+  let i = idx;
+
+  while (i < count) {
+    const base = i * 3;
+    const t = tokens[base];
+    if (trivia[t]) {
+      i++;
+      continue;
+    }
+    const s = tokens[base + 1];
+    const e = tokens[base + 2];
+
+    if (t === spec.punct_id) {
+      for (let p = s; p < e; p++) {
+        const c = input.charCodeAt(p);
+        if (c === CH_PAREN_OPEN) paren_rel++;
+        else if (c === CH_PAREN_CLOSE) {
+          paren_rel--;
+          if (paren_rel < 0) return i;
+        } else if (c === CH_BRACE_OPEN) {
+          if (
+            spec.brace_exit_on_closer &&
+            brace_rel === 0 &&
+            paren_rel === 0 &&
+            type_span_prev_is_closer(spec, tokens, i, input, trivia, value_pool, value_offsets)
+          ) {
+            return i;
+          }
+          brace_rel++;
+        } else if (c === CH_BRACE_CLOSE) {
+          brace_rel--;
+          if (brace_rel < 0) return i;
+        } else if (c === CH_BRACKET_OPEN) bracket_rel++;
+        else if (c === CH_BRACKET_CLOSE) {
+          bracket_rel--;
+          if (bracket_rel < 0) return i;
+        } else if (c === CH_SEMI) {
+          if (paren_rel === 0 && brace_rel === 0 && bracket_rel === 0 && angle_rel === 0) {
+            return i;
+          }
+        }
+      }
+      // comma exit at token granularity AFTER the chars, mirroring the
+      // imperative walker: depth changes within the token apply first.
+      if (
+        spec.exit_on_comma &&
+        paren_rel === 0 &&
+        brace_rel === 0 &&
+        bracket_rel === 0 &&
+        angle_rel === 0
+      ) {
+        for (let p = s; p < e; p++) {
+          if (input.charCodeAt(p) === CH_COMMA) return i;
+        }
+      }
+      i++;
+      continue;
+    }
+
+    if (spec.operator_id >= 0 && t === spec.operator_id) {
+      const len = e - s;
+      // angle tracking precedes termination. a `>` above relative zero
+      // closes a nested group; AT relative zero it closes the span's own
+      // group when enter_angle is set, and is otherwise left alone (a
+      // stray `>` cannot appear in a valid type).
+      if (len === 1 && input.charCodeAt(s) === CH_LT) {
+        angle_rel++;
+        i++;
+        continue;
+      }
+      if (len === 1 && input.charCodeAt(s) === CH_GT) {
+        if (angle_rel > 0) {
+          angle_rel--;
+          i++;
+          continue;
+        }
+        if (spec.enter_angle) return i;
+      }
+      if (paren_rel === 0 && brace_rel === 0 && bracket_rel === 0 && angle_rel === 0) {
+        if (len === 1 && input.charCodeAt(s) === CH_EQ) {
+          if (spec.exit_on_eq) return i;
+          // generics: `=` introduces a default type, keep walking.
+          i++;
+          continue;
+        }
+        if (len === 2 && input.charCodeAt(s) === CH_EQ && input.charCodeAt(s + 1) === CH_GT) {
+          // `=>` after `)` is a function type's result arrow; anything
+          // else is an arrow-function body separator and ends the span.
+          const prev = params_prev_non_trivia(tokens, i - 1, trivia);
+          if (prev >= 0 && input.charCodeAt(tokens[prev * 3 + 2] - 1) === CH_PAREN_CLOSE) {
+            i++;
+            continue;
+          }
+          return i;
+        }
+        if (len === 1 && input.charCodeAt(s) === CH_QMARK) {
+          if (spec.exit_on_qmark) return i;
+          // type-level `?` (optional marker, conditional type).
+          i++;
+          continue;
+        }
+        if (
+          spec.value_ops_id >= 0 &&
+          value_set_matches(value_pool, value_offsets, spec.value_ops_id, input, s, e)
+        ) {
+          return i;
+        }
+      }
+      i++;
+      continue;
+    }
+
+    if (spec.keyword_id >= 0 && t === spec.keyword_id) {
+      if (
+        paren_rel === 0 &&
+        brace_rel === 0 &&
+        bracket_rel === 0 &&
+        angle_rel === 0 &&
+        spec.stmt_keywords_id >= 0 &&
+        value_set_matches(value_pool, value_offsets, spec.stmt_keywords_id, input, s, e)
+      ) {
+        return i;
+      }
+      i++;
+      continue;
+    }
+
+    if (t === spec.ident_id) {
+      // key position: at nested paren / brace depth an identifier
+      // directly followed by `:` or `?:` is a parameter name or
+      // property key in a function / object type, not a type reference.
+      // at the span root, `:` is the conditional-type separator and the
+      // identifier before it is a real type.
+      let skip = false;
+      if (paren_rel > 0 || brace_rel > 0) {
+        const nxt = params_next_non_trivia(tokens, i + 1, count, trivia);
+        if (nxt >= 0) {
+          const nb = nxt * 3;
+          const ns = tokens[nb + 1];
+          const nlen = tokens[nb + 2] - ns;
+          if (tokens[nb] === spec.punct_id && nlen === 1 && input.charCodeAt(ns) === CH_COLON) {
+            skip = true;
+          } else if (
+            spec.operator_id >= 0 &&
+            tokens[nb] === spec.operator_id &&
+            nlen === 2 &&
+            input.charCodeAt(ns) === CH_QMARK &&
+            input.charCodeAt(ns + 1) === CH_COLON
+          ) {
+            skip = true;
+          }
+        }
+      }
+      if (!skip) push_cap_log(slot, i, i + 1);
+      i++;
+      continue;
+    }
+
+    // numbers, strings, template chunks, already-typed tokens: pass
+    // through, the span continues over them (literal types, etc.).
+    i++;
+  }
+  return count;
+}
+
 // OP_PARAMS entry: locate the open paren per the spec's mode, then run
 // the chunk walk. NO_MATCH only when the paren cannot be located (or a
 // frame-dependent mode runs without frames) -- a located list always
@@ -1675,6 +2005,7 @@ function match_bytecode(
   value_offsets: Int32Array,
   max_capture_slots: number,
   params_specs: CompiledParamsSpec[],
+  span_specs: CompiledTypeSpanSpec[],
   frames: FrameTable | undefined,
 ): number {
   if (max_capture_slots > 0) ensure_cap_capacity(max_capture_slots);
@@ -1853,6 +2184,23 @@ function match_bytecode(
           break;
         }
         idx = new_idx;
+        pc += 3;
+        break;
+      }
+      case OP_TYPE_SPAN: {
+        // the span walk never fails; an immediately-terminated span
+        // matches empty and records nothing.
+        idx = run_type_span(
+          span_specs[program[pc + 1]],
+          program[pc + 2],
+          tokens,
+          idx,
+          count,
+          input,
+          trivia,
+          value_pool,
+          value_offsets,
+        );
         pc += 3;
         break;
       }
@@ -2290,6 +2638,7 @@ interface CompiledRewriteState {
   value_pool: Uint16Array;
   value_offsets: Int32Array;
   params_specs: CompiledParamsSpec[];
+  span_specs: CompiledTypeSpanSpec[];
   // true when any rule carries an anchor frame gate -- lets the dispatch
   // loop skip the per-call kind resolution entirely for gate-free groups.
   has_frame_gates: boolean;
@@ -2526,6 +2875,7 @@ function compile_rewrite(
     value_pool,
     value_offsets,
     params_specs: ctx.params_specs,
+    span_specs: ctx.span_specs,
     has_frame_gates: compiled.some((r) => r.anchor_at_start || r.anchor_frame_kinds !== null),
     has_signal_gates: compiled.some(
       (r) =>
@@ -2683,6 +3033,7 @@ function run_rewrite_loop_claims(
     value_pool,
     value_offsets,
     params_specs,
+    span_specs,
   } = state;
 
   // resolve each gated rule's frame-kind names against this table's
@@ -2905,6 +3256,7 @@ function run_rewrite_loop_claims(
           value_offsets,
           rule.max_capture_slots,
           params_specs,
+          span_specs,
           frames,
         );
         if (end === NO_MATCH) continue;

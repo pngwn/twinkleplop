@@ -780,6 +780,60 @@ export interface ParamsPatternSpec {
   scan_max_tokens: number;
 }
 
+// Type-expression span walker: from the current position, consume tokens
+// in "type mode" until a terminator, recording each identifier that reads
+// as a type reference as one capture span under `into` (claimed by a
+// `{ into: type }` rewrite map like any capture). The construct exists
+// because type-expression extent is stream-continuous: where a type ends
+// depends on bracket / angle depth relative to entry and on terminator
+// classes (value operators, statement keywords), which the token-granular
+// combinators cannot express. Entry detection composes from ordinary
+// anchors and gates; the span walk runs as one opcode.
+//
+// Exits (always relative to the depths at entry):
+//   - a `)` `}` `]` that drops below entry depth
+//   - `;` at entry depth
+//   - `,` at entry depth (exit_on_comma; off for extends / implements /
+//     generics lists, whose commas separate more types)
+//   - `=` at entry depth (exit_on_eq; off for generics, where `=`
+//     introduces a default type)
+//   - `=>` at entry depth, unless the previous token ends with `)` (a
+//     function type's result arrow)
+//   - `?` at entry depth (exit_on_qmark; on for as / satisfies spans,
+//     which end at a ternary, off elsewhere where `?` is type level)
+//   - any operator in value_op_terminators / keyword in
+//     stmt_keyword_terminators at entry depth
+//   - the unmatched `>` when enter_angle is set (the span IS an angle
+//     group, e.g. generic type arguments)
+//   - a `{` at entry depth whose previous token reads as the end of a
+//     type expression (brace_exit_on_closer; return-type and heritage
+//     spans end at the body brace)
+//
+// Inside the span, identifiers are recorded EXCEPT key positions: at
+// nested paren / brace depth, an identifier directly followed by `:` or
+// `?:` is a parameter name or property key, not a type reference.
+export interface TypeSpanPatternSpec {
+  __kind: "type_span";
+  // capture name receiving one single-token span per type identifier.
+  into: string;
+  exit_on_comma: boolean;
+  exit_on_eq: boolean;
+  exit_on_qmark: boolean;
+  // start the walk one angle level deep: the anchor consumed the opening
+  // `<`, so the matching unmatched `>` ends the span.
+  enter_angle: boolean;
+  brace_exit_on_closer: boolean;
+  // operator source texts that end the span at entry depth (binary /
+  // assignment / increment operators that cannot appear in a type).
+  value_op_terminators?: string[];
+  // keyword source texts that end the span at entry depth (statement
+  // starters that mean the type expression is over).
+  stmt_keyword_terminators?: string[];
+  // keywords that can legitimately END a type expression; used by the
+  // brace_exit_on_closer check so `(): void {` exits at the body brace.
+  type_terminal_keywords?: string[];
+}
+
 export type TokenPatternSpec =
   | TypePatternSpec
   | SeqPatternSpec
@@ -789,7 +843,8 @@ export type TokenPatternSpec =
   | BalancedPatternSpec
   | RepeatPatternSpec
   | NotPatternSpec
-  | ParamsPatternSpec;
+  | ParamsPatternSpec
+  | TypeSpanPatternSpec;
 
 // A rewrite rule says: starting at a token matching `anchor` (a bare type
 // name, or `type(name, value)` to also constrain source text), if the
