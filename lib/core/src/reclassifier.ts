@@ -11,6 +11,7 @@
 // type_ids once per reclassify call, so the hot loop is integer-only.
 
 import { build_annotation_extractor } from "./annotation";
+import { debug_enabled, warn_once } from "./debug";
 import { tokenize } from "./tokenizer";
 import { FRAME_BRACKET_BRACE, FRAME_KIND_TOP } from "./types";
 import type {
@@ -320,6 +321,13 @@ function compile_pattern_bytecode(
   switch (spec.__kind) {
     case "type": {
       let type_id = name_to_id.get(spec.type_name) ?? NEVER_MATCHES;
+      if (type_id === NEVER_MATCHES) {
+        warn_once(
+          "rewrite_types",
+          `pattern-type:${spec.type_name}`,
+          `pattern references type "${spec.type_name}" which is not in the token vocabulary; the branch can never match`,
+        );
+      }
       let value_values: string[] | null = null;
       if (spec.value !== undefined) {
         value_values = Array.isArray(spec.value) ? spec.value : [spec.value];
@@ -330,8 +338,14 @@ function compile_pattern_bytecode(
         const resolved = resolve_char_pred(spec.text_pred);
         // misspelled predicate -> compile the type into NEVER_MATCHES so
         // the rule cannot fire, matching the anchor-level fail-closed rule.
-        if (resolved < 0) type_id = NEVER_MATCHES;
-        else pred_id = resolved;
+        if (resolved < 0) {
+          type_id = NEVER_MATCHES;
+          warn_once(
+            "rewrite_types",
+            `pattern-pred:${spec.text_pred}`,
+            `unknown text predicate "${spec.text_pred}"; the branch can never match`,
+          );
+        } else pred_id = resolved;
       }
       emit(ctx, OP_TYPE, type_id, values_id, pred_id);
       return;
@@ -385,7 +399,15 @@ function compile_pattern_bytecode(
       return;
     }
     case "balanced": {
-      const punct_id = name_to_id.get(spec.punct_type ?? "punctuation") ?? NEVER_MATCHES;
+      const punct_name = spec.punct_type ?? "punctuation";
+      const punct_id = name_to_id.get(punct_name) ?? NEVER_MATCHES;
+      if (punct_id === NEVER_MATCHES) {
+        warn_once(
+          "rewrite_types",
+          `balanced-punct:${punct_name}`,
+          `balanced pattern's bracket type "${punct_name}" is not in the token vocabulary; the branch can never match`,
+        );
+      }
       emit(
         ctx,
         OP_BALANCED,
@@ -436,6 +458,11 @@ function compile_pattern_bytecode(
       // succeed -- fail OPEN. emit an always-fail instruction instead so a
       // misspelled name disables the rule, like everywhere else.
       if (type_id === NEVER_MATCHES) {
+        warn_once(
+          "rewrite_types",
+          `not-inner:${inner.type_name}:${inner.text_pred ?? ""}`,
+          `not() inner spec (type "${inner.type_name}") cannot resolve; the branch can never match`,
+        );
         emit(ctx, OP_TYPE, NEVER_MATCHES, -1, -1);
         return;
       }
@@ -465,6 +492,13 @@ function compile_reverse_pattern_bytecode(
   switch (spec.__kind) {
     case "type": {
       let type_id = name_to_id.get(spec.type_name) ?? NEVER_MATCHES;
+      if (type_id === NEVER_MATCHES) {
+        warn_once(
+          "rewrite_types",
+          `pattern-type:${spec.type_name}`,
+          `pattern references type "${spec.type_name}" which is not in the token vocabulary; the branch can never match`,
+        );
+      }
       let value_values: string[] | null = null;
       if (spec.value !== undefined) {
         value_values = Array.isArray(spec.value) ? spec.value : [spec.value];
@@ -473,8 +507,14 @@ function compile_reverse_pattern_bytecode(
       let pred_id = -1;
       if (spec.text_pred !== undefined) {
         const resolved = resolve_char_pred(spec.text_pred);
-        if (resolved < 0) type_id = NEVER_MATCHES;
-        else pred_id = resolved;
+        if (resolved < 0) {
+          type_id = NEVER_MATCHES;
+          warn_once(
+            "rewrite_types",
+            `pattern-pred:${spec.text_pred}`,
+            `unknown text predicate "${spec.text_pred}"; the branch can never match`,
+          );
+        } else pred_id = resolved;
       }
       emit(ctx, OP_TYPE, type_id, values_id, pred_id);
       return;
@@ -522,6 +562,11 @@ function compile_reverse_pattern_bytecode(
     case "repeat":
     case "not":
       // not supported in lookbehind; emit an instruction that always fails.
+      warn_once(
+        "rewrite_types",
+        `before-unsupported:${spec.__kind}`,
+        `"${spec.__kind}" is not supported in before lookbehind; the rule can never match`,
+      );
       emit(ctx, OP_TYPE, NEVER_MATCHES, -1, -1);
       return;
   }
@@ -1408,7 +1453,14 @@ function compile_rewrite(
             frame_kinds: rule.anchor.frame_kinds,
           };
     const anchor_id = name_to_id.get(anchor_spec.type_name);
-    if (anchor_id === undefined) continue;
+    if (anchor_id === undefined) {
+      warn_once(
+        "rewrite_types",
+        `anchor-type:${anchor_spec.type_name}`,
+        `anchor type "${anchor_spec.type_name}" is not in the token vocabulary; rule disabled`,
+      );
+      continue;
+    }
 
     const slots = make_capture_slots();
     const when_pc = ctx.program_len;
@@ -1425,7 +1477,14 @@ function compile_rewrite(
       capture_targets = [];
       for (const name of Object.keys(rule.rewrite)) {
         const slot_id = slots.name_to_slot.get(name);
-        if (slot_id === undefined) continue;
+        if (slot_id === undefined) {
+          warn_once(
+            "rewrite_types",
+            `rewrite-capture:${name}`,
+            `rewrite target references capture "${name}" which the when pattern never declares; target ignored`,
+          );
+          continue;
+        }
         capture_targets.push({
           slot_id,
           target_id: ensure_id(rule.rewrite[name]),
@@ -1445,6 +1504,13 @@ function compile_rewrite(
     let anchor_text_pred_id = -1;
     if (anchor_spec.text_pred !== undefined) {
       const resolved = resolve_char_pred(anchor_spec.text_pred);
+      if (resolved < 0) {
+        warn_once(
+          "rewrite_types",
+          `anchor-pred:${anchor_spec.text_pred}`,
+          `unknown text predicate "${anchor_spec.text_pred}" on anchor; rule disabled`,
+        );
+      }
       anchor_text_pred_id = resolved < 0 ? -2 : resolved;
     }
 
@@ -1673,9 +1739,23 @@ function run_rewrite_loop_claims(
       const out = new Int32Array(r.anchor_frame_kinds.length);
       for (let k = 0; k < r.anchor_frame_kinds.length; k++) {
         out[k] = frames.kind_names.indexOf(r.anchor_frame_kinds[k]);
+        if (out[k] < 0 && debug_enabled()) {
+          warn_once(
+            "rewrite_types",
+            `frame-kind:${r.anchor_frame_kinds[k]}`,
+            `anchor frame kind "${r.anchor_frame_kinds[k]}" is not in the frame table's kind names; the gate can never pass`,
+          );
+        }
       }
       return out;
     });
+  }
+  if (state.has_frame_gates && frames === undefined && debug_enabled()) {
+    warn_once(
+      "rewrite_types",
+      "frames-missing",
+      "rules with frame gates ran without a frame_track stage upstream; gated rules are disabled",
+    );
   }
 
   for (let i = 0; i < count; i++) {

@@ -6,6 +6,7 @@
 // guard inspects a fixed-offset token to veto the merge (used by Rust's
 // lifetime fusion to keep `'a Fn(...)` from collapsing).
 
+import { debug_enabled, warn_once } from "./debug";
 import type { MergeAdjacentConfig, Reclassifier, TokenizeResult } from "./types";
 
 export function merge_adjacent(config: MergeAdjacentConfig): Reclassifier {
@@ -23,6 +24,13 @@ export function merge_adjacent(config: MergeAdjacentConfig): Reclassifier {
     const new_types = token_types.slice();
     const anchor_id = new_types.indexOf(config.anchor_type);
     if (anchor_id < 0) {
+      if (debug_enabled()) {
+        warn_once(
+          "merge_adjacent",
+          `anchor-type:${config.anchor_type}`,
+          `anchor type "${config.anchor_type}" is not in the token vocabulary; pass disabled`,
+        );
+      }
       return { tokens: new Uint32Array(old_tokens), token_types: new_types };
     }
 

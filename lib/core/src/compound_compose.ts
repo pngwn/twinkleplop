@@ -5,11 +5,8 @@
 // markdown's bold/italic/code nesting). composed types are interned into
 // token_types dynamically so the renderer can split on the separator.
 
-import type {
-  CompoundComposeConfig,
-  Reclassifier,
-  TokenizeResult,
-} from "./types";
+import { debug_enabled, warn_once } from "./debug";
+import type { CompoundComposeConfig, Reclassifier, TokenizeResult } from "./types";
 
 interface OpenStyleMap {
   // resolved open type_id -> style name (a string label, NOT an id)
@@ -39,6 +36,13 @@ export function compound_compose(config: CompoundComposeConfig): Reclassifier {
     // empty fast path: no styles resolved (this stream's vocabulary has
     // none of the configured open/close types) -- nothing to do.
     if (styles.by_open_id.size === 0 && styles.by_close_id.size === 0) {
+      if (debug_enabled()) {
+        warn_once(
+          "compound_compose",
+          "no-styles",
+          "none of the configured open/close marker types are in the token vocabulary; pass disabled",
+        );
+      }
       return result;
     }
 

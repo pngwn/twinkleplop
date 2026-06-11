@@ -25,6 +25,8 @@ export {
   GRAMMAR_EXTENSION_DOWNGRADES,
   GRAMMAR_EXTENSION_CATEGORIES,
 } from "./reclassifier";
+export { debug_enabled, set_debug_warnings, warn_once } from "./debug";
+export type { DebugIssue } from "./debug";
 export { make_token_view, make_scope_stack } from "./scan";
 export type { TokenView, Scope, ScopeStack, Bracket } from "./scan";
 export { frame_track } from "./frame_track";

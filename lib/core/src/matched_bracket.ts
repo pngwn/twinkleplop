@@ -12,6 +12,7 @@
 // pass batches with other claim producers and never touches the caller's
 // tokens.
 
+import { debug_enabled, warn_once } from "./debug";
 import { as_claim_producer, precedence_for } from "./reclassifier";
 import type { ClaimFn, ClaimingReclassifier, MatchedBracketConfig } from "./types";
 
@@ -25,7 +26,17 @@ export function matched_bracket(config: MatchedBracketConfig): ClaimingReclassif
 
     const open_id = token_types.indexOf(config.open_type);
     const close_id = token_types.indexOf(config.close_type);
-    if (open_id < 0 || close_id < 0) return;
+    if (open_id < 0 || close_id < 0) {
+      if (debug_enabled()) {
+        const missing = open_id < 0 ? config.open_type : config.close_type;
+        warn_once(
+          "matched_bracket",
+          `endpoint-type:${missing}`,
+          `endpoint type "${missing}" is not in the token vocabulary; pass disabled`,
+        );
+      }
+      return;
+    }
 
     const comment_id = token_types.indexOf("comment");
     const post_open_type_id =
@@ -34,6 +45,13 @@ export function matched_bracket(config: MatchedBracketConfig): ClaimingReclassif
         : -1;
     if (config.post_open_required !== undefined && post_open_type_id < 0) {
       // configured but not present in this stream's vocabulary -- can't fire.
+      if (debug_enabled()) {
+        warn_once(
+          "matched_bracket",
+          `post-open-type:${config.post_open_required.type}`,
+          `post_open_required type "${config.post_open_required.type}" is not in the token vocabulary; pass disabled`,
+        );
+      }
       return;
     }
 
@@ -44,7 +62,17 @@ export function matched_bracket(config: MatchedBracketConfig): ClaimingReclassif
       config.retag_open_to !== undefined ? token_types.indexOf(config.retag_open_to) : open_id;
     const retag_close_id =
       config.retag_close_to !== undefined ? token_types.indexOf(config.retag_close_to) : close_id;
-    if (retag_open_id < 0 || retag_close_id < 0) return;
+    if (retag_open_id < 0 || retag_close_id < 0) {
+      if (debug_enabled()) {
+        const missing = retag_open_id < 0 ? config.retag_open_to : config.retag_close_to;
+        warn_once(
+          "matched_bracket",
+          `retag-type:${missing}`,
+          `retag target "${missing}" is not in the token vocabulary; pass disabled`,
+        );
+      }
+      return;
+    }
     const open_prec = precedence_for(config.retag_open_to ?? config.open_type);
     const close_prec = precedence_for(config.retag_close_to ?? config.close_type);
 

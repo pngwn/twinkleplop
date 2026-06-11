@@ -12,6 +12,7 @@
 // together (one flush, conflicts resolved by precedence) and never mutate
 // the caller's tokens or shared token_types array.
 
+import { debug_enabled, warn_once } from "./debug";
 import {
   any_of,
   as_claim_producer,
@@ -50,7 +51,16 @@ export function promote_by_text_set(
   const set = text_set instanceof Set ? text_set : new Set(text_set);
   const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
     const source_id = token_types.indexOf(source_type);
-    if (source_id < 0) return;
+    if (source_id < 0) {
+      if (debug_enabled()) {
+        warn_once(
+          "fidelity",
+          `source-type:${source_type}`,
+          `source type "${source_type}" is not in the token vocabulary; pass disabled`,
+        );
+      }
+      return;
+    }
     let target_id = token_types.indexOf(target_type);
     if (target_id < 0) {
       target_id = token_types.length;
@@ -91,7 +101,16 @@ export function promote_pascal_case(
 ): ClaimingReclassifier {
   const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
     const source_id = token_types.indexOf(source_type);
-    if (source_id < 0) return;
+    if (source_id < 0) {
+      if (debug_enabled()) {
+        warn_once(
+          "fidelity",
+          `source-type:${source_type}`,
+          `source type "${source_type}" is not in the token vocabulary; pass disabled`,
+        );
+      }
+      return;
+    }
     let target_id = token_types.indexOf(target_type);
     if (target_id < 0) {
       target_id = token_types.length;
@@ -161,7 +180,16 @@ export function promote_by_upper_snake_case(
 ): ClaimingReclassifier {
   const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
     const source_id = token_types.indexOf(source_type);
-    if (source_id < 0) return;
+    if (source_id < 0) {
+      if (debug_enabled()) {
+        warn_once(
+          "fidelity",
+          `source-type:${source_type}`,
+          `source type "${source_type}" is not in the token vocabulary; pass disabled`,
+        );
+      }
+      return;
+    }
     let target_id = token_types.indexOf(target_type);
     if (target_id < 0) {
       target_id = token_types.length;

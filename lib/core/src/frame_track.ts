@@ -11,6 +11,7 @@
 // are evaluated during the walk so every consumer reads one shared
 // classification instead of re-deriving its own.
 
+import { debug_enabled, warn_once } from "./debug";
 import type {
   BraceKindSpec,
   FrameRecord,
@@ -156,7 +157,14 @@ function resolve_kind_tables(
   ).fill(null);
   for (const m of compiled.markers) {
     const id = token_types.indexOf(m.type);
-    if (id < 0) continue;
+    if (id < 0) {
+      warn_once(
+        "frame_track",
+        `marker-type:${m.type}`,
+        `body marker type "${m.type}" is not in the token vocabulary; the marker can never arm`,
+      );
+      continue;
+    }
     let list = marker_lists[id];
     if (list === null) {
       list = [];
@@ -164,15 +172,34 @@ function resolve_kind_tables(
     }
     list.push({ text: m.text, kind_id: m.kind_id });
   }
+  const angle_type_id =
+    compiled.angle_type !== null ? token_types.indexOf(compiled.angle_type) : -1;
+  if (compiled.angle_type !== null && angle_type_id < 0) {
+    warn_once(
+      "frame_track",
+      `angle-type:${compiled.angle_type}`,
+      `angle type "${compiled.angle_type}" is not in the token vocabulary; angle depth is never tracked`,
+    );
+  }
   return {
     marker_lists,
-    angle_type_id: compiled.angle_type !== null ? token_types.indexOf(compiled.angle_type) : -1,
-    prev_rules: compiled.prev_rules.map((r) => ({
-      type_id: token_types.indexOf(r.type),
-      texts: r.texts,
-      last_chars: r.last_chars,
-      kind_id: r.kind_id,
-    })),
+    angle_type_id,
+    prev_rules: compiled.prev_rules.map((r) => {
+      const type_id = token_types.indexOf(r.type);
+      if (type_id < 0) {
+        warn_once(
+          "frame_track",
+          `prev-rule-type:${r.type}`,
+          `prev rule type "${r.type}" is not in the token vocabulary; the rule can never match`,
+        );
+      }
+      return {
+        type_id,
+        texts: r.texts,
+        last_chars: r.last_chars,
+        kind_id: r.kind_id,
+      };
+    }),
   };
 }
 
@@ -267,7 +294,20 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
     for (const name of rearm_names) {
       const id = brace_kinds.kind_names.indexOf(name);
       if (id >= 0) rearm_kind_ids.add(id);
+      else {
+        warn_once(
+          "frame_track",
+          `rearm-kind:${name}`,
+          `rearm_after_close_kinds kind "${name}" is not declared by the brace_kinds spec; it can never re-arm`,
+        );
+      }
     }
+  } else if (rearm_names !== undefined && brace_kinds === null) {
+    warn_once(
+      "frame_track",
+      "rearm-without-kinds",
+      "rearm_after_close_kinds is set but brace_kinds is not configured; re-arm never happens",
+    );
   }
   return {
     punct_type: spec.punct_type,
@@ -303,6 +343,13 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     if (punct_id === undefined) {
       punct_id = result.token_types.indexOf(compiled.punct_type);
       punct_cache.set(result.token_types, punct_id);
+      if (punct_id < 0 && debug_enabled()) {
+        warn_once(
+          "frame_track",
+          `punct-type:${compiled.punct_type}`,
+          `punct_type "${compiled.punct_type}" is not in the token vocabulary; no frames will be tracked`,
+        );
+      }
     }
 
     const kinds = compiled.brace_kinds;
