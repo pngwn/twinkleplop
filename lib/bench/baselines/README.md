@@ -84,6 +84,21 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   declarative pass costs ~+0.4 us per call on medium_js vs the
   specialized loop (generic anchor dispatch + bytecode), ~2% of the
   pipeline.
+- `11-params-construct.json` — captured after the capture log (captures
+  record one span per occurrence; backtracking truncates to the frame's
+  watermark) and the char-aware `params()` pattern construct replaced
+  both the `param_list` primitive and go's `chunker`. JS / TS / TSX / go
+  parameter tagging is now rewrite rules; the deleted primitives were
+  the last detector-style walkers outside the VM. exact token parity
+  verified on every corpus. dispatch gained two fast paths (must-contain
+  anchor prefilter for arrow rules, inline single-type() `when`) which
+  made the rules-based JS params stage ~15% FASTER than the imperative
+  param_list it replaced (39.0 -> 32.8 us on large_js for the
+  frame_track+params pair). go pays ~+0.3 us per call vs its specialized
+  chunker (one VM walk per `func`, ~-2% on `language()` end-to-end) --
+  accepted as the cost of one shared mechanism. other languages within
+  noise after machine adjustment (frame_track rows, untouched, read
+  +5-7% on this run).
 
 ## How to capture a new snapshot
 
