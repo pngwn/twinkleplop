@@ -1146,17 +1146,21 @@ void disassemble_program;
 // claims for the same token may coexist and merge_claims resolves the winner
 // by precedence (higher wins; ties broken by emission order).
 //
-// the precedence table below reflects JS/TS conventions, because those are
-// the pipelines with 2+ rewrite_types calls where conflicts actually occur.
-// the mapping is "more specific role wins over less specific" — a class_name
-// beats a type beats a function beats a property beats a bare identifier.
-// types that never conflict in practice (keywords, literals, punctuation,
-// operators) get stable but arbitrary positions.
+// the table below is the DEFAULT band scheme for shared role names: "more
+// specific role wins over less specific" — a class_name beats a type beats
+// a function beats a property beats a bare identifier. types that never
+// conflict in practice (keywords, literals, punctuation, operators) get
+// stable but arbitrary positions. languages whose pipeline priorities
+// deviate from these bands say so at the claim site: rewrite rules take a
+// per-rule `precedence`, primitives take a config override, and custom
+// ClaimFns pick their own values (go ranks structural position above the
+// upper-snake constant convention this way). in-between values are
+// legitimate — the bands are spaced to leave room.
 
 // ordered from lowest to highest precedence. types absent from this map
 // fall back to DEFAULT_PRECEDENCE, which sits above `identifier` but below
-// the language-specific roles — so unknown claims still beat a bare
-// identifier but lose to an explicit role claim.
+// the role bands — so unknown claims still beat a bare identifier but lose
+// to an explicit role claim.
 const PRECEDENCE_TABLE: Record<string, number> = {
   identifier: 0,
   punctuation: 5,
@@ -1178,7 +1182,6 @@ const PRECEDENCE_TABLE: Record<string, number> = {
   // matches the old sequential pipelines where upper-snake promotion ran
   // first and later passes gated on bare identifiers.
   constant: 55,
-  lifetime: 55,
   keyword: 70,
   boolean: 75,
   null: 75,
