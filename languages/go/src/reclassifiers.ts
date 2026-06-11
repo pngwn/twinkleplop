@@ -204,10 +204,12 @@ export const promote_go_namespaces: Reclassifier = as_claim_producer(promote_go_
 // walk is chunk-based with pending-name carryover rather than "first
 // identifier after every comma".
 //
-// two rule shapes over the `params()` walk construct: the named form, and
-// the receiver / anonymous form where the first paren group is walked
-// (receiver names are parameters too) before an optional name + second
-// list. "scan" rides the `[T any]` generics group between name and paren.
+// one rule over the `params()` walk construct with two branches: the named
+// form, and the receiver / anonymous form where the first paren group is
+// walked (receiver names are parameters too) before an optional name +
+// second list. "scan" rides the `[T any]` generics group between name and
+// paren. go keyword density is high (predeclared types are keywords), so
+// a single anchor keeps the per-keyword dispatch cost to one value check.
 const GO_PARAM_WALK = {
   into: "p",
   strategy: "carry_pending",
@@ -218,13 +220,10 @@ const go_func_name = any_of(type("identifier"), type("function"));
 const go_parameter_rules: RewriteRule[] = [
   {
     anchor: type("keyword", "func"),
-    when: seq(go_func_name, params(GO_PARAM_WALK)),
-    rewrite: { p: "parameter" },
-    precedence: GO_PARAMETER_PREC,
-  },
-  {
-    anchor: type("keyword", "func"),
-    when: seq(params(GO_PARAM_WALK), optional(seq(go_func_name, params(GO_PARAM_WALK)))),
+    when: any_of(
+      seq(go_func_name, params(GO_PARAM_WALK)),
+      seq(params(GO_PARAM_WALK), optional(seq(go_func_name, params(GO_PARAM_WALK)))),
+    ),
     rewrite: { p: "parameter" },
     precedence: GO_PARAMETER_PREC,
   },
