@@ -2229,6 +2229,18 @@ interface CompiledRule {
   anchor_at_start: boolean;
   anchor_frame_kinds: string[] | null;
   anchor_frame_direct: boolean;
+  // dispatch fast paths derived at compile time, both -1 when unused:
+  // anchor_must_contain rejects anchors whose source text lacks this char
+  // before any vm entry (arrow-mode params rules anchor every punctuation
+  // token; roughly half carry no "(").
+  anchor_must_contain: number;
+  // when the whole `when` pattern is a single type() check, its operands
+  // are inlined here and dispatch skips match_bytecode entirely. -1 means
+  // "no fast path" (which also routes dead NEVER_MATCHES rules through
+  // the vm, where they fail as before).
+  inline_when_type: number;
+  inline_when_values: number;
+  inline_when_pred: number;
   // claim precedence for this rule's targets, -1 to use the target
   // type's shared-table precedence.
   precedence_override: number;
@@ -2388,6 +2400,31 @@ function compile_rewrite(
       for (const t of capture_targets) capture_slot_targets[t.slot_id] = t.target_id;
     }
 
+    // dispatch fast paths read off the compiled program shape. an
+    // arrow-mode params() leads the pattern (enforced above), so the
+    // anchor must carry a "(" somewhere in its source text. a `when`
+    // that is exactly one live type() check inlines into the dispatch
+    // loop, skipping vm entry for the by-far-most-common rule shape.
+    let anchor_must_contain = -1;
+    if (
+      ctx.program[when_pc] === OP_PARAMS &&
+      ctx.params_specs[ctx.program[when_pc + 1]].find_open === PARAMS_FIND_ARROW
+    ) {
+      anchor_must_contain = CH_PAREN_OPEN;
+    }
+    let inline_when_type = -1;
+    let inline_when_values = -1;
+    let inline_when_pred = -1;
+    if (
+      ctx.program[when_pc] === OP_TYPE &&
+      ctx.program[when_pc + 1] !== NEVER_MATCHES &&
+      ctx.program[when_pc + 4] === OP_MATCH
+    ) {
+      inline_when_type = ctx.program[when_pc + 1];
+      inline_when_values = ctx.program[when_pc + 2];
+      inline_when_pred = ctx.program[when_pc + 3];
+    }
+
     compiled.push({
       anchor_id,
       anchor_value_id,
@@ -2404,6 +2441,10 @@ function compile_rewrite(
           ? anchor_spec.frame_kinds
           : null,
       anchor_frame_direct: anchor_spec.frame_direct === true,
+      anchor_must_contain,
+      inline_when_type,
+      inline_when_values,
+      inline_when_pred,
       precedence_override: rule.precedence ?? -1,
     });
   }
@@ -2692,6 +2733,18 @@ function run_rewrite_loop_claims(
         const e = tokens[i * 3 + 2];
         if (!text_pred_matches(rule.anchor_text_pred_id, input, s, e)) continue;
       }
+      if (rule.anchor_must_contain >= 0) {
+        const s = tokens[i * 3 + 1];
+        const e = tokens[i * 3 + 2];
+        let contains = false;
+        for (let p = s; p < e; p++) {
+          if (input.charCodeAt(p) === rule.anchor_must_contain) {
+            contains = true;
+            break;
+          }
+        }
+        if (!contains) continue;
+      }
       if (rule.before_pc >= 0) {
         const behind = match_bytecode_reverse(
           program,
@@ -2705,21 +2758,49 @@ function run_rewrite_loop_claims(
         );
         if (behind === NO_MATCH) continue;
       }
-      const end = match_bytecode(
-        program,
-        rule.when_pc,
-        tokens,
-        i + 1,
-        count,
-        input,
-        trivia,
-        value_pool,
-        value_offsets,
-        rule.max_capture_slots,
-        params_specs,
-        frames,
-      );
-      if (end === NO_MATCH) continue;
+      if (rule.inline_when_type >= 0) {
+        // single-type() fast path: replicate OP_TYPE without vm entry.
+        let j = i + 1;
+        while (j < count && trivia[tokens[j * 3]]) j++;
+        if (j >= count || tokens[j * 3] !== rule.inline_when_type) continue;
+        if (rule.inline_when_values >= 0) {
+          if (
+            !value_set_matches(
+              value_pool,
+              value_offsets,
+              rule.inline_when_values,
+              input,
+              tokens[j * 3 + 1],
+              tokens[j * 3 + 2],
+            )
+          ) {
+            continue;
+          }
+        }
+        if (rule.inline_when_pred >= 0) {
+          if (
+            !text_pred_matches(rule.inline_when_pred, input, tokens[j * 3 + 1], tokens[j * 3 + 2])
+          ) {
+            continue;
+          }
+        }
+      } else {
+        const end = match_bytecode(
+          program,
+          rule.when_pc,
+          tokens,
+          i + 1,
+          count,
+          input,
+          trivia,
+          value_pool,
+          value_offsets,
+          rule.max_capture_slots,
+          params_specs,
+          frames,
+        );
+        if (end === NO_MATCH) continue;
+      }
 
       // emit claims. anchor-target form flips the anchor's type; capture
       // form walks the match's capture log -- one entry per capture
