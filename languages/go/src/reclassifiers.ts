@@ -12,14 +12,18 @@
 // functions, variables, or constants, so a blind case-based promotion overfits.
 
 import {
+  any_of,
   as_claim_producer,
   make_token_view,
+  optional,
+  params,
   promote_by_upper_snake_case,
+  rewrite_types,
+  seq,
   tag,
+  type,
 } from "@twinkleplop/core";
-import type { ClaimFn, LanguagePipeline, Reclassifier } from "@twinkleplop/core";
-
-import { chunker } from "./chunker.js";
+import type { ClaimFn, LanguagePipeline, Reclassifier, RewriteRule } from "@twinkleplop/core";
 
 // go's pipeline priority is structural-over-casing: namespace position
 // beats parameter position beats function position beats the upper-snake
@@ -196,23 +200,38 @@ export const promote_go_namespaces: Reclassifier = as_claim_producer(promote_go_
 
 // Parameter promotion: after `func name(...)`, `func name[T any](...)`, or
 // `func (recv *R) name(...)`, tag declared parameter names. Go permits
-// unnamed parameters (`func(T) U`) and shared types (`x, y int`), so this is
-// chunk-based rather than "first identifier after every comma".
+// unnamed parameters (`func(T) U`) and shared types (`x, y int`), so the
+// walk is chunk-based with pending-name carryover rather than "first
+// identifier after every comma".
 //
-// implemented as the `chunker` primitive in lib/core: data-driven param
-// detection with pending-name carryover for the shared-type form.
-export const promote_go_parameters: Reclassifier = chunker({
-  entry_keyword: "func",
-  allow_method_receiver: true,
-  separator_char: ",",
-  depth_brackets: [
-    { open: "(", close: ")" },
-    { open: "[", close: "]" },
-    { open: "{", close: "}" },
-  ],
-  result_type: "parameter",
-  precedence: GO_PARAMETER_PREC,
-  carry_pending_names: true,
+// two rule shapes over the `params()` walk construct: the named form, and
+// the receiver / anonymous form where the first paren group is walked
+// (receiver names are parameters too) before an optional name + second
+// list. "scan" rides the `[T any]` generics group between name and paren.
+const GO_PARAM_WALK = {
+  into: "p",
+  strategy: "carry_pending",
+  find_open: "scan",
+} as const;
+const go_func_name = any_of(type("identifier"), type("function"));
+
+const go_parameter_rules: RewriteRule[] = [
+  {
+    anchor: type("keyword", "func"),
+    when: seq(go_func_name, params(GO_PARAM_WALK)),
+    rewrite: { p: "parameter" },
+    precedence: GO_PARAMETER_PREC,
+  },
+  {
+    anchor: type("keyword", "func"),
+    when: seq(params(GO_PARAM_WALK), optional(seq(go_func_name, params(GO_PARAM_WALK)))),
+    rewrite: { p: "parameter" },
+    precedence: GO_PARAMETER_PREC,
+  },
+];
+
+export const promote_go_parameters: Reclassifier = rewrite_types(go_parameter_rules, {
+  trivia: ["comment"],
 });
 
 export const reclassifiers: LanguagePipeline = [
