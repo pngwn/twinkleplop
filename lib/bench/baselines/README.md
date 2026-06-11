@@ -100,6 +100,23 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   noise after machine adjustment (frame_track rows, untouched, read
   +5-7% on this run).
 
+- `12-frame-track-signals.json` — captured after frame_track gained
+  per-frame ternary counters and named stmt flags (part 1 of the TPP
+  migration), surfaced per token via a `signals` side table with matching
+  anchor gates (`ternary_colon`, `stmt_flags_all` / `stmt_flags_none`) in
+  the rule dispatch. the signal walk runs as a SECOND, self-contained
+  pass gated on the spec opting in -- an earlier integrated version wove
+  the branches into the main walk and degraded the shared jit code for
+  every frame_track instance in the process (~14% on signal-free
+  pipelines once a signals-enabled tracker had run). with the dedicated
+  pass, JS / Svelte / standalone frame_track rows are at parity with
+  snapshot 11 (machine ~4% faster per the empty-pipeline and raw-tokenize
+  rows). **TypeScript pays +5% raw (~+10% machine-adjusted) on the
+  reclassifier-only metric** for the new ts_frame_track stage -- the
+  tracking cost of the type-position state. transitional: TPP still
+  maintains its own scope stack and qmark counters per call; part 3
+  deletes that walker, which is where the cost is recouped.
+
 ## How to capture a new snapshot
 
 ```bash
