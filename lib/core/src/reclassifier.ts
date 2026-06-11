@@ -90,15 +90,21 @@ export function capture(name: string, inner: TokenPatternSpec): CapturePatternSp
 }
 
 /**
- * Walk tokens counting paren depth inside punctuation tokens until depth
- * returns to zero. Advances across all token types (strings, identifiers,
- * etc.) but only counts parens that appear in `punctuation`-typed tokens,
- * so parens in string/comment content don't affect the depth.
+ * Walk tokens counting paren depth inside bracket-carrying tokens until
+ * depth returns to zero. Advances across all token types (strings,
+ * identifiers, etc.) but only counts parens that appear in tokens of
+ * `punct_type` (default "punctuation"), so parens in string/comment
+ * content don't affect the depth.
  *
  * The max_tokens bound prevents pathological runaway scans.
  */
-export function balanced_parens(open = "(", close = ")", max_tokens = 200): BalancedPatternSpec {
-  return { __kind: "balanced", open, close, max_tokens };
+export function balanced_parens(
+  open = "(",
+  close = ")",
+  max_tokens = 200,
+  punct_type = "punctuation",
+): BalancedPatternSpec {
+  return { __kind: "balanced", open, close, max_tokens, punct_type };
 }
 
 /**
@@ -379,7 +385,7 @@ function compile_pattern_bytecode(
       return;
     }
     case "balanced": {
-      const punct_id = name_to_id.get("punctuation") ?? NEVER_MATCHES;
+      const punct_id = name_to_id.get(spec.punct_type ?? "punctuation") ?? NEVER_MATCHES;
       emit(
         ctx,
         OP_BALANCED,

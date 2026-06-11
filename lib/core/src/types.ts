@@ -714,13 +714,16 @@ export interface CapturePatternSpec {
   inner: TokenPatternSpec;
 }
 
-// Walk tokens counting paren depth inside punctuation tokens until depth
-// returns to zero. Used for arrow-function parameter lists.
+// Walk tokens counting paren depth inside bracket-carrying tokens until
+// depth returns to zero. Used for arrow-function parameter lists.
 export interface BalancedPatternSpec {
   __kind: "balanced";
   open: string;
   close: string;
   max_tokens?: number;
+  // token type carrying the bracket characters. defaults to "punctuation";
+  // grammars that emit brackets under a different type name set this.
+  punct_type?: string;
 }
 
 // Match the inner pattern zero or more times, optionally separated. The

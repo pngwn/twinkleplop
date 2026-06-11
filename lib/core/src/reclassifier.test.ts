@@ -423,6 +423,43 @@ describe("reclassifier — per-rule precedence override", () => {
   });
 });
 
+describe("reclassifier — balanced punct_type", () => {
+  test("counts brackets carried by a non-punctuation type", () => {
+    // a grammar that emits parens as `expression` tokens, like svelte's
+    // template braces. the default "punctuation" spec would never match.
+    const expr_toy: Grammar = {
+      name: "expr_toy",
+      states: {
+        root: {
+          rules: [
+            { match: ["(", ")"], token: "expression" },
+            { match: "=>", token: "operator" },
+            { range: [["a", "z"]], token: "identifier" },
+            { match: [","], token: "punctuation" },
+            { match: [" "] },
+          ],
+        },
+      },
+    };
+    const expr_compiled = compile(expr_toy);
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(
+          type("operator", "=>"),
+          balanced_parens("(", ")", 200, "expression"),
+          type("operator", "=>"),
+        ),
+        rewrite: "function",
+      },
+    ];
+    const src = "f => ( a , b ) => g";
+    const raw = tokenize(src, expr_compiled);
+    const out = reclassify([rewrite_types(rules)])(src, raw);
+    expect(types_only(out, src).find((t) => t.value === "f")?.type).toBe("function");
+  });
+});
+
 describe("reclassifier — compiled state cache", () => {
   // two grammars whose vocabularies contain the same names at DIFFERENT
   // indices (rule order swapped). one rewrite_types instance serves both:
