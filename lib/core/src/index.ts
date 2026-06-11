@@ -6,6 +6,7 @@ export { verify, type VerifyIssue } from "./verify";
 export { to_html } from "./generator";
 export {
   create_language,
+  disassemble_rules,
   embed_grammars,
   embed_interleaved,
   precedence_for,

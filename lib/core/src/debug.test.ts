@@ -5,7 +5,16 @@ import { frame_track } from "./frame_track";
 import { matched_bracket } from "./matched_bracket";
 import { param_list } from "./param_list";
 import { promote_by_text_set } from "./fidelity";
-import { not, reclassify, rewrite_types, seq, type } from "./reclassifier";
+import {
+  capture,
+  disassemble_rules,
+  not,
+  reclassify,
+  repeat,
+  rewrite_types,
+  seq,
+  type,
+} from "./reclassifier";
 import { set_debug_warnings } from "./debug";
 import type { DebugIssue, Grammar, RewriteRule } from "./types";
 
@@ -144,5 +153,36 @@ describe("debug warnings — primitives", () => {
     });
     reclassify([tracker])("( a )", tokenize("( a )", compiled));
     expect(issues.some((i) => i.source === "frame_track")).toBe(true);
+  });
+});
+
+describe("disassemble_rules", () => {
+  test("lists rules with resolved names and opcodes", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "identifier", at_start: true, frame_kinds: ["object"] },
+        when: seq(
+          type("punctuation", ":"),
+          not(type("keyword", "const")),
+          repeat(capture("last", type("identifier")), type("punctuation", ",")),
+        ),
+        rewrite: { last: "property" },
+      },
+      {
+        anchor: "identifier",
+        before: type("keyword", "const"),
+        rewrite: "constant",
+      },
+    ];
+    const listing = disassemble_rules(rules, compiled.token_types);
+    expect(listing).toContain("rule 0: anchor=identifier at_start frame_kinds=object");
+    expect(listing).toContain("captures{property}");
+    expect(listing).toContain("TYPE type=punctuation(");
+    expect(listing).toContain("NOT_TYPE type=keyword(");
+    expect(listing).toContain("LOOP ->");
+    expect(listing).toContain("CAP_BEGIN");
+    expect(listing).toContain("MATCH");
+    expect(listing).toContain("rule 1: anchor=identifier -> constant");
+    expect(listing).toContain("before (reverse):");
   });
 });
