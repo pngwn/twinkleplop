@@ -3,12 +3,12 @@ import { compile } from "./compiler";
 import { tokenize } from "./tokenizer";
 import { frame_track } from "./frame_track";
 import { matched_bracket } from "./matched_bracket";
-import { param_list } from "./param_list";
 import { promote_by_text_set } from "./fidelity";
 import {
   capture,
   disassemble_rules,
   not,
+  params,
   reclassify,
   repeat,
   rewrite_types,
@@ -113,16 +113,30 @@ describe("debug warnings — rewrite_types", () => {
 });
 
 describe("debug warnings — primitives", () => {
-  test("param_list without frames reports", () => {
+  test("params() type-position arrow without frames reports", () => {
     const { issues } = collect();
-    const pass = param_list({
-      result_type: "parameter",
-      detectors: [{ kind: "single_ident_arrow" }],
-    });
-    reclassify([pass])("x => x", tokenize("x => x", compiled));
-    expect(issues.some((i) => i.source === "param_list" && i.message.includes("frame_track"))).toBe(
-      true,
-    );
+    run_rules("( x ) => x", [
+      {
+        anchor: "punctuation",
+        when: params({ into: "p", find_open: "arrow", skip_in_type_position: true }),
+        rewrite: { p: "parameter" },
+      },
+    ]);
+    expect(
+      issues.some((i) => i.source === "rewrite_types" && i.message.includes("frame_track")),
+    ).toBe(true);
+  });
+
+  test("params() arrow mode not leading the pattern reports", () => {
+    const { issues } = collect();
+    run_rules("x ( y ) => y", [
+      {
+        anchor: "identifier",
+        when: seq(type("identifier"), params({ into: "p", find_open: "arrow" })),
+        rewrite: { p: "parameter" },
+      },
+    ]);
+    expect(issues.some((i) => i.message.includes("first element"))).toBe(true);
   });
 
   test("matched_bracket with a missing retag target reports", () => {

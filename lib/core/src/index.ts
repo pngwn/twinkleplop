@@ -32,7 +32,6 @@ export type { DebugIssue } from "./debug";
 export { make_token_view, make_scope_stack } from "./scan";
 export type { TokenView, Scope, ScopeStack, Bracket } from "./scan";
 export { frame_track } from "./frame_track";
-export { param_list } from "./param_list";
 export { merge_adjacent } from "./merge_adjacent";
 export { matched_bracket } from "./matched_bracket";
 export { compound_compose } from "./compound_compose";
