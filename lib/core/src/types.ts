@@ -269,38 +269,6 @@ export interface ChunkerConfig {
   type_after_first_strategy?: "go_default";
 }
 
-// state_machine primitive — token-stream finite state machine with claim
-// emission. v0 supports the common mode-toggle shape: enter a mode on
-// matching tokens, emit claims on tokens visited while in that mode, exit
-// on matching terminator tokens. richer features (snapshot depths, slot
-// reads, sub-mode lookaheads) are out of scope for v0 and stay inline in
-// consumer reclassifiers that need them.
-//
-// canonical target: TS type-position promotion (`x: T` -> claim T as
-// `type`). v0 covers single-mode machines; multi-mode (TS' 8-mode machine)
-// is documented as future work pending a richer config schema.
-
-export interface StateMachineConfig {
-  // mode name. only one mode supported in v0 (named for symmetry with
-  // future multi-mode extensions).
-  mode: string;
-  // tokens that put the machine INTO the mode. when any of these match,
-  // the machine enters `mode`. specified as type + text.
-  enter_on: { type: string; texts: string[] }[];
-  // tokens that take the machine OUT OF the mode at top-level. matching
-  // any of these while in `mode` exits the machine. all texts of the
-  // configured type act as terminators; an empty text set means "any
-  // token of this type." useful for grammar-emitted terminators like
-  // statement-end `;`.
-  exit_on: { type: string; texts?: string[] }[];
-  // while in `mode`, tokens of these types get a claim emitted.
-  claim_token_types: string[];
-  // type id to claim as.
-  claim_type: string;
-  // precedence for emitted claims.
-  precedence: number;
-}
-
 // compound_compose primitive — stack-driven multi-class type composition.
 // canonical case: markdown inline styling where bold/italic/code can nest
 // and each token inside the nested region gets a composed class like

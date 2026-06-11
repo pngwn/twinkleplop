@@ -33,7 +33,6 @@ export { merge_adjacent } from "./merge_adjacent";
 export { matched_bracket } from "./matched_bracket";
 export { chunker } from "./chunker";
 export { compound_compose } from "./compound_compose";
-export { state_machine } from "./state_machine";
 export {
   permute_claim_producers,
   tokens_to_named,
