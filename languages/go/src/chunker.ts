@@ -1,17 +1,48 @@
 // chunker — walk a `(...)` argument-list construct, split into chunks,
 // and apply a per-chunk tagging strategy.
 //
-// canonical use: Go function parameters. supports the shared-type
-// `x, y int` form where bare identifiers in earlier chunks get promoted
-// retroactively once a later chunk has a type.
+// go's function parameters: supports the shared-type `x, y int` form where
+// bare identifiers in earlier chunks get promoted retroactively once a
+// later chunk has a type, plus the method receiver `(R) name` shape.
 //
-// runs as a claim producer: matches emit claims at the result type's table
-// precedence instead of mutating the stream, so the pass batches with
-// other claim producers and never touches the caller's tokens or shared
-// token_types array.
+// lives in the go package rather than core: the chunk heuristics (square
+// `[]T` composite types, `.`-led receiver chains) are go's lexical shapes.
+// a cross-language parameter primitive belongs in the pattern vm once
+// repeat supports per-iteration captures; until then this stays with its
+// only consumer.
+//
+// runs as a claim producer: matches emit claims at the configured (or
+// table) precedence instead of mutating the stream, so the pass batches
+// with other claim producers and never touches the caller's tokens or
+// shared token_types array.
 
-import { as_claim_producer, precedence_for } from "./reclassifier";
-import type { ChunkerConfig, ClaimFn, ClaimingReclassifier, ClaimSink } from "./types";
+import { as_claim_producer, precedence_for } from "@twinkleplop/core";
+import type { ClaimFn, ClaimingReclassifier, ClaimSink } from "@twinkleplop/core";
+
+export interface ChunkerConfig {
+  // anchor keyword that introduces the construct (e.g. "func").
+  entry_keyword: string;
+  // when true, after the entry keyword the param `(` may be preceded by an
+  // optional `(receiver) name` shape. used by go for methods. when false,
+  // the first `(` after the keyword (and optional name) is the param list.
+  allow_method_receiver: boolean;
+  // single-char separator that splits chunks at top depth inside the paren.
+  separator_char: string;
+  // tracked bracket pairs that count towards depth -- chunks split only
+  // at top depth (depth 1 inside the entry paren, depth 0 for other
+  // brackets). always includes the entry paren type implicitly.
+  depth_brackets: { open: string; close: string }[];
+  // result type to tag identifiers as.
+  result_type: string;
+  // claim precedence for emitted tags. defaults to the result type's table
+  // precedence. go ranks structural parameter position above upper-snake
+  // constants, so its config overrides this explicitly.
+  precedence?: number;
+  // pending-name carryover: when a chunk has a type-shape after the first
+  // identifier, promote that first identifier AND any pending names from
+  // prior single-ident chunks. matches go's `x, y int` semantics.
+  carry_pending_names: boolean;
+}
 
 interface ResolvedIds {
   identifier: number;

@@ -13,12 +13,13 @@
 
 import {
   as_claim_producer,
-  chunker,
   make_token_view,
   promote_by_upper_snake_case,
   tag,
 } from "@twinkleplop/core";
 import type { ClaimFn, LanguagePipeline, Reclassifier } from "@twinkleplop/core";
+
+import { chunker } from "./chunker.js";
 
 // go's pipeline priority is structural-over-casing: namespace position
 // beats parameter position beats function position beats the upper-snake
@@ -212,7 +213,6 @@ export const promote_go_parameters: Reclassifier = chunker({
   result_type: "parameter",
   precedence: GO_PARAMETER_PREC,
   carry_pending_names: true,
-  type_after_first_strategy: "go_default",
 });
 
 export const reclassifiers: LanguagePipeline = [

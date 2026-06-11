@@ -229,46 +229,6 @@ export interface BraceKindSpec {
   start_kind?: string;
 }
 
-// chunker primitive — walk a `(...)` argument-list-like construct, split
-// it into comma-separated chunks, and apply a tagging strategy to each.
-// canonical case: Go function parameters. supports the shared-type form
-// `x, y int` via pending-name carryover (names without a type that follows
-// get promoted retroactively when a later chunk has a type).
-//
-// entry pattern: a keyword token (e.g. "func"), optionally allowing a
-// method receiver `(R) name` before the param list.
-
-export interface ChunkerConfig {
-  // anchor keyword that introduces the construct (e.g. "func").
-  entry_keyword: string;
-  // when true, after the entry keyword the param `(` may be preceded by an
-  // optional `(receiver) name` shape. used by Go for methods. when false,
-  // the first `(` after the keyword (and optional name) is the param list.
-  allow_method_receiver: boolean;
-  // single-char separator that splits chunks at top depth inside the paren.
-  separator_char: string;
-  // tracked bracket pairs that count towards depth -- chunks split only
-  // at top depth (depth 1 inside the entry paren, depth 0 for other
-  // brackets). always includes the entry paren type implicitly.
-  depth_brackets: { open: string; close: string }[];
-  // result type to tag identifiers as.
-  result_type: string;
-  // claim precedence for emitted tags. defaults to the result type's table
-  // precedence. languages whose pipeline priority differs from the shared
-  // table (e.g. go ranks structural parameter position above upper-snake
-  // constants) override this explicitly.
-  precedence?: number;
-  // pending-name carryover: when a chunk has a type-shape after the first
-  // identifier, promote that first identifier AND any pending names from
-  // prior single-ident chunks. matches Go's `x, y int` semantics.
-  carry_pending_names: boolean;
-  // when carry_pending_names is true, this heuristic decides whether a
-  // chunk has a type after its first token. for Go: false if the second
-  // token starts with `.` (method receiver), or `[`-starting square that
-  // doesn't form `[]T`. otherwise true.
-  type_after_first_strategy?: "go_default";
-}
-
 // compound_compose primitive — stack-driven multi-class type composition.
 // canonical case: markdown inline styling where bold/italic/code can nest
 // and each token inside the nested region gets a composed class like

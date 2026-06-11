@@ -1,9 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { compile } from "./compiler";
-import { tokenize } from "./tokenizer";
-import { chunker } from "./chunker";
-import { reclassify } from "./reclassifier";
-import type { Grammar } from "./types";
+import { compile, reclassify, tokenize } from "@twinkleplop/core";
+import { chunker } from "./chunker.js";
+import type { Grammar } from "@twinkleplop/core";
 
 // minimal Go-ish toy grammar — `func` keyword, identifiers, punctuation.
 const toy: Grammar = {
@@ -38,7 +36,6 @@ const go_chunker = chunker({
   ],
   result_type: "parameter",
   carry_pending_names: true,
-  type_after_first_strategy: "go_default",
 });
 
 function run(input: string) {
