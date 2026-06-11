@@ -116,6 +116,26 @@ Each file is the raw vitest JSON output from a single bench run. Compare with
   tracking cost of the type-position state. transitional: TPP still
   maintains its own scope stack and qmark counters per call; part 3
   deletes that walker, which is where the cost is recouped.
+- `13-type-span-rules.json` — captured after the imperative
+  type_position_promoter (620 lines, the last big hand-written walker)
+  became sixteen anchor-gated rewrite rules over the `type_span()`
+  construct, with exact token parity on every test corpus. supporting
+  core additions: `value_ends_with` suffix anchors (coalesced `):`  and
+  `]:` bundles), `verify_generic_args` on type_span, and a dispatch
+  reorder -- anchor text constraints (one-charCodeAt trailing-char
+  prefilter, then value sets) now run BEFORE the frame / signal gates,
+  which matters because five rules anchor on bare punctuation. measured
+  by same-state A/B (stash both ways, raw-tokenize rows as the machine
+  normalizer): the rules cost **+2-4% vs the imperative walker** on the
+  TS pipeline -- before the prefilter reorder it was +10.5%. NOTE: this
+  snapshot's absolute numbers carry a ~+11% thermal penalty (see the
+  empty-pipeline and raw-tokenize rows vs snapshot 12); normalize
+  against those rows when comparing. the cumulative TPP-migration arc
+  (11 -> 13) costs the TS reclassifier-only metric roughly +8-14%
+  machine-adjusted: the part-1 signals pass plus rules-vs-walker
+  parity. that is the opt-in price of moving type-position fidelity
+  onto the shared declarative machinery, paid only by TS-family
+  pipelines.
 
 ## How to capture a new snapshot
 
