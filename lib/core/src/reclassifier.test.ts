@@ -389,6 +389,40 @@ describe("reclassifier — anchor frame gates", () => {
   });
 });
 
+describe("reclassifier — per-rule precedence override", () => {
+  // two claim producers in one batch claiming the same token. by the
+  // shared table, boolean (75) beats function (30); a rule-level override
+  // inverts the outcome without a custom ClaimFn.
+  const fn_rule_default: RewriteRule[] = [
+    { anchor: "identifier", when: type("operator", "=>"), rewrite: "function" },
+  ];
+  const bool_rule: RewriteRule[] = [
+    { anchor: "identifier", when: type("operator", "=>"), rewrite: "boolean" },
+  ];
+
+  test("table precedence decides without an override", () => {
+    const src = "x => 1";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([rewrite_types(fn_rule_default), rewrite_types(bool_rule)])(src, raw);
+    expect(types_only(out, src).find((t) => t.value === "x")?.type).toBe("boolean");
+  });
+
+  test("rule precedence override beats the table", () => {
+    const fn_rule_boosted: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: type("operator", "=>"),
+        rewrite: "function",
+        precedence: 90,
+      },
+    ];
+    const src = "x => 1";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([rewrite_types(fn_rule_boosted), rewrite_types(bool_rule)])(src, raw);
+    expect(types_only(out, src).find((t) => t.value === "x")?.type).toBe("function");
+  });
+});
+
 describe("reclassifier — compiled state cache", () => {
   // two grammars whose vocabularies contain the same names at DIFFERENT
   // indices (rule order swapped). one rewrite_types instance serves both:

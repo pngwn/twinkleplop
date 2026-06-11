@@ -797,6 +797,12 @@ export interface RewriteRule {
   // matches.
   when?: TokenPatternSpec;
   rewrite: string | Record<string, string>;
+  // claim precedence for this rule's targets (anchor and captures).
+  // defaults to the target type's shared-table precedence. languages
+  // whose pipeline priority deviates from the table (e.g. structural
+  // position beating a casing convention) state the deviation here
+  // instead of dropping to a hand-written ClaimFn.
+  precedence?: number;
 }
 
 export interface RewriteOptions {

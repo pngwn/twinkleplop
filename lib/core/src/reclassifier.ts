@@ -1318,6 +1318,9 @@ interface CompiledRule {
   // table comes from whichever frame_track stage the pipeline runs.
   anchor_at_start: boolean;
   anchor_frame_kinds: string[] | null;
+  // claim precedence for this rule's targets, -1 to use the target
+  // type's shared-table precedence.
+  precedence_override: number;
 }
 
 /**
@@ -1457,6 +1460,7 @@ function compile_rewrite(
         anchor_spec.frame_kinds !== undefined && anchor_spec.frame_kinds.length > 0
           ? anchor_spec.frame_kinds
           : null,
+      precedence_override: rule.precedence ?? -1,
     });
   }
 
@@ -1742,10 +1746,15 @@ function run_rewrite_loop_claims(
       // emit claims. anchor-target form flips the anchor's type;
       // capture-target form claims every token inside each captured
       // range (only when the slot's dirty bit is set, i.e. the capture
-      // actually fired — optional captures may not).
+      // actually fired — optional captures may not). the rule's
+      // precedence override, when set, applies to every target.
       if (rule.anchor_target_id !== -1) {
         const target_id = runtime_target(rule.anchor_target_id, state, remap);
-        sink.emit(i, target_id, precedence_for(token_types[target_id]));
+        const p =
+          rule.precedence_override >= 0
+            ? rule.precedence_override
+            : precedence_for(token_types[target_id]);
+        sink.emit(i, target_id, p);
       }
       if (rule.capture_targets !== null) {
         for (let c = 0; c < rule.capture_targets.length; c++) {
@@ -1757,7 +1766,10 @@ function run_rewrite_loop_claims(
           const s = cap_starts[slot];
           const e = cap_ends[slot];
           const target_id = runtime_target(target.target_id, state, remap);
-          const p = precedence_for(token_types[target_id]);
+          const p =
+            rule.precedence_override >= 0
+              ? rule.precedence_override
+              : precedence_for(token_types[target_id]);
           for (let t = s; t < e; t++) {
             sink.emit(t, target_id, p);
           }
