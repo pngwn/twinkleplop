@@ -731,7 +731,7 @@ export interface BalancedPatternSpec {
 // backtracks into fewer iterations -- design patterns so the token after
 // the repetition cannot also start an iteration. An iteration that
 // consumes no tokens terminates the loop (no infinite repeats). Captures
-// inside the body keep their LAST iteration's range.
+// inside the body record one span per iteration.
 export interface RepeatPatternSpec {
   __kind: "repeat";
   inner: TokenPatternSpec;
@@ -765,8 +765,9 @@ export type TokenPatternSpec =
 //   - `string`   → rewrite the anchor token's type to this name (Phase 1).
 //   - object map → for each `{ capture_name: type_name }` entry, find the
 //                  capture() with that name in `when` and rewrite every
-//                  token inside the captured range to the target type
-//                  (Phase 3). Missing captures silently skip.
+//                  token inside every span that capture recorded -- one
+//                  span per occurrence, so captures inside repeat bodies
+//                  retag each iteration. Missing captures silently skip.
 // anchor form of a rewrite rule. extends the single-token filters with
 // optional gates over the shared frame table produced by an upstream
 // frame_track stage:

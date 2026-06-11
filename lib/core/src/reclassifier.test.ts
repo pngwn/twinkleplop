@@ -164,24 +164,62 @@ describe("reclassifier — rewrite_types", () => {
 });
 
 describe("reclassifier — repeat combinator", () => {
-  test("matches a dotted chain and captures the last element", () => {
-    // `new pkg.util.Foo` shape: chain-last promotion via last-iteration
-    // capture semantics.
+  test("captures inside repeat record every iteration", () => {
     const rules: RewriteRule[] = [
       {
         anchor: { type_name: "keyword", value: "var" },
         when: seq(
-          capture("last", type("identifier")),
-          repeat(seq(type("operator", "*"), capture("last", type("identifier")))),
+          capture("elem", type("identifier")),
+          repeat(seq(type("operator", "*"), capture("elem", type("identifier")))),
         ),
-        rewrite: { last: "function" },
+        rewrite: { elem: "function" },
       },
     ];
     const src = "var a * b * c ;";
     const tokens = types_only(run(src, rules), src);
-    expect(tokens.find((t) => t.value === "a")?.type).toBe("identifier");
-    expect(tokens.find((t) => t.value === "b")?.type).toBe("identifier");
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("function");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("function");
     expect(tokens.find((t) => t.value === "c")?.type).toBe("function");
+  });
+
+  test("chain-last idiom: repeated head captures plus a trailing capture", () => {
+    // `new pkg.util.Foo` shape: every chain element before the last is a
+    // namespace, the final element is the class. the failed final
+    // iteration (`c` matched, no trailing `*`) is truncated from the
+    // capture log, so `c` is claimed only by the trailing capture.
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "var" },
+        when: seq(
+          repeat(seq(capture("ns", type("identifier")), type("operator", "*"))),
+          capture("last", type("identifier")),
+        ),
+        rewrite: { ns: "property", last: "function" },
+      },
+    ];
+    const src = "var a * b * c ;";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("property");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("property");
+    expect(tokens.find((t) => t.value === "c")?.type).toBe("function");
+  });
+
+  test("separated repeat captures every item", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "let" },
+        when: seq(
+          repeat(capture("p", type("identifier")), type("punctuation", ",")),
+          type("punctuation", ";"),
+        ),
+        rewrite: { p: "parameter" },
+      },
+    ];
+    const src = "let a , b , c ;";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "c")?.type).toBe("parameter");
   });
 
   test("zero iterations match (repeat is optional)", () => {
@@ -1037,6 +1075,24 @@ describe("reclassifier — capture-based rewrites", () => {
     const t2 = types_only(r2, src2);
     expect(t2.find((t) => t.value === "bar")?.type).toBe("function");
     expect(t2.find((t) => t.value === "5")?.type).toBe("boolean");
+  });
+
+  test("captures inside abandoned branches do not fire", () => {
+    // branch 1 captures `a` then fails on the missing number; branch 2
+    // matches without capturing. the abandoned capture must not retag.
+    const rule: RewriteRule = {
+      anchor: type("keyword", "var"),
+      when: any_of(
+        seq(capture("x", type("identifier")), type("number")),
+        seq(type("identifier"), type("identifier")),
+      ),
+      rewrite: { x: "function" },
+    };
+    const src = "var a b";
+    const raw = tokenize(src, compiled);
+    const result = reclassify([rewrite_types([rule])])(src, raw);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("identifier");
   });
 
   test("Phase 1 string rewrite still works (anchor-only rewrite)", () => {

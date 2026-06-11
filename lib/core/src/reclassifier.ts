@@ -85,7 +85,13 @@ export function optional(inner: TokenPatternSpec): OptionalPatternSpec {
   return { __kind: "optional", inner };
 }
 
-/** Tag the inner pattern's span with a capture name (reserved for future rewrite targeting). */
+/**
+ * Tag the inner pattern's span with a capture name for rewrite targeting.
+ * Each successful match of the capture records one span, so a capture
+ * inside a repeat body records every iteration; a `{ name: type }`
+ * rewrite map retags every token in every recorded span. Spans recorded
+ * inside branches the matcher later abandons are discarded.
+ */
 export function capture(name: string, inner: TokenPatternSpec): CapturePatternSpec {
   return { __kind: "capture", name, inner };
 }
@@ -115,7 +121,7 @@ export function balanced_parens(
  * The repetition is POSSESSIVE: once an iteration matches it is never
  * given back, so a pattern after the repeat must not also match an
  * iteration's start. An iteration that consumes nothing ends the loop.
- * Captures inside the body keep their LAST iteration's range.
+ * Captures inside the body record one span per iteration.
  */
 export function repeat(inner: TokenPatternSpec, separator?: TokenPatternSpec): RepeatPatternSpec {
   return { __kind: "repeat", inner, separator };
@@ -649,23 +655,24 @@ function disassemble_program(
 //
 // module-scope state, reused across all matches. we pay allocation cost once
 // and grow on demand when a rule has more than 128 backtrack frames deep or
-// more than 32 capture slots — neither has ever been observed in practice.
+// more than 8 capture slots — neither has ever been observed in practice.
 //
-// bt_stack is a flat pair-packed Int32Array: each push writes (alt_pc, idx)
-// at [sp] and [sp+1]. BT_STRIDE = 2. sp counts ints, not pairs, so capacity
-// checks use `sp + 2 > length`.
+// bt_stack is a flat triple-packed Int32Array: each push writes (alt_pc,
+// idx, cap_log_watermark) at [sp..sp+2]. BT_STRIDE = 3. sp counts ints,
+// not frames, so capacity checks use `sp + 3 > length`.
 //
-// cap_starts / cap_ends are indexed by slot_id. cap_dirty_words is a
-// bitfield: word w = cap_dirty_words[slot >>> 5], bit = 1 << (slot & 31).
-// at rule entry we clear only the words covering that rule's max slots,
-// which is almost always a single `cap_dirty_words[0] = 0`.
+// cap_starts is begin-position scratch indexed by slot_id. each completed
+// capture appends a (slot, start_idx, end_idx) triplet to cap_log; a failed
+// branch truncates the log back to its frame's watermark, so after a match
+// the log holds exactly the captures of the successful path — one entry
+// PER OCCURRENCE, which is what gives repeat() per-iteration captures.
 
-const BT_STRIDE = 2;
+const BT_STRIDE = 3;
 let bt_stack = new Int32Array(128 * BT_STRIDE);
 
 let cap_starts = new Uint32Array(8);
-let cap_ends = new Uint32Array(8);
-let cap_dirty_words = new Uint32Array(1);
+let cap_log = new Int32Array(64 * 3);
+let cap_log_len = 0;
 
 function ensure_cap_capacity(slots: number): void {
   if (slots > cap_starts.length) {
@@ -674,16 +681,19 @@ function ensure_cap_capacity(slots: number): void {
     const new_starts = new Uint32Array(next);
     new_starts.set(cap_starts);
     cap_starts = new_starts;
-    const new_ends = new Uint32Array(next);
-    new_ends.set(cap_ends);
-    cap_ends = new_ends;
   }
-  const words_needed = slots > 0 ? (slots + 31) >>> 5 : 0;
-  if (words_needed > cap_dirty_words.length) {
-    const grown = new Uint32Array(words_needed);
-    grown.set(cap_dirty_words);
-    cap_dirty_words = grown;
+}
+
+function push_cap_log(slot: number, start: number, end: number): void {
+  if (cap_log_len + 3 > cap_log.length) {
+    const grown = new Int32Array(cap_log.length * 2);
+    grown.set(cap_log);
+    cap_log = grown;
   }
+  cap_log[cap_log_len] = slot;
+  cap_log[cap_log_len + 1] = start;
+  cap_log[cap_log_len + 2] = end;
+  cap_log_len += 3;
 }
 
 // char-class predicates keyed by integer id (matches CharPredName order
@@ -878,18 +888,18 @@ function run_balanced(
 
 // iterative bytecode VM for the forward matcher. returns the token idx
 // after the last matched token on success, or NO_MATCH on full failure.
-// clears the capture dirty bitfield at entry so the caller can read only
-// slots that were written during this match.
+// resets the capture log at entry; on return the log holds the successful
+// path's captures as (slot, start, end) triplets in completion order.
 //
 // trivia skipping is done inside OP_TYPE, OP_BALANCED, and OP_CAP_BEGIN —
 // matching the semantics of the tree matcher where `skip_trivia` was
 // called at the top of each match_pattern invocation but not for
 // non-advancing constructs (ALT/COMMIT/JUMP/CAP_END).
 //
-// backtrack semantics intentionally do NOT roll back captures (preserving
-// reclassifier.ts semantics where failed branches within any_of leave
-// stale captures that later successful branches overwrite, and on full
-// rule failure the caller discards everything).
+// backtrack semantics: a failed branch truncates the capture log to its
+// frame's watermark, so captures recorded inside abandoned branches never
+// leak into the result. OP_LOOP pops its frame WITHOUT truncating —
+// completed repeat iterations keep their captures (possessive).
 function match_bytecode(
   program: Int32Array,
   start_pc: number,
@@ -902,11 +912,8 @@ function match_bytecode(
   value_offsets: Int32Array,
   max_capture_slots: number,
 ): number {
-  if (max_capture_slots > 0) {
-    ensure_cap_capacity(max_capture_slots);
-    const n_words = (max_capture_slots + 31) >>> 5;
-    for (let w = 0; w < n_words; w++) cap_dirty_words[w] = 0;
-  }
+  if (max_capture_slots > 0) ensure_cap_capacity(max_capture_slots);
+  cap_log_len = 0;
 
   let pc = start_pc;
   let bt_sp = 0;
@@ -964,6 +971,7 @@ function match_bytecode(
         }
         bt[bt_sp++] = program[pc + 1];
         bt[bt_sp++] = idx;
+        bt[bt_sp++] = cap_log_len;
         pc += 2;
         break;
       }
@@ -985,8 +993,7 @@ function match_bytecode(
       }
       case OP_CAP_END: {
         const slot = program[pc + 1];
-        cap_ends[slot] = idx;
-        cap_dirty_words[slot >>> 5] |= 1 << (slot & 31);
+        push_cap_log(slot, cap_starts[slot], idx);
         pc += 2;
         break;
       }
@@ -1015,11 +1022,12 @@ function match_bytecode(
         break;
       }
       case OP_LOOP: {
-        // pop the iteration's ALT frame: (end_pc, entry_idx). progress
-        // since the ALT -> loop back for another iteration; an empty
-        // iteration falls through to the ALT's target instead. popping
-        // the frame makes the repeat possessive -- completed iterations
-        // are never backtracked into.
+        // pop the iteration's ALT frame: (end_pc, entry_idx, watermark).
+        // progress since the ALT -> loop back for another iteration; an
+        // empty iteration falls through to the ALT's target instead.
+        // popping the frame makes the repeat possessive -- completed
+        // iterations are never backtracked into, and their watermark is
+        // deliberately not restored so their captures stay in the log.
         bt_sp -= BT_STRIDE;
         if (idx === bt[bt_sp + 1]) {
           pc = bt[bt_sp];
@@ -1078,6 +1086,7 @@ function match_bytecode(
       bt_sp -= BT_STRIDE;
       pc = bt[bt_sp];
       idx = bt[bt_sp + 1];
+      cap_log_len = bt[bt_sp + 2];
       failed = false;
     }
   }
@@ -1161,6 +1170,9 @@ function match_bytecode_reverse(
         }
         bt[bt_sp++] = program[pc + 1];
         bt[bt_sp++] = idx;
+        // captures are unsupported in this direction; the watermark slot
+        // is dead but keeps the frame layout shared with the forward vm.
+        bt[bt_sp++] = 0;
         pc += 2;
         break;
       }
@@ -1413,10 +1425,13 @@ interface CompiledRule {
   // anchor rewrite target (phase 1 form). -1 means no anchor rewrite.
   anchor_target_id: number;
   // capture rewrite targets (phase 3 form). null if no capture rewrites.
-  // slot_id is the dense slot index assigned by the bytecode compiler
-  // and used to read cap_starts / cap_ends / cap_dirty_words after a
-  // successful match.
+  // slot_id is the dense slot index assigned by the bytecode compiler.
   capture_targets: { slot_id: number; target_id: number }[] | null;
+  // dense slot_id -> compile-time target id (-1 for untargeted slots),
+  // sized max_capture_slots. the dispatch loop indexes this per capture
+  // log entry after a successful match. null when capture_targets is
+  // null or empty.
+  capture_slot_targets: Int32Array | null;
   // bytecode-compiled reverse matcher entry pc, or -1 if the rule has no
   // `before` clause. emitted into the same shared program buffer as `when`
   // bytecode -- one VM, two directions.
@@ -1580,12 +1595,19 @@ function compile_rewrite(
       emit(ctx, OP_MATCH);
     }
 
+    let capture_slot_targets: Int32Array | null = null;
+    if (capture_targets !== null && capture_targets.length > 0) {
+      capture_slot_targets = new Int32Array(slots.max_slots).fill(-1);
+      for (const t of capture_targets) capture_slot_targets[t.slot_id] = t.target_id;
+    }
+
     compiled.push({
       anchor_id,
       anchor_value_id,
       anchor_text_pred_id,
       anchor_target_id,
       capture_targets,
+      capture_slot_targets,
       before_pc,
       when_pc,
       max_capture_slots: slots.max_slots,
@@ -1891,11 +1913,11 @@ function run_rewrite_loop_claims(
       );
       if (end === NO_MATCH) continue;
 
-      // emit claims. anchor-target form flips the anchor's type;
-      // capture-target form claims every token inside each captured
-      // range (only when the slot's dirty bit is set, i.e. the capture
-      // actually fired — optional captures may not). the rule's
-      // precedence override, when set, applies to every target.
+      // emit claims. anchor-target form flips the anchor's type; capture
+      // form walks the match's capture log -- one entry per capture
+      // occurrence, so captures inside repeat bodies claim every
+      // iteration, and captures from abandoned branches never appear.
+      // the rule's precedence override, when set, applies to every target.
       if (rule.anchor_target_id !== -1) {
         const target_id = runtime_target(rule.anchor_target_id, state, remap);
         const p =
@@ -1904,21 +1926,18 @@ function run_rewrite_loop_claims(
             : precedence_for(token_types[target_id]);
         sink.emit(i, target_id, p);
       }
-      if (rule.capture_targets !== null) {
-        for (let c = 0; c < rule.capture_targets.length; c++) {
-          const target = rule.capture_targets[c];
-          const slot = target.slot_id;
-          if ((cap_dirty_words[slot >>> 5] & (1 << (slot & 31))) === 0) {
-            continue;
-          }
-          const s = cap_starts[slot];
-          const e = cap_ends[slot];
-          const target_id = runtime_target(target.target_id, state, remap);
+      if (rule.capture_slot_targets !== null) {
+        const slot_targets = rule.capture_slot_targets;
+        for (let li = 0; li < cap_log_len; li += 3) {
+          const ct = slot_targets[cap_log[li]];
+          if (ct < 0) continue;
+          const target_id = runtime_target(ct, state, remap);
           const p =
             rule.precedence_override >= 0
               ? rule.precedence_override
               : precedence_for(token_types[target_id]);
-          for (let t = s; t < e; t++) {
+          const e = cap_log[li + 2];
+          for (let t = cap_log[li + 1]; t < e; t++) {
             sink.emit(t, target_id, p);
           }
         }
