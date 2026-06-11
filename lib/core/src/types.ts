@@ -832,6 +832,14 @@ export interface TypeSpanPatternSpec {
   // keywords that can legitimately END a type expression; used by the
   // brace_exit_on_closer check so `(): void {` exits at the body brace.
   type_terminal_keywords?: string[];
+  // with enter_angle: before walking, verify the span LOOKS like a
+  // generic type-argument list -- a balanced single-char `>` close exists
+  // (riding `{...}` groups, bailing on `;` or a stray `}`), and the token
+  // after the close is consistent with type arguments finishing (bracket
+  // / separator punctuation, `=` `=>` `?:` `|` `&` `>` `?` `!` operators,
+  // or `extends` / `implements`). when the check fails the BRANCH fails,
+  // so `a < b` comparisons never start a span.
+  verify_generic_args: boolean;
 }
 
 export type TokenPatternSpec =
@@ -883,6 +891,12 @@ export type TokenPatternSpec =
 export interface AnchorSpec {
   type_name: string;
   value?: string | string[];
+  // match when the anchor's source text ENDS with one of these strings.
+  // grammars coalesce adjacent punctuation (`):`, `]:`, `}))`), so exact
+  // value sets cannot anchor on "a token whose last char is `:`" without
+  // enumerating every bundle; this is the suffix form. combinable with
+  // `value`: both must pass.
+  value_ends_with?: string | string[];
   text_pred?: CharPredName;
   at_start?: boolean;
   frame_kinds?: string[];

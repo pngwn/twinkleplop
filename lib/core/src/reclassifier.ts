@@ -195,6 +195,7 @@ export function type_span(options: {
   value_op_terminators?: string[];
   stmt_keyword_terminators?: string[];
   type_terminal_keywords?: string[];
+  verify_generic_args?: boolean;
 }): TypeSpanPatternSpec {
   return {
     __kind: "type_span",
@@ -207,6 +208,7 @@ export function type_span(options: {
     value_op_terminators: options.value_op_terminators,
     stmt_keyword_terminators: options.stmt_keyword_terminators,
     type_terminal_keywords: options.type_terminal_keywords,
+    verify_generic_args: options.verify_generic_args ?? false,
   };
 }
 
@@ -331,6 +333,7 @@ interface CompiledTypeSpanSpec {
   exit_on_qmark: boolean;
   enter_angle: boolean;
   brace_exit_on_closer: boolean;
+  verify_generic_args: boolean;
   // value-pool set ids, -1 when the set is empty / not configured.
   value_ops_id: number;
   stmt_keywords_id: number;
@@ -694,6 +697,7 @@ function compile_pattern_bytecode(
         exit_on_qmark: spec.exit_on_qmark,
         enter_angle: spec.enter_angle,
         brace_exit_on_closer: spec.brace_exit_on_closer,
+        verify_generic_args: spec.verify_generic_args,
         value_ops_id: set_id(spec.value_op_terminators),
         stmt_keywords_id: set_id(spec.stmt_keyword_terminators),
         terminal_keywords_id: set_id(spec.type_terminal_keywords),
@@ -1702,6 +1706,123 @@ function params_walk_carry_pending(
 // drops below zero belongs to an enclosing scope and ends the span.
 
 const CH_QMARK = 0x3f;
+const CH_PIPE = 0x7c;
+const CH_AMP = 0x26;
+const CH_BANG = 0x21;
+
+// slice-free exact text compare for the small fixed keywords the verify
+// scan needs.
+function span_text_is(input: string, s: number, e: number, text: string): boolean {
+  if (e - s !== text.length) return false;
+  for (let i = 0; i < text.length; i++) {
+    if (input.charCodeAt(s + i) !== text.charCodeAt(i)) return false;
+  }
+  return true;
+}
+
+// does the angle group starting at `idx` (the token after the opening
+// `<`) look like generic type arguments rather than a comparison? a
+// balanced single-char `>` close must exist -- `{...}` object literals in
+// constraints ride along; a `;` outside braces or a stray `}` means we
+// left the construct -- and the token after the close must be consistent
+// with type arguments finishing. mirrors the imperative looks_like
+// detector, including its ts-shaped follower lists (the same shape
+// params() encodes for skip_ts_return_type).
+function type_span_verify_angle(
+  spec: CompiledTypeSpanSpec,
+  tokens: Uint32Array,
+  idx: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+): boolean {
+  let depth = 1;
+  let brace_depth = 0;
+  let j = idx;
+  let matched_close = -1;
+  while (j < count) {
+    const base = j * 3;
+    const t = tokens[base];
+    if (trivia[t]) {
+      j++;
+      continue;
+    }
+    const s = tokens[base + 1];
+    const e = tokens[base + 2];
+    if (spec.operator_id >= 0 && t === spec.operator_id) {
+      if (e - s === 1) {
+        const c = input.charCodeAt(s);
+        if (c === CH_LT) depth++;
+        else if (c === CH_GT && brace_depth === 0) {
+          depth--;
+          if (depth === 0) {
+            matched_close = j;
+            break;
+          }
+        }
+      }
+    } else if (t === spec.punct_id) {
+      for (let p = s; p < e; p++) {
+        const c = input.charCodeAt(p);
+        if (c === CH_BRACE_OPEN) brace_depth++;
+        else if (c === CH_BRACE_CLOSE) {
+          if (brace_depth === 0) return false;
+          brace_depth--;
+        } else if (c === CH_SEMI && brace_depth === 0) {
+          return false;
+        }
+      }
+    }
+    j++;
+  }
+  if (matched_close < 0) return false;
+  const after = params_next_non_trivia(tokens, matched_close + 1, count, trivia);
+  if (after < 0) return true;
+  const ab = after * 3;
+  const at = tokens[ab];
+  const as = tokens[ab + 1];
+  const ae = tokens[ab + 2];
+  if (at === spec.punct_id) {
+    // punctuation coalesces same-type adjacent chars, so the FIRST char
+    // tells us what comes next.
+    const c = input.charCodeAt(as);
+    return (
+      c === CH_PAREN_OPEN ||
+      c === CH_PAREN_CLOSE ||
+      c === CH_BRACE_OPEN ||
+      c === CH_BRACE_CLOSE ||
+      c === CH_BRACKET_OPEN ||
+      c === CH_BRACKET_CLOSE ||
+      c === CH_COMMA ||
+      c === CH_SEMI ||
+      c === CH_DOT ||
+      c === CH_COLON
+    );
+  }
+  if (spec.operator_id >= 0 && at === spec.operator_id) {
+    const len = ae - as;
+    const c0 = input.charCodeAt(as);
+    if (len === 1) {
+      return (
+        c0 === CH_EQ ||
+        c0 === CH_PIPE ||
+        c0 === CH_AMP ||
+        c0 === CH_GT ||
+        c0 === CH_QMARK ||
+        c0 === CH_BANG
+      );
+    }
+    if (len === 2) {
+      const c1 = input.charCodeAt(as + 1);
+      return (c0 === CH_EQ && c1 === CH_GT) || (c0 === CH_QMARK && c1 === CH_COLON);
+    }
+    return false;
+  }
+  if (spec.keyword_id >= 0 && at === spec.keyword_id) {
+    return span_text_is(input, as, ae, "extends") || span_text_is(input, as, ae, "implements");
+  }
+  return false;
+}
 
 // does the token before `idx` read as the END of a type expression?
 // used by the brace-exit check so `(): T {`, `(): T | undefined {` and
@@ -1736,11 +1857,12 @@ function type_span_prev_is_closer(
   return false;
 }
 
-// OP_TYPE_SPAN entry: walk from `idx` until a terminator. always matches;
-// returns the index of the FIRST unconsumed token (the terminator's token,
-// or count for an unterminated span). identifiers in key position --
-// nested depth, directly followed by `:` or `?:` -- are parameter names /
-// property keys and are not recorded.
+// OP_TYPE_SPAN entry: walk from `idx` until a terminator. returns the
+// index of the FIRST unconsumed token (the terminator's token, or count
+// for an unterminated span). identifiers in key position -- nested depth,
+// directly followed by `:` or `?:` -- are parameter names / property keys
+// and are not recorded. NO_MATCH only when verify_generic_args rejects
+// the angle group; a verified (or unverified) span always matches.
 function run_type_span(
   spec: CompiledTypeSpanSpec,
   slot: number,
@@ -1752,6 +1874,9 @@ function run_type_span(
   value_pool: Uint16Array,
   value_offsets: Int32Array,
 ): number {
+  if (spec.verify_generic_args) {
+    if (!type_span_verify_angle(spec, tokens, idx, count, input, trivia)) return NO_MATCH;
+  }
   let paren_rel = 0;
   let brace_rel = 0;
   let bracket_rel = 0;
@@ -2188,9 +2313,10 @@ function match_bytecode(
         break;
       }
       case OP_TYPE_SPAN: {
-        // the span walk never fails; an immediately-terminated span
-        // matches empty and records nothing.
-        idx = run_type_span(
+        // the walk itself never fails -- an immediately-terminated span
+        // matches empty and records nothing -- but verify_generic_args
+        // can reject the whole branch before the walk starts.
+        const new_idx = run_type_span(
           span_specs[program[pc + 1]],
           program[pc + 2],
           tokens,
@@ -2201,6 +2327,11 @@ function match_bytecode(
           value_pool,
           value_offsets,
         );
+        if (new_idx === NO_MATCH) {
+          failed = true;
+          break;
+        }
+        idx = new_idx;
         pc += 3;
         break;
       }
@@ -2358,6 +2489,7 @@ export function disassemble_rules(
     const r = state.compiled[i];
     const gates: string[] = [];
     if (r.anchor_at_start) gates.push("at_start");
+    if (r.anchor_value_suffix_id >= 0) gates.push(`ends_with#${r.anchor_value_suffix_id}`);
     if (r.anchor_frame_kinds !== null) gates.push(`frame_kinds=${r.anchor_frame_kinds.join(",")}`);
     if (r.anchor_ternary_colon >= 0) gates.push(`ternary_colon=${r.anchor_ternary_colon === 1}`);
     if (r.anchor_flags_all !== null) gates.push(`stmt_flags_all=${r.anchor_flags_all.join(",")}`);
@@ -2554,6 +2686,9 @@ interface CompiledRule {
   // -1 means no value constraint; otherwise an id into the shared value
   // pool (same layout as the bytecode matcher's value_set_matches).
   anchor_value_id: number;
+  // suffix form: the anchor's source text must END with a pool entry.
+  // -1 when unset.
+  anchor_value_suffix_id: number;
   // -1 means no text predicate; otherwise a CHAR_PRED_* id passed to
   // text_pred_matches() during dispatch. fast pre-filter on the anchor
   // token's source text -- replaces a whole class of hand-rolled
@@ -2592,11 +2727,16 @@ interface CompiledRule {
   anchor_ternary_colon: number;
   anchor_flags_all: string[] | null;
   anchor_flags_none: string[] | null;
-  // dispatch fast paths derived at compile time, both -1 when unused:
+  // dispatch fast paths derived at compile time, all -1 when unused:
   // anchor_must_contain rejects anchors whose source text lacks this char
   // before any vm entry (arrow-mode params rules anchor every punctuation
   // token; roughly half carry no "(").
   anchor_must_contain: number;
+  // when every entry of the anchor's value / suffix sets ends in the SAME
+  // char, dispatch rejects on one charCodeAt before any gate runs --
+  // colon-anchored rules would otherwise gate-check every punctuation
+  // token in the stream.
+  anchor_last_char: number;
   // when the whole `when` pattern is a single type() check, its operands
   // are inlined here and dispatch skips match_bytecode entirely. -1 means
   // "no fast path" (which also routes dead NEVER_MATCHES rules through
@@ -2677,6 +2817,7 @@ function compile_rewrite(
         ? {
             type_name: rule.anchor,
             value: undefined as string | string[] | undefined,
+            value_ends_with: undefined as string | string[] | undefined,
             text_pred: undefined as string | undefined,
             at_start: undefined as boolean | undefined,
             frame_kinds: undefined as string[] | undefined,
@@ -2688,6 +2829,7 @@ function compile_rewrite(
         : {
             type_name: rule.anchor.type_name,
             value: rule.anchor.value,
+            value_ends_with: rule.anchor.value_ends_with,
             text_pred: rule.anchor.text_pred,
             at_start: rule.anchor.at_start,
             frame_kinds: rule.anchor.frame_kinds,
@@ -2742,6 +2884,13 @@ function compile_rewrite(
       const values = Array.isArray(anchor_spec.value) ? anchor_spec.value : [anchor_spec.value];
       anchor_value_id = compile_value_set(ctx, values);
     }
+    let anchor_value_suffix_id = -1;
+    if (anchor_spec.value_ends_with !== undefined) {
+      const suffixes = Array.isArray(anchor_spec.value_ends_with)
+        ? anchor_spec.value_ends_with
+        : [anchor_spec.value_ends_with];
+      anchor_value_suffix_id = compile_value_set(ctx, suffixes);
+    }
 
     // -1 (default) skips the predicate check. -2 marks an unknown predicate
     // name: the dispatch loop short-circuits the rule entirely so misspelled
@@ -2784,6 +2933,30 @@ function compile_rewrite(
     ) {
       anchor_must_contain = CH_PAREN_OPEN;
     }
+    // shared trailing char across every value / suffix entry, when the
+    // anchor constrains its text at all.
+    let anchor_last_char = -1;
+    {
+      const candidates: string[] = [];
+      if (anchor_spec.value !== undefined) {
+        candidates.push(
+          ...(Array.isArray(anchor_spec.value) ? anchor_spec.value : [anchor_spec.value]),
+        );
+      }
+      if (anchor_spec.value_ends_with !== undefined) {
+        candidates.push(
+          ...(Array.isArray(anchor_spec.value_ends_with)
+            ? anchor_spec.value_ends_with
+            : [anchor_spec.value_ends_with]),
+        );
+      }
+      if (candidates.length > 0 && candidates.every((c) => c.length > 0)) {
+        const last = candidates[0].charCodeAt(candidates[0].length - 1);
+        if (candidates.every((c) => c.charCodeAt(c.length - 1) === last)) {
+          anchor_last_char = last;
+        }
+      }
+    }
     let inline_when_type = -1;
     let inline_when_values = -1;
     let inline_when_pred = -1;
@@ -2800,6 +2973,7 @@ function compile_rewrite(
     compiled.push({
       anchor_id,
       anchor_value_id,
+      anchor_value_suffix_id,
       anchor_text_pred_id,
       anchor_target_id,
       capture_targets,
@@ -2824,6 +2998,7 @@ function compile_rewrite(
           ? anchor_spec.stmt_flags_none
           : null,
       anchor_must_contain,
+      anchor_last_char,
       inline_when_type,
       inline_when_values,
       inline_when_pred,
@@ -3125,6 +3300,28 @@ function run_rewrite_loop_claims(
 
     for (let r = 0; r < rcount; r++) {
       const rule = rule_table[offset + r];
+      // text constraints run before the gates: a one-char trailing test
+      // and the value sets are far cheaper than frame walks, and value
+      // anchors on common types (punctuation `:`) reject most tokens.
+      if (rule.anchor_last_char >= 0) {
+        if (input.charCodeAt(tokens[i * 3 + 2] - 1) !== rule.anchor_last_char) continue;
+      }
+      if (rule.anchor_value_id !== -1) {
+        const s = tokens[i * 3 + 1];
+        const e = tokens[i * 3 + 2];
+        if (!value_set_matches(value_pool, value_offsets, rule.anchor_value_id, input, s, e)) {
+          continue;
+        }
+      }
+      if (rule.anchor_value_suffix_id !== -1) {
+        const s = tokens[i * 3 + 1];
+        const e = tokens[i * 3 + 2];
+        if (
+          !value_set_ends_with(value_pool, value_offsets, rule.anchor_value_suffix_id, input, s, e)
+        ) {
+          continue;
+        }
+      }
       if (rule.anchor_at_start || rule.anchor_frame_kinds !== null) {
         // frame gates fail closed when no frame_track stage ran.
         if (frames === undefined) continue;
@@ -3176,13 +3373,6 @@ function run_rewrite_loop_claims(
           if ((sig & all) !== all) continue;
           if ((sig & flags_none_masks![offset + r]) !== 0) continue;
         } else if (rule.anchor_flags_all !== null || rule.anchor_flags_none !== null) {
-          continue;
-        }
-      }
-      if (rule.anchor_value_id !== -1) {
-        const s = tokens[i * 3 + 1];
-        const e = tokens[i * 3 + 2];
-        if (!value_set_matches(value_pool, value_offsets, rule.anchor_value_id, input, s, e)) {
           continue;
         }
       }

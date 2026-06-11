@@ -2259,4 +2259,35 @@ describe("reclassifier — type_span construct", () => {
   test("an unterminated span records what it reached", () => {
     expect(srun("x : a b", span_rule())).toEqual(["a", "b"]);
   });
+
+  test("ends-with anchors match coalesced punctuation bundles", () => {
+    // `):`  coalesces into one token; an exact value set cannot anchor it.
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value_ends_with: "):" },
+        when: type_span({ into: "types", brace_exit_on_closer: true }),
+        rewrite: { types: "type" },
+      },
+    ];
+    expect(srun("f ( x ): a { b }", rules)).toEqual(["a"]);
+    expect(srun("x : a ;", rules)).toEqual([]);
+  });
+
+  test("verify_generic_args accepts argument lists and rejects comparisons", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "operator", value: "<" },
+        before: type("identifier"),
+        when: type_span({
+          into: "types",
+          enter_angle: true,
+          exit_on_comma: false,
+          verify_generic_args: true,
+        }),
+        rewrite: { types: "type" },
+      },
+    ];
+    expect(srun("f < a , b > ( )", rules)).toEqual(["a", "b"]);
+    expect(srun("x < y ; z > w ;", rules)).toEqual([]);
+  });
 });
