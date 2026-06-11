@@ -25,7 +25,7 @@ import {
   make_token_view,
   not,
   optional,
-  param_list,
+  params,
   precedence_for,
   promote_by_text_set,
   promote_by_upper_snake_case,
@@ -855,43 +855,69 @@ const METHOD_LEADING_KEYWORDS = new Set([
   "declare",
 ]);
 
-// promote_js_parameters is now a `param_list` primitive configuration: the
-// JS family's four canonical param-list opener patterns plus the standard
-// walk behaviour (tag identifiers at depth 1, transparent to `...rest`,
-// suspend tagging after `=` until the next `,`). the primitive lives in
-// lib/core and is reused by TS / TSX with the same config.
-export const promote_js_parameters: Reclassifier = param_list({
-  result_type: "parameter",
+// promote_js_parameters is the JS family's four canonical param-list opener
+// shapes as rewrite rules over the `params()` walk construct (tag the first
+// identifier at depth 1 per chunk, transparent to `...rest`, suspend after
+// `=` until the next `,`). reused by TS / TSX with the same rules. the
+// member rules read the shared frame table: at_start plus a DIRECT object /
+// class / interface frame, so member starts nested inside call parens
+// don't count as method positions.
+const JS_PARAM_WALK = {
+  into: "p",
   default_introducer: "=",
   transparent_operators: ["..."],
-  detectors: [
-    // function declaration / expression: function [*] [name] [<generics>] (
-    {
-      kind: "after_keyword",
-      keyword: "function",
-      skip_generator_star: true,
-      skip_optional_name: true,
-      skip_optional_generics: true,
-    },
-    // member method: identifier (or method-leading keyword) at member-start
-    // in a class / object / interface body, followed by `(`. interface
-    // method signatures get the same treatment as class methods so their
-    // param names highlight the same way users expect.
-    {
-      kind: "member_method",
-      in_brace_kinds: ["class", "object", "interface"],
-      method_leading_keywords: Array.from(METHOD_LEADING_KEYWORDS),
-    },
-    // arrow function `(...) =>`, including `(x): T => ...` (TS return type).
-    // skipped when in type position (`: (x: T) => Y` is a type signature).
-    {
-      kind: "arrow_paren",
+};
+const MEMBER_BRACE_KINDS = ["class", "object", "interface"];
+const member_method_rule = (type_name: string, value?: string[]): RewriteRule => ({
+  anchor: {
+    type_name,
+    value,
+    at_start: true,
+    frame_kinds: MEMBER_BRACE_KINDS,
+    frame_direct: true,
+  },
+  when: params(JS_PARAM_WALK),
+  rewrite: { p: "parameter" },
+});
+
+export const js_parameter_rules: RewriteRule[] = [
+  // function declaration / expression: function [*] [name] [<generics>] (
+  {
+    anchor: type("keyword", "function"),
+    when: seq(
+      optional(type("operator", "*")),
+      optional(any_of(type("identifier"), type("function"))),
+      params({ ...JS_PARAM_WALK, skip_generics: true }),
+    ),
+    rewrite: { p: "parameter" },
+  },
+  // member method: identifier (or call-site-promoted function, or a
+  // method-leading keyword used as a method name) at member start of a
+  // class / object / interface body, followed by `(`. interface method
+  // signatures get the same treatment as class methods so their param
+  // names highlight the same way users expect.
+  member_method_rule("identifier"),
+  member_method_rule("function"),
+  member_method_rule("keyword", Array.from(METHOD_LEADING_KEYWORDS)),
+  // arrow function `(...) =>`, including `(x): T => ...` (TS return type).
+  // skipped when in type position (`: (x: T) => Y` is a type signature).
+  {
+    anchor: "punctuation",
+    when: params({
+      ...JS_PARAM_WALK,
+      find_open: "arrow",
       skip_ts_return_type: true,
       skip_in_type_position: true,
-    },
-    // single-identifier arrow: `x => ...`. tags the identifier itself.
-    { kind: "single_ident_arrow" },
-  ],
+    }),
+    rewrite: { p: "parameter" },
+  },
+  // single-identifier arrow: `x => ...`. tags the identifier itself.
+  { anchor: "identifier", when: type("operator", "=>"), rewrite: "parameter" },
+  { anchor: "function", when: type("operator", "=>"), rewrite: "parameter" },
+];
+
+export const promote_js_parameters: Reclassifier = rewrite_types(js_parameter_rules, {
+  trivia: ["comment"],
 });
 
 // namespace promotion: targets positions where the syntax unambiguously
