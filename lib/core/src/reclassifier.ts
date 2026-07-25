@@ -4101,9 +4101,12 @@ function is_claiming(fn: Reclassifier): fn is ClaimingReclassifier {
 
 // a pipeline resolves to a fixed sequence of steps: either one batch of
 // consecutive claim producers or one mutating pass. which is which depends
-// only on the pipeline, which is fixed when the language is bound, so the
-// grouping is done once here rather than re-derived (array + N property
-// probes) on every highlight.
+// only on the pipeline, so the grouping is derived once rather than on
+// every highlight -- but on the FIRST CALL, not at bind. planning eagerly
+// in reclassify() doubled `bind` (73ns -> 164ns on typescript), and
+// consumers that rebind per block -- per-block fidelity, per-request SSR
+// -- pay bind on every highlight. one null check per call is the price of
+// keeping that path as cheap as it was.
 interface PipelineStep {
   batch: ClaimingReclassifier[] | null;
   fn: Reclassifier | null;
@@ -4131,8 +4134,9 @@ function plan_pipeline(pipeline: ReclassifierPipeline): PipelineStep[] {
 export function reclassify(
   pipeline: ReclassifierPipeline,
 ): (input: string, result: TokenizeResult) => TokenizeResult {
-  const steps = plan_pipeline(pipeline);
+  let steps: PipelineStep[] | null = null;
   return (input, result) => {
+    if (steps === null) steps = plan_pipeline(pipeline);
     let current = result;
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
