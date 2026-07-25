@@ -14,6 +14,10 @@ interface ProbeEntry {
 
 declare const INTROSPECTION: boolean;
 
+// one 4k page worth of Uint32 slots. below this there is nothing worth
+// reclaiming from the scan scratch buffer and the copy is pure cost.
+const MIN_RECLAIMED_SLOTS = 1024;
+
 // helper function to check if a character is an identifier continuation character
 function is_identifier_char(char_code: number): boolean {
   return (
@@ -1139,8 +1143,20 @@ export function tokenize(
   // (promote_by_text_set, interface_member_promoter, class_name_promoter,
   // ...) are responsible for cloning before they push new names. cloning
   // here penalised every tokenize call, including reclassifier-free ones.
+  //
+  // copy out rather than returning a view. the scratch buffer is sized at
+  // 3 slots per input character but real grammars fill 13-15% of it, so a
+  // subarray keeps 12 bytes per input character reachable for as long as the
+  // caller holds the result. a consumer that highlights many blocks and keeps
+  // the streams pays that on every one.
+  //
+  // the copy costs one allocation, which is measurable on inputs small enough
+  // that the whole call is a microsecond, so keep the view when the memory it
+  // pins is under a page and reclaiming it would not return anything to the
+  // allocator anyway.
+  const used = token_count * 3;
   return {
-    tokens: tokens.subarray(0, token_count * 3),
+    tokens: len * 3 - used > MIN_RECLAIMED_SLOTS ? tokens.slice(0, used) : tokens.subarray(0, used),
     token_types,
   };
 }
