@@ -43,12 +43,78 @@ import type {
 // PRIMITIVE_TYPES (i32, u64, …) → class_name; JS / Python / Rust boolean
 // literals → boolean.
 
+// candidate texts compiled to code-unit arrays, bucketed by leading char.
+// membership then answers from `input` directly instead of materialising a
+// substring per candidate token: `input.slice(s, e)` allocated a string for
+// every token of the source type on every highlight purely to feed
+// Set.has, and these passes run over the whole stream.
+const ASCII_BUCKETS = 128;
+
+interface CompiledTextSet {
+  buckets: (Uint16Array[] | null)[];
+  // entries whose first code unit is outside ascii keep the string path.
+  wide: Set<string> | null;
+  min_len: number;
+  max_len: number;
+}
+
+function compile_text_set(texts: Iterable<string>): CompiledTextSet {
+  const buckets: (Uint16Array[] | null)[] = new Array(ASCII_BUCKETS).fill(null);
+  let wide: Set<string> | null = null;
+  let min_len = Infinity;
+  let max_len = 0;
+  for (const text of texts) {
+    if (text.length === 0) continue;
+    if (text.length < min_len) min_len = text.length;
+    if (text.length > max_len) max_len = text.length;
+    const first = text.charCodeAt(0);
+    if (first >= ASCII_BUCKETS) {
+      wide ??= new Set();
+      wide.add(text);
+      continue;
+    }
+    const codes = new Uint16Array(text.length);
+    for (let i = 0; i < text.length; i++) codes[i] = text.charCodeAt(i);
+    let bucket = buckets[first];
+    if (bucket === null) {
+      bucket = [];
+      buckets[first] = bucket;
+    }
+    bucket.push(codes);
+  }
+  return { buckets, wide, min_len: min_len === Infinity ? 1 : min_len, max_len };
+}
+
+function text_set_has(set: CompiledTextSet, input: string, s: number, e: number): boolean {
+  const len = e - s;
+  if (len < set.min_len || len > set.max_len) return false;
+  const first = input.charCodeAt(s);
+  if (first >= ASCII_BUCKETS) {
+    return set.wide !== null && set.wide.has(input.slice(s, e));
+  }
+  const bucket = set.buckets[first];
+  if (bucket === null) return false;
+  for (let b = 0; b < bucket.length; b++) {
+    const codes = bucket[b];
+    if (codes.length !== len) continue;
+    let ok = true;
+    for (let k = 1; k < len; k++) {
+      if (input.charCodeAt(s + k) !== codes[k]) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) return true;
+  }
+  return false;
+}
+
 export function promote_by_text_set(
   source_type: string,
   target_type: string,
   text_set: Iterable<string>,
 ): ClaimingReclassifier {
-  const set = text_set instanceof Set ? text_set : new Set(text_set);
+  const set = compile_text_set(text_set);
   const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
     const source_id = token_types.indexOf(source_type);
     if (source_id < 0) {
@@ -72,7 +138,7 @@ export function promote_by_text_set(
       if (tokens[i * 3] !== source_id) continue;
       const s = tokens[i * 3 + 1];
       const e = tokens[i * 3 + 2];
-      if (set.has(input.slice(s, e))) {
+      if (text_set_has(set, input, s, e)) {
         sink.emit(i, target_id, prec);
       }
     }
