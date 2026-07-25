@@ -29,8 +29,7 @@ export function to_html(
   options: RenderOptions = {},
 ) {
   // annotation overlays opt-in: when present, dispatch to the overlay-aware
-  // renderer below. when absent, the function body matches the original
-  // exactly so existing benchmarks remain unaffected.
+  // renderer below.
   if (token_result.overlays !== undefined) {
     return to_html_overlay(input, token_result, token_result.overlays, options);
   }
@@ -60,9 +59,10 @@ export function to_html(
     }
   }
 
-  // one pass finds both line breaks and escapable bytes. the previous shape
-  // walked every byte twice: once here hunting '\n', then again inside the
-  // escaper hunting the five entity bytes.
+  // line breaks and escapable bytes are found in the same pass. splitting
+  // them costs a second walk over every byte, and escapable bytes are rare
+  // enough (about one per 100) that the escaper would spend that walk
+  // finding nothing.
   function emit_range(start: number, end: number, cls: string | null) {
     if (start >= end) return;
     let chunk_start = start;
