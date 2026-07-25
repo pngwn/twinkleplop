@@ -10,6 +10,19 @@ ESCAPE_TABLE[62] = "&gt;";
 ESCAPE_TABLE[34] = "&quot;";
 ESCAPE_TABLE[39] = "&#39;";
 
+// every byte the renderer has to react to is below 63, so `code > 62` rejects
+// every letter and every non-ascii code unit in one compare and the table
+// load below never needs a bounds check. 1 = line break, 2 = needs escaping.
+const SCAN_NEWLINE = 1;
+const SCAN_ESCAPE = 2;
+const SCAN_TABLE = new Uint8Array(63);
+SCAN_TABLE[10] = SCAN_NEWLINE;
+SCAN_TABLE[34] = SCAN_ESCAPE;
+SCAN_TABLE[38] = SCAN_ESCAPE;
+SCAN_TABLE[39] = SCAN_ESCAPE;
+SCAN_TABLE[60] = SCAN_ESCAPE;
+SCAN_TABLE[62] = SCAN_ESCAPE;
+
 export function to_html(
   input: string,
   token_result: TokenizeResult,
@@ -24,17 +37,16 @@ export function to_html(
   const { tokens, token_types } = token_result;
   const { class_name = "twinkleplop", line_numbers = false } = options;
 
-  const out: string[] = [];
-  out.push(`<pre class="${class_name}"><code>`);
+  let out = `<pre class="${class_name}"><code>`;
 
   let line_no = 1;
   let open_class: string | null = null;
 
-  out.push(open_line(line_no, line_numbers));
+  out += open_line(line_no, line_numbers);
 
   function close_span() {
     if (open_class !== null) {
-      out.push("</span>");
+      out += "</span>";
       open_class = null;
     }
   }
@@ -43,29 +55,42 @@ export function to_html(
     if (cls === open_class) return;
     close_span();
     if (cls !== null) {
-      out.push(`<span class="tok ${cls}">`);
+      out += `<span class="tok ${cls}">`;
       open_class = cls;
     }
   }
 
+  // one pass finds both line breaks and escapable bytes. the previous shape
+  // walked every byte twice: once here hunting '\n', then again inside the
+  // escaper hunting the five entity bytes.
   function emit_range(start: number, end: number, cls: string | null) {
     if (start >= end) return;
     let chunk_start = start;
     for (let i = start; i < end; i++) {
-      if (input.charCodeAt(i) !== 10) continue; // '\n'
+      const code = input.charCodeAt(i);
+      if (code > 62) continue;
+      const kind = SCAN_TABLE[code];
+      if (kind === 0) continue;
+      if (kind === SCAN_ESCAPE) {
+        ensure_span(cls);
+        if (i > chunk_start) out += input.substring(chunk_start, i);
+        out += ESCAPE_TABLE[code];
+        chunk_start = i + 1;
+        continue;
+      }
       if (i > chunk_start) {
         ensure_span(cls);
-        out.push(escape_substring_optimized(input, chunk_start, i));
+        out += input.substring(chunk_start, i);
       }
       close_span();
-      out.push("</span>\n");
+      out += "</span>\n";
       line_no++;
-      out.push(open_line(line_no, line_numbers));
+      out += open_line(line_no, line_numbers);
       chunk_start = i + 1;
     }
     if (end > chunk_start) {
       ensure_span(cls);
-      out.push(escape_substring_optimized(input, chunk_start, end));
+      out += input.substring(chunk_start, end);
     }
   }
 
@@ -83,10 +108,10 @@ export function to_html(
   if (last_end < input.length) emit_range(last_end, input.length, null);
 
   close_span();
-  out.push("</span>");
-  out.push("</code></pre>");
+  out += "</span>";
+  out += "</code></pre>";
 
-  return out.join("");
+  return out;
 }
 
 function open_line(n: number, line_numbers: boolean) {
