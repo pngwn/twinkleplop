@@ -45,6 +45,21 @@ workloads moved, three fewer unstable) rather than headline percentage; the
 stream copy-out costs `tokenize` a fraction of a percent by design, in
 exchange for cutting retention from 7.51x live bytes to 1.00x.
 
+The absolute stage profile over the whole `real` family, before and after
+(`bin/profile.mjs --family real`, same machine, anchor stable on both):
+
+| stage | before | after | share before | share after |
+| --- | ---: | ---: | ---: | ---: |
+| scan | 18.45 ms | 11.66 ms | 45% | 48% |
+| reclassify | 8.94 ms | 7.76 ms | 22% | 32% |
+| render | 13.31 ms | 5.07 ms | 33% | 21% |
+| **total** | **40.69 ms** | **24.50 ms** | | |
+
+Scan throughput 26.0 to 41.2 MB/s; 84.8 to 51.0 ns per input byte. Rendering
+is 2.6x faster in absolute terms and has gone from the second-largest stage to
+the smallest. Scanning is now a *larger* share of a much smaller total, which
+is where the remaining open leads point.
+
 Plus, off the steady-state path: **Python's grammar compiles 11.4x faster**
 (8.90ms to 0.79ms) and its serialised form drops from 4.08 MB to 17 KB. The
 other 17 grammars compile 2-5% slower, which is real and measured, not noise;
