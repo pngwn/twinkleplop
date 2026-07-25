@@ -752,22 +752,34 @@ node --expose-gc lib/bench/perf/bin/ab.mjs --suite full --label cold-start --rep
 | `compile` | +14.2% | 18 |
 
 **Every runtime path is flat.** The four modes a consumer actually spends time
-in move by 0.2% or less, well inside the 3.4% noise floor, and no individual
-`tokenize`, `pipeline`, `html` or `fidelity` workload cleared the floor in
-either direction. That is the result that matters: the tokenizer's non-ASCII
-scan replaced a property load with a two-comparison loop on a path only reached
-for codepoints >= 128, and it costs nothing measurable.
+in move by 0.2% or less, and no individual `tokenize`, `pipeline`, `html` or
+`fidelity` workload cleared the 3.4% per-workload floor in either direction.
+
+Judging those geomeans against 3.4% would be too lenient, so I am using the
+**group floor** instead. `lib/bench/perf/README.md` on `perf-exploration` gained
+a `group-floor.mjs` calibration after my branch point: resampled from the A/A
+run, a geomean over ~54 workloads has a p99 of 0.62% and over 147 workloads
+0.45%. My runtime groups are n=71 to n=74, so their floor is around 0.5%.
+`tokenize` at -0.0%, `pipeline` at -0.1%, `fidelity` at -0.1% and `html` at
+-0.2% all sit inside that — at or below the p50 of pure noise. **Flat by the
+strict test, not just the lenient one.**
+
+That is the result that matters: the tokenizer's non-ASCII lookup replaced a
+property load with a two-comparison loop on a path only reached for codepoints
+>= 128, and it costs nothing measurable.
 
 `compile` +14.2% is Python, obviously: `setup/python:compile` went from
 **8.34 ms to 532 us, a 15.5x speedup**, with a CI of +1418% to +1533%.
 
 **But `compile` is 2-5% slower on grammars that have no non-ASCII rules, and I
 could not make that go away.** Excluding Python, the compile-mode geomean is
-**-2.03% across the other 17 languages, with 13 of 17 negative**. A whole group
-moving together is exactly the signal `lib/bench/perf/README.md` says to trust
-over individual rows, so I am treating it as real rather than as noise, even
-though most individual rows sit under the floor. A confirmation run narrowed to
-the setup workloads with `--rounds 25 --repeat 2` put four of them over it:
+**-2.03% across the other 17 languages, with 13 of 17 negative**. Against the
+group floor above — p99 around 0.7% for a group of that size — that is not
+close to noise; it is roughly three times the p99. The group was also not
+chosen after seeing the numbers: it is "every language except the one the change
+targets", which is the honest partition. A confirmation run narrowed to the
+setup workloads with `--rounds 25 --repeat 2` put four individual rows over even
+the lenient per-workload floor:
 
 | workload | base | candidate | delta |
 | -------- | ---: | --------: | ----: |
@@ -795,6 +807,19 @@ the narrowed confirmation run. `setup/html:bind` was flagged as a -4.0%
 regression in the first run at **34ns against 35ns** — a one-nanosecond
 difference. It did not replicate. This is the concrete example behind section
 7's caveat that bind figures are order-of-magnitude only.
+
+### Branch point
+
+This branch is based on `571af87` ("add paired ab perf harness with frozen
+baseline"). `perf-exploration` has advanced since, with harness improvements and
+a change to `lib/core/src/generator.ts` from another track. **I deliberately did
+not merge it.** The A/B above attributes its numbers to my change alone; pulling
+in another agent's `lib/core` change would make the candidate arm measure both
+of us and the attribution would be worthless. The frozen reference is
+`455158ace685` either way, so a merge and a re-run should reproduce these
+numbers for the parts that are mine. There should be no textual conflict:
+upstream touched `generator.ts`, I touched `compiler.ts`, `tokenizer.ts` and
+`types.ts`.
 
 ### Run integrity
 
