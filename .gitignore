@@ -7,3 +7,7 @@ CLAUDE.md
 AGENTS.md
 dist/
 scripts/
+
+# frozen reference builds for the perf harness
+.perf/
+lib/bench/perf/reports/

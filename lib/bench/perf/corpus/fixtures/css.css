@@ -1,0 +1,307 @@
+/* ---- at_rules.css ---- */
+@media (max-width: 768px) {
+	body {
+		font-size: 14px;
+	}
+}
+
+@media (max-width: 768px) and (min-width: 480px) {
+	body {
+		font-size: 14px;
+	}
+}
+
+@media (max-width: 768px) and (min-width: 480px) and (max-width: 640px) {
+	body {
+		font-size: 14px;
+	}
+}
+
+
+/* ---- charset_rule.css ---- */
+@charset "UTF-8";
+@charset "ISO-8859-1";
+
+/* ---- comments.css ---- */
+/* comment */
+ body {
+}
+
+/* This is a
+		   multi-line
+		   comment */
+
+
+/* ---- css-vars.css ---- */
+:root {
+	--primary-color: #007bff;
+	--secondary-color: #6c757d;
+	--spacing-unit: 8px;
+	--border-radius: 4px;
+}
+
+
+/* ---- functions.css ---- */
+div {
+	/* Transform functions - comprehensive */
+	transform: rotate(45deg) scale(1.5) translateX(50px);
+	transform: translate(10px, 20px) skew(30deg);
+	transform: scaleX(2) scaleY(0.5) translateY(-100px);
+	transform: matrix(1, 0, 0, 1, 0, 0);
+	
+	/* Color functions - common ones */
+	background: rgb(255, 0, 128);
+	background: rgba(255, 0, 128, 0.5);
+	color: hsl(120, 100%, 50%);
+	border-color: hsla(240, 100%, 50%, 0.3);
+	
+	/* Math functions - widely supported */
+	width: calc(100% - 20px);
+	height: min(100vh, 500px);
+	margin: max(10px, 2em);
+	padding: clamp(10px, 2vw, 50px);
+	
+	/* Filter functions */
+	filter: blur(5px) brightness(150%);
+	
+	/* Gradient functions - more types */
+	background-image: linear-gradient(to right, red, blue);
+	background-image: radial-gradient(circle, yellow, green);
+	background-image: conic-gradient(from 90deg, red, yellow, green);
+	
+	/* URL function */
+	list-style-image: url("image.jpg");
+	background-image: url('background.png');
+	
+	/* Shape functions - expanded */
+	clip-path: circle(50%);
+	clip-path: ellipse(50% 25%);
+	clip-path: polygon(0 0, 100% 0, 100% 100%);
+	clip-path: inset(10px 20px 30px 40px);
+	
+	/* Grid functions */
+	grid-template-columns: repeat(3, 1fr);
+	grid-template-rows: minmax(100px, auto);
+	width: fit-content(300px);
+	
+	/* Reference functions */
+	content: attr(data-label);
+	
+	/* CSS custom properties */
+	--main-color: var(--theme-color, blue);
+	
+	/* Timing functions */
+	transition: cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+/* ---- hex_colors.css ---- */
+div {
+	color: #ff0000;
+	background: #123456;
+}
+
+/* ---- import_rules.css ---- */
+@import url('fonts.css');
+@import 'base.css';
+
+/* ---- important.css ---- */
+div {
+	color: red !important;
+	display: block !important;
+}
+
+/* ---- keywords.css ---- */
+/* Global value keywords */
+.global-values {
+	display: inherit;
+	position: initial;
+	color: unset;
+	width: revert;
+}
+
+/* Position keywords */
+.positioning {
+	position: static;
+	position: relative;
+	position: absolute;
+	position: fixed;
+	position: sticky;
+}
+
+/* Display keywords */
+.display-values {
+	display: none;
+	display: inline;
+	display: inline-block;
+	display: flex;
+	display: grid;
+	display: table;
+	display: contents;
+}
+
+/* Common property values */
+.common-values {
+	width: auto;
+	overflow: hidden;
+	overflow: visible;
+	overflow: scroll;
+	visibility: collapse;
+	font-weight: normal;
+	font-weight: bold;
+	font-weight: bolder;
+	font-weight: lighter;
+	font-style: italic;
+	text-decoration: underline;
+	text-decoration: overline;
+	text-decoration: line-through;
+}
+
+/* Color keywords */
+.colors {
+	color: transparent;
+	background: currentColor;
+}
+
+/* ---- negative_numbers.css ---- */
+div {
+	margin: -10px -5%;
+	top: -20rem;
+}
+
+/* ---- nested_selectors.css ---- */
+/* Test nested selectors and at-rules */
+
+/* Nested selectors inside regular rules */
+.parent {
+	color: blue;
+
+	.child {
+		color: red;
+	}
+
+	#nested-id {
+		background: white;
+	}
+
+	&:hover {
+		color: green;
+	}
+}
+
+/* Selectors inside at-rules */
+@media (min-width: 768px) {
+	.responsive-class {
+		display: block;
+	}
+
+	#responsive-id {
+		width: 100%;
+	}
+}
+
+/* Deep nesting */
+.level1 {
+	color: red;
+
+	.level2 {
+		color: blue;
+
+		.level3 {
+			body {
+				color: yellow;
+			}
+
+			body:hover {
+				color: purple;
+			}
+
+			color: green;
+		}
+	}
+}
+
+/* Mixed properties and nested selectors */
+.mixed {
+	color: blue;
+	font-size: 14px;
+
+	.nested {
+		color: red;
+	}
+
+	background: white;
+
+	#another {
+		margin: 10px;
+	}
+}
+
+
+/* ---- numbers.css ---- */
+div {
+	width: 10px;
+	height: 2em;
+	opacity: 100%;
+	top: 50vh;
+	line-height: 1.5rem;
+}
+
+/* ---- properties.css ---- */
+div {
+	color: red;
+	font-size: 16px;
+}
+
+/* ---- pseudo_selectors.css ---- */
+a:hover {
+	color: blue;
+}
+
+button:active {
+	background: red;
+}
+
+/* ---- selectors.css ---- */
+#id .class div
+
+/* ---- strings.css ---- */
+div {
+	content: "hello" 'world';
+}
+
+/* ---- url.css ---- */
+div {
+	background: url(bg.jpg);
+}
+
+div {
+	list-style-image: url(./icon.jpg);
+}
+
+div {
+	cursor: url("./cursor.png");
+}
+
+div {
+	cursor: url("cursor.png"), auto;
+}
+
+cursor: url(cursor.png);
+
+body {
+	cursor: url(cursor.png);
+}
+
+.test {
+	cursor: url(cursor.png);
+}
+
+div {
+	color: red;
+	cursor: url(cursor.png);
+}
+
+div {
+	cursor: url(cursor.png);
+	color: red;
+}

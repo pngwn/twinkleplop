@@ -1,0 +1,157 @@
+# Cargo workspace manifest for the edge stack.
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/router",
+    "crates/store",
+    "crates/telemetry",
+    "xtask",
+]
+exclude = ["fuzz", "examples/legacy"]
+default-members = ["crates/router"]
+
+[workspace.package]
+version = "0.14.3"
+edition = "2021"
+rust-version = "1.79"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/acme/edge-stack"
+homepage = "https://edge.acme.dev"
+authors = ["Platform Team <platform@acme.dev>"]
+keywords = ["proxy", "http", "edge", "routing"]
+categories = ["network-programming", "web-programming::http-server"]
+
+[workspace.dependencies]
+anyhow = "1.0.86"
+async-trait = "0.1.81"
+bytes = { version = "1.7", features = ["serde"] }
+clap = { version = "4.5", features = ["derive", "env", "wrap_help"] }
+futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+hyper = { version = "1.4", features = ["http1", "http2", "server", "client"] }
+serde = { version = "1.0.209", features = ["derive", "rc"] }
+serde_json = { version = "1.0.127", features = ["preserve_order", "raw_value"] }
+thiserror = "1.0.63"
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
+tracing = { version = "0.1.40", default-features = false, features = ["std", "attributes"] }
+
+core = { path = "crates/core", version = "0.14.3" }
+store = { path = "crates/store", version = "0.14.3" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+incremental = false
+
+[profile.release.package."*"]
+opt-level = 3
+
+[profile.bench]
+inherits = "release"
+debug = true
+strip = "none"
+
+[profile.dev]
+opt-level = 0
+debug = 2
+split-debuginfo = "unpacked"
+
+[profile.dev.package.backtrace]
+opt-level = 3
+
+# ---------------------------------------------------------------------------
+# Runtime configuration consumed by crates/router at startup.
+# ---------------------------------------------------------------------------
+
+[server]
+bind = "0.0.0.0:8443"
+worker_threads = 8
+max_connections = 65_536
+keep_alive = "75s"
+graceful_shutdown = "30s"
+http2_only = false
+
+[server.tls]
+cert = "/etc/edge/tls/fullchain.pem"
+key = "/etc/edge/tls/privkey.pem"
+min_version = "1.2"
+alpn = ["h2", "http/1.1"]
+ciphers = [
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256",
+]
+
+[server.limits]
+request_body_bytes = 10_485_760
+header_bytes = 32_768
+concurrent_streams = 250
+rate_per_second = 5_000.0
+
+[telemetry]
+level = "info"
+format = "json"
+sample_ratio = 0.05
+export_interval = "10s"
+
+[telemetry.otlp]
+endpoint = "https://otel-collector.internal:4317"
+timeout = "5s"
+headers = { "x-tenant" = "edge", "x-env" = "production" }
+
+[[upstreams]]
+name = "api"
+weight = 70
+targets = ["10.0.1.10:8080", "10.0.1.11:8080", "10.0.1.12:8080"]
+health_check = { path = "/healthz", interval = "5s", timeout = "2s", unhealthy_after = 3 }
+
+[[upstreams]]
+name = "assets"
+weight = 30
+targets = ["10.0.2.20:8080"]
+health_check = { path = "/ping", interval = "15s", timeout = "1s", unhealthy_after = 5 }
+
+[[routes]]
+match = { host = "api.acme.dev", path_prefix = "/v1/" }
+upstream = "api"
+strip_prefix = false
+timeout = "30s"
+retry = { attempts = 2, backoff = "exponential", base = "100ms" }
+
+[[routes]]
+match = { host = "cdn.acme.dev" }
+upstream = "assets"
+cache = { ttl = "1h", stale_while_revalidate = "24h", vary = ["accept-encoding"] }
+
+[feature_flags]
+zero_copy_body = true
+early_hints = false
+adaptive_concurrency = true
+experimental = { quic = false, ech = false }
+
+[metadata]
+description = """
+Edge routing stack.
+Multi-line strings keep their newlines, and literal strings like 'C:\\path\\to'
+do not process escapes at all.
+"""
+build_date = 2025-03-14T09:30:00Z
+local_date = 1979-05-27
+local_time = 07:32:00

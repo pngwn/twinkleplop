@@ -1,0 +1,12 @@
+# three-way diff showing changed, added, and removed lines.
+diff --git a/src/app.js b/src/app.js
+index e69de29..d00491f 100644
+--- a/src/app.js
++++ b/src/app.js
+@@ -1,5 +1,6 @@
+ import { start } from "./core";
+-const port = 3000;
++const port = 8080;
++const host = "0.0.0.0";
+! const retries = 3;
+ start({ port });
