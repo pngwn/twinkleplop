@@ -54,11 +54,10 @@ Sums over the whole family. `scan` is `core.tokenize`; `reclassify` is
 | family | total    | scan | reclassify | render | scan throughput | ns/byte |
 | ------ | -------- | ---- | ---------- | ------ | --------------- | ------- |
 | `real` | 40.69 ms | 45%  | 22%        | 33%    | 26.0 MB/s       | 84.8    |
-| `micro`| 669 us   | 30%  | 38%        | 32%    | 43.6 MB/s       | -       |
+| `micro`| 724 us   | 29%  | 38%        | 33%    | 41.7 MB/s       | 83.4    |
 
-The `micro` row predates the correction. Its languages are almost all
-non-embedding (`expand` 1.00x), so its stage shares stand; only the svelte and
-html rows in the per-workload table below are affected.
+Both rows are post-correction. The `micro` stage shares were unaffected by it:
+its languages are overwhelmingly non-embedding.
 
 The two profiles point at different things, and both are real consumer
 shapes:
@@ -99,26 +98,29 @@ shapes:
 
 ### `micro` family, per workload
 
-| workload         | bytes | tokens | total   | scan | reclass | render | scan MB/s |
-| ---------------- | ----: | -----: | ------: | ---: | ------: | -----: | --------: |
-| micro/typescript |  779  |   189  | 103.1us | 21%  |   57%   |  22%   |   35.4    |
-| micro/svelte     |  714  |    99  |  88.3us | 16%  |   61%   |  23%   |   51.0    |
-| micro/javascript |  793  |   165  |  81.5us | 24%  |   47%   |  29%   |   39.8    |
-| micro/tsx        |  552  |   134  |  67.1us | 24%  |   51%   |  25%   |   34.9    |
-| micro/html       |  670  |    72  |  54.3us | 23%  |   48%   |  28%   |   53.0    |
-| micro/rust       |  609  |   167  |  47.8us | 30%  |   33%   |  37%   |   42.6    |
-| micro/python     |  652  |   135  |  39.4us | 36%  |   24%   |  40%   |   45.9    |
-| micro/sql        |  477  |   109  |  28.8us | 41%  |   17%   |  43%   |   40.7    |
-| micro/go         |  519  |   128  |  28.7us | 37%  |   15%   |  49%   |   49.3    |
-| micro/markdown   |  564  |    58  |  21.2us | 49%  |   19%   |  33%   |   54.7    |
-| micro/css        |  391  |    97  |  21.0us | 47%  |    8%   |  46%   |   39.8    |
-| micro/bash       |  331  |    80  |  20.6us | 42%  |   19%   |  38%   |   37.8    |
-| micro/yaml       |  371  |    61  |  19.5us | 50%  |   10%   |  40%   |   37.9    |
-| micro/toml       |  339  |    70  |  16.1us | 51%  |    0%   |  49%   |   41.1    |
-| micro/json       |  381  |    67  |  15.3us | 46%  |    1%   |  53%   |   53.7    |
-| micro/diff       |  314  |    31  |   9.6us | 57%  |    3%   |  39%   |   57.1    |
-| micro/diff-basic |  187  |    19  |   6.0us | 55%  |    2%   |  44%   |   56.4    |
-| micro/whitespace |   47  |    12  |   1.2us | 100% |     -   |    -   |   38.5    |
+`expand` below 1.00x means the pipeline emits FEWER tokens than the host scan
+(rust lifetime merging, bash compound styles); above means embedding.
+
+| workload         | bytes | tokens | expand | total   | scan | reclass | render | MB/s | ns/byte |
+| ---------------- | ----: | -----: | -----: | ------: | ---: | ------: | -----: | ---: | ------: |
+| micro/typescript |  779  |   189  | 1.00x  | 106.5us | 21%  |   57%   |  22%   | 34.9 | 136.7   |
+| micro/svelte     |  714  |   199  | 2.01x  |  96.9us | 15%  |   61%   |  24%   | 48.1 | 135.8   |
+| micro/javascript |  793  |   209  | 1.27x  |  88.9us | 24%  |   47%   |  29%   | 37.6 | 112.1   |
+| micro/tsx        |  552  |   134  | 1.00x  |  70.8us | 24%  |   50%   |  26%   | 32.9 | 128.3   |
+| micro/html       |  670  |   147  | 2.04x  |  60.3us | 22%  |   44%   |  34%   | 50.4 |  90.1   |
+| micro/rust       |  609  |   165  | 0.99x  |  51.6us | 29%  |   33%   |  38%   | 40.4 |  84.7   |
+| micro/python     |  652  |   135  | 1.00x  |  41.7us | 36%  |   24%   |  40%   | 43.1 |  63.9   |
+| micro/go         |  519  |   128  | 1.00x  |  30.6us | 36%  |   14%   |  50%   | 46.5 |  59.1   |
+| micro/sql        |  477  |   109  | 1.00x  |  30.5us | 39%  |   18%   |  43%   | 39.9 |  64.0   |
+| micro/bash       |  331  |    77  | 0.96x  |  23.1us | 40%  |   20%   |  40%   | 35.7 |  69.7   |
+| micro/css        |  391  |    97  | 1.00x  |  22.7us | 45%  |    8%   |  47%   | 38.5 |  58.0   |
+| micro/markdown   |  564  |    58  | 1.00x  |  22.5us | 46%  |   22%   |  33%   | 54.8 |  39.9   |
+| micro/yaml       |  371  |    61  | 1.00x  |  19.9us | 51%  |    9%   |  40%   | 36.7 |  53.7   |
+| micro/toml       |  339  |    70  | 1.00x  |  17.2us | 50%  |    0%   |  50%   | 38.9 |  50.9   |
+| micro/json       |  381  |    67  | 1.00x  |  16.1us | 45%  |    0%   |  55%   | 52.3 |  42.3   |
+| micro/diff       |  314  |    31  | 1.00x  |  10.3us | 56%  |    0%   |  44%   | 55.0 |  32.7   |
+| micro/diff-basic |  187  |    19  | 1.00x  |   6.5us | 54%  |    4%   |  42%   | 53.4 |  34.7   |
+| micro/whitespace |   47  |    12  | 1.00x  |   1.2us | 100% |    -    |   -    | 38.4 |  26.0   |
 
 ## Observations, and what the investigation did to them
 
