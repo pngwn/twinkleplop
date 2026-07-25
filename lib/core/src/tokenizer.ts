@@ -36,7 +36,7 @@ export function tokenize(
     token_types,
     patterns,
     fallback_transitions,
-    non_ascii_chars,
+    non_ascii_ranges,
     probe_states,
     probe_mask,
     probe_fallbacks,
@@ -58,8 +58,7 @@ export function tokenize(
   let state_buckets: (PatternInfo[] | null)[] | undefined = patterns && patterns.get(0);
   let char_map_base: number = 0; // current_state * 128
   let trans_base3: number = 0; // (current_state * 256) * 3
-  let non_ascii_state: Record<number, number> | undefined =
-    non_ascii_chars && non_ascii_chars.get(0 as any);
+  let non_ascii_state: Int32Array | undefined = non_ascii_ranges && non_ascii_ranges.get(0 as any);
 
   let pos = 0;
   let prev_advanced_pos = -1;
@@ -111,7 +110,7 @@ export function tokenize(
     state_buckets = patterns && patterns.get(current_state);
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
   }
 
   function rewind_to_probe_entry(): void {
@@ -131,7 +130,7 @@ export function tokenize(
     state_buckets = patterns && patterns.get(current_state);
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
   }
 
   // INTROSPECTION_START
@@ -453,7 +452,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7; // *128
           trans_base3 = (current_state << 8) * 3; // *256*3
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -501,7 +500,7 @@ export function tokenize(
           state_buckets = patterns ? patterns.get(current_state) : undefined;
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -522,7 +521,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
 
         // check if exiting probe state
@@ -563,7 +562,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
 
         // check if we've reached the end while in probe mode
@@ -638,9 +637,15 @@ export function tokenize(
       // first check if there's a specific match for this character
       let matched_rule_idx = 65535;
       // early bail if no non-ASCII mappings exist at all
-      if (non_ascii_state) {
-        const v = (non_ascii_state as any)[char];
-        if (v !== undefined) matched_rule_idx = v as number;
+      if (non_ascii_state !== undefined) {
+        // short list, and only reached for codepoints >= 128, so the scan
+        // costs far less than the per-codepoint map it replaced cost to build.
+        for (let i = 0; i < non_ascii_state.length; i += 3) {
+          if (char >= non_ascii_state[i] && char <= non_ascii_state[i + 1]) {
+            matched_rule_idx = non_ascii_state[i + 2];
+            break;
+          }
+        }
       }
 
       if (matched_rule_idx !== 65535) {
