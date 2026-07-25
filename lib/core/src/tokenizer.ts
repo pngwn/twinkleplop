@@ -287,6 +287,50 @@ export function tokenize(
         const token_type = transitions[t_base + 1];
         const stack_op = transitions[t_base + 2];
 
+        // run fast path. the three table reads above already say whether this
+        // rule can change state; one that cannot is a self-loop, so the whole
+        // run of characters it matches can be consumed here instead of paying
+        // a full dispatch per character. string bodies, comment bodies,
+        // identifier runs and digit runs are all this shape, which is why a
+        // hand-written lexer's inner loops beat the table walk.
+        //
+        // the run stops at a character that maps to a different rule, at a
+        // character that begins one of this state's multi-char patterns (the
+        // bucket is consulted before the char map, so it would have won), and
+        // at non-ascii (the fallback path owns those).
+        if (
+          transition === 65535 &&
+          stack_op === 0 &&
+          token_type !== 65535 &&
+          matched_length === 0 &&
+          !is_in_probe_state &&
+          !has_failed_probes &&
+          (!has_seals || !seal_flags![current_state * 256 + char_class]) &&
+          (!boundary_rules || !boundary_rules.has(current_state * 256 + char_class)) &&
+          !(INTROSPECTION && introspector)
+        ) {
+          if (token_type === last_token_type && pos === last_token_end) {
+            pos++;
+          } else {
+            const out_idx = token_count * 3;
+            tokens[out_idx] = token_type;
+            tokens[out_idx + 1] = pos;
+            token_count++;
+            pos++;
+          }
+          while (pos < len) {
+            const next = input.charCodeAt(pos);
+            if (next > 127) break;
+            if (char_maps[char_map_base + next] !== char_class) break;
+            if (state_buckets !== undefined && state_buckets[next] !== null) break;
+            pos++;
+          }
+          tokens[(token_count - 1) * 3 + 2] = pos;
+          last_token_type = token_type;
+          last_token_end = pos;
+          continue;
+        }
+
         // determine target state
         let target_state = current_state;
         if (stack_op === 1 && transition !== 65535) {
