@@ -93,6 +93,36 @@ geomean-by-language sections first and the individual rows second.
 Report the conservative number. `--repeat 2` already does this: the headline
 speedup becomes the weaker of the two passes.
 
+### The group floor is not the per-workload floor
+
+3.4% is how far **one** workload can move when nothing changed. A geomean over
+many workloads averages that noise away and resolves far smaller effects.
+Judging a mode geomean against 3.4% throws away real signal — and a broad,
+small, uniform gain is exactly the shape a language-agnostic change produces.
+
+```bash
+node lib/bench/perf/bin/group-floor.mjs
+```
+
+Resampled from the A/A calibration, where every deviation is noise by
+construction:
+
+| group size | p50   | p95   | p99   |
+| ---------: | ----- | ----- | ----- |
+|         10 | 0.25% | 0.92% | 1.31% |
+|         37 | 0.19% | 0.55% | 0.72% |
+|         54 | 0.19% | 0.49% | 0.62% |
+|        147 | 0.19% | 0.37% | 0.45% |
+
+The A/A run's own mode geomeans came out at 0.11% (`tokenize`), 0.14%
+(`pipeline`) and 0.38% (`html`), which is the same story from the other side.
+
+So a `pipeline` geomean of +1.3% over 54 workloads is past the p99 of 0.62%
+and is a real effect, even with no single row clearing 3.4%. This does **not**
+license reading an individual row below the per-workload floor, and it only
+holds for a group you did not choose after seeing the numbers — picking the
+six workloads that happened to move and averaging them is not a group.
+
 ## Suites
 
 | suite   | workloads | what it is for                                        |
