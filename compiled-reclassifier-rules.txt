@@ -1,0 +1,180 @@
+javascript: js_parameter_rules (params() construct, 7 rules)
+============================================================
+vocabulary: comment string template number operator keyword boolean regex punctuation function identifier string_escape
+
+rule 0: anchor=keyword -> captures{parameter}
+  when:
+    0: ALT -> 7
+    2: TYPE type=operator(4) values=0 pred=-1
+    6: COMMIT
+    7: ALT -> 23
+    9: ALT -> 18
+    11: TYPE type=identifier(10) values=-1 pred=-1
+    15: COMMIT
+    16: JUMP -> 22
+    18: TYPE type=function(9) values=-1 pred=-1
+    22: COMMIT
+    23: PARAMS spec=0 slot=0
+    26: MATCH
+rule 1: anchor=identifier at_start frame_kinds=class,object,interface -> captures{parameter}
+  when:
+    27: PARAMS spec=1 slot=0
+    30: MATCH
+rule 2: anchor=function at_start frame_kinds=class,object,interface -> captures{parameter}
+  when:
+    31: PARAMS spec=2 slot=0
+    34: MATCH
+rule 3: anchor=keyword at_start frame_kinds=class,object,interface -> captures{parameter}
+  when:
+    35: PARAMS spec=3 slot=0
+    38: MATCH
+rule 4: anchor=punctuation -> captures{parameter}
+  when:
+    39: PARAMS spec=4 slot=0
+    42: MATCH
+rule 5: anchor=identifier -> parameter
+  when:
+    43: TYPE type=operator(4) values=3 pred=-1
+    47: MATCH
+rule 6: anchor=function -> parameter
+  when:
+    48: TYPE type=operator(4) values=4 pred=-1
+    52: MATCH
+
+
+javascript: property_scope_rules (frame-gated, 2 rules)
+============================================================
+vocabulary: comment string template number operator keyword boolean regex punctuation function identifier string_escape
+
+rule 0: anchor=identifier at_start frame_kinds=object -> function
+  when:
+    0: ALT -> 9
+    2: TYPE type=punctuation(8) values=0 pred=-1
+    6: COMMIT
+    7: JUMP -> 26
+    9: ALT -> 18
+    11: TYPE type=operator(4) values=1 pred=-1
+    15: COMMIT
+    16: JUMP -> 26
+    18: TYPE type=operator(4) values=2 pred=-1
+    22: TYPE type=punctuation(8) values=3 pred=-1
+    26: ALT -> 33
+    28: TYPE type=keyword(5) values=4 pred=-1
+    32: COMMIT
+    33: ALT -> 42
+    35: TYPE type=keyword(5) values=5 pred=-1
+    39: COMMIT
+    40: JUMP -> 64
+    42: ALT -> 55
+    44: TYPE type=identifier(10) values=-1 pred=-1
+    48: TYPE type=operator(4) values=6 pred=-1
+    52: COMMIT
+    53: JUMP -> 64
+    55: BALANCED punct=punctuation(8) open=40 close=41 max=200
+    60: TYPE type=operator(4) values=7 pred=-1
+    64: MATCH
+rule 1: anchor=identifier at_start frame_kinds=object,interface,type_literal -> property
+  when:
+    65: ALT -> 74
+    67: TYPE type=punctuation(8) values=8 pred=-1
+    71: COMMIT
+    72: JUMP -> 91
+    74: ALT -> 83
+    76: TYPE type=operator(4) values=9 pred=-1
+    80: COMMIT
+    81: JUMP -> 91
+    83: TYPE type=operator(4) values=10 pred=-1
+    87: TYPE type=punctuation(8) values=11 pred=-1
+    91: NOT_TYPE type=keyword(5) values=12 pred=-1
+    95: MATCH
+
+
+typescript: type_position_rules (type_span() walks, 16 rules)
+============================================================
+vocabulary: comment string template number operator keyword boolean decorator regex punctuation function identifier string_escape
+
+rule 0: anchor=punctuation ends_with#3 ternary_colon=false -> captures{type}
+  when:
+    0: TYPE_SPAN spec=0 slot=0
+    3: MATCH
+rule 1: anchor=punctuation ternary_colon=false -> captures{type}
+  when:
+    4: TYPE_SPAN spec=1 slot=0
+    7: MATCH
+  before (reverse):
+    8: TYPE type=punctuation(9) values=8 pred=-1
+    12: MATCH
+rule 2: anchor=punctuation ends_with#11 frame_kinds=paren ternary_colon=false -> captures{type}
+  when:
+    13: TYPE_SPAN spec=2 slot=0
+    16: MATCH
+rule 3: anchor=punctuation ends_with#14 frame_kinds=class,interface ternary_colon=false -> captures{type}
+  when:
+    17: TYPE_SPAN spec=3 slot=0
+    20: MATCH
+rule 4: anchor=punctuation ends_with#17 frame_kinds=top ternary_colon=false stmt_flags_all=var_decl -> captures{type}
+  when:
+    21: TYPE_SPAN spec=4 slot=0
+    24: MATCH
+rule 5: anchor=operator frame_kinds=paren -> captures{type}
+  when:
+    25: TYPE_SPAN spec=5 slot=0
+    28: MATCH
+rule 6: anchor=operator frame_kinds=class,interface -> captures{type}
+  when:
+    29: TYPE_SPAN spec=6 slot=0
+    32: MATCH
+rule 7: anchor=operator frame_kinds=top stmt_flags_all=var_decl -> captures{type}
+  when:
+    33: TYPE_SPAN spec=7 slot=0
+    36: MATCH
+rule 8: anchor=keyword -> captures{type}
+  when:
+    37: TYPE_SPAN spec=8 slot=0
+    40: MATCH
+rule 9: anchor=keyword stmt_flags_all=iface_head -> captures{type}
+  when:
+    41: TYPE_SPAN spec=9 slot=0
+    44: MATCH
+rule 10: anchor=keyword -> captures{type}
+  when:
+    45: TYPE_SPAN spec=10 slot=0
+    48: MATCH
+  before (reverse):
+    49: TYPE type=identifier(11) values=-1 pred=-1
+    53: TYPE type=operator(4) values=38 pred=-1
+    57: MATCH
+rule 11: anchor=keyword -> captures{type}
+  when:
+    58: TYPE_SPAN spec=11 slot=0
+    61: MATCH
+  before (reverse):
+    62: TYPE type=identifier(11) values=-1 pred=-1
+    66: TYPE type=punctuation(9) values=43 pred=-1
+    70: MATCH
+rule 12: anchor=keyword -> captures{type}
+  when:
+    71: TYPE_SPAN spec=12 slot=0
+    74: MATCH
+rule 13: anchor=operator -> captures{type}
+  when:
+    75: TYPE_SPAN spec=13 slot=0
+    78: MATCH
+  before (reverse):
+    79: TYPE type=identifier(11) values=-1 pred=-1
+    83: MATCH
+rule 14: anchor=operator frame_kinds=top stmt_flags_all=alias_head -> captures{type}
+  when:
+    84: TYPE_SPAN spec=14 slot=0
+    87: MATCH
+  before (reverse):
+    88: TYPE type=identifier(11) values=-1 pred=-1
+    92: MATCH
+rule 15: anchor=operator frame_kinds=top stmt_flags_all=alias_head -> captures{type}
+  when:
+    93: TYPE_SPAN spec=15 slot=0
+    96: MATCH
+  before (reverse):
+    97: TYPE type=operator(4) values=57 pred=-1
+    101: MATCH
+

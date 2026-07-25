@@ -88,6 +88,302 @@ export interface TokenizeResult {
   // language factory was given an `annotation` config). undefined otherwise so
   // the renderer's no-overlay fast path is reachable via a single check.
   overlays?: OverlayResult;
+  // populated by the `frame_track` reclassifier when present. downstream
+  // reclassifiers query the table instead of reconstructing their own
+  // scope stack. undefined when no frame_track stage ran.
+  frames?: FrameTable;
+}
+
+// Frame tracker types
+//
+// A FrameTable is the output of a `frame_track` reclassifier stage: per-token
+// scope-stack metadata pre-computed in one walk so multiple downstream
+// reclassifiers can read it instead of each maintaining their own stack.
+//
+// The schema is intentionally a superset across the JS/TS/Python/Rust
+// reclassifiers we plan to migrate. Languages that don't use frame tracking
+// simply don't run the stage and `frames` stays undefined.
+
+// integer encodings for Frame.bracket. matches the order in FrameSpec.brackets.
+export const FRAME_BRACKET_PAREN = 0;
+export const FRAME_BRACKET_BRACE = 1;
+export const FRAME_BRACKET_BRACKET = 2;
+
+// integer encodings for Frame.kind. the top-of-stack sentinel is 0 so a
+// freshly-allocated Uint8Array fills with TOP frames naturally. specific
+// brace kinds are language-supplied via FrameSpec.brace_kinds and resolved
+// to small ints at compile time.
+export const FRAME_KIND_TOP = 0;
+export const FRAME_KIND_PAREN = 1;
+export const FRAME_KIND_BRACKET = 2;
+// 3..255 reserved for language-defined brace kinds (class, interface, ...)
+
+export interface FrameRecord {
+  bracket: number; // FRAME_BRACKET_* constant
+  kind: number; // FRAME_KIND_* or language-defined
+  enter_idx: number; // token index of the opening bracket
+  // index into FrameTable.frames of the enclosing frame, -1 for TOP.
+  // consumers walk this chain to find e.g. the nearest brace frame when
+  // the active frame is a paren or bracket.
+  parent: number;
+}
+
+// bit 0 of FrameTable.signals: a colon character in this token consumed a
+// pending ternary qmark on the active frame. stmt flags occupy bits 1..7
+// (stmt_flags[i] maps to bit i + 1).
+export const SIGNAL_TERNARY_COLON = 1;
+
+export interface FrameTable {
+  // active_frame[i] = index into `frames` for the frame on top after
+  // token i has been processed. tokens that are themselves closers point
+  // at the frame they CLOSED so their lookup is consistent with "frame
+  // active during this token's lifetime."
+  active_frame: Uint32Array;
+  // for each token i: paren_depth, brace_depth, bracket_depth interleaved
+  // as a flat Uint8Array (length = 3 * tokens.length). depths reflect the
+  // state AFTER processing token i.
+  depths: Uint8Array;
+  // per-token at_start flag, 1 byte per token. true means: this token
+  // is the first significant content after the active frame opened
+  // (or after a member separator like `,` / `;`). consumed by reclassifiers
+  // that distinguish "key position" from "value position" inside object
+  // and interface bodies. populated only when FrameSpec.at_start is set.
+  at_start: Uint8Array;
+  // dense list of all frames ever opened, frames[0] is the implicit TOP
+  // frame (kind=FRAME_KIND_TOP, never popped).
+  frames: FrameRecord[];
+  // kind id -> name. indices 0..2 are the built-in "top" / "paren" /
+  // "bracket"; language-defined brace kinds from BraceKindSpec follow.
+  // consumers resolve their kind names against this once per call and
+  // compare integer ids in the loop.
+  kind_names: string[];
+  // per-token signal bits. bit 0 (SIGNAL_TERNARY_COLON) marks tokens whose
+  // colon char consumed a pending ternary qmark; bits 1..7 snapshot the
+  // active frame's stmt flags AFTER the token was processed. empty when
+  // neither FrameSpec.ternary nor FrameSpec.stmt_flags is configured --
+  // gates over signals fail closed against the empty array.
+  signals: Uint8Array;
+  // stmt flag bit positions by name: flag_names[i] occupies signals bit
+  // i + 1. empty when stmt_flags is not configured.
+  flag_names: string[];
+}
+
+export interface FrameSpec {
+  // type name of the token carrying bracket characters in this language's
+  // grammar. nearly always "punctuation" but exposed so grammars that
+  // emit different types (e.g. operator for `<`/`>`) can still be tracked.
+  punct_type: string;
+  // character codes for each bracket pair. each must be a single code unit.
+  // omit a bracket pair if the language doesn't use it (e.g. languages with
+  // no square-bracket scope).
+  brackets: {
+    paren?: { open: string; close: string };
+    brace?: { open: string; close: string };
+    bracket?: { open: string; close: string };
+  };
+  // optional at_start tracking. when set, the frame table's at_start
+  // array is populated per token. otherwise the array is zeroed and
+  // downstream reclassifiers either don't consume it or compute their own.
+  at_start?: AtStartSpec;
+  // optional declarative brace-kind classification. when set, every `{`
+  // frame gets a language-defined kind resolved during the walk and the
+  // table's kind_names array maps kind ids back to spec names. when
+  // omitted, brace frames keep the FRAME_KIND_TOP placeholder.
+  brace_kinds?: BraceKindSpec;
+  // optional per-frame ternary counting. when set, the table's signals
+  // array marks colons that consumed a pending ternary qmark so colon
+  // anchor rules can tell `cond ? a : b` from annotation colons.
+  ternary?: TernarySpec;
+  // optional named statement-context flags surfaced per token in the
+  // signals array. at most 7 flags (signals bits 1..7).
+  stmt_flags?: StmtFlagSpec[];
+}
+
+// per-frame ternary tracking. a token matching `qmark` increments the
+// active frame's counter; a `colon_char` inside a punct_type token with a
+// positive counter decrements it and sets SIGNAL_TERNARY_COLON on that
+// token instead of leaving the colon to read as an annotation. counters
+// live on the frame that saw the qmark, so a ternary inside parens never
+// marks a colon outside them. counting is mode-blind: type-level `? :`
+// pairs (conditional types) are balanced, so the net effect at any later
+// colon matches a type-aware walker.
+export interface TernarySpec {
+  // token type + exact source text that increments the counter. exact
+  // matching keeps `?.` `??` `?:` from counting.
+  qmark: { type: string; text: string };
+  // single colon character consumed against pending qmarks during the
+  // punct_type char walk.
+  colon_char: string;
+}
+
+// a named statement-context flag. armed by exact-text tokens, cleared by
+// other exact-text tokens, separator chars, or a brace-frame close. the
+// flag lives on the frame that armed it: nested frames open with the flag
+// clear and a pop discards it. canonical case: TS var-decl annotations,
+// where a colon rule needs "a let/const/var appeared earlier in this
+// statement at this nesting level".
+export interface StmtFlagSpec {
+  name: string;
+  arm: { type: string; texts: string[] };
+  clear?: { type: string; texts: string[] };
+  // single chars (inside punct_type tokens) that clear the flag on the
+  // active frame. typically ";".
+  clear_chars?: string;
+  // also clear the flag on the parent frame when a brace frame pops --
+  // a closing `}` ends the statement that armed the flag.
+  clear_on_brace_close?: boolean;
+}
+
+// declarative brace-kind classification. the language describes how to
+// decide what kind of scope a `{` opens and frame_track evaluates the
+// rules during its single walk, so downstream reclassifiers share one
+// classification instead of each maintaining their own.
+//
+// evaluation order at each opening brace:
+//   1. a pending body marker (armed earlier by a body_markers entry) is
+//      consumed when the brace opens outside all angle / paren / bracket
+//      nesting -- the frame takes the marker's kind.
+//   2. a pending marker with angle nesting yields pending_in_angles_kind
+//      without consuming the marker (generic constraints like
+//      `class C<T extends { x: V }>` -- the constraint's `{` is a type
+//      literal, the real body brace still claims the marker).
+//   3. otherwise the previous non-trivia token is tested against
+//      prev_rules in order; the first matching rule's kind wins.
+//   4. no rule matches: default_kind (or start_kind when the brace has
+//      no previous token).
+export interface BraceKindRule {
+  // token type name of the previous non-trivia token.
+  prev_type: string;
+  // exact source texts to match. omit to match any text of prev_type.
+  prev_texts?: string[];
+  // match when the previous token's LAST character is in this set. used
+  // for shapes like "punctuation ending in `)`" where the grammar may
+  // coalesce `)` with adjacent punctuation chars.
+  prev_last_char_in?: string;
+  kind: string;
+}
+
+export interface BraceKindSpec {
+  // pending markers: a token of `type` with source text `text` arms the
+  // marker; the next top-level `{` takes `kind` and consumes it.
+  body_markers?: { type: string; text: string; kind: string }[];
+  // kind assigned when a marker is pending but the `{` opens inside
+  // angle brackets. the marker stays armed for the real body brace.
+  pending_in_angles_kind?: string;
+  // angle-bracket depth tracking feeding the pending-marker rules.
+  // exact-text matching against tokens of `type`; coalesced closers
+  // (`>>`, `>>>`) pop multiple levels.
+  angles?: {
+    type: string;
+    open: string;
+    closes: { text: string; pops: number }[];
+  };
+  prev_rules?: BraceKindRule[];
+  // fallback kind when no rule matches.
+  default_kind: string;
+  // kind when the brace has no previous token. defaults to default_kind.
+  start_kind?: string;
+}
+
+// compound_compose primitive — stack-driven multi-class type composition.
+// canonical case: markdown inline styling where bold/italic/code can nest
+// and each token inside the nested region gets a composed class like
+// "bold italic code". walks tokens once, maintains an open-style stack
+// via open / close marker pairs, and emits a composed type per token via
+// dynamic interning into the token_types array.
+
+export interface CompoundComposeConfig {
+  // each entry maps a (open marker type, close marker type) pair to a
+  // style name. when an open token appears, the style name is pushed
+  // onto the stack; when the matching close appears, popped.
+  styles: { open_type: string; close_type: string; style_name: string }[];
+  // when true, finding a `\n` in the source gap between two tokens flushes
+  // the entire style stack -- handles grammars that drop back to a block
+  // state on newlines without emitting close markers.
+  auto_pop_on_newline: boolean;
+  // string used to join style names into a composed type (e.g. " " for
+  // HTML class lists).
+  join_separator: string;
+  // when true and the composed token's base type already equals one of
+  // the active style names, don't repeat it in the composed string.
+  dedup_against_base: boolean;
+}
+
+// matched_bracket primitive — retag a pair of opener / matching closer
+// tokens as a different type. canonical case: Svelte's `{#if ... }` block
+// braces are emitted by the grammar as `expression` tokens (so the inner
+// JS body parses) but render better as `punctuation`. this primitive walks
+// the stream, finds each open token whose follow-on token matches the
+// optional sigil predicate, scans forward for the matching close, and
+// retags both endpoints.
+
+export interface MatchedBracketConfig {
+  // type + text of the opening token (must match exactly).
+  open_type: string;
+  open_text: string;
+  // type + text of the closing token (must match exactly).
+  close_type: string;
+  close_text: string;
+  // optional gate: the next non-trivia token immediately after the open
+  // must have this type AND its source text must be in this set. used to
+  // distinguish block braces (followed by `#` / `:` / `/` / `@`) from
+  // ordinary interpolation braces.
+  post_open_required?: { type: string; text_in: string[] };
+  // type to retag the opener to. defaults to open_type (no retag).
+  retag_open_to?: string;
+  // type to retag the closer to. defaults to close_type (no retag).
+  retag_close_to?: string;
+}
+
+// merge_adjacent primitive — splice anchor + immediately-following token
+// into one. output token count shrinks per merge. portable: a host runtime
+// executes the same spec for every language that needs adjacent-token
+// merging (Rust lifetime+type fusion is the canonical case).
+
+export interface MergeAdjacentConfig {
+  // anchor token type that triggers a merge attempt.
+  anchor_type: string;
+  // type names of the token immediately after the anchor that can be
+  // consumed into the merged token.
+  consume_next_types: string[];
+  // refuse the merge when the token at (anchor + offset) is of the given
+  // type AND its source text starts with any of the listed characters.
+  // typically used for the Rust case: refuse to merge `'a Fn` because
+  // `Fn(` is a function-call generic, not a type to fuse into the lifetime.
+  refuse_if?: {
+    offset: number; // 1-based: 2 means "two tokens after the anchor"
+    type_must_be: string; // token type required for the guard to apply
+    first_char_in: string; // single-char codes that disqualify the merge
+  };
+  // resulting type of the merged token. defaults to anchor's type.
+  result_type?: string;
+}
+
+// per-token at_start computation. a frame's "at_start" is true immediately
+// after the frame opens or after a separator token at that frame's depth
+// fires. it is set to false the moment a non-trivia, non-transparent token
+// appears.
+//
+// transparent_types: token types that pass through without changing at_start.
+//   the entire type is transparent (e.g. all comments).
+// transparent_texts_for_type: a map of token type -> set of source texts
+//   that, for that specific type, are transparent. lets a language treat
+//   modifier keywords like `async` `static` `public` as transparent without
+//   also marking every other keyword that way. matched against the token's
+//   raw source via input.slice(start, end) -- exact equality, no regex.
+// reset_chars: single-character punctuation that re-arms at_start = true on
+//   the top frame. typically `,` `;` and the language's open-brace char.
+export interface AtStartSpec {
+  transparent_types?: string[];
+  transparent_texts_for_type?: { type: string; texts: string[] }[];
+  reset_chars: string;
+  // brace kinds (names from BraceKindSpec) whose member close re-arms
+  // at_start: when a `}` pops a frame and the PARENT frame's kind is in
+  // this list, at_start re-arms on the parent. class and interface
+  // bodies need this because consecutive members have no separator
+  // between a method's closing `}` and the next member name. all other
+  // closers consume at_start. requires brace_kinds to be configured.
+  rearm_after_close_kinds?: string[];
 }
 
 // Reclassifier types
@@ -132,11 +428,16 @@ export interface ClaimSink {
 // `token_types` (for types it wants to rewrite to) but MUST NOT mutate any
 // slot of `tokens`. Emitted type_ids must be valid for the (possibly
 // extended) `token_types` array at call time.
+//
+// `frames` is the FrameTable produced by an upstream `frame_track` stage,
+// undefined when no such stage ran. ClaimFns that need scope-stack data
+// read from this side table instead of maintaining their own.
 export type ClaimFn = (
   input: string,
   tokens: Uint32Array,
   token_types: string[],
   sink: ClaimSink,
+  frames?: FrameTable,
 ) => void;
 
 // A Reclassifier with a `__claim` property is claim-producing: callable in
@@ -355,10 +656,21 @@ export interface RenderOptions {
 // build patterns with the exported combinator helpers (`type`, `seq`,
 // `any_of`, `optional`, `capture`, `balanced_parens`).
 
+// Named character-class predicates over a token's source text. Used as a
+// declarative alternative to writing a hand-rolled Reclassifier just to
+// check casing conventions. Adding a new predicate name requires a matching
+// runtime implementation in reclassifier.ts.
+export type CharPredName = "upper_snake_case" | "pascal_case";
+
 export interface TypePatternSpec {
   __kind: "type";
   type_name: string;
   value?: string | string[];
+  // Filter the matched token by a character-class predicate on its source
+  // text. Combinable with `value`: both must pass. Currently only used on
+  // anchor patterns; when used inside `when` it falls back to the runtime
+  // predicate but does not yet skip the type/value bytecode work.
+  text_pred?: CharPredName;
 }
 
 export interface SeqPatternSpec {
@@ -382,13 +694,152 @@ export interface CapturePatternSpec {
   inner: TokenPatternSpec;
 }
 
-// Walk tokens counting paren depth inside punctuation tokens until depth
-// returns to zero. Used for arrow-function parameter lists.
+// Walk tokens counting paren depth inside bracket-carrying tokens until
+// depth returns to zero. Used for arrow-function parameter lists.
 export interface BalancedPatternSpec {
   __kind: "balanced";
   open: string;
   close: string;
   max_tokens?: number;
+  // token type carrying the bracket characters. defaults to "punctuation";
+  // grammars that emit brackets under a different type name set this.
+  punct_type?: string;
+}
+
+// Match the inner pattern zero or more times, optionally separated. The
+// repetition is POSSESSIVE: once an iteration matches, the matcher never
+// backtracks into fewer iterations -- design patterns so the token after
+// the repetition cannot also start an iteration. An iteration that
+// consumes no tokens terminates the loop (no infinite repeats). Captures
+// inside the body record one span per iteration.
+export interface RepeatPatternSpec {
+  __kind: "repeat";
+  inner: TokenPatternSpec;
+  separator?: TokenPatternSpec;
+}
+
+// Zero-width negative lookahead over a single token: succeeds when the
+// next non-trivia token does NOT match the inner spec (or the stream has
+// ended), without consuming anything. An inner spec naming an unknown
+// type or predicate fails CLOSED -- the assertion (and so the rule)
+// never matches, consistent with the rest of the pattern language.
+export interface NotPatternSpec {
+  __kind: "not";
+  inner: TypePatternSpec;
+}
+
+// Char-aware parameter-list walker: locate an opening "(" from the current
+// position, walk its separator-split chunks, and record each tagged name
+// token as one capture span under `into` (claimed by a `{ into: type }`
+// rewrite map like any capture). The construct exists because grammars
+// coalesce adjacent punctuation ("((", "({"), so paren walking needs
+// character offsets the token-granular combinators cannot express:
+// detection composes from ordinary anchors, gates, and combinators; the
+// walk runs as one opcode.
+export interface ParamsPatternSpec {
+  __kind: "params";
+  // capture name receiving one single-token span per tagged parameter.
+  into: string;
+  // how to locate the opening paren:
+  //  "starts_with" — the next non-trivia token must be punctuation whose
+  //                  text begins with "(" (function / method shapes).
+  //  "scan"        — scan forward through punctuation counting [] and {}
+  //                  depth to the first "(" at top depth (rides over
+  //                  go-style [T any] generics). the first non-trivia
+  //                  token must be punctuation; an unbalanced close or
+  //                  the scan bound fails the branch.
+  //  "arrow"       — the ANCHOR token carries the "(": try each "("
+  //                  offset and accept the first whose matching close
+  //                  ends its token and is followed by "=>". must be the
+  //                  first element of `when`.
+  find_open: "starts_with" | "scan" | "arrow";
+  // chunk strategies:
+  //  "first_ident"   — tag the first identifier at depth 1 of each chunk;
+  //                    `default_introducer` suspends tagging until the
+  //                    next chunk; `transparent_operators` pass through.
+  //  "carry_pending" — bare single-name chunks pend; a chunk with a type
+  //                    after its first name promotes itself and all
+  //                    pending names (go's `x, y int`).
+  strategy: "first_ident" | "carry_pending";
+  // single-char chunk separator at top depth. usually ",".
+  separator: string;
+  default_introducer?: string;
+  transparent_operators?: string[];
+  // skip a leading generics group before locating the paren: token-text
+  // angle counting over operator tokens (`<` `>` `>>` `>>>`).
+  skip_generics: boolean;
+  // arrow mode: allow `(...): T =>` by scanning a return type annotation
+  // between the close and the arrow.
+  skip_ts_return_type: boolean;
+  // arrow mode: reject a candidate whose preceding token ends with ":"
+  // unless directly inside an object-kind brace frame (a `: (x) => y`
+  // type signature vs an object-literal function value). requires an
+  // upstream frame_track stage; fails closed without one.
+  skip_in_type_position: boolean;
+  // scan mode bound on tokens examined while locating the paren.
+  scan_max_tokens: number;
+}
+
+// Type-expression span walker: from the current position, consume tokens
+// in "type mode" until a terminator, recording each identifier that reads
+// as a type reference as one capture span under `into` (claimed by a
+// `{ into: type }` rewrite map like any capture). The construct exists
+// because type-expression extent is stream-continuous: where a type ends
+// depends on bracket / angle depth relative to entry and on terminator
+// classes (value operators, statement keywords), which the token-granular
+// combinators cannot express. Entry detection composes from ordinary
+// anchors and gates; the span walk runs as one opcode.
+//
+// Exits (always relative to the depths at entry):
+//   - a `)` `}` `]` that drops below entry depth
+//   - `;` at entry depth
+//   - `,` at entry depth (exit_on_comma; off for extends / implements /
+//     generics lists, whose commas separate more types)
+//   - `=` at entry depth (exit_on_eq; off for generics, where `=`
+//     introduces a default type)
+//   - `=>` at entry depth, unless the previous token ends with `)` (a
+//     function type's result arrow)
+//   - `?` at entry depth (exit_on_qmark; on for as / satisfies spans,
+//     which end at a ternary, off elsewhere where `?` is type level)
+//   - any operator in value_op_terminators / keyword in
+//     stmt_keyword_terminators at entry depth
+//   - the unmatched `>` when enter_angle is set (the span IS an angle
+//     group, e.g. generic type arguments)
+//   - a `{` at entry depth whose previous token reads as the end of a
+//     type expression (brace_exit_on_closer; return-type and heritage
+//     spans end at the body brace)
+//
+// Inside the span, identifiers are recorded EXCEPT key positions: at
+// nested paren / brace depth, an identifier directly followed by `:` or
+// `?:` is a parameter name or property key, not a type reference.
+export interface TypeSpanPatternSpec {
+  __kind: "type_span";
+  // capture name receiving one single-token span per type identifier.
+  into: string;
+  exit_on_comma: boolean;
+  exit_on_eq: boolean;
+  exit_on_qmark: boolean;
+  // start the walk one angle level deep: the anchor consumed the opening
+  // `<`, so the matching unmatched `>` ends the span.
+  enter_angle: boolean;
+  brace_exit_on_closer: boolean;
+  // operator source texts that end the span at entry depth (binary /
+  // assignment / increment operators that cannot appear in a type).
+  value_op_terminators?: string[];
+  // keyword source texts that end the span at entry depth (statement
+  // starters that mean the type expression is over).
+  stmt_keyword_terminators?: string[];
+  // keywords that can legitimately END a type expression; used by the
+  // brace_exit_on_closer check so `(): void {` exits at the body brace.
+  type_terminal_keywords?: string[];
+  // with enter_angle: before walking, verify the span LOOKS like a
+  // generic type-argument list -- a balanced single-char `>` close exists
+  // (riding `{...}` groups, bailing on `;` or a stray `}`), and the token
+  // after the close is consistent with type arguments finishing (bracket
+  // / separator punctuation, `=` `=>` `?:` `|` `&` `>` `?` `!` operators,
+  // or `extends` / `implements`). when the check fails the BRANCH fails,
+  // so `a < b` comparisons never start a span.
+  verify_generic_args: boolean;
 }
 
 export type TokenPatternSpec =
@@ -397,7 +848,11 @@ export type TokenPatternSpec =
   | AnyOfPatternSpec
   | OptionalPatternSpec
   | CapturePatternSpec
-  | BalancedPatternSpec;
+  | BalancedPatternSpec
+  | RepeatPatternSpec
+  | NotPatternSpec
+  | ParamsPatternSpec
+  | TypeSpanPatternSpec;
 
 // A rewrite rule says: starting at a token matching `anchor` (a bare type
 // name, or `type(name, value)` to also constrain source text), if the
@@ -406,13 +861,56 @@ export type TokenPatternSpec =
 //   - `string`   → rewrite the anchor token's type to this name (Phase 1).
 //   - object map → for each `{ capture_name: type_name }` entry, find the
 //                  capture() with that name in `when` and rewrite every
-//                  token inside the captured range to the target type
-//                  (Phase 3). Missing captures silently skip.
+//                  token inside every span that capture recorded -- one
+//                  span per occurrence, so captures inside repeat bodies
+//                  retag each iteration. Missing captures silently skip.
+// anchor form of a rewrite rule. extends the single-token filters with
+// optional gates over the shared frame table produced by an upstream
+// frame_track stage:
+//
+//   at_start     — the token must sit at member start (frames.at_start).
+//   frame_kinds  — the kind of the nearest enclosing BRACE frame must be
+//                  one of these names (paren / bracket frames are walked
+//                  through via parent links; "top" matches tokens no
+//                  brace encloses).
+//   frame_direct — with frame_kinds, match the token's INNERMOST frame
+//                  instead of walking to the nearest brace. a token
+//                  inside parens then only matches the built-in "paren"
+//                  kind, so member-position rules can require the brace
+//                  body itself rather than any nesting depth within it.
+//   ternary_colon — require (true) or forbid (false) that a colon char in
+//                  the anchor consumed a pending ternary qmark. needs
+//                  FrameSpec.ternary configured upstream.
+//   stmt_flags_all / stmt_flags_none — every named stmt flag must be
+//                  armed / no named flag may be armed on the anchor's
+//                  frame. needs FrameSpec.stmt_flags configured upstream.
+//
+// either gate failing — or the pipeline having no frame_track stage at
+// all — means the rule never fires (fail closed). `type(...)` helper
+// output is assignable here for gate-free anchors.
+export interface AnchorSpec {
+  type_name: string;
+  value?: string | string[];
+  // match when the anchor's source text ENDS with one of these strings.
+  // grammars coalesce adjacent punctuation (`):`, `]:`, `}))`), so exact
+  // value sets cannot anchor on "a token whose last char is `:`" without
+  // enumerating every bundle; this is the suffix form. combinable with
+  // `value`: both must pass.
+  value_ends_with?: string | string[];
+  text_pred?: CharPredName;
+  at_start?: boolean;
+  frame_kinds?: string[];
+  frame_direct?: boolean;
+  ternary_colon?: boolean;
+  stmt_flags_all?: string[];
+  stmt_flags_none?: string[];
+}
+
 export interface RewriteRule {
   // The anchor identifies the token to rewrite. A bare type name is
-  // sugar for `type(name)` with no value constraint; `type(name, value)`
-  // also filters on the anchor token's source text.
-  anchor: string | TypePatternSpec;
+  // sugar for `type(name)` with no value constraint; the object form
+  // also filters on source text, character class, and frame gates.
+  anchor: string | AnchorSpec;
   before?: TokenPatternSpec;
   // when is optional: a rule with only `before` (and optionally an
   // anchor value constraint) runs a no-op forward scan that always
@@ -420,6 +918,12 @@ export interface RewriteRule {
   // matches.
   when?: TokenPatternSpec;
   rewrite: string | Record<string, string>;
+  // claim precedence for this rule's targets (anchor and captures).
+  // defaults to the target type's shared-table precedence. languages
+  // whose pipeline priority deviates from the table (e.g. structural
+  // position beating a casing convention) state the deviation here
+  // instead of dropping to a hand-written ClaimFn.
+  precedence?: number;
 }
 
 export interface RewriteOptions {

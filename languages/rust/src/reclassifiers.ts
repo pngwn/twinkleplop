@@ -22,6 +22,7 @@ import {
   any_of,
   balanced_parens,
   make_token_view,
+  merge_adjacent,
   promote_by_text_set,
   promote_by_upper_snake_case,
   promote_pascal_case,
@@ -448,53 +449,16 @@ const reclassify_generics = (): Reclassifier => {
 // which isn't a type token and wouldn't be absorbed anyway) or lifetime
 // extension runs first (seeing the identifier but refusing because of the
 // trailing paren), the result is the same.
-const extend_lifetime_over_type = (): Reclassifier => {
-  return (input: string, result: TokenizeResult): TokenizeResult => {
-    const old_tokens = result.tokens;
-    const token_types = result.token_types.slice();
-    const count = old_tokens.length / 3;
-
-    const lifetime_id = token_types.indexOf("lifetime");
-    const identifier_id = token_types.indexOf("identifier");
-    const class_name_id = token_types.indexOf("class_name");
-    const punctuation_id = token_types.indexOf("punctuation");
-
-    if (lifetime_id === -1) {
-      return { tokens: new Uint32Array(old_tokens), token_types };
-    }
-
-    const is_type_token = (id: number): boolean => id === identifier_id || id === class_name_id;
-
-    const starts_with_open_paren = (i: number): boolean => {
-      if (i >= count) return false;
-      if (old_tokens[i * 3] !== punctuation_id) return false;
-      return input.charCodeAt(old_tokens[i * 3 + 1]) === 0x28; // '('
-    };
-
-    const out: number[] = [];
-    for (let i = 0; i < count; i++) {
-      const type_id = old_tokens[i * 3];
-      const start = old_tokens[i * 3 + 1];
-      const end = old_tokens[i * 3 + 2];
-
-      if (
-        type_id === lifetime_id &&
-        i + 1 < count &&
-        is_type_token(old_tokens[(i + 1) * 3]) &&
-        !starts_with_open_paren(i + 2)
-      ) {
-        const next_end = old_tokens[(i + 1) * 3 + 2];
-        out.push(lifetime_id, start, next_end);
-        i++;
-        continue;
-      }
-
-      out.push(type_id, start, end);
-    }
-
-    return { tokens: new Uint32Array(out), token_types };
-  };
-};
+// extend lifetimes forward to absorb an immediately-following type token.
+// `&'a str` -> single `lifetime` token spanning `'a str`. refuses when the
+// token after the type starts with `(`, because that's `'a Fn(...)` (a
+// function-trait generic) where the type token is a call target, not a
+// fused part of the lifetime annotation.
+const extend_lifetime_over_type = merge_adjacent({
+  anchor_type: "lifetime",
+  consume_next_types: ["identifier", "class_name"],
+  refuse_if: { offset: 2, type_must_be: "punctuation", first_char_in: "(" },
+});
 
 // order: restoration passes run first so downstream passes see a stream
 // that already has `boolean`, primitive-type `class_name`, and PascalCase
@@ -522,5 +486,5 @@ export const reclassifiers: LanguagePipeline = [
   tag(promote_rust_parameters, ["parameter"]),
   always(reclassify_generics(), "type_claim"),
   tag(rewrite_types(function_call_rules, { trivia: ["comment"] }), ["function"]),
-  tag(extend_lifetime_over_type(), ["lifetime"], "shape"),
+  tag(extend_lifetime_over_type, ["lifetime"], "shape"),
 ];
