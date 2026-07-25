@@ -2784,6 +2784,20 @@ interface CompiledRewriteState {
   has_frame_gates: boolean;
   // true when any rule gates on the signals array (ternary / stmt flags).
   has_signal_gates: boolean;
+  // gate resolution is a pure function of (rule_table, kind_names) and
+  // (rule_table, flag_names). both name arrays are built once when the
+  // frame_track instance is constructed and handed unchanged to every
+  // frame table it produces, so keying on their identity turns a
+  // per-highlight rebuild into one lookup. a table from a DIFFERENT
+  // tracker instance misses and rebuilds -- the failure mode is a wasted
+  // rebuild, never a stale resolution.
+  kind_gate_cache: WeakMap<string[], (Int32Array | null)[]>;
+  signal_gate_cache: WeakMap<string[], SignalGateMasks>;
+}
+
+interface SignalGateMasks {
+  all: Int32Array;
+  none: Int32Array;
 }
 
 function compile_rewrite(
@@ -3056,7 +3070,73 @@ function compile_rewrite(
       (r) =>
         r.anchor_ternary_colon >= 0 || r.anchor_flags_all !== null || r.anchor_flags_none !== null,
     ),
+    kind_gate_cache: new WeakMap(),
+    signal_gate_cache: new WeakMap(),
   };
+}
+
+// resolve each gated rule's frame-kind names against one frame table's
+// vocabulary, aligned with rule_table. unknown names resolve to -1 and never
+// equal a real kind -- the gate (and so the rule) fails closed.
+function build_kind_gates(
+  rule_table: CompiledRule[],
+  kind_names: string[],
+): (Int32Array | null)[] {
+  return rule_table.map((r) => {
+    if (r.anchor_frame_kinds === null) return null;
+    const out = new Int32Array(r.anchor_frame_kinds.length);
+    for (let k = 0; k < r.anchor_frame_kinds.length; k++) {
+      out[k] = kind_names.indexOf(r.anchor_frame_kinds[k]);
+      if (out[k] < 0 && debug_enabled()) {
+        warn_once(
+          "rewrite_types",
+          `frame-kind:${r.anchor_frame_kinds[k]}`,
+          `anchor frame kind "${r.anchor_frame_kinds[k]}" is not in the frame table's kind names; the gate can never pass`,
+        );
+      }
+    }
+    return out;
+  });
+}
+
+// resolve signal-gate flag names to bit masks against one frame table's
+// flag_names, aligned with rule_table. an unknown name in EITHER list
+// poisons the require-all mask with a bit no signal byte can carry, so the
+// rule fails closed instead of silently widening.
+function build_signal_gates(rule_table: CompiledRule[], flag_names: string[]): SignalGateMasks {
+  const all = new Int32Array(rule_table.length);
+  const none = new Int32Array(rule_table.length);
+  for (let r = 0; r < rule_table.length; r++) {
+    const rule = rule_table[r];
+    if (rule.anchor_flags_all === null && rule.anchor_flags_none === null) continue;
+    let dead = false;
+    const resolve = (names: string[] | null): number => {
+      if (names === null) return 0;
+      let mask = 0;
+      for (const name of names) {
+        const idx = flag_names.indexOf(name);
+        if (idx < 0) {
+          dead = true;
+          if (debug_enabled()) {
+            warn_once(
+              "rewrite_types",
+              `stmt-flag:${name}`,
+              `anchor stmt flag "${name}" is not in the frame table's flag names; the gate can never pass`,
+            );
+          }
+          continue;
+        }
+        mask |= 1 << (idx + 1);
+      }
+      return mask;
+    };
+    let all_mask = resolve(rule.anchor_flags_all);
+    const none_mask = resolve(rule.anchor_flags_none);
+    if (dead) all_mask |= 1 << 30;
+    all[r] = all_mask;
+    none[r] = none_mask;
+  }
+  return { all, none };
 }
 
 // resolve each appended_name to its current id in token_types, extending
@@ -3211,26 +3291,13 @@ function run_rewrite_loop_claims(
     span_specs,
   } = state;
 
-  // resolve each gated rule's frame-kind names against this table's
-  // vocabulary, aligned with rule_table. unknown names resolve to -1 and
-  // never equal a real kind -- the gate (and so the rule) fails closed.
   let resolved_kinds: (Int32Array | null)[] | null = null;
   if (state.has_frame_gates && frames !== undefined) {
-    resolved_kinds = rule_table.map((r) => {
-      if (r.anchor_frame_kinds === null) return null;
-      const out = new Int32Array(r.anchor_frame_kinds.length);
-      for (let k = 0; k < r.anchor_frame_kinds.length; k++) {
-        out[k] = frames.kind_names.indexOf(r.anchor_frame_kinds[k]);
-        if (out[k] < 0 && debug_enabled()) {
-          warn_once(
-            "rewrite_types",
-            `frame-kind:${r.anchor_frame_kinds[k]}`,
-            `anchor frame kind "${r.anchor_frame_kinds[k]}" is not in the frame table's kind names; the gate can never pass`,
-          );
-        }
-      }
-      return out;
-    });
+    resolved_kinds = state.kind_gate_cache.get(frames.kind_names) ?? null;
+    if (resolved_kinds === null) {
+      resolved_kinds = build_kind_gates(rule_table, frames.kind_names);
+      state.kind_gate_cache.set(frames.kind_names, resolved_kinds);
+    }
   }
   if (state.has_frame_gates && frames === undefined && debug_enabled()) {
     warn_once(
@@ -3240,48 +3307,17 @@ function run_rewrite_loop_claims(
     );
   }
 
-  // resolve signal-gate flag names to bit masks against this table's
-  // flag_names, aligned with rule_table. an unknown name in EITHER list
-  // poisons the require-all mask with a bit no signal byte can carry, so
-  // the rule fails closed instead of silently widening.
   let flags_all_masks: Int32Array | null = null;
   let flags_none_masks: Int32Array | null = null;
   const signals = frames !== undefined ? frames.signals : EMPTY_SIGNALS;
   if (state.has_signal_gates && frames !== undefined && signals.length > 0) {
-    flags_all_masks = new Int32Array(rule_table.length);
-    flags_none_masks = new Int32Array(rule_table.length);
-    for (let r = 0; r < rule_table.length; r++) {
-      const rule = rule_table[r];
-      if (rule.anchor_flags_all === null && rule.anchor_flags_none === null) continue;
-      let all_mask = 0;
-      let none_mask = 0;
-      let dead = false;
-      const resolve = (names: string[] | null): number => {
-        if (names === null) return 0;
-        let mask = 0;
-        for (const name of names) {
-          const idx = frames.flag_names.indexOf(name);
-          if (idx < 0) {
-            dead = true;
-            if (debug_enabled()) {
-              warn_once(
-                "rewrite_types",
-                `stmt-flag:${name}`,
-                `anchor stmt flag "${name}" is not in the frame table's flag names; the gate can never pass`,
-              );
-            }
-            continue;
-          }
-          mask |= 1 << (idx + 1);
-        }
-        return mask;
-      };
-      all_mask = resolve(rule.anchor_flags_all);
-      none_mask = resolve(rule.anchor_flags_none);
-      if (dead) all_mask |= 1 << 30;
-      flags_all_masks[r] = all_mask;
-      flags_none_masks[r] = none_mask;
+    let masks = state.signal_gate_cache.get(frames.flag_names) ?? null;
+    if (masks === null) {
+      masks = build_signal_gates(rule_table, frames.flag_names);
+      state.signal_gate_cache.set(frames.flag_names, masks);
     }
+    flags_all_masks = masks.all;
+    flags_none_masks = masks.none;
   }
   if (state.has_signal_gates && signals.length === 0 && debug_enabled()) {
     warn_once(
@@ -3535,20 +3571,41 @@ function normalize_embed_entry(value: LanguageFn | EmbedEntry): NormalizedEmbedE
 }
 
 export function embed_grammars(mapping: EmbedMapping): Reclassifier {
+  // the mapping is fixed for the life of the reclassifier, so its keys and
+  // normalized entries are built once instead of per highlight.
+  const names = Object.keys(mapping);
+  const entries = names.map((name) => normalize_embed_entry(mapping[name]));
+  // type_id -> index into `entries`, -1 for types this mapping ignores.
+  // dense rather than a Map because the lookup runs once per host token;
+  // cached per vocabulary so the indexOf scans are not repeated per call
+  // when the host hands us the same array each time.
+  // null means "this vocabulary maps nothing" -- the whole pass is a no-op
+  // for it, and re-deriving that per call is wasted work.
+  const table_cache = new WeakMap<string[], { table: Int32Array | null }>();
+
   return (input: string, result: TokenizeResult): TokenizeResult => {
     const host_tokens = result.tokens;
     const host_types = result.token_types;
     const host_count = host_tokens.length / 3;
 
-    // resolve mapping keys to host type_ids. keys that don't exist in the
-    // host's token_types map to -1 and are silently ignored, so embed rules
-    // referencing tokens the host doesn't emit are harmless.
-    const by_type_id = new Map<number, NormalizedEmbedEntry>();
-    for (const name of Object.keys(mapping)) {
-      const id = host_types.indexOf(name);
-      if (id !== -1) by_type_id.set(id, normalize_embed_entry(mapping[name]));
+    // keys that don't exist in the host's token_types are silently ignored,
+    // so embed rules referencing tokens the host doesn't emit are harmless.
+    let cached = table_cache.get(host_types);
+    if (cached === undefined) {
+      const table = new Int32Array(host_types.length).fill(-1);
+      let any = false;
+      for (let k = 0; k < names.length; k++) {
+        const id = host_types.indexOf(names[k]);
+        if (id !== -1) {
+          table[id] = k;
+          any = true;
+        }
+      }
+      cached = { table: any ? table : null };
+      table_cache.set(host_types, cached);
     }
-    if (by_type_id.size === 0) return result;
+    const by_type_id = cached.table;
+    if (by_type_id === null) return result;
 
     // first pass: scan for matches, sub-tokenize, and compute the final
     // token count so we can allocate the output Uint32Array once.
@@ -3564,8 +3621,9 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
     let new_count = host_count;
     for (let i = 0; i < host_count; i++) {
       const type_id = host_tokens[i * 3];
-      const entry = by_type_id.get(type_id);
-      if (!entry) continue;
+      const entry_idx = type_id < by_type_id.length ? by_type_id[type_id] : -1;
+      if (entry_idx < 0) continue;
+      const entry = entries[entry_idx];
       const host_start = host_tokens[i * 3 + 1];
       const host_end = host_tokens[i * 3 + 2];
       // trim a fixed number of chars from each end before sub-tokenizing.
@@ -3758,25 +3816,38 @@ function embed_interleaved_once(
   const host_types = result.token_types;
   const host_count = host_tokens.length / 3;
 
-  // clone token_types so the transform is pure. we'll grow this as sub
-  // grammars contribute new type names.
-  const token_types = host_types.slice();
-  const name_to_id = new Map<string, number>();
-  for (let i = 0; i < token_types.length; i++) name_to_id.set(token_types[i], i);
+  // the vocabulary merge is deferred until a group is actually found.
+  // every host stream without an embedded region pays this function, and
+  // so does the second, fixed-point iteration of every host that HAS one,
+  // so cloning the names and indexing them up front was fixed cost on the
+  // path that does nothing. `token_types` stays aliased to the host's array
+  // (identical content) until the first ensure_id call clones it.
+  let token_types = host_types;
+  let name_to_id: Map<string, number> | null = null;
+  const materialize = (): Map<string, number> => {
+    if (name_to_id !== null) return name_to_id;
+    token_types = host_types.slice();
+    const map = new Map<string, number>();
+    for (let i = 0; i < token_types.length; i++) map.set(token_types[i], i);
+    name_to_id = map;
+    return map;
+  };
   const ensure_id = (name: string): number => {
-    let id = name_to_id.get(name);
+    const map = materialize();
+    let id = map.get(name);
     if (id === undefined) {
       id = token_types.length;
       token_types.push(name);
-      name_to_id.set(name, id);
+      map.set(name, id);
     }
     return id;
   };
 
   // cache per-sub-language type remaps so repeated groups of the same
   // language don't re-walk token_types.
-  const remap_cache = new WeakMap<string[], Uint32Array>();
+  let remap_cache: WeakMap<string[], Uint32Array> | null = null;
   const remap_for = (sub_types: string[]): Uint32Array => {
+    if (remap_cache === null) remap_cache = new WeakMap();
     let remap = remap_cache.get(sub_types);
     if (remap) return remap;
     remap = new Uint32Array(sub_types.length);
@@ -3805,6 +3876,9 @@ function embed_interleaved_once(
       i++;
       continue;
     }
+    // clone before the group is processed so later scan calls see the same
+    // array the pre-deferral code handed them.
+    materialize();
     const group_out = process_group(
       desc,
       input,
@@ -4025,22 +4099,48 @@ function is_claiming(fn: Reclassifier): fn is ClaimingReclassifier {
   return "__claim" in fn && typeof (fn as ClaimingReclassifier).__claim === "function";
 }
 
+// a pipeline resolves to a fixed sequence of steps: either one batch of
+// consecutive claim producers or one mutating pass. which is which depends
+// only on the pipeline, which is fixed when the language is bound, so the
+// grouping is done once here rather than re-derived (array + N property
+// probes) on every highlight.
+interface PipelineStep {
+  batch: ClaimingReclassifier[] | null;
+  fn: Reclassifier | null;
+}
+
+function plan_pipeline(pipeline: ReclassifierPipeline): PipelineStep[] {
+  const steps: PipelineStep[] = [];
+  let batch: ClaimingReclassifier[] = [];
+  for (let i = 0; i < pipeline.length; i++) {
+    const fn = pipeline[i];
+    if (is_claiming(fn)) {
+      batch.push(fn);
+      continue;
+    }
+    if (batch.length > 0) {
+      steps.push({ batch, fn: null });
+      batch = [];
+    }
+    steps.push({ batch: null, fn });
+  }
+  if (batch.length > 0) steps.push({ batch, fn: null });
+  return steps;
+}
+
 export function reclassify(
   pipeline: ReclassifierPipeline,
 ): (input: string, result: TokenizeResult) => TokenizeResult {
+  const steps = plan_pipeline(pipeline);
   return (input, result) => {
     let current = result;
-    let batch: ClaimingReclassifier[] = [];
-    for (let i = 0; i < pipeline.length; i++) {
-      const fn = pipeline[i];
-      if (is_claiming(fn)) {
-        batch.push(fn);
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      if (step.batch !== null) {
+        current = flush_claim_batch(input, current, step.batch);
         continue;
       }
-      if (batch.length > 0) {
-        current = flush_claim_batch(input, current, batch);
-        batch = [];
-      }
+      const fn = step.fn!;
       const prior_frames = current.frames;
       const prior_token_len = current.tokens.length;
       current = fn(input, current);
@@ -4063,9 +4163,6 @@ export function reclassify(
           frames: prior_frames,
         };
       }
-    }
-    if (batch.length > 0) {
-      current = flush_claim_batch(input, current, batch);
     }
     return current;
   };
