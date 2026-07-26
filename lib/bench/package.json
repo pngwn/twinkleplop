@@ -28,6 +28,7 @@
     "sugar-high": "^1.1.0"
   },
   "devDependencies": {
+    "@tanstack/highlight": "^0.0.6",
     "@twinkleplop/annotation": "workspace:*",
     "@twinkleplop/core": "workspace:*",
     "@twinkleplop/css": "workspace:*",
