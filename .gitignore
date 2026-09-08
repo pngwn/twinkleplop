@@ -7,6 +7,7 @@ CLAUDE.md
 AGENTS.md
 dist/
 scripts/
+docs/
 
 # frozen reference builds for the perf harness
 .perf/
