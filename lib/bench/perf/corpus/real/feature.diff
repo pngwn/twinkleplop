@@ -1,0 +1,168 @@
+commit 8c1f4ad2e9b7365f0a2d1c8e4b6f9a03d5e7c1b2
+Author: Platform Team <platform@acme.dev>
+Date:   Tue Mar 11 14:22:07 2025 +0000
+
+    replace per-request allocation with a pooled buffer
+
+    The router allocated a fresh 64KiB scratch buffer for every request
+    body it had to rewrite. Under load that dominated the allocator.
+
+diff --git a/crates/router/src/body.rs b/crates/router/src/body.rs
+index 4a3f9c1..e8b27d5 100644
+--- a/crates/router/src/body.rs
++++ b/crates/router/src/body.rs
+@@ -1,14 +1,20 @@
+-use std::io::{self, Read, Write};
++use std::io::{self, Read, Write};
++use std::sync::Arc;
+
+ use bytes::{Bytes, BytesMut};
+ use hyper::body::{Body, Frame};
++use parking_lot::Mutex;
+
+-const SCRATCH: usize = 64 * 1024;
++const SCRATCH: usize = 64 * 1024;
++const POOL_MAX: usize = 128;
+
+ pub struct Rewriter {
+     limit: usize,
+-    scratch: Vec<u8>,
++    pool: Arc<Mutex<Vec<Vec<u8>>>>,
+ }
+
++/// Returns a buffer to the pool, dropping it if the pool is already full.
++fn recycle(pool: &Mutex<Vec<Vec<u8>>>, mut buf: Vec<u8>) {
++    buf.clear();
++    let mut guard = pool.lock();
++    if guard.len() < POOL_MAX {
++        guard.push(buf);
++    }
++}
+@@ -32,18 +38,22 @@ impl Rewriter {
+     pub fn new(limit: usize) -> Self {
+         Self {
+             limit,
+-            scratch: vec![0u8; SCRATCH],
++            pool: Arc::new(Mutex::new(Vec::with_capacity(POOL_MAX))),
+         }
+     }
+
+     pub fn rewrite(&mut self, input: &[u8]) -> io::Result<Bytes> {
+         if input.len() > self.limit {
+             return Err(io::Error::new(io::ErrorKind::InvalidData, "body too large"));
+         }
+-        let mut out = BytesMut::with_capacity(input.len());
+-        self.scratch.clear();
++        let mut buf = self.pool.lock().pop().unwrap_or_else(|| Vec::with_capacity(SCRATCH));
++        let mut out = BytesMut::with_capacity(input.len());
+         for chunk in input.chunks(SCRATCH) {
+-            self.scratch.extend_from_slice(chunk);
++            buf.extend_from_slice(chunk);
+             out.extend_from_slice(chunk);
+         }
++        recycle(&self.pool, buf);
+         Ok(out.freeze())
+     }
+ }
+diff --git a/crates/router/src/lib.rs b/crates/router/src/lib.rs
+index 1b2c3d4..9f8e7d6 100644
+--- a/crates/router/src/lib.rs
++++ b/crates/router/src/lib.rs
+@@ -8,6 +8,7 @@ mod body;
+ mod config;
+ mod health;
+ mod proxy;
++mod pool;
+ mod tls;
+
+ pub use body::Rewriter;
+diff --git a/crates/router/benches/body.rs b/crates/router/benches/body.rs
+new file mode 100644
+index 0000000..3c5a1e9
+--- /dev/null
++++ b/crates/router/benches/body.rs
+@@ -0,0 +1,28 @@
++use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
++use router::Rewriter;
++
++fn bench_rewrite(c: &mut Criterion) {
++    let mut group = c.benchmark_group("rewrite");
++    for size in [1 << 10, 1 << 14, 1 << 18] {
++        let payload = vec![b'x'; size];
++        group.bench_with_input(BenchmarkId::from_parameter(size), &payload, |b, p| {
++            let mut rw = Rewriter::new(1 << 20);
++            b.iter(|| black_box(rw.rewrite(p).unwrap()));
++        });
++    }
++    group.finish();
++}
++
++criterion_group!(benches, bench_rewrite);
++criterion_main!(benches);
+diff --git a/config/router.toml b/config/router.toml
+index 7d8e9f0..2a1b3c4 100644
+--- a/config/router.toml
++++ b/config/router.toml
+@@ -12,7 +12,8 @@ keep_alive = "75s"
+
+ [server.limits]
+ request_body_bytes = 10_485_760
+-header_bytes = 16_384
++header_bytes = 32_768
++buffer_pool_max = 128
+ concurrent_streams = 250
+diff --git a/docs/tuning.md b/docs/tuning.md
+index aa11bb2..cc33dd4 100644
+--- a/docs/tuning.md
++++ b/docs/tuning.md
+@@ -40,6 +40,14 @@ Set `worker_threads` to the number of physical cores.
+
+ ## Memory
+
++### Buffer pooling
++
++The rewriter keeps up to `buffer_pool_max` scratch buffers alive between
++requests. Each is `SCRATCH` (64 KiB) so the ceiling is roughly:
++
++    buffer_pool_max * 64KiB = 8 MiB
++
++Lower it on memory constrained nodes; raise it under bursty load.
++
+ ### Allocator
+
+ We link jemalloc on Linux.
+diff --git a/scripts/legacy-warm.sh b/scripts/legacy-warm.sh
+deleted file mode 100755
+index 5e6f7a8..0000000
+--- a/scripts/legacy-warm.sh
++++ /dev/null
+@@ -1,9 +0,0 @@
+-#!/bin/sh
+-# Pre-warm the allocator by issuing throwaway requests.
+-# Obsolete now that buffers are pooled.
+-set -eu
+-for i in $(seq 1 100); do
+-  curl -s -o /dev/null http://localhost:8443/healthz
+-done
+-echo "warmed"
+-
+diff --git a/assets/logo.png b/assets/logo.png
+index 0f1e2d3..4c5b6a7 100644
+Binary files a/assets/logo.png and b/assets/logo.png differ
+diff --git a/crates/router/src/proxy.rs b/crates/router/src/proxy.rs
+index 2f3e4d5..6a7b8c9 100644
+--- a/crates/router/src/proxy.rs
++++ b/crates/router/src/proxy.rs
+@@ -101,9 +101,9 @@ impl Proxy {
+             .await
+             .map_err(Error::Upstream)?;
+
+-        let body = self.rewriter.rewrite(&collected)?;
++        let body = self.rewriter.rewrite(&collected).inspect_err(|e| tracing::warn!(?e))?;
+         let mut response = Response::builder()
+             .status(upstream.status())
+-            .header("x-edge-cache", "MISS")
++            .header(HEADER_EDGE_CACHE, "MISS")
+             .body(body)?;
+
+         Ok(response)

@@ -14,6 +14,10 @@ interface ProbeEntry {
 
 declare const INTROSPECTION: boolean;
 
+// one 4k page worth of Uint32 slots. below this there is nothing worth
+// reclaiming from the scan scratch buffer and the copy is pure cost.
+const MIN_RECLAIMED_SLOTS = 1024;
+
 // helper function to check if a character is an identifier continuation character
 function is_identifier_char(char_code: number): boolean {
   return (
@@ -36,7 +40,7 @@ export function tokenize(
     token_types,
     patterns,
     fallback_transitions,
-    non_ascii_chars,
+    non_ascii_ranges,
     probe_states,
     probe_mask,
     probe_fallbacks,
@@ -58,8 +62,7 @@ export function tokenize(
   let state_buckets: (PatternInfo[] | null)[] | undefined = patterns && patterns.get(0);
   let char_map_base: number = 0; // current_state * 128
   let trans_base3: number = 0; // (current_state * 256) * 3
-  let non_ascii_state: Record<number, number> | undefined =
-    non_ascii_chars && non_ascii_chars.get(0 as any);
+  let non_ascii_state: Int32Array | undefined = non_ascii_ranges && non_ascii_ranges.get(0 as any);
 
   let pos = 0;
   let prev_advanced_pos = -1;
@@ -111,7 +114,7 @@ export function tokenize(
     state_buckets = patterns && patterns.get(current_state);
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
   }
 
   function rewind_to_probe_entry(): void {
@@ -131,7 +134,7 @@ export function tokenize(
     state_buckets = patterns && patterns.get(current_state);
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
   }
 
   // INTROSPECTION_START
@@ -287,6 +290,50 @@ export function tokenize(
         const transition = transitions[t_base];
         const token_type = transitions[t_base + 1];
         const stack_op = transitions[t_base + 2];
+
+        // run fast path. the three table reads above already say whether this
+        // rule can change state; one that cannot is a self-loop, so the whole
+        // run of characters it matches can be consumed here instead of paying
+        // a full dispatch per character. string bodies, comment bodies,
+        // identifier runs and digit runs are all this shape, which is why a
+        // hand-written lexer's inner loops beat the table walk.
+        //
+        // the run stops at a character that maps to a different rule, at a
+        // character that begins one of this state's multi-char patterns (the
+        // bucket is consulted before the char map, so it would have won), and
+        // at non-ascii (the fallback path owns those).
+        if (
+          transition === 65535 &&
+          stack_op === 0 &&
+          token_type !== 65535 &&
+          matched_length === 0 &&
+          !is_in_probe_state &&
+          !has_failed_probes &&
+          (!has_seals || !seal_flags![current_state * 256 + char_class]) &&
+          (!boundary_rules || !boundary_rules.has(current_state * 256 + char_class)) &&
+          !(INTROSPECTION && introspector)
+        ) {
+          if (token_type === last_token_type && pos === last_token_end) {
+            pos++;
+          } else {
+            const out_idx = token_count * 3;
+            tokens[out_idx] = token_type;
+            tokens[out_idx + 1] = pos;
+            token_count++;
+            pos++;
+          }
+          while (pos < len) {
+            const next = input.charCodeAt(pos);
+            if (next > 127) break;
+            if (char_maps[char_map_base + next] !== char_class) break;
+            if (state_buckets !== undefined && state_buckets[next] !== null) break;
+            pos++;
+          }
+          tokens[(token_count - 1) * 3 + 2] = pos;
+          last_token_type = token_type;
+          last_token_end = pos;
+          continue;
+        }
 
         // determine target state
         let target_state = current_state;
@@ -453,7 +500,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7; // *128
           trans_base3 = (current_state << 8) * 3; // *256*3
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -501,7 +548,7 @@ export function tokenize(
           state_buckets = patterns ? patterns.get(current_state) : undefined;
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -522,7 +569,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
 
         // check if exiting probe state
@@ -563,7 +610,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
 
         // check if we've reached the end while in probe mode
@@ -638,9 +685,15 @@ export function tokenize(
       // first check if there's a specific match for this character
       let matched_rule_idx = 65535;
       // early bail if no non-ASCII mappings exist at all
-      if (non_ascii_state) {
-        const v = (non_ascii_state as any)[char];
-        if (v !== undefined) matched_rule_idx = v as number;
+      if (non_ascii_state !== undefined) {
+        // short list, and only reached for codepoints >= 128, so the scan
+        // costs far less than the per-codepoint map it replaced cost to build.
+        for (let i = 0; i < non_ascii_state.length; i += 3) {
+          if (char >= non_ascii_state[i] && char <= non_ascii_state[i + 1]) {
+            matched_rule_idx = non_ascii_state[i + 2];
+            break;
+          }
+        }
       }
 
       if (matched_rule_idx !== 65535) {
@@ -1090,8 +1143,20 @@ export function tokenize(
   // (promote_by_text_set, interface_member_promoter, class_name_promoter,
   // ...) are responsible for cloning before they push new names. cloning
   // here penalised every tokenize call, including reclassifier-free ones.
+  //
+  // copy out rather than returning a view. the scratch buffer is sized at
+  // 3 slots per input character but real grammars fill 13-15% of it, so a
+  // subarray keeps 12 bytes per input character reachable for as long as the
+  // caller holds the result. a consumer that highlights many blocks and keeps
+  // the streams pays that on every one.
+  //
+  // the copy costs one allocation, which is measurable on inputs small enough
+  // that the whole call is a microsecond, so keep the view when the memory it
+  // pins is under a page and reclaiming it would not return anything to the
+  // allocator anyway.
+  const used = token_count * 3;
   return {
-    tokens: tokens.subarray(0, token_count * 3),
+    tokens: len * 3 - used > MIN_RECLAIMED_SLOTS ? tokens.slice(0, used) : tokens.subarray(0, used),
     token_types,
   };
 }

@@ -29,6 +29,42 @@ function set_char_mapping(
   }
 }
 
+// record a rule's claim over a span of codepoints >= 128, as a range.
+//
+// this used to be a per-codepoint object map, which meant a rule written as
+// range([[0x80, 0xffff]]) - the usual way to say "any unicode identifier
+// character" - materialised 65408 own properties per state it appeared in.
+// python does that in three states and paid roughly 11ms at import for it, ten
+// times what every other grammar paid. ranges are stored as ranges instead;
+// the tokenizer scans the list, which stays short because non-ascii rules are
+// rare. module scope rather than a closure inside compile() so that grammars
+// with no non-ascii rules at all do not allocate one per compile.
+function add_non_ascii(
+  build: Map<number, number[]>,
+  state_id: number,
+  start: number,
+  end: number,
+  rule_idx: number,
+  state_name: string,
+  subject: string,
+): void {
+  let list = build.get(state_id);
+  if (list === undefined) {
+    list = [];
+    build.set(state_id, list);
+  }
+  for (let i = 0; i < list.length; i += 3) {
+    if (start <= list[i + 1] && end >= list[i]) {
+      throw new Error(
+        `Grammar validation error in state "${state_name}": ` +
+          `Multiple rules match ${subject}. ` +
+          `Rule ${list[i + 2]} and rule ${rule_idx} both match this character.`,
+      );
+    }
+  }
+  list.push(start, end, rule_idx);
+}
+
 // preprocess grammar to expand match_within rules into states
 function preprocess_grammar(grammar: Grammar): Grammar {
   const processed_grammar: Grammar = {
@@ -199,7 +235,9 @@ export function compile(grammar: Grammar): CompiledGrammar {
 
   const keywords = new Map();
   const patterns = new Map(); // state -> char -> Array<{codes, length, rule_idx}>
-  const non_ascii_chars = new Map<number, Record<number, number>>(); // state -> object map: charCode -> rule_idx
+  // state -> flat [start, end, rule_idx] triples covering codepoints >= 128.
+  // see add_non_ascii for why these are ranges and not per-codepoint entries.
+  const non_ascii_build = new Map<number, number[]>();
   const boundary_rules = new Set<number>(); // track rules that require boundary checking
   // track which states are probe states based on state.mode property
   const probe_states = new Set<number>();
@@ -408,18 +446,15 @@ export function compile(grammar: Grammar): CompiledGrammar {
                 }
               } else {
                 // non ASCII character
-                if (!non_ascii_chars.has(state_id)) {
-                  non_ascii_chars.set(state_id, Object.create(null));
-                }
-                const state_non_ascii = non_ascii_chars.get(state_id)!;
-                if (state_non_ascii[code] !== undefined) {
-                  throw new Error(
-                    `Grammar validation error in state "${name}": ` +
-                      `Multiple rules match non-ASCII character '${match}' (code: ${code}). ` +
-                      `Rule ${state_non_ascii[code]} and rule ${rule_idx} both match this character.`,
-                  );
-                }
-                state_non_ascii[code] = rule_idx;
+                add_non_ascii(
+                  non_ascii_build,
+                  state_id,
+                  code,
+                  code,
+                  rule_idx,
+                  name,
+                  `non-ASCII character '${match}' (code: ${code})`,
+                );
                 // track if this rule requires boundary checking
                 if (rule.boundary) {
                   boundary_rules.add(state_id * 256 + rule_idx);
@@ -465,23 +500,24 @@ export function compile(grammar: Grammar): CompiledGrammar {
           const start = typeof range[0] === "string" ? range[0].charCodeAt(0) : range[0];
           const end = typeof range[1] === "string" ? range[1].charCodeAt(0) : range[1];
 
-          for (let code = start; code <= end; code++) {
-            if (code < 128) {
-              set_char_mapping(char_maps, state_id, code, rule_idx);
-            } else {
-              if (!non_ascii_chars.has(state_id)) {
-                non_ascii_chars.set(state_id, Object.create(null));
-              }
-              const state_non_ascii = non_ascii_chars.get(state_id)!;
-              if (state_non_ascii[code] !== undefined) {
-                throw new Error(
-                  `Grammar validation error in state "${name}": ` +
-                    `Multiple rules match character with code ${code} in range. ` +
-                    `Rule ${state_non_ascii[code]} and rule ${rule_idx} both match this character.`,
-                );
-              }
-              state_non_ascii[code] = rule_idx;
-            }
+          // the ascii half still expands per character because char_maps is a
+          // dense table keyed by codepoint. the non-ascii half must not: it is
+          // unbounded in principle and 65408 wide in practice.
+          const ascii_end = end < 127 ? end : 127;
+          for (let code = start; code <= ascii_end; code++) {
+            set_char_mapping(char_maps, state_id, code, rule_idx);
+          }
+          if (end >= 128) {
+            const non_ascii_start = start < 128 ? 128 : start;
+            add_non_ascii(
+              non_ascii_build,
+              state_id,
+              non_ascii_start,
+              end,
+              rule_idx,
+              name,
+              `characters in range ${non_ascii_start}..${end}`,
+            );
           }
         }
       }
@@ -519,6 +555,13 @@ export function compile(grammar: Grammar): CompiledGrammar {
     probe_mask[id] = 1;
   });
 
+  // order does not matter: overlapping ranges are rejected above, so at most
+  // one entry can match a given codepoint whatever order the scan takes.
+  const non_ascii_ranges = new Map<number, Int32Array>();
+  for (const [state_id, list] of non_ascii_build) {
+    non_ascii_ranges.set(state_id, Int32Array.from(list));
+  }
+
   return {
     states: state_map,
     transitions,
@@ -527,7 +570,7 @@ export function compile(grammar: Grammar): CompiledGrammar {
     token_types,
     patterns: patterns,
     fallback_transitions,
-    non_ascii_chars: non_ascii_chars,
+    non_ascii_ranges,
     probe_states: probe_states,
     probe_mask,
     probe_fallbacks: probe_fallbacks,

@@ -39,7 +39,7 @@
     "@twinkleplop/typescript": "workspace:*",
     "@twinkleplop/whitespace": "workspace:*",
     "@twinkleplop/yaml": "workspace:*",
-    "mdsvex": "https://pkg.pr.new/pngwn/MDsveX/mdsvex@010d51c",
+    "mdsvex": "^0.12.8",
     "prismjs": "^1.30.0",
     "shiki": "^4.0.2"
   },

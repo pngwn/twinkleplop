@@ -1,0 +1,121 @@
+# ---- anchors.yaml ----
+server: &default
+  host: localhost
+  port: 8080
+backup: *default
+tagged: !!str "hello"
+custom_tag: !myapp/widget 42
+verbatim_tag: !<tag:example.com,2024:foo> value
+named_handle: !e!special data
+
+
+# ---- basic.yaml ----
+name: widget
+version: 1.2.3
+active: true
+count: 42
+
+
+# ---- block.yaml ----
+sequence:
+  - apple
+  - banana
+  - cherry
+mapping:
+  key1: value1
+  key2: value2
+mixed:
+  - name: first
+    value: 1
+  - name: second
+    value: 2
+
+
+# ---- block_scalars.yaml ----
+literal: |
+  line one
+  line two
+folded: >
+  words wrap
+  into one line
+stripped: |-
+  no trailing newline
+kept: |+
+  keep trailing
+explicit: |2
+  indented
+next: value
+
+
+# ---- bools_null.yaml ----
+strict_true: true
+strict_false: False
+legacy_yes: yes
+legacy_no: NO
+legacy_on: on
+legacy_off: Off
+short_y: y
+short_n: N
+null_word: null
+null_upper: NULL
+null_tilde: ~
+not_bool: tRuE
+not_null: null-ish
+
+
+# ---- comments.yaml ----
+# top level comment
+key: value  # trailing comment
+# another comment
+other: 42
+no_space: foo#bar
+
+
+# ---- directives.yaml ----
+%YAML 1.2
+%TAG !e! tag:example.com,2024:
+---
+document: first
+...
+---
+document: second
+...
+
+
+# ---- flow.yaml ----
+seq: [1, 2, 3]
+map: { host: localhost, port: 8080 }
+nested: [[1, 2], { a: 1, b: 2 }]
+mixed: [true, null, "string", 1.5]
+tagged: [!!str 3, !custom value]
+trailing_comma: [1, 2, 3,]
+
+
+# ---- numbers.yaml ----
+decimal: 42
+negative: -17
+positive: +3
+float: 3.14
+exponent: 1.5e-3
+leading_dot: .5
+trailing_dot: 5.
+hex: 0xFF
+octal: 0o755
+infinity: .inf
+neg_inf: -.Inf
+nan: .NaN
+not_number: 0b1010
+timestamp: 2024-01-02
+
+
+# ---- scalars.yaml ----
+plain: hello world
+double: "escaped \"quote\" and \n newline"
+single: 'it''s fine'
+empty_dq: ""
+empty_sq: ''
+url: https://example.com/path
+path: /usr/local/bin
+regex: '\d+\.\d+'
+embedded_colon: foo:bar
+hash_interior: foo#bar

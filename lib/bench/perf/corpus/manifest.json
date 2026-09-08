@@ -1,0 +1,1002 @@
+{
+  "corpus_hash": "73b6d51a2c464ba5",
+  "generated_from": "bin/build-corpus.mjs",
+  "entries": [
+    {
+      "family": "fixtures",
+      "lang": "bash",
+      "file": "bash.sh",
+      "bytes": 4982,
+      "lines": 346,
+      "hash": "861096f8f6fb9f6e",
+      "sources": [
+        "arithmetic.sh",
+        "arrays.sh",
+        "basic.sh",
+        "complex.sh",
+        "conditionals.sh",
+        "expansions.sh",
+        "keywords.sh",
+        "pipelines.sh",
+        "redirections.sh",
+        "strings.sh",
+        "variables.sh"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "css",
+      "file": "css.css",
+      "bytes": 4841,
+      "lines": 308,
+      "hash": "256ac59f11b5ddd9",
+      "sources": [
+        "at_rules.css",
+        "charset_rule.css",
+        "comments.css",
+        "css-vars.css",
+        "functions.css",
+        "hex_colors.css",
+        "import_rules.css",
+        "important.css",
+        "keywords.css",
+        "negative_numbers.css",
+        "nested_selectors.css",
+        "numbers.css",
+        "properties.css",
+        "pseudo_selectors.css",
+        "selectors.css",
+        "strings.css",
+        "url.css"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "diff",
+      "file": "diff.diff",
+      "bytes": 1536,
+      "lines": 90,
+      "hash": "503384467f95ed92",
+      "sources": [
+        "binary_and_new_file.diff",
+        "context_diff.diff",
+        "git_metadata.diff",
+        "mode_change.diff",
+        "multiple_hunks.diff",
+        "no_newline.diff",
+        "normal_diff.diff",
+        "unified.diff"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "diff-basic",
+      "file": "diff-basic.txt",
+      "bytes": 654,
+      "lines": 45,
+      "hash": "d3301ddb6f1ff40c",
+      "sources": [
+        "basic_hunk.txt",
+        "changed_and_noeof.txt",
+        "combined_hunk.txt",
+        "edge_cases.txt",
+        "exclusions.txt",
+        "passthrough.txt"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "go",
+      "file": "go.go",
+      "bytes": 5100,
+      "lines": 370,
+      "hash": "b4468e1d55d7ee2d",
+      "sources": [
+        "basics.go",
+        "builtins.go",
+        "comments.go",
+        "edge_cases.go",
+        "identifiers.go",
+        "keywords.go",
+        "numbers.go",
+        "operators.go",
+        "strings.go"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "html",
+      "file": "html.html",
+      "bytes": 2092,
+      "lines": 99,
+      "hash": "714672230b2af539",
+      "sources": [
+        "basic.html",
+        "embedded.html",
+        "script_only.html",
+        "style_only.html"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "javascript",
+      "file": "javascript.js",
+      "bytes": 15835,
+      "lines": 880,
+      "hash": "a1a8c9be565e55b1",
+      "sources": [
+        "arrow_functions.txt",
+        "async_await.txt",
+        "boolean.txt",
+        "class_name.txt",
+        "classes.txt",
+        "comment.txt",
+        "control_flow.txt",
+        "destructuring.txt",
+        "function_call.txt",
+        "function_def.txt",
+        "generators_iterators.txt",
+        "keywords.txt",
+        "modern_operators.txt",
+        "modules.txt",
+        "number_literals.txt",
+        "numbers.txt",
+        "operators.txt",
+        "regex_literals.txt",
+        "strings.txt",
+        "tagged_templates.txt",
+        "template_literals.txt"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "json",
+      "file": "json.json",
+      "bytes": 592,
+      "lines": 30,
+      "hash": "d236a82dc1269118",
+      "sources": [
+        "basic.json",
+        "nested.json",
+        "numbers.json",
+        "strings.json"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "markdown",
+      "file": "markdown.md",
+      "bytes": 2423,
+      "lines": 217,
+      "hash": "8842b2172ec55018",
+      "sources": [
+        "blockquote.md",
+        "code_span.md",
+        "composition.md",
+        "emphasis.md",
+        "escape_entity.md",
+        "fenced_code.md",
+        "front_matter.md",
+        "headings.md",
+        "indented_code.md",
+        "links.md",
+        "lists.md",
+        "mixed.md",
+        "thematic_break.md"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "python",
+      "file": "python.py",
+      "bytes": 4356,
+      "lines": 316,
+      "hash": "57ee1162b3fe7690",
+      "sources": [
+        "basic.py",
+        "classes.py",
+        "comments.py",
+        "edge_cases.py",
+        "fstrings.py",
+        "keywords.py",
+        "numbers.py",
+        "operators.py",
+        "patterns.py",
+        "strings.py",
+        "unicode.py"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "rust",
+      "file": "rust.rs",
+      "bytes": 3231,
+      "lines": 240,
+      "hash": "f25f959a89f3dc43",
+      "sources": [
+        "attributes.rs",
+        "basics.rs",
+        "chars.rs",
+        "comments.rs",
+        "complex.rs",
+        "keywords.rs",
+        "lifetimes.rs",
+        "numbers.rs",
+        "operators.rs",
+        "strings.rs"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "sql",
+      "file": "sql.sql",
+      "bytes": 14815,
+      "lines": 511,
+      "hash": "6e8fc05b4c8ef22b",
+      "sources": [
+        "basic.sql",
+        "comments.sql",
+        "complex.sql",
+        "ddl.sql",
+        "identifiers.sql",
+        "mysql.sql",
+        "numbers.sql",
+        "operators.sql",
+        "parameters.sql",
+        "postgresql.sql",
+        "strings.sql",
+        "tsql.sql"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "svelte",
+      "file": "svelte.svelte",
+      "bytes": 10414,
+      "lines": 517,
+      "hash": "388970e3404b6868",
+      "sources": [
+        "async_fetch.svelte",
+        "at_directives.svelte",
+        "attr_directives.svelte",
+        "attr_shorthand.svelte",
+        "attr_strings.svelte",
+        "blocks_await.svelte",
+        "blocks_complex.svelte",
+        "blocks_each.svelte",
+        "blocks_edge.svelte",
+        "blocks_if.svelte",
+        "blocks_key.svelte",
+        "blocks_snippet.svelte",
+        "counter.svelte",
+        "expressions.svelte",
+        "expressions_edge.svelte",
+        "script_variants.svelte",
+        "style_variants.svelte",
+        "svelte_elements.svelte",
+        "todo_list.svelte"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "toml",
+      "file": "toml.toml",
+      "bytes": 10221,
+      "lines": 407,
+      "hash": "a1129dc3ed62b070",
+      "sources": [
+        "datetime_and_complex.toml",
+        "strings_and_numerics.toml",
+        "tables_and_keys.toml"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "tsx",
+      "file": "tsx.tsx",
+      "bytes": 3118,
+      "lines": 162,
+      "hash": "4a1f246b728b3a3d",
+      "sources": [
+        "attributes.txt",
+        "basic_element.txt",
+        "conditional.txt",
+        "entity.txt",
+        "expression_container.txt",
+        "fragment.txt",
+        "generic_arrow.txt",
+        "generics_call.txt",
+        "jsx_in_template.txt",
+        "less_than.txt",
+        "member_tag.txt",
+        "namespaced.txt",
+        "nested.txt",
+        "return_jsx.txt",
+        "self_closing.txt",
+        "ts_compat.txt",
+        "ts_in_jsx.txt"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "typescript",
+      "file": "typescript.ts",
+      "bytes": 6006,
+      "lines": 335,
+      "hash": "de3fddc6b4a599e6",
+      "sources": [
+        "access_modifiers.txt",
+        "as_satisfies.txt",
+        "builtin_types.txt",
+        "classes.txt",
+        "declare_module.txt",
+        "decorators.txt",
+        "enums.txt",
+        "generics.txt",
+        "interfaces.txt",
+        "js_compat.txt",
+        "keywords.txt",
+        "type_aliases.txt",
+        "type_annotations.txt"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "whitespace",
+      "file": "whitespace.txt",
+      "bytes": 251,
+      "lines": 18,
+      "hash": "6b573c5bef45caf7",
+      "sources": [
+        "whitespace_css.css"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "yaml",
+      "file": "yaml.yaml",
+      "bytes": 1832,
+      "lines": 122,
+      "hash": "194929cfea5a79b8",
+      "sources": [
+        "anchors.yaml",
+        "basic.yaml",
+        "block.yaml",
+        "block_scalars.yaml",
+        "bools_null.yaml",
+        "comments.yaml",
+        "directives.yaml",
+        "flow.yaml",
+        "numbers.yaml",
+        "scalars.yaml"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "bash",
+      "file": "bash.sh",
+      "bytes": 331,
+      "lines": 14,
+      "hash": "0026f071b8b187f7",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/bash.sh"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "css",
+      "file": "css.css",
+      "bytes": 391,
+      "lines": 24,
+      "hash": "26edc115e4e3ddcb",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/css.css"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "diff",
+      "file": "diff.diff",
+      "bytes": 314,
+      "lines": 13,
+      "hash": "2b6940ab017ad155",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/diff.diff"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "diff-basic",
+      "file": "diff-basic.txt",
+      "bytes": 187,
+      "lines": 8,
+      "hash": "e0c5899b939d8e9b",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/diff-basic.txt"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "go",
+      "file": "go.go",
+      "bytes": 519,
+      "lines": 29,
+      "hash": "54e3ba183b4105d2",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/go.go"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "html",
+      "file": "html.html",
+      "bytes": 670,
+      "lines": 34,
+      "hash": "2b23c6a45a65f5bf",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/html.html"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "javascript",
+      "file": "javascript.js",
+      "bytes": 793,
+      "lines": 21,
+      "hash": "2e29da76be1fbc33",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/javascript.txt"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "json",
+      "file": "json.json",
+      "bytes": 381,
+      "lines": 11,
+      "hash": "2386b4f6faa9b1fe",
+      "sources": [
+        "hand authored"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "markdown",
+      "file": "markdown.md",
+      "bytes": 564,
+      "lines": 33,
+      "hash": "8946ec06ca317434",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/markdown.md"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "python",
+      "file": "python.py",
+      "bytes": 652,
+      "lines": 30,
+      "hash": "87ca6a9cab5b0ecc",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/python.py"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "rust",
+      "file": "rust.rs",
+      "bytes": 609,
+      "lines": 31,
+      "hash": "bb2d2253b3dbc3ad",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/rust.rs"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "sql",
+      "file": "sql.sql",
+      "bytes": 477,
+      "lines": 18,
+      "hash": "83d010c1ae93f0e5",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/sql.sql"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "svelte",
+      "file": "svelte.svelte",
+      "bytes": 714,
+      "lines": 32,
+      "hash": "10814e0695f30aa5",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/svelte.svelte"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "toml",
+      "file": "toml.toml",
+      "bytes": 339,
+      "lines": 20,
+      "hash": "0b4b55f1acb7dfbe",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/toml.toml"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "tsx",
+      "file": "tsx.tsx",
+      "bytes": 552,
+      "lines": 23,
+      "hash": "ebe0156bad8c9c9c",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/tsx.txt"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "typescript",
+      "file": "typescript.ts",
+      "bytes": 779,
+      "lines": 27,
+      "hash": "ef7dd0c21e6e67c7",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/typescript.txt"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "whitespace",
+      "file": "whitespace.txt",
+      "bytes": 47,
+      "lines": 4,
+      "hash": "ecc9ab79eff2ebfc",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/whitespace.txt"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "yaml",
+      "file": "yaml.yaml",
+      "bytes": 371,
+      "lines": 22,
+      "hash": "8609883b478a7325",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/yaml.yaml"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "bash",
+      "file": "deploy.sh",
+      "bytes": 5567,
+      "lines": 193,
+      "hash": "898a51a2bc93fc7d",
+      "sources": [
+        "corpus/seed/bash/deploy.sh"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "css",
+      "file": "site.css",
+      "bytes": 40864,
+      "lines": 1902,
+      "hash": "acf37cf3fd7257c8",
+      "sources": [
+        "lib/_site/src/app.css",
+        "lib/_site/src/lib/styles/docs.css",
+        "lib/_site/src/lib/styles/explore.css"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "diff",
+      "file": "feature.diff",
+      "bytes": 5170,
+      "lines": 169,
+      "hash": "02538f7c1e9fe39d",
+      "sources": [
+        "corpus/seed/diff/feature.diff"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "go",
+      "file": "server.go",
+      "bytes": 8990,
+      "lines": 365,
+      "hash": "4da13b7c93dcf50a",
+      "sources": [
+        "corpus/seed/go/server.go"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "html",
+      "file": "app.html",
+      "bytes": 656,
+      "lines": 19,
+      "hash": "0bd53d14b90684a9",
+      "sources": [
+        "lib/_site/src/app.html"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "javascript",
+      "file": "bench-suite.js",
+      "bytes": 26389,
+      "lines": 1063,
+      "hash": "15a634d4421ce989",
+      "sources": [
+        "lib/bench/src/library/tokenization-suite.bench.js",
+        "lib/bench/src/library/micro-optimizations.bench.js",
+        "lib/bench/src/library/data-structures-suite.bench.js"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "json",
+      "file": "compiled-grammar.json",
+      "bytes": 124022,
+      "lines": 14194,
+      "hash": "fde10e457943f01f",
+      "sources": [
+        "compiled-json-grammar.json"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "markdown",
+      "file": "architecture.md",
+      "bytes": 25141,
+      "lines": 342,
+      "hash": "472dba535fa9facd",
+      "sources": [
+        "architecture.md"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "markdown",
+      "file": "grammar-docs.md",
+      "bytes": 20842,
+      "lines": 550,
+      "hash": "0a96552fb315a0d5",
+      "sources": [
+        "grammar.md",
+        "TRANSFORMER_SPEC.md"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "python",
+      "file": "analysis.py",
+      "bytes": 7975,
+      "lines": 246,
+      "hash": "3125ea0769602ebf",
+      "sources": [
+        "corpus/seed/python/analysis.py"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "rust",
+      "file": "pipeline.rs",
+      "bytes": 8806,
+      "lines": 327,
+      "hash": "ca30b92dd1b52c56",
+      "sources": [
+        "corpus/seed/rust/pipeline.rs"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "sql",
+      "file": "warehouse.sql",
+      "bytes": 6876,
+      "lines": 176,
+      "hash": "b5b51ae011b94fb6",
+      "sources": [
+        "corpus/seed/sql/warehouse.sql"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "svelte",
+      "file": "site-codepanel.svelte",
+      "bytes": 4712,
+      "lines": 182,
+      "hash": "69bbc459a6e30fbf",
+      "sources": [
+        "lib/_site/src/lib/components/CodePanel.svelte"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "svelte",
+      "file": "site-inspectorpanel.svelte",
+      "bytes": 3947,
+      "lines": 191,
+      "hash": "3ddd819487ea1b7f",
+      "sources": [
+        "lib/_site/src/lib/components/InspectorPanel.svelte"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "toml",
+      "file": "workspace.toml",
+      "bytes": 4142,
+      "lines": 158,
+      "hash": "9986bc4d01ecf9f4",
+      "sources": [
+        "corpus/seed/toml/workspace.toml"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "tsx",
+      "file": "dashboard.tsx",
+      "bytes": 8056,
+      "lines": 268,
+      "hash": "9a66361bb960948c",
+      "sources": [
+        "corpus/seed/tsx/dashboard.tsx"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "typescript",
+      "file": "core-frames.ts",
+      "bytes": 55122,
+      "lines": 1481,
+      "hash": "6d69fef5cce747b9",
+      "sources": [
+        "lib/core/src/frame_track.ts",
+        "lib/core/src/fidelity.ts",
+        "lib/core/src/matched_bracket.ts",
+        "lib/core/src/compound_compose.ts"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "typescript",
+      "file": "core-runtime.ts",
+      "bytes": 65894,
+      "lines": 1796,
+      "hash": "48854c27652eee85",
+      "sources": [
+        "lib/core/src/tokenizer.ts",
+        "lib/core/src/scan.ts",
+        "lib/core/src/compiler.ts"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "typescript",
+      "file": "core-types.ts",
+      "bytes": 54300,
+      "lines": 1329,
+      "hash": "4eb5e3b035454209",
+      "sources": [
+        "lib/core/src/types.ts"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "yaml",
+      "file": "ci.yaml",
+      "bytes": 2424,
+      "lines": 119,
+      "hash": "8812990e1b5bc705",
+      "sources": [
+        ".github/workflows/ci-tests.yml",
+        ".github/workflows/release.yml"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "bash",
+      "file": "bash.sh",
+      "bytes": 200505,
+      "lines": 10278,
+      "hash": "8744eedb167c28df",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "css",
+      "file": "css.css",
+      "bytes": 228543,
+      "lines": 11059,
+      "hash": "feec946bdee6a611",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "diff",
+      "file": "diff.diff",
+      "bytes": 201298,
+      "lines": 7829,
+      "hash": "207b9d7a27fa67c6",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "diff-basic",
+      "file": "diff-basic.txt",
+      "bytes": 200078,
+      "lines": 14029,
+      "hash": "a545eb5022e76fee",
+      "sources": [
+        "1 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "go",
+      "file": "go.go",
+      "bytes": 202416,
+      "lines": 10688,
+      "hash": "14395bf277de3087",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "html",
+      "file": "html.html",
+      "bytes": 200236,
+      "lines": 8739,
+      "hash": "4af1b840295d69be",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "javascript",
+      "file": "javascript.js",
+      "bytes": 211138,
+      "lines": 9724,
+      "hash": "3db33e45ec25eee0",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "json",
+      "file": "json.json",
+      "bytes": 249234,
+      "lines": 28451,
+      "hash": "98c8201d58704f6f",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "markdown",
+      "file": "markdown.md",
+      "bytes": 221214,
+      "lines": 5008,
+      "hash": "42cfbdd0a0c2782e",
+      "sources": [
+        "3 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "python",
+      "file": "python.py",
+      "bytes": 201716,
+      "lines": 9340,
+      "hash": "823619280ea25927",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "rust",
+      "file": "rust.rs",
+      "bytes": 204695,
+      "lines": 9672,
+      "hash": "8cd5f4b04ff68607",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "sql",
+      "file": "sql.sql",
+      "bytes": 210070,
+      "lines": 6712,
+      "hash": "62477e92a4ab7f32",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "svelte",
+      "file": "svelte.svelte",
+      "bytes": 201204,
+      "lines": 9447,
+      "hash": "0c2c2a3661d71307",
+      "sources": [
+        "3 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "toml",
+      "file": "toml.toml",
+      "bytes": 201136,
+      "lines": 7937,
+      "hash": "f38281ca79016b4b",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "tsx",
+      "file": "tsx.tsx",
+      "bytes": 201202,
+      "lines": 7775,
+      "hash": "56457eb31744bf63",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "typescript",
+      "file": "typescript.ts",
+      "bytes": 253232,
+      "lines": 7077,
+      "hash": "8c465f69983cb6ac",
+      "sources": [
+        "4 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "whitespace",
+      "file": "whitespace.txt",
+      "bytes": 200121,
+      "lines": 15028,
+      "hash": "1b9df36e4570277a",
+      "sources": [
+        "1 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "yaml",
+      "file": "yaml.yaml",
+      "bytes": 200218,
+      "lines": 11420,
+      "hash": "17c3121153f5280c",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    }
+  ]
+}

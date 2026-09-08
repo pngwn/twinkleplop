@@ -61,8 +61,11 @@ export interface CompiledGrammar {
   token_types: string[];
   patterns: Map<number, (PatternInfo[] | null)[]>;
   fallback_transitions: Uint16Array;
-  // use object map for faster non-ascii lookups per state
-  non_ascii_chars: Map<number, Record<number, number>>;
+  // per state, flat [start, end, rule_idx] triples over codepoints >= 128.
+  // ranges rather than one entry per codepoint: a grammar that accepts any
+  // unicode identifier character covers 65408 of them, and materialising that
+  // per codepoint dominated compile time for the grammars that do it.
+  non_ascii_ranges: Map<number, Int32Array>;
   // retain set for external tooling, but also include fast mask for hot path
   probe_states: Set<number>;
   probe_mask?: Uint8Array;
