@@ -53,3 +53,4 @@ export type { FunctionCallVariants } from "./fidelity";
 export * from "./types";
 export * from "./dsl";
 export { build_annotation_extractor } from "./annotation";
+export { overlays } from "./overlays";

@@ -79,3 +79,47 @@ describe("typescript tokenize() — raw tokens passthrough", () => {
     expect(r.tokens.length % 3).toBe(0);
   });
 });
+
+describe("typescript language() — overlays option", () => {
+  // `total` sits at 6..11, line 2 is `console.log(total);`, line 3 is
+  // `let a = 2;` at 37..47.
+  const code = "const total = 1;\nconsole.log(total);\nlet a = 2;\nlet b = 3;";
+  const items = [
+    { start: 6, end: 11, class: "highlighted-word" },
+    { start: { line: 2, character: 0 }, end: { line: 2, character: 7 }, class: "mark" },
+    { lines: [1, [3, 4]], class: "highlight" },
+    { start: 41, end: 47, hide: true },
+  ];
+
+  it("applies ranges, lines and hidden ranges from one call", () => {
+    const html = language()(code, { overlays: items });
+    expect(html).toMatch(/^<pre class="twinkleplop has-highlight has-highlighted-word has-mark">/);
+    expect(html).toContain(
+      '<span class="tok highlighted-word"><span class="tok constant">total</span></span>',
+    );
+    expect(html).toContain(
+      '<span class="tok mark"><span class="tok identifier">console</span></span>',
+    );
+    expect(html.match(/<span class="l[^"]*">/g)).toEqual([
+      '<span class="l highlight">',
+      '<span class="l">',
+      '<span class="l highlight">',
+      '<span class="l highlight">',
+    ]);
+    expect(html).toContain('<span class="tok keyword">let</span></span>\n');
+    expect(html).not.toContain("= 2");
+  });
+
+  it("matches the tokenize + overlays() + to_html pipeline", async () => {
+    const { overlays, to_html } = await import("@twinkleplop/core");
+    const result = tokenize()(code);
+    result.overlays = overlays(code, items);
+    expect(to_html(code, result)).toBe(language()(code, { overlays: items }));
+  });
+
+  it("rejects a malformed item and an out of range position", () => {
+    const ts = language();
+    expect(() => ts(code, { overlays: [{ line: 1, class: "bad class!" }] })).toThrow(TypeError);
+    expect(() => ts(code, { overlays: [{ line: 9, class: "x" }] })).toThrow(RangeError);
+  });
+});
