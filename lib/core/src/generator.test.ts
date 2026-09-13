@@ -9,7 +9,7 @@ import { compile } from "./compiler";
 import { to_html } from "./generator";
 import { build_annotation_extractor } from "./annotation";
 import { tokenize } from "./tokenizer";
-import type { Grammar, AnnotationPlugin } from "./types";
+import type { Grammar, AnnotationPlugin, OverlayResult } from "./types";
 
 const grammar = compile<Grammar>({
   name: "toy",
@@ -148,7 +148,7 @@ describe("to_html overlay path", () => {
     expect(matches.length).toBe(2);
   });
 
-  test("whitespace inside an overlay span is not wrapped in <span class=\"tok ...\">", () => {
+  test('whitespace inside an overlay span is not wrapped in <span class="tok ...">', () => {
     // line-mode overlay covers a line with `a b` (whitespace gap between
     // tokens). the renderer must not wrap that whitespace in a `<span
     // class="tok emphasis">` — the no-overlay path never wraps inter-token
@@ -200,7 +200,9 @@ describe("to_html overlay path", () => {
     expect(wrappers.length).toBe(1);
     // the wrapper opens at "middle" (first non-ws after foo's end) and
     // closes after "middle" (last non-ws before bar's start).
-    expect(html2).toMatch(/<span class="tok emphasis"><span class="tok identifier">middle<\/span><\/span>/);
+    expect(html2).toMatch(
+      /<span class="tok emphasis"><span class="tok identifier">middle<\/span><\/span>/,
+    );
     // sanity — the extra invocation has been used.
     expect(html.length).toBeGreaterThan(0);
   });
@@ -251,5 +253,65 @@ describe("to_html overlay path", () => {
     expect(numbers).toEqual(["1", "2", "3"]);
     // (line 3 in the visible numbering is the trailing empty line after
     // beta\n; the elided source line 2 contributes no number to the output.)
+  });
+});
+
+// hand-built overlays: `OverlayResult` is public on `TokenizeResult.overlays`,
+// so a consumer can attach one without going through the annotation
+// extractor (the programmatic equivalent of shiki's `decorations`). such a
+// consumer has no reason to allocate `elided_lines` or `skip_ranges`, and
+// naturally describes an empty line as an empty byte range — neither of
+// which the extractor ever produces.
+describe("to_html with hand-built overlays", () => {
+  function render_with(input: string, ranges: number[], classifications: string[]): string {
+    const result = tokenize(input, grammar);
+    const overlays: OverlayResult = {
+      ranges: new Uint32Array(ranges),
+      classifications,
+      skip_ranges: new Uint32Array(0),
+      elided_lines: new Uint8Array(0),
+    };
+    result.overlays = overlays;
+    return to_html(input, result);
+  }
+
+  function line_opens(html: string): string[] {
+    return html.match(/<span class="l[^"]*">/g) ?? [];
+  }
+
+  test("line-mode overlay renders with an empty elided_lines array", () => {
+    // line 3 is `c` at bytes [4, 5). flags bit 0 = line-mode.
+    const input = "a\nb\nc\n";
+    const html = render_with(input, [4, 5, 0, 1], ["highlight"]);
+    expect(line_opens(html)).toEqual([
+      '<span class="l">',
+      '<span class="l">',
+      '<span class="l highlight">',
+      '<span class="l">',
+    ]);
+    expect(html).toContain('<span class="l highlight"><span class="tok identifier">c</span>');
+  });
+
+  test("empty line-mode range on an empty line applies to that line", () => {
+    // line 2 is empty: its start and end are both byte 2. an empty range
+    // must land on line 2, not on the line before it.
+    const input = "a\n\nb";
+    const html = render_with(input, [2, 2, 0, 1], ["highlight"]);
+    expect(line_opens(html)).toEqual([
+      '<span class="l">',
+      '<span class="l highlight">',
+      '<span class="l">',
+    ]);
+    expect(html).toContain('<span class="l highlight"></span>\n');
+  });
+
+  test("matches the annotation path for an empty target line", () => {
+    // the extractor encodes `:2` as [2, 3) — up to the start of line 3 — so
+    // it never emits an empty range. the hand-built [2, 2) form above must
+    // render the same line span this produces.
+    const input = "a\n\nb\n// [!hl :2]\n";
+    const html = render(input, [hl]);
+    expect(line_opens(html)[1]).toBe('<span class="l highlight">');
+    expect(html).toContain('<span class="l highlight"></span>\n');
   });
 });
