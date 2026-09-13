@@ -104,7 +104,7 @@ Output for the example above (source `const total = …` on line 1,
 
 ## Dependencies
 - Depends on: [core](./core.md), [render_options](./render_options.md) (`has-*`)
-- Prerequisite: the renderer must apply line-mode overlays regardless of how many lines are hidden and must accept empty ranges on empty lines. A fix for the current behaviour (`to_html_overlay` bounding line-mode overlays by the hidden-lines table) is in progress as a separate task; requirement 8 and the corresponding criterion assume it has landed.
+- Prerequisite (landed): the renderer applies line-mode overlays regardless of how many lines are hidden and accepts empty ranges on empty lines, since `8b85c14` (merged in #17). Requirement 8 relies on it.
 - Depended on by: [markdown_integration](./markdown_integration.md), [focus_and_shiki_notation](./focus_and_shiki_notation.md) (word highlight across lines is expressed as range items)
 
 ## Open questions

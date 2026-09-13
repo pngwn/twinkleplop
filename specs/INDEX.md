@@ -22,7 +22,7 @@ the input/output evidence for each one.
 ## Suggested order
 
 1. render_options
-2. overlays_option (after the renderer fix lands)
+2. overlays_option
 3. inline_and_hooks
 4. whitespace_rendering
 5. cross_line_word_highlight
@@ -58,7 +58,6 @@ graph TD
 ## Open cross-cutting questions
 
 - **Fence meta conventions.** [markdown_integration](./markdown_integration.md) lists both the shiki/VitePress family and rehype-pretty-code's and does not decide between them. To discuss before implementation.
-- **Renderer prerequisite.** Programmatic line-mode overlays currently depend on a fix to how the renderer bounds them; [overlays_option](./overlays_option.md) assumes it has landed. Track that task before starting spec 2.
 - **`has-*` naming for multi-class classifications.** A classification may hold several classes (the shiki-compat mapping emits `diff add`); `has-` prefixes only the first token. Confirmed in [render_options](./render_options.md); worth a line in the annotation README.
 - **Performance budget for opt-in features.** Every spec requires the no-option path to stay within the perf harness noise floor. What overhead is acceptable when an option *is* used is the feature's cost, not waste, but nobody has put a number on it.
 
