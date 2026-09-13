@@ -23,11 +23,7 @@ SCAN_TABLE[39] = SCAN_ESCAPE;
 SCAN_TABLE[60] = SCAN_ESCAPE;
 SCAN_TABLE[62] = SCAN_ESCAPE;
 
-export function to_html(
-  input: string,
-  token_result: TokenizeResult,
-  options: RenderOptions = {},
-) {
+export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
   // annotation overlays opt-in: when present, dispatch to the overlay-aware
   // renderer below.
   if (token_result.overlays !== undefined) {
@@ -179,26 +175,37 @@ function to_html_overlay(
   const line_class_map = new Map<number, string>();
   // raw token-mode overlays bucketed by line: { start, end, class_id } per
   // line. trimmed to non-WS during wrapper computation below.
-  const token_overlays_by_line = new Map<number, { start: number; end: number; class_id: number }[]>();
+  const token_overlays_by_line = new Map<
+    number,
+    { start: number; end: number; class_id: number }[]
+  >();
   if (ranges.length > 0) {
-    const len_lines = elided_lines.length;
     for (let r = 0; r < ranges.length; r += 4) {
       const ostart = ranges[r];
       const oend = ranges[r + 1];
       const class_id = ranges[r + 2];
       const flags = ranges[r + 3];
       const class_name_str = classifications[class_id];
+      // both line numbers come from the input itself, so they are already
+      // bounded by its line count. `elided_lines` is NOT a bound here: a
+      // hand-built OverlayResult may pass an empty array, and reads of it
+      // are guarded at the point of use instead.
+      //
+      // an empty range (start === end) applies to the line its start sits
+      // on. the annotation extractor never produces one (its line-mode
+      // ranges run to the start of the next line, so an empty source line
+      // still yields a one-byte range) but a programmatic consumer
+      // describing an empty line naturally does, and `oend - 1` would land
+      // that on the previous line.
+      const start_line = line_of_offset(input, ostart);
+      const end_line = oend > ostart ? line_of_offset(input, oend - 1) : start_line;
       if ((flags & 1) === 1) {
-        const start_line = line_of_offset(input, ostart);
-        const end_line = oend > 0 ? line_of_offset(input, oend - 1) : start_line;
-        for (let l = start_line; l <= end_line && l <= len_lines; l++) {
+        for (let l = start_line; l <= end_line; l++) {
           const prev = line_class_map.get(l);
           line_class_map.set(l, prev === undefined ? class_name_str : prev + " " + class_name_str);
         }
       } else {
         // bucket the token-mode overlay onto every line it touches.
-        const start_line = line_of_offset(input, ostart);
-        const end_line = oend > 0 ? line_of_offset(input, oend - 1) : start_line;
         for (let l = start_line; l <= end_line; l++) {
           let arr = token_overlays_by_line.get(l);
           if (arr === undefined) {
