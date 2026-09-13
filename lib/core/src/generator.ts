@@ -30,11 +30,13 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     return to_html_overlay(input, token_result, token_result.overlays, options);
   }
   const { tokens, token_types } = token_result;
-  const { class_name = "twinkleplop", line_numbers = false } = options;
+  const { class_name = "twinkleplop" } = options;
+  const line_numbers = !!options.line_numbers;
 
-  let out = `<pre class="${class_name}"><code>`;
+  let out = open_pre(class_name, options.attributes);
 
-  let line_no = 1;
+  // seeded with the start value so the per-line path pays nothing for it.
+  let line_no = first_line_number(options.line_numbers);
   let open_class: string | null = null;
 
   out += open_line(line_no, line_numbers);
@@ -115,6 +117,105 @@ function open_line(n: number, line_numbers: boolean) {
   return `<span class="l">`;
 }
 
+function first_line_number(line_numbers: RenderOptions["line_numbers"]): number {
+  if (typeof line_numbers !== "object" || line_numbers === null) return 1;
+  const start = line_numbers.start;
+  if (start === undefined) return 1;
+  if (typeof start !== "number" || !Number.isInteger(start)) {
+    throw new RangeError(`line_numbers.start must be a finite integer, got ${String(start)}`);
+  }
+  return start;
+}
+
+function open_pre(class_attr: string, attributes: RenderOptions["attributes"]): string {
+  if (attributes === undefined) return `<pre class="${class_attr}"><code>`;
+  return `<pre class="${class_attr}"${render_attributes(attributes)}><code>`;
+}
+
+function join_classes(class_name: string, extra: string): string {
+  if (extra.length === 0) return class_name;
+  if (class_name.length === 0) return extra;
+  return class_name + " " + extra;
+}
+
+// `class` belongs to class_name and `style` to themes, so accepting either
+// here would let one call silently override the other mechanism.
+function render_attributes(attributes: Record<string, string | number | boolean>): string {
+  let out = "";
+  for (const name of Object.keys(attributes)) {
+    if (name === "class" || name === "style") {
+      throw new TypeError(`attributes.${name} is reserved`);
+    }
+    if (!is_attribute_name(name)) {
+      throw new TypeError(`"${name}" is not a valid attribute name`);
+    }
+    const value = attributes[name];
+    if (value === false) continue;
+    if (value === true) {
+      out += " " + name;
+    } else if (typeof value === "string") {
+      out += ` ${name}="${escape_html(value)}"`;
+    } else if (typeof value === "number") {
+      out += ` ${name}="${value}"`;
+    } else {
+      throw new TypeError(`attributes.${name} must be a string, number or boolean`);
+    }
+  }
+  return out;
+}
+
+// a leading digit is rejected so integer-like keys, which javascript moves
+// ahead of every other key, can never break the emitted attribute order.
+function is_attribute_name(name: string): boolean {
+  const len = name.length;
+  if (len === 0) return false;
+  for (let i = 0; i < len; i++) {
+    const c = name.charCodeAt(i);
+    if (c >= 48 && c <= 57) {
+      if (i === 0) return false;
+      continue;
+    }
+    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122)) continue;
+    if (c === 45 || c === 95 || c === 58 || c === 46) continue;
+    return false;
+  }
+  return true;
+}
+
+// only the first token of a classification is prefixed, as shiki does for
+// `diff add`, so several classifications can collapse into one has- class.
+// the order comes from the offsets rather than array position because a
+// hand-built result need not be sorted the way the extractor's is.
+function has_class_list(ranges: Uint32Array, classifications: string[]): string {
+  const count = classifications.length;
+  if (count === 0 || ranges.length === 0) return "";
+  const first_start = new Array<number>(count).fill(-1);
+  const first_index = new Array<number>(count).fill(0);
+  for (let r = 0; r < ranges.length; r += 4) {
+    const id = ranges[r + 2];
+    if (id >= count) continue;
+    const start = ranges[r];
+    if (first_start[id] === -1 || start < first_start[id]) {
+      first_start[id] = start;
+      first_index[id] = r;
+    }
+  }
+  const ids: number[] = [];
+  for (let id = 0; id < count; id++) if (first_start[id] !== -1) ids.push(id);
+  ids.sort((a, b) => first_start[a] - first_start[b] || first_index[a] - first_index[b]);
+  const seen = new Set<string>();
+  let out = "";
+  for (let i = 0; i < ids.length; i++) {
+    const cls = classifications[ids[i]];
+    const space = cls.indexOf(" ");
+    const head = space === -1 ? cls : cls.substring(0, space);
+    if (head.length === 0 || seen.has(head)) continue;
+    seen.add(head);
+    out += out.length === 0 ? "has-" + head : " has-" + head;
+  }
+  return out;
+}
+
 function escape_substring_optimized(input: string, start: number, end: number) {
   let needs_escape = false;
   for (let i = start; i < end; i++) {
@@ -162,7 +263,8 @@ function to_html_overlay(
   options: RenderOptions,
 ): string {
   const { tokens, token_types } = token_result;
-  const { class_name = "twinkleplop", line_numbers = false } = options;
+  const { class_name = "twinkleplop" } = options;
+  const line_numbers = !!options.line_numbers;
   const { ranges, classifications, skip_ranges, elided_lines } = overlays;
 
   // split overlays by mode once, up front. line-mode overlays bin onto the
@@ -311,10 +413,11 @@ function to_html_overlay(
   }
 
   const out: string[] = [];
-  out.push(`<pre class="${class_name}"><code>`);
+  const has_classes = options.has_classes === false ? "" : has_class_list(ranges, classifications);
+  out.push(open_pre(join_classes(class_name, has_classes), options.attributes));
 
   let line_no = 1;
-  let visible_line_no = 1;
+  let visible_line_no = first_line_number(options.line_numbers);
   let line_open = false;
   let open_class: string | null = null;
 

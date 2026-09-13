@@ -9,7 +9,7 @@ import { compile } from "./compiler";
 import { to_html } from "./generator";
 import { build_annotation_extractor } from "./annotation";
 import { tokenize } from "./tokenizer";
-import type { Grammar, AnnotationPlugin, OverlayResult } from "./types";
+import type { Grammar, AnnotationPlugin, OverlayResult, RenderOptions } from "./types";
 
 const grammar = compile<Grammar>({
   name: "toy",
@@ -313,5 +313,314 @@ describe("to_html with hand-built overlays", () => {
     const html = render(input, [hl]);
     expect(line_opens(html)[1]).toBe('<span class="l highlight">');
     expect(html).toContain('<span class="l highlight"></span>\n');
+  });
+});
+
+// the no-option output is pinned byte for byte because every render option
+// has to be invisible when it is absent.
+describe("render options", () => {
+  const add: AnnotationPlugin = {
+    verbs: ["add"],
+    handle: ({ range }) => ({
+      overlays: [
+        { start: range.start, end: range.end, classification: "diff-add", line_mode: true },
+      ],
+    }),
+  };
+  const del: AnnotationPlugin = {
+    verbs: ["del"],
+    handle: ({ range }) => ({
+      overlays: [
+        { start: range.start, end: range.end, classification: "diff-del", line_mode: true },
+      ],
+    }),
+  };
+  // classifications holding two classes, the shape a shiki compat mapping
+  // emits.
+  const shiki_add: AnnotationPlugin = {
+    verbs: ["sadd"],
+    handle: ({ range }) => ({
+      overlays: [
+        { start: range.start, end: range.end, classification: "diff add", line_mode: true },
+      ],
+    }),
+  };
+  const shiki_del: AnnotationPlugin = {
+    verbs: ["sdel"],
+    handle: ({ range }) => ({
+      overlays: [
+        { start: range.start, end: range.end, classification: "diff del", line_mode: true },
+      ],
+    }),
+  };
+
+  function render_with_options(
+    input: string,
+    options: RenderOptions,
+    plugins: AnnotationPlugin[] = [],
+  ): string {
+    const result = tokenize(input, grammar);
+    if (plugins.length > 0) {
+      const extractor = build_annotation_extractor({ plugins }, result.token_types);
+      const overlays = extractor(input, result);
+      if (overlays !== undefined) result.overlays = overlays;
+    }
+    return to_html(input, result, options);
+  }
+
+  function pre_open(html: string): string {
+    return html.substring(0, html.indexOf("<code>"));
+  }
+
+  function numbers_of(html: string): string[] {
+    return [...html.matchAll(/<span class="ln">(-?\d+)<\/span>/g)].map((m) => m[1]);
+  }
+
+  describe("absent options leave the output untouched", () => {
+    test("no options", () => {
+      expect(render_with_options("a", {})).toBe(
+        '<pre class="twinkleplop"><code><span class="l"><span class="tok identifier">a</span></span></code></pre>',
+      );
+    });
+
+    test("line_numbers: true", () => {
+      expect(render_with_options("a", { line_numbers: true })).toBe(
+        '<pre class="twinkleplop"><code><span class="l"><span class="ln">1</span><span class="tok identifier">a</span></span></code></pre>',
+      );
+    });
+
+    test("defaults spelled out match defaults left out", () => {
+      const input = "a b\nc // [!em]\nd\n";
+      for (const plugins of [[], [em]]) {
+        const baseline = render_with_options(input, {}, plugins);
+        expect(
+          render_with_options(
+            input,
+            { line_numbers: false, class_name: "twinkleplop", has_classes: true, attributes: {} },
+            plugins,
+          ),
+        ).toBe(baseline);
+        const numbered = render_with_options(input, { line_numbers: true }, plugins);
+        expect(render_with_options(input, { line_numbers: {} }, plugins)).toBe(numbered);
+        expect(render_with_options(input, { line_numbers: { start: 1 } }, plugins)).toBe(numbered);
+      }
+    });
+
+    test("no overlays: the class attribute is identical for every old option combination", () => {
+      const input = "a b\nc\n";
+      const combinations: RenderOptions[] = [
+        {},
+        { line_numbers: true },
+        { class_name: "x" },
+        { class_name: "x", line_numbers: true },
+        { class_name: "" },
+      ];
+      for (const options of combinations) {
+        const plain = render_with_options(input, options);
+        expect(plain).not.toContain("has-");
+        expect(render_with_options(input, options, [em])).toBe(plain);
+        expect(render_with_options(input, { ...options, has_classes: false }, [em])).toBe(plain);
+        expect(render_with_options(input, { ...options, has_classes: true }, [em])).toBe(plain);
+      }
+      expect(pre_open(render_with_options(input, { class_name: "" }))).toBe('<pre class="">');
+    });
+  });
+
+  describe("line_numbers", () => {
+    test("{ start } numbers the first line start", () => {
+      const html = render_with_options("a\nb\nc", { line_numbers: { start: 10 } });
+      expect(numbers_of(html)).toEqual(["10", "11", "12"]);
+    });
+
+    test("true, {} and { start: undefined } number from 1", () => {
+      for (const line_numbers of [true, {}, { start: undefined }]) {
+        expect(numbers_of(render_with_options("a\nb", { line_numbers }))).toEqual(["1", "2"]);
+      }
+    });
+
+    test("false and absent emit no numbers", () => {
+      expect(render_with_options("a\nb", { line_numbers: false })).not.toContain('class="ln"');
+      expect(render_with_options("a\nb", {})).not.toContain('class="ln"');
+    });
+
+    test("zero and negative starts number literally", () => {
+      expect(numbers_of(render_with_options("a\nb", { line_numbers: { start: 0 } }))).toEqual([
+        "0",
+        "1",
+      ]);
+      expect(numbers_of(render_with_options("a\nb\nc", { line_numbers: { start: -1 } }))).toEqual([
+        "-1",
+        "0",
+        "1",
+      ]);
+    });
+
+    test("a start that is not a finite integer throws a RangeError", () => {
+      const bad: unknown[] = [1.5, NaN, Infinity, -Infinity, "3", null];
+      for (const start of bad) {
+        expect(() =>
+          render_with_options("a", { line_numbers: { start: start as number } }),
+        ).toThrow(RangeError);
+      }
+    });
+
+    test("start applies on the overlay path", () => {
+      const html = render_with_options("a\nb // [!em]\nc", { line_numbers: { start: 10 } }, [em]);
+      expect(numbers_of(html)).toEqual(["10", "11", "12"]);
+      expect(html).toContain('<span class="l emphasis"><span class="ln">11</span>');
+    });
+
+    test("an elided first line does not consume a number", () => {
+      const html = render_with_options(
+        "// [!em :2]\nalpha\nbeta",
+        { line_numbers: { start: 10 } },
+        [em],
+      );
+      expect(numbers_of(html)).toEqual(["10", "11"]);
+      expect(html).not.toContain("[!em");
+    });
+  });
+
+  describe("attributes", () => {
+    test("strings, numbers and booleans, in the order given, after class", () => {
+      const html = render_with_options("a", {
+        attributes: { "data-title": 'a"b', tabindex: 0, hidden: true, draggable: false },
+      });
+      expect(pre_open(html)).toBe(
+        '<pre class="twinkleplop" data-title="a&quot;b" tabindex="0" hidden>',
+      );
+    });
+
+    test("a value cannot break out of the attribute", () => {
+      const html = render_with_options("a", { attributes: { "data-x": "\"><script>&'" } });
+      expect(pre_open(html)).toBe(
+        '<pre class="twinkleplop" data-x="&quot;&gt;&lt;script&gt;&amp;&#39;">',
+      );
+    });
+
+    test("an empty object emits nothing", () => {
+      expect(render_with_options("a", { attributes: {} })).toBe(render_with_options("a", {}));
+    });
+
+    test("class and style are reserved", () => {
+      expect(() => render_with_options("a", { attributes: { class: "x" } })).toThrow(TypeError);
+      expect(() => render_with_options("a", { attributes: { class: "x" } })).toThrow(/class/);
+      expect(() => render_with_options("a", { attributes: { style: "color: red" } })).toThrow(
+        /style/,
+      );
+    });
+
+    test("an invalid attribute name throws", () => {
+      for (const name of ["", "1x", "a b", "on<click", 'x"y', "a=b", "é", "a/b"]) {
+        expect(() => render_with_options("a", { attributes: { [name]: "v" } })).toThrow(TypeError);
+      }
+    });
+
+    test("valid attribute names are accepted", () => {
+      const html = render_with_options("a", {
+        attributes: { "data-x": 1, "xml:lang": "en", "a.b": "c", _x: "y", Data9: "z" },
+      });
+      expect(pre_open(html)).toBe(
+        '<pre class="twinkleplop" data-x="1" xml:lang="en" a.b="c" _x="y" Data9="z">',
+      );
+    });
+
+    test("a value of another type throws", () => {
+      const values: unknown[] = [null, undefined, {}, [], () => 1];
+      for (const value of values) {
+        expect(() =>
+          render_with_options("a", { attributes: { "data-x": value as string } }),
+        ).toThrow(TypeError);
+      }
+    });
+
+    test("attributes are emitted on the overlay path", () => {
+      const html = render_with_options("a // [!em]", { attributes: { "data-title": "t" } }, [em]);
+      expect(pre_open(html)).toBe('<pre class="twinkleplop has-emphasis" data-title="t">');
+    });
+  });
+
+  describe("has-* classes", () => {
+    test("one class per classification, ordered by first appearance in the source", () => {
+      const html = render_with_options("a // [!del]\nb // [!add]\n", {}, [add, del]);
+      expect(pre_open(html)).toBe('<pre class="twinkleplop has-diff-del has-diff-add">');
+      const flipped = render_with_options("a // [!add]\nb // [!del]\n", {}, [add, del]);
+      expect(pre_open(flipped)).toBe('<pre class="twinkleplop has-diff-add has-diff-del">');
+    });
+
+    test("duplicates collapse", () => {
+      const html = render_with_options("a // [!add]\nb // [!add]\n", {}, [add]);
+      expect(pre_open(html)).toBe('<pre class="twinkleplop has-diff-add">');
+    });
+
+    test("token-mode overlays count", () => {
+      const html = render_with_options("foo bar // [!em =foo]\n", {}, [em]);
+      expect(pre_open(html)).toBe('<pre class="twinkleplop has-emphasis">');
+    });
+
+    test("only the first token of a multi-class classification is prefixed", () => {
+      const html = render_with_options("a // [!sadd]\nb // [!sdel]\n", {}, [shiki_add, shiki_del]);
+      expect(pre_open(html)).toBe('<pre class="twinkleplop has-diff">');
+      expect(html).toContain('<span class="l diff add">');
+      expect(html).toContain('<span class="l diff del">');
+    });
+
+    test("has_classes: false suppresses them", () => {
+      const html = render_with_options("a // [!del]\nb // [!add]\n", { has_classes: false }, [
+        add,
+        del,
+      ]);
+      expect(pre_open(html)).toBe('<pre class="twinkleplop">');
+      expect(html).toContain('<span class="l diff-del">');
+    });
+
+    test('with class_name: "" the class attribute holds only the has- classes', () => {
+      const html = render_with_options("a // [!add]\n", { class_name: "" }, [add]);
+      expect(pre_open(html)).toBe('<pre class="has-diff-add">');
+    });
+
+    test("hand-built ranges are ordered by source position, not array order", () => {
+      const input = "a\nb\nc\n";
+      const result = tokenize(input, grammar);
+      result.overlays = {
+        ranges: new Uint32Array([4, 5, 0, 1, 0, 1, 1, 1]),
+        classifications: ["highlight", "emphasis"],
+        skip_ranges: new Uint32Array(0),
+        elided_lines: new Uint8Array(0),
+      };
+      expect(pre_open(to_html(input, result))).toBe(
+        '<pre class="twinkleplop has-emphasis has-highlight">',
+      );
+    });
+
+    test("an overlay result without ranges adds nothing", () => {
+      const input = "a\n";
+      const result = tokenize(input, grammar);
+      result.overlays = {
+        ranges: new Uint32Array(0),
+        classifications: ["highlight"],
+        skip_ranges: new Uint32Array(0),
+        elided_lines: new Uint8Array(0),
+      };
+      expect(to_html(input, result)).toBe(to_html(input, tokenize(input, grammar)));
+    });
+  });
+
+  test("the options compose", () => {
+    const html = render_with_options(
+      "a // [!del]\nb // [!add]\nc",
+      {
+        class_name: "code",
+        line_numbers: { start: 10 },
+        attributes: { "data-title": "math.ts", tabindex: 0 },
+      },
+      [add, del],
+    );
+    expect(pre_open(html)).toBe(
+      '<pre class="code has-diff-del has-diff-add" data-title="math.ts" tabindex="0">',
+    );
+    expect(numbers_of(html)).toEqual(["10", "11", "12"]);
+    expect(html).toContain('<span class="l diff-del"><span class="ln">10</span>');
+    expect(html).toContain('<span class="l diff-add"><span class="ln">11</span>');
   });
 });

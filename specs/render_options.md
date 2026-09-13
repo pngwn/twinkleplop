@@ -87,14 +87,18 @@ second line and `[!del]` on the first:
   as today.
 
 ## Acceptance criteria
-- [ ] `ts(code, { line_numbers: { start: 10 } })` numbers lines 10, 11, 12 for a three-line snippet.
-- [ ] A snippet whose first line is a marker-only comment, rendered with `{ start: 10 }`, numbers its visible lines 10 and 11, not 11 and 12.
-- [ ] `attributes: { "data-title": 'a"b', tabindex: 0, hidden: true, draggable: false }` yields `data-title="a&quot;b" tabindex="0" hidden` and no `draggable`.
-- [ ] Passing `attributes: { class: "x" }` throws a `TypeError` mentioning `class`.
-- [ ] A snippet with `[!add]` and `[!del]` markers renders `<pre class="twinkleplop has-diff-add has-diff-del">` (order by first appearance) with no other options.
-- [ ] The same snippet with `has_classes: false` renders `<pre class="twinkleplop">`.
-- [ ] A snippet with no markers renders exactly today's HTML for every combination of the old options.
-- [ ] The perf harness shows no change above its noise floor for the no-option path.
+Implemented in `lib/core/src/generator.ts`; parity against the frozen
+baseline is byte-identical on every no-overlay check and the `html` mode
+A/B (54 workloads, two passes) moved nothing beyond the noise floor.
+
+- [x] `ts(code, { line_numbers: { start: 10 } })` numbers lines 10, 11, 12 for a three-line snippet.
+- [x] A snippet whose first line is a marker-only comment, rendered with `{ start: 10 }`, numbers its visible lines 10 and 11, not 11 and 12.
+- [x] `attributes: { "data-title": 'a"b', tabindex: 0, hidden: true, draggable: false }` yields `data-title="a&quot;b" tabindex="0" hidden` and no `draggable`.
+- [x] Passing `attributes: { class: "x" }` throws a `TypeError` mentioning `class`.
+- [x] A snippet with `[!add]` and `[!del]` markers renders `<pre class="twinkleplop has-diff-add has-diff-del">` (order by first appearance) with no other options.
+- [x] The same snippet with `has_classes: false` renders `<pre class="twinkleplop">`.
+- [x] A snippet with no markers renders exactly today's HTML for every combination of the old options.
+- [x] The perf harness shows no change above its noise floor for the no-option path.
 
 ## Dependencies
 - Depends on: [core](./core.md)

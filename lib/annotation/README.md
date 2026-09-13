@@ -82,6 +82,19 @@ All built-ins auto-select line-mode vs token-mode from the marker's args
 kind: bare / `+N` / `:N` / `:N..M` render line-mode; anchor ranges and
 `=anchor` render token-mode.
 
+### Block-level `has-*` classes
+
+The `<pre>` element also gains one `has-<classification>` class for every
+classification the snippet contains, in order of first appearance, so a
+theme can style the block as a whole (a diff gutter, say). A snippet with
+`[!add]` and `[!del]` markers renders as
+`<pre class="twinkleplop has-diff-add has-diff-del">`.
+
+Only the first class of a classification is prefixed. A plugin that emits
+`diff add` and another that emits `diff del` both contribute `has-diff`,
+which is what shiki does for the same markup. Pass `has_classes: false` in
+the render options to turn the classes off.
+
 ## Usage
 
 Pass plugins through the language factory's `annotation` option:

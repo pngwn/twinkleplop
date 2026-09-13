@@ -652,7 +652,15 @@ export type LanguageFactory = (options?: LanguageOptions) => LanguageFn;
 // directly by `to_html`.
 export interface RenderOptions {
   class_name?: string;
-  line_numbers?: boolean;
+  // numbering counts visible lines, so a line elided by an annotation never
+  // leaves a gap.
+  line_numbers?: boolean | { start?: number };
+  // emitted on <pre> after class, in the order given. true is a bare name,
+  // false emits nothing. `class` and `style` are reserved.
+  attributes?: Record<string, string | number | boolean>;
+  // `has-<classification>` on <pre> for every overlay the snippet carries.
+  // default true.
+  has_classes?: boolean;
 }
 
 // Pattern language for `rewrite_types` — tag-discriminated union so authors
