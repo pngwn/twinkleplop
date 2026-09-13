@@ -6,6 +6,7 @@
 import { describe, expect, test } from "vitest";
 import { compile, create_language, to_html } from "@twinkleplop/core";
 import type { Grammar } from "@twinkleplop/core";
+import { add, del } from "../diff";
 import { em } from "../em";
 import { hl } from "../hl";
 
@@ -62,5 +63,21 @@ describe("end-to-end: create_language + annotation", () => {
     const html = to_html(input, result);
     expect(html).toMatch(/<span class="l emphasis">/);
     expect(html).toMatch(/<span class="l highlight">/);
+  });
+
+  test("the pre element gains a has- class per classification, in source order", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [add, del] } });
+    const input = "foo // [!add]\nbar // [!del]\nbaz // [!add]\n";
+    const html = to_html(input, fn(input));
+    expect(html).toMatch(/^<pre class="twinkleplop has-diff-add has-diff-del"><code>/);
+    expect(to_html(input, fn(input), { has_classes: false })).toMatch(
+      /^<pre class="twinkleplop"><code>/,
+    );
+  });
+
+  test("a snippet without markers gets no has- class", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [add, del] } });
+    const input = "foo\nbar\n";
+    expect(to_html(input, fn(input))).toMatch(/^<pre class="twinkleplop"><code>/);
   });
 });

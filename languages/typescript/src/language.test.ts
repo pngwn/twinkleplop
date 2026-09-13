@@ -27,9 +27,33 @@ describe("typescript language() — HTML output", () => {
     expect(html).toContain('<span class="ln">2</span>');
   });
 
+  it("numbers lines from a custom start", () => {
+    const ts = language();
+    const html = ts("a\nb\nc", { line_numbers: { start: 10 } });
+    const numbers = [...html.matchAll(/<span class="ln">(\d+)<\/span>/g)].map((m) => m[1]);
+    expect(numbers).toEqual(["10", "11", "12"]);
+  });
+
+  it("emits attributes on the pre element after the class", () => {
+    const ts = language();
+    const html = ts("1", {
+      attributes: { "data-title": 'a"b', tabindex: 0, hidden: true, draggable: false },
+    });
+    expect(html).toMatch(
+      /^<pre class="twinkleplop" data-title="a&quot;b" tabindex="0" hidden><code>/,
+    );
+    expect(html).not.toContain("draggable");
+  });
+
+  it("rejects reserved attribute names", () => {
+    const ts = language();
+    expect(() => ts("1", { attributes: { class: "x" } })).toThrow(/class/);
+    expect(() => ts("1", { attributes: { style: "x" } })).toThrow(/style/);
+  });
+
   it("escapes HTML-significant characters in source", () => {
     const ts = language();
-    const html = ts("const s = \"<div>\";");
+    const html = ts('const s = "<div>";');
     expect(html).not.toContain("<div>");
     expect(html).toContain("&lt;div&gt;");
   });
