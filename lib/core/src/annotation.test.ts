@@ -806,4 +806,67 @@ describe("scoped set form", () => {
     starts("// [!hl =Hello *]\n// [!hl =Hello +]\n" + body, (i) => issues.push(i));
     expect(issues.map((i) => i.kind)).toEqual(["malformed", "malformed"]);
   });
+
+  test("+N reaching past the last line takes the lines that exist", () => {
+    const issues: any[] = [];
+    const input = "// [!hl =Hello +9]\n" + body;
+    expect(starts(input, (i) => issues.push(i))).toHaveLength(4);
+    expect(issues).toEqual([]);
+  });
+
+  test(":N past the last line is malformed", () => {
+    const issues: any[] = [];
+    starts("// [!hl =Hello :9]\n" + body, (i) => issues.push(i));
+    expect(issues.map((i) => i.kind)).toEqual(["malformed"]);
+  });
+
+  test("a marker-only line inside the scope never matches the anchor", () => {
+    const input = "// [!hl =Hello :*]\nHello\n// [!em =Hello]\n";
+    expect(starts(input)).toEqual([19]);
+  });
+
+  test("a quoted anchor matches substrings across the scope", () => {
+    expect(starts('// [!hl ="ell" +2]\n' + body)).toEqual([20, 30, 36]);
+  });
+
+  test("the scope reaches the plugin as parsed args", () => {
+    const scope_of = (args_text: string) => {
+      const seen: any[] = [];
+      const plugin: AnnotationPlugin = {
+        verbs: ["hl"],
+        handle: ({ args }) => {
+          seen.push(args);
+          return {};
+        },
+      };
+      const input = `// [!hl ${args_text}]\n` + body;
+      const result = tokenize(input, grammar);
+      build_annotation_extractor({ plugins: [plugin] }, result.token_types)(input, result);
+      return seen[0];
+    };
+    expect(scope_of("=Hello +2").scope).toEqual({ kind: "lineCount", count: 2 });
+    expect(scope_of("=Hello :*").scope).toEqual({ kind: "all" });
+    expect(scope_of("=Hello :2...3").scope).toEqual({
+      kind: "lineRef",
+      from: 2,
+      to: 3,
+      inclusive: true,
+    });
+    expect(scope_of("=Hello :3").scope).toEqual({ kind: "lineRef", from: 3 });
+  });
+
+  test("an unscoped set form reaches the plugin with no scope", () => {
+    const seen: any[] = [];
+    const plugin: AnnotationPlugin = {
+      verbs: ["hl"],
+      handle: ({ args }) => {
+        seen.push(args);
+        return {};
+      },
+    };
+    const input = "Hello // [!hl =Hello]\n";
+    const result = tokenize(input, grammar);
+    build_annotation_extractor({ plugins: [plugin] }, result.token_types)(input, result);
+    expect(seen).toEqual([{ kind: "set", anchor: { kind: "word", value: "Hello" } }]);
+  });
 });

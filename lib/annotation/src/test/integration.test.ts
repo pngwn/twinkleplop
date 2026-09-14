@@ -149,3 +149,61 @@ describe("inline structure and hooks with markers", () => {
     );
   });
 });
+
+describe("cross-line word highlight", () => {
+  const body = "const msg = Hello World\nconsole log Hello\nconst other = Hello\n";
+
+  function render(input: string, on_error?: (issue: unknown) => void): string {
+    const fn = create_language(grammar)({ annotation: { plugins: [hl, em], on_error } });
+    return to_html(input, fn(input));
+  }
+
+  const wrapped = (text: string) =>
+    `<span class="tok highlight"><span class="tok identifier">${text}</span></span>`;
+
+  test("=Hello +2 wraps the two lines below and drops the marker line", () => {
+    const html = render("// [!hl =Hello +2]\n" + body);
+    expect(html.match(/class="tok highlight"/g)).toHaveLength(2);
+    expect(html).not.toContain("[!hl");
+    expect(html.split("\n")[0]).toContain("const");
+  });
+
+  test("=Hello :* wraps every occurrence in the snippet", () => {
+    const html = render("// [!hl =Hello :*]\n" + body);
+    expect(html.match(/class="tok highlight"/g)).toHaveLength(3);
+  });
+
+  test("=Hello :3 wraps only that line's occurrence", () => {
+    const lines = render("// [!hl =Hello :3]\n" + body).split("\n");
+    expect(lines[0]).not.toContain('class="tok highlight"');
+    expect(lines[1]).toContain(wrapped("Hello"));
+    expect(lines[2]).not.toContain('class="tok highlight"');
+  });
+
+  test("an unscoped trailing set form still wraps its own line only", () => {
+    const lines = render("const a = Hello\nconst b = Hello // [!hl =Hello]\n").split("\n");
+    expect(lines[0]).not.toContain('class="tok highlight"');
+    expect(lines[1]).toContain(wrapped("Hello"));
+  });
+
+  test("an anchor with no match in scope reports anchor_not_found and renders nothing extra", () => {
+    const issues: any[] = [];
+    const html = render("// [!hl =Nope +2]\n" + body, (i) => issues.push(i));
+    expect(issues.map((i) => i.kind)).toEqual(["anchor_not_found"]);
+    expect(html).not.toContain("highlight");
+    expect(html).not.toContain("[!hl");
+    expect(html.match(/<span class="l"/g)).toHaveLength(body.split("\n").length);
+  });
+
+  test("two occurrences on one line in scope get two wrappers", () => {
+    const html = render("// [!hl =Hello +1]\nsay Hello and Hello\n");
+    expect(html.match(/class="tok highlight"/g)).toHaveLength(2);
+  });
+
+  test("the same occurrence selected twice is wrapped once with both classes", () => {
+    const html = render("// [!hl =Hello :*]\n// [!em =Hello :*]\nHello\n");
+    expect(html).toContain(
+      '<span class="tok highlight emphasis"><span class="tok identifier">Hello</span></span>',
+    );
+  });
+});
