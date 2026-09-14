@@ -526,11 +526,12 @@ export interface AnnotationConfig {
 export interface AnnotationPlugin {
   // verbs claimed by this plugin. registration-time collision is an error.
   verbs: string[];
-  // 'shared' (default) means the framework parses the marker args and passes
-  // a ParsedArgs to the plugin. 'raw' passes the raw string and the plugin
-  // parses it itself. phase 1 supports only 'shared'.
+  // 'shared' (default) parses the args into ParsedArgs. 'raw' passes the
+  // text after the verb (and #id) with trailing whitespace trimmed; the
+  // framework still finds, hides and validates the marker but resolves
+  // anchors, line refs and pairs only when the plugin asks via `resolve`.
   parse?: "shared" | "raw";
-  handle(input: AnnotationInput): AnnotationOutput;
+  handle(input: AnnotationInput): AnnotationOutput | void;
 }
 
 export interface AnnotationInput {
@@ -538,13 +539,36 @@ export interface AnnotationInput {
   id?: string;
   args: ParsedArgs | string;
   // resolved source range the marker targets (already includes pair resolution
-  // and anchor lookup, so plugins receive a fully-resolved span).
+  // and anchor lookup, so plugins receive a fully-resolved span). the
+  // marker's own line for raw plugins.
   range: SourceRange;
   marker: SourcePosition;
+  // the marker's line holds only markers and will disappear. lets a raw
+  // plugin tell a marker above its target from a trailing one.
+  standalone: boolean;
+  // resolves a fragment of the shared grammar (`+2`, `foo..bar`, `=foo +3`)
+  // relative to this marker. half-open pairs cannot be resolved. throws
+  // with an AnnotationIssueKind on failure; an escaped throw is reported at
+  // the marker's position.
+  resolve(fragment: string): SourceRange;
+  // every range, one per occurrence for the set form.
+  resolve_all(fragment: string): SourceRange[];
 }
 
 export interface AnnotationOutput {
   overlays?: OverlayContribution[];
+  // reported like framework issues, at the marker's position unless one
+  // carries its own.
+  issues?: PluginIssue[];
+  // false leaves the marker text visible, for a plugin that recognises only
+  // part of its verb's argument space. default true.
+  consumed?: boolean;
+}
+
+export interface PluginIssue {
+  kind: AnnotationIssueKind;
+  message: string;
+  position?: SourcePosition;
 }
 
 export interface OverlayContribution {
@@ -581,12 +605,19 @@ export type ParsedArgs =
       inclusive_start: boolean;
       inclusive_end: boolean;
     }
-  | { kind: "set"; anchor: Anchor }
+  // `=foo` matches on the marker's own line; an optional scope (`=foo +2`,
+  // `=foo :4...6`, `=foo :*`) widens the search to those lines instead.
+  | { kind: "set"; anchor: Anchor; scope?: SetScope }
   // `***` shorthand: every byte on the marker's own line, token-mode. the
   // cleaner equivalent of `*..*` (which the parser rejects as malformed
   // because it has no anchor reference). use bare `[!em]` for line-mode
   // styling instead.
   | { kind: "wholeLine" };
+
+export type SetScope =
+  | { kind: "lineCount"; count: number }
+  | { kind: "lineRef"; from: number; to?: number; inclusive?: boolean }
+  | { kind: "all" };
 
 export type Anchor =
   | { kind: "word"; value: string }
