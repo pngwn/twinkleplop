@@ -45,6 +45,9 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   const line_hook = inline ? undefined : options.line;
   const token_hook = options.token;
   const line_break = inline ? "<br>" : "</span>\n";
+  const ws_mode = whitespace_mode(options.whitespace);
+  const indent_size = indent_guide_size(options.indent_guides);
+  const ws_active = ws_mode !== 0 || indent_size !== 0;
 
   let out = inline ? "" : open_pre(class_name, options.attributes);
 
@@ -120,13 +123,52 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     }
   }
 
+  // text between tokens is the only place source whitespace can be wrapped.
+  // runs of spaces and tabs are classified against the line they sit on and
+  // everything else falls through to emit_range one chunk at a time.
+  function emit_gap(start: number, end: number) {
+    close_span();
+    let chunk_start = start;
+    let i = start;
+    while (i < end) {
+      const code = input.charCodeAt(i);
+      if (code === 32 || code === 9) {
+        if (i > chunk_start) emit_range(chunk_start, i, null);
+        let r = i + 1;
+        while (r < end) {
+          const c = input.charCodeAt(r);
+          if (c !== 32 && c !== 9) break;
+          r++;
+        }
+        out += whitespace_html(input, i, r, ws_mode, indent_size);
+        i = r;
+        chunk_start = r;
+        continue;
+      }
+      if (code === 10) {
+        if (i > chunk_start) emit_range(chunk_start, i, null);
+        out += line_break;
+        line_no++;
+        begin_line();
+        i++;
+        chunk_start = i;
+        continue;
+      }
+      i++;
+    }
+    if (end > chunk_start) emit_range(chunk_start, end, null);
+  }
+
   let last_end = 0;
   for (let i = 0; i < tokens.length; i += 3) {
     const cls = token_types[tokens[i]];
     const start = tokens[i + 1];
     const end = tokens[i + 2];
 
-    if (start > last_end) emit_range(last_end, start, null);
+    if (start > last_end) {
+      if (ws_active) emit_gap(last_end, start);
+      else emit_range(last_end, start, null);
+    }
     if (token_hook !== undefined) {
       const deco = hook_output(token_hook(cls, start, end), "token");
       if (deco !== null) {
@@ -143,7 +185,10 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     last_end = end;
   }
 
-  if (last_end < input.length) emit_range(last_end, input.length, null);
+  if (last_end < input.length) {
+    if (ws_active) emit_gap(last_end, input.length);
+    else emit_range(last_end, input.length, null);
+  }
 
   close_span();
   if (!inline) out += "</span></code></pre>";
@@ -164,6 +209,94 @@ function first_line_number(line_numbers: RenderOptions["line_numbers"]): number 
     throw new RangeError(`line_numbers.start must be a finite integer, got ${String(start)}`);
   }
   return start;
+}
+
+const WS_LEADING = 1;
+const WS_TRAILING = 2;
+const WS_INNER = 4;
+
+function whitespace_mode(whitespace: RenderOptions["whitespace"]): number {
+  switch (whitespace) {
+    case undefined:
+      return 0;
+    case "all":
+      return WS_LEADING | WS_TRAILING | WS_INNER;
+    case "boundary":
+      return WS_LEADING | WS_TRAILING;
+    case "leading":
+      return WS_LEADING;
+    case "trailing":
+      return WS_TRAILING;
+  }
+  throw new TypeError(
+    `whitespace must be "all", "boundary", "leading" or "trailing", got ${String(whitespace)}`,
+  );
+}
+
+function indent_guide_size(indent_guides: RenderOptions["indent_guides"]): number {
+  if (indent_guides === undefined || indent_guides === false) return 0;
+  if (indent_guides === true) return 2;
+  const size = indent_guides.size;
+  if (size === undefined) return 2;
+  if (typeof size !== "number" || !Number.isInteger(size) || size < 1) {
+    throw new RangeError(`indent_guides.size must be a positive integer, got ${String(size)}`);
+  }
+  return size;
+}
+
+const SPACE_SPAN = '<span class="tok space"> </span>';
+const TAB_SPAN = '<span class="tok tab">\t</span>';
+const INDENT_OPEN = '<span class="indent">';
+
+// input[start..end) is a run of spaces and tabs between tokens. a run that
+// begins at a line start is leading and one that reaches the line end is
+// trailing; a whitespace only line is both and is wrapped once.
+function whitespace_html(
+  input: string,
+  start: number,
+  end: number,
+  ws_mode: number,
+  indent_size: number,
+): string {
+  const leading = start === 0 || input.charCodeAt(start - 1) === 10;
+  let wrap = (ws_mode & WS_INNER) !== 0;
+  if (!wrap) {
+    if (leading && (ws_mode & WS_LEADING) !== 0) wrap = true;
+    else if ((ws_mode & WS_TRAILING) !== 0) {
+      const next = end === input.length ? 10 : input.charCodeAt(end);
+      wrap = next === 10 || next === 13;
+    }
+  }
+  if (!leading || indent_size === 0) return whitespace_run(input, start, end, wrap);
+
+  let html = "";
+  let level_start = start;
+  let pending = 0;
+  for (let i = start; i < end; i++) {
+    if (input.charCodeAt(i) === 9) {
+      if (pending !== 0) {
+        html += whitespace_run(input, level_start, i, wrap);
+        pending = 0;
+      }
+      html += INDENT_OPEN + (wrap ? TAB_SPAN : "\t") + "</span>";
+      level_start = i + 1;
+    } else if (++pending === indent_size) {
+      html += INDENT_OPEN + whitespace_run(input, level_start, i + 1, wrap) + "</span>";
+      pending = 0;
+      level_start = i + 1;
+    }
+  }
+  if (pending !== 0) html += whitespace_run(input, level_start, end, wrap);
+  return html;
+}
+
+function whitespace_run(input: string, start: number, end: number, wrap: boolean): string {
+  if (!wrap) return input.substring(start, end);
+  let html = "";
+  for (let i = start; i < end; i++) {
+    html += input.charCodeAt(i) === 9 ? TAB_SPAN : SPACE_SPAN;
+  }
+  return html;
 }
 
 function open_pre(class_attr: string, attributes: RenderOptions["attributes"]): string {
@@ -337,6 +470,9 @@ function to_html_overlay(
   const line_hook = inline ? undefined : options.line;
   const token_hook = options.token;
   const line_break = inline ? "<br>" : "</span>\n";
+  const ws_mode = whitespace_mode(options.whitespace);
+  const indent_size = indent_guide_size(options.indent_guides);
+  const ws_active = ws_mode !== 0 || indent_size !== 0;
   const { ranges, classifications, skip_ranges, elided_lines } = overlays;
 
   // split overlays by mode once, up front. line-mode overlays bin onto the
@@ -434,6 +570,11 @@ function to_html_overlay(
   // substituted-to-space remains of an elided comment) are dropped from
   // the output entirely. cached because each line is touched many times
   // (once per token plus inter-token gaps).
+  //
+  // when whitespace is being rendered the caller asked to see it, so a
+  // trailing run of source whitespace is kept. a tail that holds a hidden
+  // range is still dropped whole: the whitespace around a marker went with
+  // the marker, as it does without the option.
   const line_emit_end_cache = new Map<number, number>();
   function last_emit_byte_in_line(line: number): number {
     const cached = line_emit_end_cache.get(line);
@@ -442,22 +583,22 @@ function to_html_overlay(
     const line_start = ls[line - 1];
     const line_end = line < ls.length ? ls[line] - 1 : input.length;
     let p = line_end - 1;
+    let tail_has_skip = false;
     while (p >= line_start) {
       const sk = find_skip_containing(p);
       if (sk >= 0) {
         // jump to the byte immediately before the skip range.
+        tail_has_skip = true;
         p = skip_ranges[sk * 2] - 1;
         continue;
       }
       const c = input.charCodeAt(p);
-      if (c !== 32 && c !== 9 && c !== 13) {
-        line_emit_end_cache.set(line, p + 1);
-        return p + 1;
-      }
+      if (c !== 32 && c !== 9 && c !== 13) break;
       p--;
     }
-    line_emit_end_cache.set(line, line_start);
-    return line_start;
+    const emit_end = ws_active && !tail_has_skip ? line_end : p + 1;
+    line_emit_end_cache.set(line, emit_end);
+    return emit_end;
   }
 
   // per-line wrappers, computed lazily as we cross line boundaries. each
@@ -579,6 +720,11 @@ function to_html_overlay(
   // no-overlay path, just inside or outside a wrapper.
   function emit_segment(seg_start: number, seg_end: number, base_cls: string | null) {
     if (seg_start >= seg_end) return;
+    if (base_cls === null && ws_active) {
+      close_span();
+      push_substituted_gap(seg_start, seg_end);
+      return;
+    }
     if (chunk_renders_whitespace(seg_start, seg_end)) {
       close_span();
       push_substituted(out, input, seg_start, seg_end, skip_ranges, skip_idx_after);
@@ -643,6 +789,51 @@ function to_html_overlay(
       pos++;
     }
     return true;
+  }
+
+  // hidden bytes still render as plain spaces; only the stretches between
+  // them are source whitespace and go through the wrapper.
+  function push_substituted_gap(start: number, end: number) {
+    let idx = skip_idx_after(start, end);
+    let chunk_start = start;
+    while (idx < skip_count) {
+      const sstart = skip_ranges[idx * 2];
+      const send = skip_ranges[idx * 2 + 1];
+      if (sstart >= end) break;
+      if (sstart > chunk_start) emit_gap_text(chunk_start, sstart);
+      const sub_end = send < end ? send : end;
+      const space_count = sub_end - (chunk_start > sstart ? chunk_start : sstart);
+      if (space_count > 0) out.push(SPACE_RUN(space_count));
+      chunk_start = sub_end;
+      if (send > end) break;
+      idx++;
+    }
+    if (chunk_start < end) emit_gap_text(chunk_start, end);
+  }
+
+  // segments never hold a newline, so only whitespace runs and escapable
+  // text are told apart here.
+  function emit_gap_text(start: number, end: number) {
+    let chunk_start = start;
+    let i = start;
+    while (i < end) {
+      const code = input.charCodeAt(i);
+      if (code !== 32 && code !== 9) {
+        i++;
+        continue;
+      }
+      if (i > chunk_start) out.push(escape_substring_optimized(input, chunk_start, i));
+      let r = i + 1;
+      while (r < end) {
+        const c = input.charCodeAt(r);
+        if (c !== 32 && c !== 9) break;
+        r++;
+      }
+      out.push(whitespace_html(input, i, r, ws_mode, indent_size));
+      i = r;
+      chunk_start = r;
+    }
+    if (end > chunk_start) out.push(escape_substring_optimized(input, chunk_start, end));
   }
 
   function skip_idx_after(_chunk_start: number, _chunk_end: number): number {

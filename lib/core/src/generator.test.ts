@@ -980,3 +980,300 @@ describe("inline structure and hooks", () => {
     }
   });
 });
+
+describe("whitespace and indent guides", () => {
+  // the toy grammar above tokenizes spaces, so these use one that leaves
+  // whitespace between tokens as bare text the way the real grammars do.
+  const gap_grammar = compile<Grammar>({
+    name: "gaps",
+    states: {
+      root: {
+        rules: [
+          { match: "//", token: "comment", state: "line_comment" },
+          { match: "'", token: "string", state: "string" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+              ["0", "9"],
+            ],
+            token: "identifier",
+          },
+          { match: ";", token: "punctuation" },
+          { match: "<", token: "punctuation" },
+        ],
+      },
+      string: {
+        rules: [
+          { match: "'", token: "string", exit: true },
+          { any: true, token: "string" },
+        ],
+      },
+      line_comment: {
+        rules: [
+          { match: "\n", token: "comment", exit: true },
+          { any: true, token: "comment" },
+        ],
+      },
+    },
+  });
+
+  function render_ws(
+    input: string,
+    options: RenderOptions,
+    plugins: AnnotationPlugin[] = [],
+  ): string {
+    const result = tokenize(input, gap_grammar);
+    if (plugins.length > 0) {
+      const extractor = build_annotation_extractor({ plugins }, result.token_types);
+      const overlays = extractor(input, result);
+      if (overlays !== undefined) result.overlays = overlays;
+    }
+    return to_html(input, result, options);
+  }
+
+  function lines(html: string): string[] {
+    const body = html.replace(/^<pre[^>]*><code>/, "").replace(/<\/code><\/pre>$/, "");
+    return body
+      .split("\n")
+      .map((l) => l.replace(/^<span class="l[^"]*">/, "").replace(/<\/span>$/, ""));
+  }
+
+  const ID = (s: string) => `<span class="tok identifier">${s}</span>`;
+  const SEMI = '<span class="tok punctuation">;</span>';
+  const SP = '<span class="tok space"> </span>';
+  const TAB = '<span class="tok tab">\t</span>';
+  const IND = (s: string) => `<span class="indent">${s}</span>`;
+
+  describe("whitespace", () => {
+    test('"all" wraps every space between tokens and none inside a token', () => {
+      const html = render_ws("return  1;\n'a b'", { whitespace: "all" });
+      expect(lines(html)).toEqual([
+        `${ID("return")}${SP}${SP}${ID("1")}${SEMI}`,
+        `<span class="tok string">&#39;a b&#39;</span>`,
+      ]);
+    });
+
+    test('"trailing" wraps only the whitespace after the last token', () => {
+      const html = render_ws("  return  1;  ", { whitespace: "trailing" });
+      expect(lines(html)).toEqual([`  ${ID("return")}  ${ID("1")}${SEMI}${SP}${SP}`]);
+    });
+
+    test('"leading" wraps only the whitespace before the first token', () => {
+      const html = render_ws("  return  1;  ", { whitespace: "leading" });
+      expect(lines(html)).toEqual([`${SP}${SP}${ID("return")}  ${ID("1")}${SEMI}  `]);
+    });
+
+    test('"boundary" wraps both ends and leaves the middle bare', () => {
+      const html = render_ws("\treturn  1;  ", { whitespace: "boundary" });
+      expect(lines(html)).toEqual([`${TAB}${ID("return")}  ${ID("1")}${SEMI}${SP}${SP}`]);
+    });
+
+    test("a whitespace only line is wrapped once", () => {
+      for (const whitespace of ["leading", "trailing", "boundary", "all"] as const) {
+        expect(lines(render_ws("a\n  \nb", { whitespace }))).toEqual([ID("a"), SP + SP, ID("b")]);
+      }
+    });
+
+    test("an empty line renders nothing extra", () => {
+      for (const whitespace of ["leading", "trailing", "boundary", "all"] as const) {
+        expect(lines(render_ws("a\n\nb\n", { whitespace, indent_guides: true }))).toEqual([
+          ID("a"),
+          "",
+          ID("b"),
+          "",
+        ]);
+      }
+    });
+
+    test("a gap spanning several lines classifies each run by its own line", () => {
+      const html = render_ws("a  \n  \n  b", { whitespace: "boundary" });
+      expect(lines(html)).toEqual([`${ID("a")}${SP}${SP}`, SP + SP, `${SP}${SP}${ID("b")}`]);
+    });
+
+    test("carriage returns are left bare and still end the line", () => {
+      const html = render_ws("a  \r\nb", { whitespace: "trailing" });
+      expect(lines(html)).toEqual([`${ID("a")}${SP}${SP}\r`, ID("b")]);
+    });
+
+    test("bare text between tokens is escaped as before", () => {
+      const html = render_ws("a & b", { whitespace: "all" });
+      expect(lines(html)).toEqual([`${ID("a")}${SP}&amp;${SP}${ID("b")}`]);
+    });
+
+    test("an unknown mode throws a TypeError", () => {
+      expect(() => render_ws("a", { whitespace: "both" as unknown as "all" })).toThrow(TypeError);
+    });
+  });
+
+  describe("indent_guides", () => {
+    test("each tab is one level", () => {
+      expect(lines(render_ws("\t\ta", { indent_guides: true }))).toEqual([
+        `${IND("\t")}${IND("\t")}${ID("a")}`,
+      ]);
+    });
+
+    test("size spaces are one level and a remainder stays bare", () => {
+      expect(lines(render_ws("    a", { indent_guides: { size: 2 } }))).toEqual([
+        `${IND("  ")}${IND("  ")}${ID("a")}`,
+      ]);
+      expect(lines(render_ws("   a", { indent_guides: true }))).toEqual([
+        `${IND("  ")} ${ID("a")}`,
+      ]);
+      expect(lines(render_ws("    a", { indent_guides: { size: 4 } }))).toEqual([
+        `${IND("    ")}${ID("a")}`,
+      ]);
+      expect(lines(render_ws("    a", { indent_guides: {} }))).toEqual([
+        `${IND("  ")}${IND("  ")}${ID("a")}`,
+      ]);
+    });
+
+    test("mixed tabs and spaces count levels in order of appearance", () => {
+      expect(lines(render_ws("\t  a", { indent_guides: true }))).toEqual([
+        `${IND("\t")}${IND("  ")}${ID("a")}`,
+      ]);
+      expect(lines(render_ws(" \t a", { indent_guides: true }))).toEqual([
+        ` ${IND("\t")} ${ID("a")}`,
+      ]);
+    });
+
+    test("a whitespace only line is treated as indentation", () => {
+      expect(lines(render_ws("a\n   \nb", { indent_guides: true }))).toEqual([
+        ID("a"),
+        `${IND("  ")} `,
+        ID("b"),
+      ]);
+    });
+
+    test("whitespace after the first token is not indentation", () => {
+      expect(lines(render_ws("a    b  ", { indent_guides: true }))).toEqual([
+        `${ID("a")}    ${ID("b")}  `,
+      ]);
+    });
+
+    test("the line number comes before the indent", () => {
+      expect(render_ws("  a", { indent_guides: true, line_numbers: true })).toContain(
+        `<span class="ln">1</span>${IND("  ")}${ID("a")}`,
+      );
+    });
+
+    test("false is the same as absent", () => {
+      expect(render_ws("  a", { indent_guides: false })).toBe(render_ws("  a", {}));
+    });
+
+    test("a size that is not a positive integer throws a RangeError", () => {
+      for (const size of [0, -1, 1.5, NaN, Infinity, "2"]) {
+        expect(() => render_ws("a", { indent_guides: { size: size as number } })).toThrow(
+          RangeError,
+        );
+      }
+    });
+  });
+
+  test("with both options the indent span contains the whitespace spans", () => {
+    const html = render_ws("\tif\n\t\treturn  1;  \n", {
+      whitespace: "trailing",
+      indent_guides: true,
+    });
+    expect(lines(html)).toEqual([
+      `${IND("\t")}${ID("if")}`,
+      `${IND("\t")}${IND("\t")}${ID("return")}  ${ID("1")}${SEMI}${SP}${SP}`,
+      "",
+    ]);
+    expect(lines(render_ws("\t  a", { whitespace: "all", indent_guides: true }))).toEqual([
+      `${IND(TAB)}${IND(SP + SP)}${ID("a")}`,
+    ]);
+    expect(lines(render_ws("   a", { whitespace: "leading", indent_guides: true }))).toEqual([
+      `${IND(SP + SP)}${SP}${ID("a")}`,
+    ]);
+  });
+
+  test("inline structure wraps whitespace the same way", () => {
+    expect(
+      render_ws("\ta  b\n  c  ", {
+        whitespace: "boundary",
+        indent_guides: true,
+        structure: "inline",
+      }),
+    ).toBe(`${IND(TAB)}${ID("a")}  ${ID("b")}<br>${IND(SP + SP)}${ID("c")}${SP}${SP}`);
+  });
+
+  describe("with overlays", () => {
+    const options: RenderOptions = { whitespace: "all", indent_guides: true };
+
+    test("spaces substituted for a hidden range are not wrapped", () => {
+      const html = render_ws("a // [!hl] b\n  b", { ...options }, [hl]);
+      expect(html).toContain('<span class="l highlight">');
+      expect(lines(html)).toEqual([
+        `${ID("a")}${SP}<span class="tok comment">//       b</span>`,
+        `${IND(SP + SP)}${ID("b")}`,
+      ]);
+      const hidden = render_ws("a /* x */ b", {
+        ...options,
+        overlays: [{ start: 2, end: 9, hide: true }],
+      });
+      expect(lines(hidden)).toEqual([`${ID("a")}${SP}       ${SP}${ID("b")}`]);
+    });
+
+    test("whitespace stays outside a token mode wrapper and is wrapped inside it", () => {
+      const html = render_ws("  foo bar  // [!hl foo...bar]", options, [hl]);
+      expect(lines(html)).toEqual([
+        `${IND(SP + SP)}<span class="tok highlight">${ID("foo")}${SP}${ID("bar")}</span>`,
+      ]);
+    });
+
+    test("a line mode class stays on the line element", () => {
+      const html = render_ws("  a  \nb", { ...options, overlays: [{ line: 1, class: "mark" }] });
+      expect(html).toContain(`<span class="l mark">${IND(SP + SP)}${ID("a")}${SP}${SP}</span>`);
+    });
+
+    test("trailing source whitespace is kept when it is being rendered", () => {
+      const overlays = [{ line: 2, class: "mark" }];
+      expect(lines(render_ws("a  \nb", { overlays }))).toEqual([ID("a"), ID("b")]);
+      expect(lines(render_ws("a  \nb", { overlays, whitespace: "leading" }))).toEqual([
+        `${ID("a")}  `,
+        ID("b"),
+      ]);
+      expect(lines(render_ws("a  \nb", { overlays, whitespace: "trailing" }))).toEqual([
+        `${ID("a")}${SP}${SP}`,
+        ID("b"),
+      ]);
+    });
+
+    test("whitespace around a hidden marker goes with the marker", () => {
+      const html = render_ws("a  // [!hl]  \nb", options, [hl]);
+      expect(lines(html)).toEqual([ID("a"), ID("b")]);
+    });
+
+    test("both structures agree", () => {
+      const input = "\ta  b  // [!hl a...b]\n  // [!hl]\n  c  ";
+      const classic = lines(render_ws(input, options, [hl]));
+      const inline = render_ws(input, { ...options, structure: "inline" }, [hl]);
+      expect(inline).toBe(classic.join("<br>"));
+    });
+  });
+
+  test("hooks compose with the whitespace spans", () => {
+    const html = render_ws("  a b", {
+      whitespace: "all",
+      indent_guides: true,
+      line: (n) => ({ attrs: { "data-line": n } }),
+      token: (type) => (type === "identifier" ? { class: "x" } : undefined),
+    });
+    expect(html).toContain(
+      `<span class="l" data-line="1">${IND(SP + SP)}<span class="tok identifier x">a</span>${SP}<span class="tok identifier x">b</span></span>`,
+    );
+  });
+
+  test("absent options leave the output byte identical", () => {
+    const input = "\ta  b // [!hl a...b]\n  c  \n\n  // [!hl]\nd\n";
+    for (const plugins of [[], [hl]]) {
+      for (const structure of ["classic", "inline"] as const) {
+        const plain = render_ws(input, { structure }, plugins);
+        expect(
+          render_ws(input, { structure, whitespace: undefined, indent_guides: false }, plugins),
+        ).toBe(plain);
+      }
+    }
+  });
+});

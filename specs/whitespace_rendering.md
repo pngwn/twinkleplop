@@ -67,13 +67,21 @@ Output for `\tif (x) {\n\t\treturn  1;  \n` with `whitespace: "trailing", indent
   change which bytes an overlay covers.
 
 ## Acceptance criteria
-- [ ] `whitespace: "all"` on `return  1;` wraps both spaces as `tok space` spans; the string `'a b'` keeps its space inside the string token.
-- [ ] `whitespace: "trailing"` wraps only the two trailing spaces of `return  1;  `.
-- [ ] `indent_guides: true` on a line indented with two tabs emits two `span.indent`; with four spaces and `{ size: 2 }`, two; with three spaces, one plus a bare space.
-- [ ] With both options, the indent span contains the tab span.
-- [ ] Inline structure output wraps whitespace the same way.
-- [ ] A hidden marker's substituted spaces are not wrapped.
-- [ ] Calls without either option are byte-identical and within the perf harness noise floor.
+Implemented in `lib/core/src/generator.ts` on both renderer paths. Only
+text between tokens is inspected, so a call without either option takes the
+same code as before; the no-option path is byte-identical against a build
+of `main` on every parity check and the `html` mode A/B (54 workloads, two
+passes) moved nothing beyond the noise floor. On the overlay path, source
+trailing whitespace is kept when it is being rendered, except on a line
+whose tail holds a hidden marker, where it goes with the marker as before.
+
+- [x] `whitespace: "all"` on `return  1;` wraps both spaces as `tok space` spans; the string `'a b'` keeps its space inside the string token.
+- [x] `whitespace: "trailing"` wraps only the two trailing spaces of `return  1;  `.
+- [x] `indent_guides: true` on a line indented with two tabs emits two `span.indent`; with four spaces and `{ size: 2 }`, two; with three spaces, one plus a bare space.
+- [x] With both options, the indent span contains the tab span.
+- [x] Inline structure output wraps whitespace the same way.
+- [x] A hidden marker's substituted spaces are not wrapped.
+- [x] Calls without either option are byte-identical and within the perf harness noise floor.
 
 ## Dependencies
 - Depends on: [core](./core.md), [inline_and_hooks](./inline_and_hooks.md) (must hold in both structures)

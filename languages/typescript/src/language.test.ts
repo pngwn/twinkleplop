@@ -160,3 +160,35 @@ describe("typescript language() — inline structure and hooks", () => {
     expect(() => language()(code, { line: () => ({ attrs: { style: "x" } }) })).toThrow(TypeError);
   });
 });
+
+describe("typescript language() — whitespace and indent guides", () => {
+  const code = "\tif (x) {\n\t\treturn  1;  \n";
+
+  it("wraps trailing whitespace and splits indentation into levels", () => {
+    const html = language()(code, { whitespace: "trailing", indent_guides: true });
+    expect(html).toBe(
+      '<pre class="twinkleplop"><code><span class="l"><span class="indent">\t</span><span class="tok keyword">if</span> <span class="tok punctuation">(</span><span class="tok identifier">x</span><span class="tok punctuation">)</span> <span class="tok punctuation">{</span></span>\n' +
+        '<span class="l"><span class="indent">\t</span><span class="indent">\t</span><span class="tok keyword">return</span>  <span class="tok number">1</span><span class="tok punctuation">;</span><span class="tok space"> </span><span class="tok space"> </span></span>\n' +
+        '<span class="l"></span></code></pre>',
+    );
+  });
+
+  it("leaves whitespace inside a string alone", () => {
+    const html = language()("const s = 'a b';", { whitespace: "all" });
+    expect(html).toContain('<span class="tok string">&#39;a b&#39;</span>');
+    expect(html.match(/<span class="tok space"> <\/span>/g)).toHaveLength(3);
+  });
+
+  it("nests the tab span inside the indent span", () => {
+    const html = language()(code, { whitespace: "all", indent_guides: true, structure: "inline" });
+    expect(html).toMatch(
+      /^<span class="indent"><span class="tok tab">\t<\/span><\/span><span class="tok keyword">if<\/span><span class="tok space"> <\/span>/,
+    );
+  });
+
+  it("is byte identical without either option", () => {
+    const plain = language()(code);
+    expect(language()(code, { whitespace: undefined, indent_guides: false })).toBe(plain);
+    expect(plain).not.toContain("indent");
+  });
+});
