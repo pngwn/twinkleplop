@@ -19,9 +19,8 @@
 //   <a>...<b>       anchor range, both inclusive (token-mode)
 //   <a>.. / <a>...  half-open start; pairs with a closing marker
 //   ..<b> / ...<b>  half-open end; pairs with an opening marker
-//   =<a>            set form: every occurrence of the anchor (token-mode)
-//   =<a> +N / :N / :N..M / :N...M / :*
-//                   set form scoped to those lines instead of the marker's
+//   =<a>            every occurrence of the anchor (token-mode)
+//   =<a> <scope>    the same over `+N` / `:N` / `:N..M` / `:N...M` / `:*`
 // anchors: bare word [A-Za-z0-9_]+, "quoted literal", * wildcard.
 //
 // `parse: "raw"` plugins get the argument text as a string and resolve
@@ -807,9 +806,8 @@ function parse_set(input: string, start: number, end: number): ParsedArgs | null
   const a = parse_anchor(input, pos, end);
   if (a === null) return null;
   pos = skip_ws(input, a.next, end);
-  // wildcard set is meaningless: it would expand to a single match covering
-  // the whole source. reject so callers see a clear error rather than a
-  // surprising no-op.
+  // a wildcard set would expand to one match covering the whole scope;
+  // reject it so the author sees an error rather than a surprising no-op.
   if (a.anchor.kind === "wildcard") return null;
   if (pos === end) return { kind: "set", anchor: a.anchor };
   const scope = parse_set_scope(input, pos, end);
@@ -1036,10 +1034,8 @@ function resolve_line_mode(
       end_line = marker.line;
       break;
     case "lineCount":
-      // +N highlights the N lines BELOW the marker, not including the
-      // marker's own line. typical use puts the marker on its own comment
-      // line above the code it describes — that comment line is elided
-      // (marker-only) so including it would shift the visible count by one.
+      // +N is the N lines BELOW the marker: the typical marker sits on its
+      // own comment line, which elides, so counting it would shift by one.
       start_line = marker.line + 1;
       end_line = Math.min(total_lines, marker.line + args.count);
       if (start_line > total_lines) {
@@ -1229,8 +1225,8 @@ function resolve_anchor(
   return null;
 }
 
-// find every occurrence of `anchor` in `[from_offset, to_offset)` outside
-// comment regions. used for set form, scoped to the marker's own line.
+// every occurrence of `anchor` in `[from_offset, to_offset)` outside comment
+// regions; for the set form those bounds come from its scope.
 function resolve_anchor_all(
   input: string,
   anchor: Anchor,
@@ -1244,8 +1240,7 @@ function resolve_anchor_all(
     const m = resolve_anchor(input, anchor, pos, to_offset, comment_ranges);
     if (m === null) break;
     out.push(m);
-    // advance at least one byte so zero-length anchors (rejected upstream
-    // via length === 0) can never spin forever.
+    // advance at least one byte so a zero-length anchor can't spin forever.
     pos = Math.max(m.end, m.start + 1);
   }
   return out;

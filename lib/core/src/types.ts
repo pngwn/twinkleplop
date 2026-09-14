@@ -605,8 +605,8 @@ export type ParsedArgs =
       inclusive_start: boolean;
       inclusive_end: boolean;
     }
-  // `=foo` matches on the marker's own line; an optional scope (`=foo +2`,
-  // `=foo :4...6`, `=foo :*`) widens the search to those lines instead.
+  // `=foo` matches on the marker's own line; a scope (`=foo +2`, `=foo :*`)
+  // searches those lines instead.
   | { kind: "set"; anchor: Anchor; scope?: SetScope }
   // `***` shorthand: every byte on the marker's own line, token-mode. the
   // cleaner equivalent of `*..*` (which the parser rejects as malformed
