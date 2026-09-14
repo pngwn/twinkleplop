@@ -671,6 +671,12 @@ export interface RenderOptions {
   line?: (n: number, source_line: number) => HookResult | void;
   // a decorated token renders as its own span and is never merged.
   token?: (type: string, start: number, end: number) => HookResult | void;
+  // wraps spaces and tabs between tokens, one span per character. whitespace
+  // inside a token stays part of it.
+  whitespace?: "all" | "boundary" | "leading" | "trailing";
+  // splits leading indentation into <span class="indent"> levels: a tab is
+  // one level, `size` spaces are one level (default 2).
+  indent_guides?: boolean | { size?: number };
 }
 
 // class goes after the element's own classes; attrs follow the `attributes`

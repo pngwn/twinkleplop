@@ -158,6 +158,31 @@ Hook attributes follow the rules of the `attributes` render option: values
 are escaped, `true` is a bare name, `false` is omitted, and `class` and
 `style` are rejected.
 
+### Whitespace and indent guides
+
+Whitespace between tokens is bare text, so a theme cannot mark it. The
+`whitespace` render option wraps each space and tab between tokens in its
+own `span.tok.space` or `span.tok.tab`: `"leading"` before the first token
+of a line, `"trailing"` after the last, `"boundary"` both, `"all"` every
+run. Whitespace inside a token (a string, a comment) stays part of it, and
+the spaces that stand in for a hidden marker are never wrapped.
+
+`indent_guides` splits leading indentation into `span.indent` levels, one
+per tab or per `size` spaces (default 2), with any shorter remainder left
+bare. When both options apply, the indent span is the outer element:
+
+```ts
+ts(code, { whitespace: "trailing", indent_guides: { size: 4 } });
+```
+
+```css
+.tok.space::before { content: "\b7"; position: absolute; }
+.indent { box-shadow: inset 1px 0 var(--guide); }
+```
+
+Both work in the inline structure. Trailing whitespace on a line that ends
+in a hidden marker goes with the marker, as it does without the option.
+
 ## Usage
 
 Pass plugins through the language factory's `annotation` option:
