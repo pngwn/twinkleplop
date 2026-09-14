@@ -123,3 +123,40 @@ describe("typescript language() — overlays option", () => {
     expect(() => ts(code, { overlays: [{ line: 9, class: "x" }] })).toThrow(RangeError);
   });
 });
+
+describe("typescript language() — inline structure and hooks", () => {
+  const code = "const x = 1;\nlet y = 2;";
+
+  it("renders inline markup with <br> between lines", () => {
+    const html = language()(code, { structure: "inline" });
+    expect(html).toMatch(/^<span class="tok keyword">const<\/span> /);
+    expect(html).not.toContain("<pre");
+    expect(html).not.toContain("<code");
+    expect(html).not.toContain('class="l');
+    expect(html.match(/<br>/g)).toHaveLength(1);
+    expect(html).toContain(
+      '<span class="tok punctuation">;</span><br><span class="tok keyword">let</span>',
+    );
+  });
+
+  it("puts line hook output on the line element", () => {
+    const html = language()(code, { line: (n) => ({ attrs: { "data-line": String(n) } }) });
+    expect(html).toContain('<span class="l" data-line="1"><span class="tok keyword">const</span>');
+    expect(html).toContain('<span class="l" data-line="2"><span class="tok keyword">let</span>');
+  });
+
+  it("puts token hook output on the token span", () => {
+    const html = language()(code, {
+      token: (type, start, end) =>
+        type === "keyword" ? { attrs: { "data-range": `${start}-${end}` } } : undefined,
+    });
+    expect(html).toContain('<span class="tok keyword" data-range="0-5">const</span>');
+    expect(html).toContain('<span class="tok keyword" data-range="13-16">let</span>');
+    expect(html.replace(/ data-range="\d+-\d+"/g, "")).toBe(language()(code));
+  });
+
+  it("rejects reserved hook attributes", () => {
+    expect(() => language()(code, { token: () => ({ attrs: { class: "x" } }) })).toThrow(TypeError);
+    expect(() => language()(code, { line: () => ({ attrs: { style: "x" } }) })).toThrow(TypeError);
+  });
+});
