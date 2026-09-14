@@ -87,13 +87,18 @@ interface RenderOptions {
   alone.
 
 ## Acceptance criteria
-- [ ] `structure: "inline"` on a two-line snippet yields the documented string with exactly one `<br>` and no `<pre>`, `<code>` or `l` classes.
-- [ ] Inline mode with a `[!hl foo..bar]` marker still wraps the range; with `[!hl]` the line class is dropped silently.
-- [ ] The `line` hook is called with `(1, 1)`, `(2, 3)` for a snippet whose second source line is a marker-only comment.
-- [ ] The `token` hook decorating every `function` token emits `data-range` on those spans and leaves all other spans byte-identical to a call without hooks.
-- [ ] Two adjacent `punctuation` tokens, hook decorating the second only, render as two spans.
-- [ ] `token: () => ({ attrs: { class: "x" } })` throws `TypeError`.
-- [ ] No-hook, classic-structure calls are byte-identical and within the perf noise floor.
+Implemented in `lib/core/src/generator.ts` on both renderer paths; the
+no-hook, classic-structure path is byte-identical against the frozen
+baseline on every parity check and the `html` mode A/B (37 workloads, two
+passes) moved nothing beyond the noise floor.
+
+- [x] `structure: "inline"` on a two-line snippet yields the documented string with exactly one `<br>` and no `<pre>`, `<code>` or `l` classes.
+- [x] Inline mode with a `[!hl foo..bar]` marker still wraps the range; with `[!hl]` the line class is dropped silently.
+- [x] The `line` hook is called with `(1, 1)`, `(2, 3)` for a snippet whose second source line is a marker-only comment.
+- [x] The `token` hook decorating every `function` token emits `data-range` on those spans and leaves all other spans byte-identical to a call without hooks.
+- [x] Two adjacent `punctuation` tokens, hook decorating the second only, render as two spans.
+- [x] `token: () => ({ attrs: { class: "x" } })` throws `TypeError`.
+- [x] No-hook, classic-structure calls are byte-identical and within the perf noise floor.
 
 ## Dependencies
 - Depends on: [core](./core.md), [render_options](./render_options.md) (attribute rules)

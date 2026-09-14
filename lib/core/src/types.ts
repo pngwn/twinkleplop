@@ -663,6 +663,21 @@ export interface RenderOptions {
   has_classes?: boolean;
   // merged with any marker overlays already on the tokenize result.
   overlays?: OverlayItem[];
+  // "inline" emits no block or line elements and <br> between lines. the
+  // block and line level options are ignored.
+  structure?: "classic" | "inline";
+  // n is the visible index regardless of a line_numbers start, source_line
+  // the 1-based input line. not called in inline mode.
+  line?: (n: number, source_line: number) => HookResult | void;
+  // a decorated token renders as its own span and is never merged.
+  token?: (type: string, start: number, end: number) => HookResult | void;
+}
+
+// class goes after the element's own classes; attrs follow the `attributes`
+// rules.
+export interface HookResult {
+  class?: string;
+  attrs?: Record<string, string | number | boolean>;
 }
 
 // offsets are utf-16 code units, the same units as token positions. lines

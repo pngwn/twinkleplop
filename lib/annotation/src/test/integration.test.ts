@@ -108,3 +108,44 @@ describe("markers combined with the overlays render option", () => {
     expect(html).toContain('<span class="l highlight"><span class="tok identifier">bar</span>');
   });
 });
+
+describe("inline structure and hooks with markers", () => {
+  test("the line hook sees visible and source line numbers", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [hl] } });
+    const input = "foo\n// [!hl :3]\nbar\n";
+    const calls: [number, number][] = [];
+    const html = to_html(input, fn(input), {
+      line: (n, source_line) => {
+        calls.push([n, source_line]);
+        return { attrs: { "data-line": source_line } };
+      },
+    });
+    expect(calls).toEqual([
+      [1, 1],
+      [2, 3],
+      [3, 4],
+    ]);
+    expect(html).toContain('<span class="l highlight" data-line="3">');
+  });
+
+  test("inline keeps token mode markers and drops line mode ones", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [hl, em] } });
+    const input = "foo bar baz // [!hl foo...bar]\nqux // [!em]\n";
+    const html = to_html(input, fn(input), { structure: "inline" });
+    expect(html).toBe(
+      '<span class="tok highlight"><span class="tok identifier">foo</span> <span class="tok identifier">bar</span></span> <span class="tok identifier">baz</span><br><span class="tok identifier">qux</span><br>',
+    );
+  });
+
+  test("token hook output lands inside an overlay wrapper", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [hl] } });
+    const input = "foo bar // [!hl foo...bar]";
+    const html = to_html(input, fn(input), {
+      token: (type, start, end) =>
+        type === "identifier" ? { attrs: { "data-range": `${start}-${end}` } } : undefined,
+    });
+    expect(html).toContain(
+      '<span class="tok highlight"><span class="tok identifier" data-range="0-3">foo</span> <span class="tok identifier" data-range="4-7">bar</span></span>',
+    );
+  });
+});

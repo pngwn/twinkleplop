@@ -1,4 +1,4 @@
-import { OverlayResult, RenderOptions, TokenizeResult } from "./types";
+import { HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
 import { overlays as build_overlays } from "./overlays";
 
 const ESCAPE_TABLE = new Array(128);
@@ -41,14 +41,33 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   const { tokens, token_types } = token_result;
   const { class_name = "twinkleplop" } = options;
   const line_numbers = !!options.line_numbers;
+  const inline = options.structure === "inline";
+  const line_hook = inline ? undefined : options.line;
+  const token_hook = options.token;
+  const line_break = inline ? "<br>" : "</span>\n";
 
-  let out = open_pre(class_name, options.attributes);
+  let out = inline ? "" : open_pre(class_name, options.attributes);
 
   // seeded with the start value so the per-line path pays nothing for it.
-  let line_no = first_line_number(options.line_numbers);
+  const first_line = inline ? 1 : first_line_number(options.line_numbers);
+  let line_no = first_line;
   let open_class: string | null = null;
+  // kept whole so a line break inside a decorated token reopens the same tag.
+  let open_tag: string | null = null;
 
-  out += open_line(line_no, line_numbers);
+  begin_line();
+
+  function begin_line() {
+    if (inline) return;
+    if (line_hook === undefined) {
+      out += open_line(line_no, line_numbers);
+      return;
+    }
+    const n = line_no - first_line + 1;
+    const deco = hook_output(line_hook(n, n), "line");
+    if (deco === null) out += open_line(line_no, line_numbers);
+    else out += open_line_with_extra(line_no, line_numbers, "l" + deco.cls, deco.attrs);
+  }
 
   function close_span() {
     if (open_class !== null) {
@@ -61,7 +80,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     if (cls === open_class) return;
     close_span();
     if (cls !== null) {
-      out += `<span class="tok ${cls}">`;
+      out += open_tag !== null ? open_tag : `<span class="tok ${cls}">`;
       open_class = cls;
     }
   }
@@ -90,9 +109,9 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
         out += input.substring(chunk_start, i);
       }
       close_span();
-      out += "</span>\n";
+      out += line_break;
       line_no++;
-      out += open_line(line_no, line_numbers);
+      begin_line();
       chunk_start = i + 1;
     }
     if (end > chunk_start) {
@@ -108,6 +127,18 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     const end = tokens[i + 2];
 
     if (start > last_end) emit_range(last_end, start, null);
+    if (token_hook !== undefined) {
+      const deco = hook_output(token_hook(cls, start, end), "token");
+      if (deco !== null) {
+        close_span();
+        open_tag = token_tag(cls, deco);
+        emit_range(start, end, cls);
+        close_span();
+        open_tag = null;
+        last_end = end;
+        continue;
+      }
+    }
     emit_range(start, end, cls);
     last_end = end;
   }
@@ -115,8 +146,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   if (last_end < input.length) emit_range(last_end, input.length, null);
 
   close_span();
-  out += "</span>";
-  out += "</code></pre>";
+  if (!inline) out += "</span></code></pre>";
 
   return out;
 }
@@ -149,11 +179,14 @@ function join_classes(class_name: string, extra: string): string {
 
 // `class` belongs to class_name and `style` to themes, so accepting either
 // here would let one call silently override the other mechanism.
-function render_attributes(attributes: Record<string, string | number | boolean>): string {
+function render_attributes(
+  attributes: Record<string, string | number | boolean>,
+  owner = "attributes",
+): string {
   let out = "";
   for (const name of Object.keys(attributes)) {
     if (name === "class" || name === "style") {
-      throw new TypeError(`attributes.${name} is reserved`);
+      throw new TypeError(`${owner}.${name} is reserved`);
     }
     if (!is_attribute_name(name)) {
       throw new TypeError(`"${name}" is not a valid attribute name`);
@@ -167,7 +200,7 @@ function render_attributes(attributes: Record<string, string | number | boolean>
     } else if (typeof value === "number") {
       out += ` ${name}="${value}"`;
     } else {
-      throw new TypeError(`attributes.${name} must be a string, number or boolean`);
+      throw new TypeError(`${owner}.${name} must be a string, number or boolean`);
     }
   }
   return out;
@@ -189,6 +222,32 @@ function is_attribute_name(name: string): boolean {
     return false;
   }
   return true;
+}
+
+interface HookDecoration {
+  cls: string;
+  attrs: string;
+}
+
+// the class is escaped rather than validated so a hook can never break out
+// of the attribute.
+function hook_output(value: unknown, hook: string): HookDecoration | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "object") {
+    throw new TypeError(`the ${hook} hook must return an object or nothing, got ${typeof value}`);
+  }
+  const { class: cls, attrs } = value as HookResult;
+  let cls_out = "";
+  if (cls !== undefined && cls !== null) {
+    if (typeof cls !== "string") throw new TypeError(`${hook} hook class must be a string`);
+    if (cls.length !== 0) cls_out = " " + escape_html(cls);
+  }
+  const attrs_out = attrs === undefined ? "" : render_attributes(attrs, `${hook} hook attrs`);
+  return { cls: cls_out, attrs: attrs_out };
+}
+
+function token_tag(cls: string, deco: HookDecoration): string {
+  return `<span class="tok ${cls}${deco.cls}"${deco.attrs}>`;
 }
 
 // only the first token of a classification is prefixed, as shiki does for
@@ -274,6 +333,10 @@ function to_html_overlay(
   const { tokens, token_types } = token_result;
   const { class_name = "twinkleplop" } = options;
   const line_numbers = !!options.line_numbers;
+  const inline = options.structure === "inline";
+  const line_hook = inline ? undefined : options.line;
+  const token_hook = options.token;
+  const line_break = inline ? "<br>" : "</span>\n";
   const { ranges, classifications, skip_ranges, elided_lines } = overlays;
 
   // split overlays by mode once, up front. line-mode overlays bin onto the
@@ -425,13 +488,18 @@ function to_html_overlay(
   }
 
   const out: string[] = [];
-  const has_classes = options.has_classes === false ? "" : has_class_list(ranges, classifications);
-  out.push(open_pre(join_classes(class_name, has_classes), options.attributes));
+  if (!inline) {
+    const has_classes =
+      options.has_classes === false ? "" : has_class_list(ranges, classifications);
+    out.push(open_pre(join_classes(class_name, has_classes), options.attributes));
+  }
 
   let line_no = 1;
-  let visible_line_no = first_line_number(options.line_numbers);
+  const first_line = inline ? 1 : first_line_number(options.line_numbers);
+  let visible_line_no = first_line;
   let line_open = false;
   let open_class: string | null = null;
+  let open_tag: string | null = null;
 
   // wrapper state for the current line. reset on every newline; the
   // wrapper class string lives on `<span class="tok ${cls}">` so existing
@@ -450,14 +518,22 @@ function to_html_overlay(
   function maybe_open_line() {
     if (line_open) return;
     if (line_no <= elided_lines.length && elided_lines[line_no - 1] === 1) return;
-    out.push(
-      open_line_with_extra(
-        visible_line_no,
-        line_numbers,
-        line_class_map.get(line_no),
-        classifications,
-      ),
-    );
+    if (!inline) {
+      let cls = "l";
+      const extra = line_class_map.get(line_no);
+      if (extra !== undefined) {
+        for (let i = 0; i < extra.length; i++) cls += " " + classifications[extra[i]];
+      }
+      let attrs = "";
+      if (line_hook !== undefined) {
+        const deco = hook_output(line_hook(visible_line_no - first_line + 1, line_no), "line");
+        if (deco !== null) {
+          cls += deco.cls;
+          attrs = deco.attrs;
+        }
+      }
+      out.push(open_line_with_extra(visible_line_no, line_numbers, cls, attrs));
+    }
     visible_line_no++;
     line_open = true;
     reset_line_wrappers();
@@ -475,7 +551,7 @@ function to_html_overlay(
     if (cls === open_class) return;
     close_span();
     if (cls !== null) {
-      out.push(`<span class="tok ${cls}">`);
+      out.push(open_tag !== null ? open_tag : `<span class="tok ${cls}">`);
       open_class = cls;
     }
   }
@@ -491,7 +567,7 @@ function to_html_overlay(
   function close_line_at_newline() {
     close_wrapper();
     if (line_open) {
-      out.push("</span>\n");
+      out.push(line_break);
       line_open = false;
     }
     line_no++;
@@ -608,14 +684,28 @@ function to_html_overlay(
     const start = tokens[i + 1];
     const end = tokens[i + 2];
     if (start > last_end) emit_range_overlay(last_end, start, null);
+    if (token_hook !== undefined) {
+      const deco = hook_output(token_hook(cls, start, end), "token");
+      if (deco !== null) {
+        close_span();
+        open_tag = token_tag(cls, deco);
+        emit_range_overlay(start, end, cls);
+        close_span();
+        open_tag = null;
+        last_end = end;
+        continue;
+      }
+    }
     emit_range_overlay(start, end, cls);
     last_end = end;
   }
   if (last_end < input.length) emit_range_overlay(last_end, input.length, null);
 
   close_wrapper();
-  if (line_open) out.push("</span>");
-  out.push("</code></pre>");
+  if (!inline) {
+    if (line_open) out.push("</span>");
+    out.push("</code></pre>");
+  }
   return out.join("");
 }
 
@@ -756,18 +846,9 @@ function line_of_offset(input: string, byte_offset: number): number {
   return line;
 }
 
-function open_line_with_extra(
-  n: number,
-  line_numbers: boolean,
-  extra: number[] | undefined,
-  classifications: string[],
-): string {
-  let cls = "l";
-  if (extra !== undefined) {
-    for (let i = 0; i < extra.length; i++) cls += " " + classifications[extra[i]];
-  }
-  if (line_numbers) return `<span class="${cls}"><span class="ln">${n}</span>`;
-  return `<span class="${cls}">`;
+function open_line_with_extra(n: number, line_numbers: boolean, cls: string, attrs: string) {
+  if (line_numbers) return `<span class="${cls}"${attrs}><span class="ln">${n}</span>`;
+  return `<span class="${cls}"${attrs}>`;
 }
 
 export function escape_html(text: string) {

@@ -129,6 +129,35 @@ result.overlays = overlays(code, items, result.overlays);
 const html = to_html(code, result);
 ```
 
+### Inline structure and hooks
+
+`structure: "inline"` renders the tokens with no `<pre>`, `<code>` or line
+elements, with `<br>` between lines, for code inside prose. Token-mode
+markers and hidden ranges apply exactly as in the block form. Line-mode
+markers, `line_numbers`, `class_name`, `attributes` and `has_classes` have
+nothing to attach to and are ignored. A line that disappears because it held
+only markers produces no `<br>`, so the visible line count matches.
+
+The `line` and `token` render hooks put a class or attributes on one line or
+token. `line(n, source_line)` receives the visible index and the source
+line, so it can tell that visible line 2 is source line 3 when line 2 held
+only a marker; its class lands after the marker classes on `span.l`. A
+token the `token` hook decorates is rendered as its own span, inside any
+overlay wrapper it sits in, and is never merged with a neighbour of the
+same type:
+
+```ts
+ts(code, {
+  line: (n, source_line) => ({ attrs: { "data-line": String(source_line) } }),
+  token: (type, start, end) =>
+    type === "function" ? { attrs: { "data-range": `${start}-${end}` } } : undefined,
+});
+```
+
+Hook attributes follow the rules of the `attributes` render option: values
+are escaped, `true` is a bare name, `false` is omitted, and `class` and
+`style` are rejected.
+
 ## Usage
 
 Pass plugins through the language factory's `annotation` option:

@@ -9,7 +9,13 @@ import { compile } from "./compiler";
 import { to_html } from "./generator";
 import { build_annotation_extractor } from "./annotation";
 import { tokenize } from "./tokenizer";
-import type { Grammar, AnnotationPlugin, OverlayResult, RenderOptions } from "./types";
+import type {
+  Grammar,
+  AnnotationPlugin,
+  OverlayResult,
+  RenderOptions,
+  TokenizeResult,
+} from "./types";
 
 const grammar = compile<Grammar>({
   name: "toy",
@@ -622,5 +628,355 @@ describe("render options", () => {
     expect(numbers_of(html)).toEqual(["10", "11", "12"]);
     expect(html).toContain('<span class="l diff-del"><span class="ln">10</span>');
     expect(html).toContain('<span class="l diff-add"><span class="ln">11</span>');
+  });
+});
+
+describe("inline structure and hooks", () => {
+  function render_opts(
+    input: string,
+    options: RenderOptions,
+    plugins: AnnotationPlugin[] = [],
+  ): string {
+    const result = tokenize(input, grammar);
+    if (plugins.length > 0) {
+      const extractor = build_annotation_extractor({ plugins }, result.token_types);
+      const overlays = extractor(input, result);
+      if (overlays !== undefined) result.overlays = overlays;
+    }
+    return to_html(input, result, options);
+  }
+
+  // the tokenizer merges same type runs, so adjacent tokens of one type need
+  // a hand built result.
+  function hand_built(types: string[], triples: number[]): TokenizeResult {
+    return { tokens: new Uint32Array(triples), token_types: types };
+  }
+
+  const IDENT = (s: string) => `<span class="tok identifier">${s}</span>`;
+  const SPACE = '<span class="tok punctuation"> </span>';
+
+  describe("structure", () => {
+    test('"inline" emits bare tokens with <br> between lines', () => {
+      expect(render_opts("a b\nc", { structure: "inline" })).toBe(
+        `${IDENT("a")}${SPACE}${IDENT("b")}<br>${IDENT("c")}`,
+      );
+    });
+
+    test("a single line has no <br>", () => {
+      expect(render_opts("a", { structure: "inline" })).toBe(IDENT("a"));
+    });
+
+    test("a trailing newline emits a trailing <br>", () => {
+      expect(render_opts("a\n", { structure: "inline" })).toBe(`${IDENT("a")}<br>`);
+      expect(render_opts("a\n\n", { structure: "inline" })).toBe(`${IDENT("a")}<br><br>`);
+    });
+
+    test('"classic" and absent are the same', () => {
+      for (const plugins of [[], [hl]]) {
+        const input = "a b // [!hl]\nc\n";
+        expect(render_opts(input, { structure: "classic" }, plugins)).toBe(
+          render_opts(input, {}, plugins),
+        );
+      }
+    });
+
+    test("token mode overlays and hidden ranges still apply", () => {
+      const html = render_opts("foo bar baz // [!hl foo...bar]\nb", { structure: "inline" }, [hl]);
+      expect(html).toBe(
+        `<span class="tok highlight">${IDENT("foo")} ${IDENT("bar")}</span> ${IDENT("baz")}<br>${IDENT("b")}`,
+      );
+      expect(html).not.toContain("[!hl");
+    });
+
+    test("line mode overlays are dropped silently", () => {
+      const html = render_opts("a // [!hl]\nb", { structure: "inline" }, [hl]);
+      expect(html).toBe(`${IDENT("a")}<br>${IDENT("b")}`);
+      expect(html).not.toContain("highlight");
+    });
+
+    test("a hidden line produces no <br>", () => {
+      const input = "a\n// [!hl]\nb\n// [!hl]";
+      const inline = render_opts(input, { structure: "inline" }, [hl]);
+      expect(inline).toBe(`${IDENT("a")}<br>${IDENT("b")}<br>`);
+      const classic = render_opts(input, {}, [hl]);
+      expect(inline.match(/<br>/g)?.length).toBe(classic.match(/<\/span>\n/g)?.length);
+    });
+
+    test("the overlays option follows the same rules", () => {
+      const html = render_opts("ab cd\nef", {
+        structure: "inline",
+        overlays: [
+          { start: 0, end: 2, class: "mark" },
+          { line: 2, class: "highlight" },
+          { start: 3, end: 5, hide: true },
+        ],
+      });
+      expect(html).toBe(`<span class="tok mark">${IDENT("ab")}</span><br>${IDENT("ef")}`);
+    });
+
+    test("block and line level options are ignored without error", () => {
+      const base = { structure: "inline" as const };
+      const noisy: RenderOptions = {
+        ...base,
+        line_numbers: { start: "ten" as unknown as number },
+        class_name: "code",
+        attributes: { class: "x", "1bad": true },
+        has_classes: true,
+        line: () => {
+          throw new Error("line hook must not run inline");
+        },
+      };
+      expect(render_opts("a\nb", noisy)).toBe(render_opts("a\nb", base));
+      const marked = "foo bar // [!hl foo...bar]\nb // [!hl]";
+      expect(render_opts(marked, noisy, [hl])).toBe(render_opts(marked, base, [hl]));
+    });
+  });
+
+  describe("line hook", () => {
+    test("receives the visible index and the source line", () => {
+      const calls: [number, number][] = [];
+      render_opts(
+        "a\n// [!hl]\nb",
+        {
+          line: (n, source_line) => {
+            calls.push([n, source_line]);
+          },
+        },
+        [hl],
+      );
+      expect(calls).toEqual([
+        [1, 1],
+        [2, 3],
+      ]);
+    });
+
+    test("the visible index ignores the line_numbers start", () => {
+      const calls: number[] = [];
+      const html = render_opts("a\nb", {
+        line_numbers: { start: 10 },
+        line: (n) => {
+          calls.push(n);
+          return { attrs: { "data-n": n } };
+        },
+      });
+      expect(calls).toEqual([1, 2]);
+      expect(html).toContain('<span class="l" data-n="1"><span class="ln">10</span>');
+      expect(html).toContain('<span class="l" data-n="2"><span class="ln">11</span>');
+    });
+
+    test("class goes after overlay classes and attrs after the class", () => {
+      const html = render_opts(
+        "a // [!hl]\nb\n",
+        { line: (n) => ({ class: "x", attrs: { "data-line": String(n), hidden: true } }) },
+        [hl],
+      );
+      expect(html).toContain('<span class="l highlight x" data-line="1" hidden>');
+      expect(html).toContain('<span class="l x" data-line="2" hidden>');
+    });
+
+    test("works on the no overlay path with line numbers", () => {
+      expect(render_opts("a\nb", { line_numbers: true, line: () => ({ class: "x" }) })).toBe(
+        `<pre class="twinkleplop"><code><span class="l x"><span class="ln">1</span>${IDENT("a")}</span>\n<span class="l x"><span class="ln">2</span>${IDENT("b")}</span></code></pre>`,
+      );
+    });
+
+    test("an empty class, an empty object, nothing and null add nothing", () => {
+      const input = "a\nb // [!hl]\n";
+      for (const plugins of [[], [hl]]) {
+        const plain = render_opts(input, {}, plugins);
+        expect(render_opts(input, { line: () => ({ class: "" }) }, plugins)).toBe(plain);
+        expect(render_opts(input, { line: () => ({}) }, plugins)).toBe(plain);
+        expect(render_opts(input, { line: () => undefined }, plugins)).toBe(plain);
+        expect(render_opts(input, { line: () => null as unknown as undefined }, plugins)).toBe(
+          plain,
+        );
+      }
+    });
+
+    test("the class is escaped", () => {
+      expect(render_opts("a", { line: () => ({ class: 'x"><b' }) })).toContain(
+        '<span class="l x&quot;&gt;&lt;b">',
+      );
+    });
+
+    test("bad return values and reserved attrs throw", () => {
+      for (const plugins of [[], [hl]]) {
+        const input = "a // [!hl]";
+        expect(() =>
+          render_opts(input, { line: () => false as unknown as undefined }, plugins),
+        ).toThrow(TypeError);
+        expect(() =>
+          render_opts(input, { line: () => "x" as unknown as undefined }, plugins),
+        ).toThrow(TypeError);
+        expect(() =>
+          render_opts(input, { line: () => ({ attrs: { class: "x" } }) }, plugins),
+        ).toThrow(/class/);
+        expect(() =>
+          render_opts(input, { line: () => ({ attrs: { style: "x" } }) }, plugins),
+        ).toThrow(TypeError);
+        expect(() =>
+          render_opts(input, { line: () => ({ attrs: { "1x": "x" } }) }, plugins),
+        ).toThrow(TypeError);
+        expect(() =>
+          render_opts(
+            input,
+            {
+              line: () => {
+                throw new Error("boom");
+              },
+            },
+            plugins,
+          ),
+        ).toThrow("boom");
+      }
+    });
+  });
+
+  describe("token hook", () => {
+    test("is called once per token in order with type and range", () => {
+      const input = "a b // c\nd";
+      const result = tokenize(input, grammar);
+      const expected: [string, number, number][] = [];
+      for (let i = 0; i < result.tokens.length; i += 3) {
+        expected.push([
+          result.token_types[result.tokens[i]],
+          result.tokens[i + 1],
+          result.tokens[i + 2],
+        ]);
+      }
+      const calls: [string, number, number][] = [];
+      to_html(input, result, { token: (t, s, e) => void calls.push([t, s, e]) });
+      expect(calls).toEqual(expected);
+    });
+
+    test("decorated tokens carry the attrs and other spans are untouched", () => {
+      const input = "a b\nc d";
+      const plain = render_opts(input, {});
+      const html = render_opts(input, {
+        token: (type, start, end) =>
+          type === "identifier" ? { attrs: { "data-range": `${start}-${end}` } } : undefined,
+      });
+      expect(html).toContain('<span class="tok identifier" data-range="0-1">a</span>');
+      expect(html).toContain('<span class="tok identifier" data-range="6-7">d</span>');
+      expect(html.replace(/ data-range="\d+-\d+"/g, "")).toBe(plain);
+    });
+
+    test("the class goes after the type and the attrs after the class", () => {
+      expect(
+        render_opts("a", {
+          token: () => ({ class: "x y", attrs: { "data-a": 1, "data-b": "z" } }),
+        }),
+      ).toContain('<span class="tok identifier x y" data-a="1" data-b="z">a</span>');
+    });
+
+    test("a decorated token is never merged with its neighbours", () => {
+      const input = "a.,b";
+      const result = hand_built(
+        ["identifier", "punctuation"],
+        [0, 0, 1, 1, 1, 2, 1, 2, 3, 0, 3, 4],
+      );
+      expect(to_html(input, result)).toContain('<span class="tok punctuation">.,</span>');
+      const second = to_html(input, result, {
+        token: (_, start) => (start === 2 ? { attrs: { "data-x": 1 } } : undefined),
+      });
+      expect(second).toContain(
+        '<span class="tok punctuation">.</span><span class="tok punctuation" data-x="1">,</span>',
+      );
+      const first = to_html(input, result, {
+        token: (_, start) => (start === 1 ? {} : undefined),
+      });
+      expect(first).toContain(
+        '<span class="tok punctuation">.</span><span class="tok punctuation">,</span>',
+      );
+      const both = to_html(input, result, {
+        token: (type) => (type === "punctuation" ? {} : undefined),
+      });
+      expect(both).toContain(
+        '<span class="tok punctuation">.</span><span class="tok punctuation">,</span>',
+      );
+    });
+
+    test("inside an overlay wrapper the output goes on the token span", () => {
+      const html = render_opts(
+        "foo bar baz // [!hl foo...bar]",
+        { token: (_, start) => (start === 0 ? { attrs: { "data-t": 1 } } : undefined) },
+        [hl],
+      );
+      expect(html).toContain(
+        `<span class="tok highlight"><span class="tok identifier" data-t="1">foo</span> ${IDENT("bar")}</span>`,
+      );
+    });
+
+    test("a token that spans a line break reopens with the same tag", () => {
+      const input = "x\ny";
+      const result = hand_built(["string"], [0, 0, 3]);
+      const options: RenderOptions = { token: () => ({ attrs: { "data-s": 1 } }) };
+      expect(to_html(input, result, options)).toBe(
+        '<pre class="twinkleplop"><code><span class="l"><span class="tok string" data-s="1">x</span></span>\n<span class="l"><span class="tok string" data-s="1">y</span></span></code></pre>',
+      );
+      expect(to_html(input, result, { ...options, structure: "inline" })).toBe(
+        '<span class="tok string" data-s="1">x</span><br><span class="tok string" data-s="1">y</span>',
+      );
+    });
+
+    test("applies in inline mode too", () => {
+      expect(
+        render_opts("a b", {
+          structure: "inline",
+          token: (t) => (t === "identifier" ? { class: "i" } : undefined),
+        }),
+      ).toBe(
+        `<span class="tok identifier i">a</span>${SPACE}<span class="tok identifier i">b</span>`,
+      );
+    });
+
+    test("bad return values and reserved attrs throw", () => {
+      for (const plugins of [[], [hl]]) {
+        const input = "a // [!hl]";
+        expect(() =>
+          render_opts(input, { token: () => ({ attrs: { class: "x" } }) }, plugins),
+        ).toThrow(/class/);
+        expect(() =>
+          render_opts(input, { token: () => ({ attrs: { style: "x" } }) }, plugins),
+        ).toThrow(TypeError);
+        expect(() =>
+          render_opts(input, { token: () => false as unknown as undefined }, plugins),
+        ).toThrow(TypeError);
+        expect(() =>
+          render_opts(input, { token: () => "x" as unknown as undefined }, plugins),
+        ).toThrow(TypeError);
+        expect(() =>
+          render_opts(input, { token: () => ({ class: 1 as unknown as string }) }, plugins),
+        ).toThrow(TypeError);
+        expect(() =>
+          render_opts(
+            input,
+            {
+              token: () => {
+                throw new Error("boom");
+              },
+            },
+            plugins,
+          ),
+        ).toThrow("boom");
+      }
+    });
+  });
+
+  test("absent hooks and classic structure leave the output byte identical", () => {
+    const input = "a b // [!hl foo...bar]\nc // [!hl]\nd\n";
+    for (const plugins of [[], [hl]]) {
+      for (const options of [{}, { line_numbers: { start: 3 }, class_name: "c" }]) {
+        const plain = render_opts(input, options, plugins);
+        expect(
+          render_opts(
+            input,
+            { ...options, structure: "classic", line: undefined, token: undefined },
+            plugins,
+          ),
+        ).toBe(plain);
+        expect(render_opts(input, { ...options, token: () => undefined }, plugins)).toBe(plain);
+      }
+    }
   });
 });
