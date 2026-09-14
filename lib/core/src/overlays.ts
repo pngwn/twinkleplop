@@ -1,9 +1,3 @@
-// programmatic overlays: the `overlays` render option and the `overlays()`
-// builder behind it. turns caller-supplied items (ranges by offset or by
-// line/character, whole lines, hidden ranges) into the same OverlayResult
-// shape the annotation extractor produces, so the renderer applies both
-// through one path.
-
 import type { OverlayItem, OverlayResult } from "./types";
 import { build_line_starts, compute_elided_lines, line_of } from "./annotation";
 
@@ -22,8 +16,8 @@ interface Hidden {
   line: number;
 }
 
-// the item union is validated at runtime by item_shape, so the fields are
-// read through this loose view rather than narrowed per member.
+// the union is validated at runtime, so fields are read through this loose
+// view instead of narrowing per member.
 interface Loose {
   start?: unknown;
   end?: unknown;
@@ -99,10 +93,6 @@ export function overlays(
 
   return finalize(source, line_starts, collected, hidden, existing);
 }
-
-// ---------------------------------------------------------------------------
-// item validation
-// ---------------------------------------------------------------------------
 
 type Shape = "range" | "line" | "lines" | "hide";
 
@@ -263,17 +253,12 @@ function is_class_list(value: string): boolean {
   return true;
 }
 
-// ---------------------------------------------------------------------------
-// assembly
-// ---------------------------------------------------------------------------
-
 function line_end(line_starts: Int32Array, line: number, source_length: number): number {
   return line < line_starts.length ? line_starts[line] : source_length;
 }
 
-// the renderer substitutes hidden bytes line by line and never sees the
-// newline itself, so a range is stored as its per-line pieces. that also
-// keeps the elision pass, which reasons about one line at a time, correct.
+// the renderer and the elision pass both work one line at a time and never
+// see the newline byte, so a hidden range is stored as per-line pieces.
 function push_hidden(
   out: Hidden[],
   source: string,
@@ -293,10 +278,9 @@ function push_hidden(
   }
 }
 
-// the result is canonical: ranges are ordered by position and then by class
-// name, and class ids follow that order, so the same items in any order
-// produce the same html. existing ids are kept so a caller's own
-// OverlayResult stays valid after merging.
+// ordering by class name on ties, and assigning ids in that order, is what
+// makes the same items in any order render identically. existing ids are
+// kept so a caller's own result stays valid after merging.
 function finalize(
   source: string,
   line_starts: Int32Array,

@@ -661,19 +661,16 @@ export interface RenderOptions {
   // `has-<classification>` on <pre> for every overlay the snippet carries.
   // default true.
   has_classes?: boolean;
-  // programmatic decorations for this call, merged with any marker overlays
-  // already on the tokenize result. see `overlays()` for the builder form.
+  // merged with any marker overlays already on the tokenize result.
   overlays?: OverlayItem[];
 }
 
-// a byte offset into the source (utf-16 code units, the same units as token
-// positions) or a 1-based line with a 0-based character within it. `end` is
-// exclusive in both forms.
+// offsets are utf-16 code units, the same units as token positions. lines
+// are 1-based and characters 0-based. `end` is exclusive in both forms.
 export type OverlayPosition = number | { line: number; character: number };
 
-// one programmatic overlay. a range or a line carries a class; a hidden
-// range renders as spaces of equal width and takes any line it empties
-// with it.
+// a hidden range renders as spaces of equal width and takes any line it
+// empties with it.
 export type OverlayItem =
   | { start: OverlayPosition; end: OverlayPosition; class: string }
   | { line: number; class: string }

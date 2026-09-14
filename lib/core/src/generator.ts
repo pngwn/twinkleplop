@@ -25,11 +25,9 @@ SCAN_TABLE[60] = SCAN_ESCAPE;
 SCAN_TABLE[62] = SCAN_ESCAPE;
 
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
-  // overlays opt-in: when present, dispatch to the overlay-aware renderer
-  // below. option items are merged with marker overlays into a fresh result
-  // so the caller's tokenize result is left untouched. items that resolve
-  // to nothing (empty ranges) fall through to whichever path the result
-  // alone would take, so they are invisible rather than a has- class.
+  // option items merge into a fresh result so the caller's tokenize result
+  // is left untouched. items that resolve to nothing fall through so they
+  // stay invisible instead of adding a has- class.
   const items = options.overlays;
   if (items !== undefined && items.length !== 0) {
     const merged = build_overlays(input, items, token_result.overlays);
@@ -285,8 +283,8 @@ function to_html_overlay(
   // non-whitespace byte, so indentation/trailing whitespace stays outside
   // the highlight while inter-token whitespace stays inside (one
   // contiguous visual run instead of N separate token spans).
-  // class ids per line rather than a joined string so the same class
-  // arriving twice (two items, or a marker and an option) is applied once.
+  // ids rather than a joined string so a class arriving twice (a marker and
+  // an option, say) is applied once.
   const line_class_map = new Map<number, number[]>();
   // raw token-mode overlays bucketed by line: { start, end, class_id } per
   // line. trimmed to non-WS during wrapper computation below.

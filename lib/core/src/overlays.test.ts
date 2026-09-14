@@ -1,8 +1,3 @@
-// the `overlays` render option and the `overlays()` builder. the marker path
-// is covered in generator.test.ts; these tests pin the programmatic surface:
-// item shapes, position resolution, order independence, merging with marker
-// overlays, and the untouched no-option output.
-
 import { describe, expect, test } from "vitest";
 import { compile } from "./compiler";
 import { to_html } from "./generator";
