@@ -95,6 +95,40 @@ Only the first class of a classification is prefixed. A plugin that emits
 which is what shiki does for the same markup. Pass `has_classes: false` in
 the render options to turn the classes off.
 
+### Programmatic overlays
+
+The same decorations can be attached per call without writing a marker into
+the source, through the `overlays` render option. Each item is a range with
+a class, a single line with a class, a set of lines with a class, or a range
+to hide:
+
+```ts
+ts(code, {
+  overlays: [
+    { start: 6, end: 11, class: "highlighted-word" },
+    { start: { line: 2, character: 0 }, end: { line: 2, character: 7 }, class: "mark" },
+    { lines: [1, [3, 4]], class: "highlight" },
+    { start: 30, end: 45, hide: true },
+  ],
+});
+```
+
+Positions are byte offsets in the same units as token positions, or
+`{ line, character }` with a 1-based line and a 0-based character; `end` is
+exclusive. `lines` takes line numbers and inclusive `[from, to]` pairs.
+Range items render token-mode, line items line-mode, and hidden ranges
+follow the comment elision rules above. Option overlays merge with marker
+overlays from the same call, and the result does not depend on item order.
+
+Pipelines that keep tokens around call the `overlays()` builder from
+`@twinkleplop/core` instead and attach its result before `to_html`:
+
+```ts
+const result = tokenize_ts(code);
+result.overlays = overlays(code, items, result.overlays);
+const html = to_html(code, result);
+```
+
 ## Usage
 
 Pass plugins through the language factory's `annotation` option:

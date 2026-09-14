@@ -92,15 +92,20 @@ Output for the example above (source `const total = …` on line 1,
 - `overlays: []` is identical to omitting the option.
 
 ## Acceptance criteria
-- [ ] Each of the four item forms produces the documented HTML on a three-line snippet.
-- [ ] `{ line: 2, character: 0 }` on `a\nbc` resolves to offset 2; `{ line: 2, character: 3 }` throws `RangeError`.
-- [ ] Items `[A, B]` and `[B, A]` produce identical HTML for any A, B.
-- [ ] `{ lines: [2], class: "highlight" }` on a snippet whose line 2 is empty renders `<span class="l highlight"></span>` for that line.
-- [ ] A call with both `[!hl]` markers and an `overlays` item renders both sets of classes and `has-` classes for both.
-- [ ] `{ start: 0, end: 11, class: "a" }` with `{ start: 6, end: 17, class: "b" }` renders three wrappers: `a`, `a b`, `b`.
-- [ ] `class: "bad class!"` throws `TypeError`; `class: "two words"` is accepted and emits both classes.
-- [ ] `overlays(source, items)` followed by `to_html` equals `to_html` with the `overlays` option for the same items.
-- [ ] The no-option path is byte-identical and within the perf harness noise floor.
+Implemented in `lib/core/src/overlays.ts` (builder and validation) and the
+dispatch at the top of `to_html`. The no-option path is byte-identical
+against the frozen baseline on every parity check and the `html` mode A/B
+moved nothing beyond the noise floor.
+
+- [x] Each of the four item forms produces the documented HTML on a three-line snippet.
+- [x] `{ line: 2, character: 0 }` on `a\nbc` resolves to offset 2; `{ line: 2, character: 3 }` throws `RangeError`.
+- [x] Items `[A, B]` and `[B, A]` produce identical HTML for any A, B.
+- [x] `{ lines: [2], class: "highlight" }` on a snippet whose line 2 is empty renders `<span class="l highlight"></span>` for that line.
+- [x] A call with both `[!hl]` markers and an `overlays` item renders both sets of classes and `has-` classes for both.
+- [x] `{ start: 0, end: 11, class: "a" }` with `{ start: 6, end: 17, class: "b" }` renders three wrappers: `a`, `a b`, `b`.
+- [x] `class: "bad class!"` throws `TypeError`; `class: "two words"` is accepted and emits both classes.
+- [x] `overlays(source, items)` followed by `to_html` equals `to_html` with the `overlays` option for the same items.
+- [x] The no-option path is byte-identical and within the perf harness noise floor.
 
 ## Dependencies
 - Depends on: [core](./core.md), [render_options](./render_options.md) (`has-*`)

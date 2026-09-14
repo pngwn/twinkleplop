@@ -1,4 +1,5 @@
 import { OverlayResult, RenderOptions, TokenizeResult } from "./types";
+import { overlays as build_overlays } from "./overlays";
 
 const ESCAPE_TABLE = new Array(128);
 for (let i = 0; i < 128; i++) {
@@ -24,8 +25,16 @@ SCAN_TABLE[60] = SCAN_ESCAPE;
 SCAN_TABLE[62] = SCAN_ESCAPE;
 
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
-  // annotation overlays opt-in: when present, dispatch to the overlay-aware
-  // renderer below.
+  // option items merge into a fresh result so the caller's tokenize result
+  // is left untouched. items that resolve to nothing fall through so they
+  // stay invisible instead of adding a has- class.
+  const items = options.overlays;
+  if (items !== undefined && items.length !== 0) {
+    const merged = build_overlays(input, items, token_result.overlays);
+    if (merged.ranges.length !== 0 || merged.skip_ranges.length !== 0) {
+      return to_html_overlay(input, token_result, merged, options);
+    }
+  }
   if (token_result.overlays !== undefined) {
     return to_html_overlay(input, token_result, token_result.overlays, options);
   }
@@ -274,7 +283,9 @@ function to_html_overlay(
   // non-whitespace byte, so indentation/trailing whitespace stays outside
   // the highlight while inter-token whitespace stays inside (one
   // contiguous visual run instead of N separate token spans).
-  const line_class_map = new Map<number, string>();
+  // ids rather than a joined string so a class arriving twice (a marker and
+  // an option, say) is applied once.
+  const line_class_map = new Map<number, number[]>();
   // raw token-mode overlays bucketed by line: { start, end, class_id } per
   // line. trimmed to non-WS during wrapper computation below.
   const token_overlays_by_line = new Map<
@@ -287,7 +298,6 @@ function to_html_overlay(
       const oend = ranges[r + 1];
       const class_id = ranges[r + 2];
       const flags = ranges[r + 3];
-      const class_name_str = classifications[class_id];
       // both line numbers come from the input itself, so they are already
       // bounded by its line count. `elided_lines` is NOT a bound here: a
       // hand-built OverlayResult may pass an empty array, and reads of it
@@ -303,8 +313,9 @@ function to_html_overlay(
       const end_line = oend > ostart ? line_of_offset(input, oend - 1) : start_line;
       if ((flags & 1) === 1) {
         for (let l = start_line; l <= end_line; l++) {
-          const prev = line_class_map.get(l);
-          line_class_map.set(l, prev === undefined ? class_name_str : prev + " " + class_name_str);
+          const ids = line_class_map.get(l);
+          if (ids === undefined) line_class_map.set(l, [class_id]);
+          else if (!ids.includes(class_id)) ids.push(class_id);
         }
       } else {
         // bucket the token-mode overlay onto every line it touches.
@@ -407,6 +418,7 @@ function to_html_overlay(
       input,
       line_start,
       line_end,
+      skip_ranges,
     );
     wrappers_cache.set(line, result);
     return result;
@@ -438,7 +450,14 @@ function to_html_overlay(
   function maybe_open_line() {
     if (line_open) return;
     if (line_no <= elided_lines.length && elided_lines[line_no - 1] === 1) return;
-    out.push(open_line_with_extra(visible_line_no, line_numbers, line_class_map.get(line_no)));
+    out.push(
+      open_line_with_extra(
+        visible_line_no,
+        line_numbers,
+        line_class_map.get(line_no),
+        classifications,
+      ),
+    );
     visible_line_no++;
     line_open = true;
     reset_line_wrappers();
@@ -606,7 +625,8 @@ const EMPTY_WRAPPERS: { start: number; end: number; cls: string }[] = [];
 // Algorithm: sweep over (open, close) events in source order, maintain an
 // `active` multiset of class_ids, emit one wrapper segment per change in
 // the active set. Each segment is trimmed to its first/last non-whitespace
-// byte; whitespace-only segments are dropped. The result is a sorted,
+// byte, where a hidden byte counts as whitespace because that is what it
+// renders as; whitespace-only segments are dropped. The result is a sorted,
 // non-overlapping list — multiple overlapping overlays produce class-merged
 // segments rather than overlapping spans.
 function compute_line_wrappers(
@@ -615,6 +635,7 @@ function compute_line_wrappers(
   input: string,
   line_start: number,
   line_end: number,
+  skip_ranges: Uint32Array,
 ): { start: number; end: number; cls: string }[] {
   type Event = { pos: number; delta: number; class_id: number };
   const events: Event[] = [];
@@ -641,16 +662,8 @@ function compute_line_wrappers(
       // emit segment [cursor, evt.pos) under current active set.
       let s = cursor;
       let e = evt.pos;
-      while (s < e) {
-        const c = input.charCodeAt(s);
-        if (c !== 32 && c !== 9 && c !== 13) break;
-        s++;
-      }
-      while (e > s) {
-        const c = input.charCodeAt(e - 1);
-        if (c !== 32 && c !== 9 && c !== 13) break;
-        e--;
-      }
+      while (s < e && renders_blank(input, s, skip_ranges)) s++;
+      while (e > s && renders_blank(input, e - 1, skip_ranges)) e--;
       if (s < e) {
         const parts: string[] = [];
         for (const id of active.keys()) parts.push(classifications[id]);
@@ -667,6 +680,16 @@ function compute_line_wrappers(
     cursor = evt.pos;
   }
   return result;
+}
+
+function renders_blank(input: string, pos: number, skip_ranges: Uint32Array): boolean {
+  const c = input.charCodeAt(pos);
+  if (c === 32 || c === 9 || c === 13) return true;
+  for (let i = 0; i < skip_ranges.length; i += 2) {
+    if (skip_ranges[i] > pos) return false;
+    if (pos < skip_ranges[i + 1]) return true;
+  }
+  return false;
 }
 
 // emit input[start..end), substituting any byte covered by a skip range
@@ -733,8 +756,16 @@ function line_of_offset(input: string, byte_offset: number): number {
   return line;
 }
 
-function open_line_with_extra(n: number, line_numbers: boolean, extra: string | undefined): string {
-  const cls = extra ? `l ${extra}` : "l";
+function open_line_with_extra(
+  n: number,
+  line_numbers: boolean,
+  extra: number[] | undefined,
+  classifications: string[],
+): string {
+  let cls = "l";
+  if (extra !== undefined) {
+    for (let i = 0; i < extra.length; i++) cls += " " + classifications[extra[i]];
+  }
   if (line_numbers) return `<span class="${cls}"><span class="ln">${n}</span>`;
   return `<span class="${cls}">`;
 }

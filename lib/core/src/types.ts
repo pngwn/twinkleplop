@@ -661,7 +661,21 @@ export interface RenderOptions {
   // `has-<classification>` on <pre> for every overlay the snippet carries.
   // default true.
   has_classes?: boolean;
+  // merged with any marker overlays already on the tokenize result.
+  overlays?: OverlayItem[];
 }
+
+// offsets are utf-16 code units, the same units as token positions. lines
+// are 1-based and characters 0-based. `end` is exclusive in both forms.
+export type OverlayPosition = number | { line: number; character: number };
+
+// a hidden range renders as spaces of equal width and takes any line it
+// empties with it.
+export type OverlayItem =
+  | { start: OverlayPosition; end: OverlayPosition; class: string }
+  | { line: number; class: string }
+  | { lines: (number | [number, number])[]; class: string }
+  | { start: OverlayPosition; end: OverlayPosition; hide: true };
 
 // Pattern language for `rewrite_types` — tag-discriminated union so authors
 // build patterns with the exported combinator helpers (`type`, `seq`,

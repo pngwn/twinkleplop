@@ -11,7 +11,7 @@ the input/output evidence for each one.
 
 - [core](./core.md) — shared contract: public surface, output shape, overlay semantics, marker grammar, class vocabulary, and the constraints every task must keep (absent option means identical output, no tree, snake_case, escaping). Not a task.
 - [render_options](./render_options.md) — `line_numbers: { start }`, `attributes` on `<pre>`, automatic `has-*` classes. Small.
-- [overlays_option](./overlays_option.md) — `overlays` render option and `overlays()` builder: ranges by offset or line/character, whole lines, hidden ranges. Small; needs the in-progress renderer fix.
+- [overlays_option](./overlays_option.md) — `overlays` render option and `overlays()` builder: ranges by offset or line/character, whole lines, hidden ranges. Small.
 - [inline_and_hooks](./inline_and_hooks.md) — `structure: "inline"` and the `line` / `token` hooks. Medium.
 - [whitespace_rendering](./whitespace_rendering.md) — `whitespace` and `indent_guides` render options. Small.
 - [focus_and_shiki_notation](./focus_and_shiki_notation.md) — ship `focus`, honour `parse: "raw"`, and a `shiki_notation` plugin that reads `[!code …]` unchanged. Medium.

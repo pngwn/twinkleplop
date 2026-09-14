@@ -96,7 +96,7 @@ interface CollectedOverlay {
   flags: number;
 }
 
-interface SkipRange {
+export interface SkipRange {
   start: number;
   end: number;
   // 1-indexed line containing the marker. lets the elide step decide
@@ -843,7 +843,7 @@ function is_verb_cont(code: number): boolean {
 // build a sorted Int32Array where line_starts[k] is the byte offset of the
 // first char of line k+1. line_starts[0] is always 0; for an n-line input
 // the array has length n.
-function build_line_starts(input: string): Int32Array {
+export function build_line_starts(input: string): Int32Array {
   let count = 1;
   for (let i = 0; i < input.length; i++) {
     if (input.charCodeAt(i) === 10) count++;
@@ -859,7 +859,7 @@ function build_line_starts(input: string): Int32Array {
   return out;
 }
 
-function line_of(line_starts: Int32Array, byte_offset: number): number {
+export function line_of(line_starts: Int32Array, byte_offset: number): number {
   // binary search for the largest k where line_starts[k] <= byte_offset.
   let lo = 0;
   let hi = line_starts.length - 1;
@@ -1178,7 +1178,7 @@ function finalize(
 // a line is elided if (a) it had any non-whitespace before substitution and
 // (b) it has no non-whitespace outside of skip ranges. encoded one-bit-per-
 // byte for cheap renderer lookup: elided_lines[line_1 - 1] === 1.
-function compute_elided_lines(
+export function compute_elided_lines(
   input: string,
   skip_ranges: SkipRange[],
   line_starts: Int32Array,
