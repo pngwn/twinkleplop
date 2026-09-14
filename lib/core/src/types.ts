@@ -526,12 +526,10 @@ export interface AnnotationConfig {
 export interface AnnotationPlugin {
   // verbs claimed by this plugin. registration-time collision is an error.
   verbs: string[];
-  // 'shared' (default) means the framework parses the marker args and passes
-  // a ParsedArgs to the plugin. 'raw' passes the text after the verb (and
-  // optional #id) untouched, trailing whitespace trimmed, and the plugin
-  // parses it itself. raw markers are still found, hidden, escaped and
-  // checked for newline and quote problems by the framework; anchors, line
-  // refs and pairs are only resolved when the plugin asks via `resolve`.
+  // 'shared' (default) parses the args into ParsedArgs. 'raw' passes the
+  // text after the verb (and #id) with trailing whitespace trimmed; the
+  // framework still finds, hides and validates the marker but resolves
+  // anchors, line refs and pairs only when the plugin asks via `resolve`.
   parse?: "shared" | "raw";
   handle(input: AnnotationInput): AnnotationOutput | void;
 }
@@ -541,35 +539,29 @@ export interface AnnotationInput {
   id?: string;
   args: ParsedArgs | string;
   // resolved source range the marker targets (already includes pair resolution
-  // and anchor lookup, so plugins receive a fully-resolved span). for raw
-  // plugins this is the marker's own line.
+  // and anchor lookup, so plugins receive a fully-resolved span). the
+  // marker's own line for raw plugins.
   range: SourceRange;
   marker: SourcePosition;
-  // true when the marker's line holds nothing but the comment hosting it and
-  // that comment holds nothing but markers, so the line will disappear from
-  // the output. raw plugins use it to tell a marker above its target from a
-  // trailing one.
+  // the marker's line holds only markers and will disappear. lets a raw
+  // plugin tell a marker above its target from a trailing one.
   standalone: boolean;
-  // resolves a fragment written in the shared argument grammar (`+2`,
-  // `:4...6`, `foo..bar`, `=foo +3`) relative to this marker and returns the
-  // range a shared-parse plugin would have received. half-open pairs cannot
-  // be resolved this way. throws an error carrying an AnnotationIssueKind
-  // when the fragment is malformed or an anchor is missing; the framework
-  // reports it under the marker's position when the plugin lets it escape.
+  // resolves a fragment of the shared grammar (`+2`, `foo..bar`, `=foo +3`)
+  // relative to this marker. half-open pairs cannot be resolved. throws
+  // with an AnnotationIssueKind on failure; an escaped throw is reported at
+  // the marker's position.
   resolve(fragment: string): SourceRange;
-  // like `resolve` but returns every range: one per occurrence for the set
-  // form, otherwise a single element.
+  // every range, one per occurrence for the set form.
   resolve_all(fragment: string): SourceRange[];
 }
 
 export interface AnnotationOutput {
   overlays?: OverlayContribution[];
-  // reported through the configured on_error sink (or the default policy)
-  // at the marker's position unless an issue carries its own.
+  // reported like framework issues, at the marker's position unless one
+  // carries its own.
   issues?: PluginIssue[];
-  // false leaves the marker text in the output instead of hiding it, for
-  // plugins that recognise only part of their verb's argument space.
-  // default true.
+  // false leaves the marker text visible, for a plugin that recognises only
+  // part of its verb's argument space. default true.
   consumed?: boolean;
 }
 

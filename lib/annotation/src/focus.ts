@@ -1,6 +1,5 @@
-// `focus` — the lines the reader should look at. line-mode for line refs,
-// token-mode for anchor args, like `hl`. the block gains `has-focus`, so a
-// theme dims everything else with `.has-focus .l:not(.focus)`.
+// `focus` marks only the focused lines; the block level `has-focus` class
+// lets a theme dim the rest with `.has-focus .l:not(.focus)`.
 
 import { style_plugin } from "./style_plugin";
 

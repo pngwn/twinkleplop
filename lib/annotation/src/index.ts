@@ -5,10 +5,6 @@
 // and return an AnnotationOutput. the framework owns dispatch, anchor
 // resolution, pairing, and overlay collection.
 //
-// em, hl, focus, dim, add/del/mod (diffs), err/warn/info (diagnostics).
-// `focus` relies on the block level `has-focus` class rather than a
-// propagated `not-focused` sibling: `.has-focus .l:not(.focus)` is the css.
-//
 // the shiki compatibility plugin lives in "./shiki" so the default entry
 // stays free of it.
 //

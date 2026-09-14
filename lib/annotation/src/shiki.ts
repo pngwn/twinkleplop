@@ -1,31 +1,20 @@
-// `shiki_notation` — reads shiki's `[!code ...]` comments unchanged so a
-// snippet written for @shikijs/transformers highlights without edits.
+// `[!code ...]` compatibility with @shikijs/transformers 4.4.3, so content
+// written for shiki highlights without edits.
 //
-// the plugin claims the `code` verb with raw arguments and maps every
-// notation of @shikijs/transformers 4.4.3 onto overlays:
+//   highlight / hl / focus / ++ / -- / error / warning / info [:N]  line-mode
+//   word:text [:N]                                                 token-mode
 //
-//   highlight / hl [:N]           line-mode
-//   focus [:N]                    line-mode
-//   ++ / -- [:N]                  line-mode
-//   error / warning / info [:N]   line-mode
-//   word:text [:N]                token-mode, every occurrence of text
-//
-// line selection follows shiki's v3 matching: a marker on a line of its own
+// line selection follows shiki's v3 matching: a marker on its own line
 // applies to the N lines below it, a trailing marker to its own line and
-// the N-1 below. `word:text` without a count reaches every line after the
-// marker, as shiki does. occurrences inside comments are skipped, which is
-// the one place this differs from shiki (which only skips the marker's own
-// comment).
-//
-// an argument shiki would not recognise (`[!code nope]`, `[!code]`) is left
-// in the output as comment text and not reported, as shiki leaves it.
+// the N-1 below. occurrences inside comments are skipped for `word`, where
+// shiki only skips the marker's own comment. an argument shiki would not
+// recognise is left as comment text and not reported, as shiki leaves it.
 
 import type { AnnotationPlugin, OverlayContribution, SourceRange } from "@twinkleplop/core";
 
 export interface ShikiNotationOptions {
-  // "twinkleplop" (default) emits the class names the built in verbs use so
-  // one theme covers both marker syntaxes; "shiki" emits shiki's own names
-  // so existing shiki css keeps working.
+  // "twinkleplop" (default) shares class names with the built in verbs so
+  // one theme covers both syntaxes; "shiki" keeps existing shiki css working.
   classes?: "twinkleplop" | "shiki";
 }
 
@@ -66,9 +55,8 @@ const LINE_NOTATIONS = new Set([
   "info",
 ]);
 
-// shiki applies an uncounted word notation to every line after the marker.
-// the count clamps to the snippet, so any value past the longest realistic
-// snippet reads as "the rest".
+// shiki applies an uncounted word notation to every line after the marker;
+// the count clamps to the snippet, so a huge one reads as "the rest".
 const REST_OF_SNIPPET = 1_000_000_000;
 
 type Notation =
@@ -120,17 +108,15 @@ export function shiki_notation(options: ShikiNotationOptions = {}): AnnotationPl
   };
 }
 
-// a standalone marker names the lines below it; a trailing marker starts
-// with its own line. both forms come from the shared grammar so `resolve`
-// clamps a count past the last line the same way `+N` does everywhere.
+// expressed in the shared grammar so a count past the last line clamps the
+// way `+N` does everywhere else.
 function line_scope(line: number, standalone: boolean, count: number): string {
   if (standalone) return `+${count}`;
   if (count === 1) return `:${line}`;
   return `:${line}...${line + count - 1}`;
 }
 
-// null means shiki would not have matched the text either, so it stays as
-// comment text.
+// null means shiki would not have matched either, so the text stays.
 function parse_notation(args: string): Notation | null {
   if (args.length === 0) return null;
   if (args.startsWith("word:")) return parse_word(args, 5);
@@ -143,8 +129,7 @@ function parse_notation(args: string): Notation | null {
   return { kind: "line", name, count };
 }
 
-// `word:text[:N]` where `\:` and `\]` (any `\x`) in text stand for the bare
-// character, exactly as shiki unescapes them.
+// any `\x` in the word stands for the bare character, as shiki unescapes.
 function parse_word(args: string, from: number): Notation | null {
   let text = "";
   let i = from;

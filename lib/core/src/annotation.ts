@@ -24,9 +24,8 @@
 //                   set form scoped to those lines instead of the marker's
 // anchors: bare word [A-Za-z0-9_]+, "quoted literal", * wildcard.
 //
-// plugins registered with `parse: "raw"` receive the argument text as a
-// string and resolve fragments of the grammar above on demand through
-// `resolve` / `resolve_all` on their input.
+// `parse: "raw"` plugins get the argument text as a string and resolve
+// fragments of this grammar themselves through `resolve` on their input.
 
 import type {
   Anchor,
@@ -129,8 +128,8 @@ interface FoundMarker {
   plugin: AnnotationPlugin;
 }
 
-// thrown by the resolve helpers so a failure carries the issue kind the
-// framework would have reported for the same fragment in a shared marker.
+// carries the issue kind so a failed `resolve` inside a raw plugin reports
+// exactly as the same fragment would in a shared marker.
 class ResolveError extends Error {
   kind: AnnotationIssueKind;
   constructor(kind: AnnotationIssueKind, message: string) {
@@ -208,8 +207,8 @@ function run_extraction(
     };
   };
 
-  // every non-paired argument form resolves here, for shared markers and
-  // for fragments a raw plugin hands back through `resolve`.
+  // shared by shared markers and by fragments raw plugins pass to `resolve`,
+  // so both see identical ranges for identical text.
   const resolve_parsed = (args: ParsedArgs, marker: SourcePosition): SourceRange[] => {
     const lines = ensure_line_index();
     switch (args.kind) {
@@ -273,8 +272,7 @@ function run_extraction(
     return resolve_parsed(args, marker);
   };
 
-  // hand `args` + `range` to the plugin under `marker`. returns false when
-  // the plugin declined the marker so its text stays in the output.
+  // false means the plugin declined the marker and its text stays visible.
   const dispatch = (
     plugin: AnnotationPlugin,
     verb: string,
@@ -437,15 +435,14 @@ function run_extraction(
     const start = tokens[i * 3 + 1];
     const end = tokens[i * 3 + 2];
 
-    // the first pass collects every marker with a registered verb. dispatch
-    // waits until the whole comment is known because `standalone` depends
-    // on whether the comment holds anything besides markers.
+    // dispatch waits until the whole comment is scanned because `standalone`
+    // depends on whether the comment holds anything besides markers.
     const found: FoundMarker[] = [];
     let pos = start;
     while (pos < end) {
       const at = find_marker_start(input, pos, end);
       if (at < 0) break;
-      // escaped form `\[!...]` — the marker stays literal comment text.
+      // escaped form `\[!...]` stays literal comment text.
       if (at > start && input.charCodeAt(at - 1) === 92 /* \ */) {
         pos = at + 2;
         continue;
@@ -573,9 +570,6 @@ function found_spans(found: FoundMarker[]): { start: number; end: number }[] {
   return out;
 }
 
-// true when nothing but whitespace shares line `line_1` with the comment
-// spanning [comment_start, comment_end). a block comment covering the whole
-// line trivially qualifies.
 function line_holds_only_comment(
   input: string,
   line_starts: Int32Array,
@@ -597,9 +591,8 @@ function line_holds_only_comment(
 interface ParsedMarker {
   verb: string;
   id?: string;
-  // [args_start, args_end) is the argument text with whitespace trimmed on
-  // both sides, for the shared parsers. raw_start keeps leading whitespace
-  // after the single separating space, for `parse: "raw"` plugins.
+  // the shared parsers want a trimmed range; raw plugins are promised the
+  // text after the single separating space, leading whitespace included.
   args_start: number;
   args_end: number;
   raw_start: number;
@@ -658,7 +651,7 @@ function parse_marker(
   // newline and before the comment ends. quotes are tracked so that `]`
   // inside `"..."` (with `\"` / `\\` escapes) is treated as anchor content
   // rather than as the marker close. a backslash escapes the next byte
-  // outside quotes too, so raw plugins can accept `\]` in their arguments.
+  // outside quotes too, so raw plugins can accept `\]` (shiki's word form).
   //
   // we deliberately don't materialize the args as a string here. the parsers
   // below all operate on `(input, start, end)` indices, so the only string
@@ -810,8 +803,6 @@ function parse_line_ref(input: string, start: number, end: number): ParsedArgs |
 }
 
 function parse_set(input: string, start: number, end: number): ParsedArgs | null {
-  // skip optional leading whitespace, then a single anchor, then an optional
-  // line scope, then trailing ws.
   let pos = skip_ws(input, start, end);
   const a = parse_anchor(input, pos, end);
   if (a === null) return null;
@@ -826,7 +817,6 @@ function parse_set(input: string, start: number, end: number): ParsedArgs | null
   return { kind: "set", anchor: a.anchor, scope };
 }
 
-// `+N`, `:N`, `:N..M`, `:N...M` or `:*` after a set anchor.
 function parse_set_scope(input: string, start: number, end: number): SetScope | null {
   const first = input.charCodeAt(start);
   if (first === 43 /* + */) {
@@ -1087,8 +1077,7 @@ function resolve_line_mode(
   };
 }
 
-// byte span the set form searches: the marker's own line by default, the
-// scoped lines otherwise. null when a line ref names a missing line.
+// null when a line ref names a line that does not exist.
 function resolve_set_scope(
   scope: SetScope | undefined,
   marker: SourcePosition,

@@ -1,8 +1,7 @@
-// `shiki_notation` runs against the real javascript grammar so the fixtures
-// from @shikijs/transformers 4.4.3 can be compared line for line. expected
-// values are the per-line class sets and highlighted words shiki produces
-// for the same inputs (packages/transformers/test/fixtures at v4.4.3),
-// including the empty line both keep after the final newline.
+// runs against the real javascript grammar so shiki's own fixtures
+// (packages/transformers/test/fixtures at 4.4.3) can be compared line for
+// line. expected values are the per-line class sets and highlighted words
+// shiki produces for the same inputs.
 
 import { describe, expect, test } from "vitest";
 import type { AnnotationIssue, AnnotationPlugin } from "@twinkleplop/core";
@@ -16,7 +15,6 @@ function highlighter(plugin: AnnotationPlugin, on_error?: (issue: AnnotationIssu
 const twinkleplop = highlighter(shiki_notation());
 const shiki = highlighter(shiki_notation({ classes: "shiki" }));
 
-// sorted class list per visible line.
 function line_classes(html: string): string[][] {
   const out: string[][] = [];
   for (const m of html.matchAll(/<span class="l([^"]*)">/g)) {
@@ -25,7 +23,7 @@ function line_classes(html: string): string[][] {
   return out;
 }
 
-// true when a comment token still shows `[!code`; string literals may.
+// string literals may legitimately still show `[!code`; comments may not.
 function marker_in_comment(html: string): boolean {
   return /<span class="tok comment">[^<]*\[!code/.test(html);
 }
@@ -40,7 +38,6 @@ function decode(text: string): string {
     .replace(/&amp;/g, "&");
 }
 
-// text of every token-mode wrapper carrying `cls`, in document order.
 function highlighted_words(html: string, cls: string): string[] {
   const re = new RegExp(
     `<span class="tok ${cls}">((?:<span class="tok [^"]*">[^<]*</span>|[^<])*)</span>`,
@@ -366,8 +363,8 @@ describe("shiki_notation: shiki fixtures", () => {
       ],
     },
     {
-      // shiki also wraps the `a` inside the "should not be transformed"
-      // comment; twinkleplop never matches words inside comments.
+      // shiki also wraps the `a` inside the prose comment; twinkleplop never
+      // matches words inside comments.
       name: "highlight-word/basic.js",
       code: [
         "// [!code word:a]",

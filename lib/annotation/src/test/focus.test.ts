@@ -1,5 +1,5 @@
-// `focus` is a style plugin like `hl`; the interesting part is the block
-// level `has-focus` class that lets a theme dim everything else.
+// the plugin itself is `hl` under another name; the block level `has-focus`
+// class is what these tests are really about.
 
 import { describe, expect, test } from "vitest";
 import { compile, create_language, to_html } from "@twinkleplop/core";
