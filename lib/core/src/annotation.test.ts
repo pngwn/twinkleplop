@@ -358,7 +358,7 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
     expect(overlays!.ranges[1]).toBe(input.indexOf("3]") + 2);
   });
 
-  test("quoted anchor: escapes \\\\ and \\\"", () => {
+  test('quoted anchor: escapes \\\\ and \\"', () => {
     const input = `say "hello" // [!em "\\""..."\\""]\n`;
     const { overlays } = quiet_extract(input, [em_plugin()]);
     expect(overlays).toBeDefined();
@@ -410,7 +410,10 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
     for (let i = 0, count = 0; i < input.length; i++) {
       if (input.charCodeAt(i) === 10) {
         count++;
-        if (count === 4) { nth = i; break; }
+        if (count === 4) {
+          nth = i;
+          break;
+        }
       }
     }
     expect(overlays!.ranges[1]).toBe(nth);
@@ -445,11 +448,7 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
     expect(overlays).toBeDefined();
     // 3 occurrences of foo on the marker line → 3 4-tuples.
     expect(overlays!.ranges.length).toBe(12);
-    const starts = [
-      overlays!.ranges[0],
-      overlays!.ranges[4],
-      overlays!.ranges[8],
-    ];
+    const starts = [overlays!.ranges[0], overlays!.ranges[4], overlays!.ranges[8]];
     expect(starts).toEqual([0, 8, 16]);
   });
 
@@ -512,11 +511,7 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
     // closed range marker on line 4 references `render`, which only appears
     // on line 1. under the line-bound rule the marker can't reach back; the
     // resolver reports anchor_not_found.
-    const input =
-      `function render() {\n` +
-      `  do_thing();\n` +
-      `}\n` +
-      `// [!em render...*]\n`;
+    const input = `function render() {\n` + `  do_thing();\n` + `}\n` + `// [!em render...*]\n`;
     const { overlays, issues } = quiet_extract(input, [em_plugin()]);
     expect(overlays).toBeDefined();
     expect(overlays!.ranges.length).toBe(0);
@@ -558,5 +553,257 @@ describe("phase 2 — anchors, ranges, set, pairing", () => {
     expect(overlays!.ranges[0]).toBe(input.indexOf("foo"));
     // first occurrence of `console` (the real one) bounds the range.
     expect(overlays!.ranges[1]).toBe(input.indexOf("console") + "console".length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// raw plugins
+// ---------------------------------------------------------------------------
+
+describe("raw plugins", () => {
+  type Handle = AnnotationPlugin["handle"];
+
+  function raw_plugin(handle: Handle): AnnotationPlugin {
+    return { verbs: ["code"], parse: "raw", handle };
+  }
+
+  function run(input: string, plugin: AnnotationPlugin, on_error?: (issue: any) => void) {
+    const result = tokenize(input, grammar);
+    const extractor = build_annotation_extractor(
+      { plugins: [plugin], on_error },
+      result.token_types,
+    );
+    return extractor(input, result);
+  }
+
+  test("args is the text after the verb with trailing whitespace trimmed", () => {
+    const seen: unknown[] = [];
+    run(
+      "// [!code highlight:2]\n// [!code]\n// [!code  spaced  ]\nabc\n",
+      raw_plugin((i) => {
+        seen.push(i.args);
+      }),
+    );
+    expect(seen).toEqual(["highlight:2", "", " spaced"]);
+  });
+
+  test("a raw argument is not parsed: half-open syntax does not pair", () => {
+    const issues: any[] = [];
+    let id: string | undefined;
+    run(
+      "// [!code#x foo..]\nabc\n",
+      raw_plugin((i) => {
+        id = i.id;
+      }),
+      (issue) => issues.push(issue),
+    );
+    expect(id).toBe("x");
+    expect(issues).toEqual([]);
+  });
+
+  test("the marker bytes are hidden and a marker-only line is elided", () => {
+    const input = "// [!code x]\nabc // [!code y]\n";
+    const overlays = run(
+      input,
+      raw_plugin(() => ({})),
+    );
+    expect(overlays).toBeDefined();
+    expect(overlays!.elided_lines[0]).toBe(1);
+    expect(overlays!.elided_lines[1]).toBe(0);
+    expect(overlays!.skip_ranges.length).toBe(4);
+  });
+
+  test("consumed: false leaves the marker in place", () => {
+    const overlays = run(
+      "// [!code nope]\nabc\n",
+      raw_plugin(() => ({ consumed: false })),
+    );
+    expect(overlays).toBeUndefined();
+  });
+
+  test("`\\]` inside raw args does not close the marker", () => {
+    let seen: unknown;
+    run(
+      "// [!code word:a\\]b]\nabc\n",
+      raw_plugin((i) => {
+        seen = i.args;
+      }),
+    );
+    expect(seen).toBe("word:a\\]b");
+  });
+
+  test('resolve("+2") returns the two lines below the marker', () => {
+    const input = "// [!code x]\nabc\ndef\nghi\n";
+    let range: any;
+    run(
+      input,
+      raw_plugin((i) => {
+        range = i.resolve("+2");
+      }),
+    );
+    expect(range).toEqual({
+      start: input.indexOf("abc"),
+      end: input.indexOf("ghi"),
+      start_line: 2,
+      end_line: 3,
+    });
+  });
+
+  test('resolve("foo..bar") returns the anchor range on the marker\'s line', () => {
+    const input = "foo x bar // [!code y]\n";
+    let range: any;
+    run(
+      input,
+      raw_plugin((i) => {
+        range = i.resolve("foo..bar");
+      }),
+    );
+    expect(range).toEqual({ start: 3, end: 6, start_line: 1, end_line: 1 });
+  });
+
+  test("resolve_all with a scoped set returns every occurrence in scope", () => {
+    const input = "// [!code w]\nabc abc\nabc\nabc\n";
+    let ranges: any[] = [];
+    run(
+      input,
+      raw_plugin((i) => {
+        ranges = i.resolve_all('="abc" +2');
+      }),
+    );
+    expect(ranges.map((r) => r.start_line)).toEqual([2, 2, 3]);
+  });
+
+  test("a failed resolve surfaces under the marker's position", () => {
+    const issues: any[] = [];
+    run(
+      "// [!code x]\nabc\n",
+      raw_plugin((i) => {
+        i.resolve("nope..nope");
+      }),
+      (issue) => issues.push(issue),
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].kind).toBe("anchor_not_found");
+    expect(issues[0].position.line).toBe(1);
+  });
+
+  test("plugin issues reach on_error at the marker position and the marker is hidden", () => {
+    const issues: any[] = [];
+    const input = "abc // [!code highlight:0]\n";
+    const overlays = run(
+      input,
+      raw_plugin(() => ({ issues: [{ kind: "malformed", message: "bad count" }] })),
+      (issue) => issues.push(issue),
+    );
+    expect(issues).toEqual([
+      {
+        kind: "malformed",
+        message: "bad count",
+        position: { start: input.indexOf("[!"), end: input.indexOf("]") + 1, line: 1 },
+      },
+    ]);
+    expect(overlays!.skip_ranges[0]).toBe(input.indexOf("//"));
+  });
+
+  test("an overlay outside the source is a RangeError naming the verb", () => {
+    const input = "abc // [!code x]\n";
+    expect(() =>
+      run(
+        input,
+        raw_plugin(() => ({
+          overlays: [{ start: 0, end: input.length + 5, classification: "x" }],
+        })),
+      ),
+    ).toThrow(/RangeError|"code"/);
+  });
+
+  test("standalone is true only for a line that holds nothing but markers", () => {
+    const seen: boolean[] = [];
+    run(
+      "// [!code a]\nabc // [!code b]\n// note [!code c]\n// [!code d] [!code e]\n",
+      raw_plugin((i) => {
+        seen.push(i.standalone);
+      }),
+    );
+    expect(seen).toEqual([true, false, false, true, true]);
+  });
+
+  test("range for a raw marker is the marker's own line", () => {
+    const input = "abc\ndef // [!code x]\nghi\n";
+    let range: any;
+    run(
+      input,
+      raw_plugin((i) => {
+        range = i.range;
+      }),
+    );
+    expect(range).toEqual({ start: 4, end: input.indexOf("\nghi"), start_line: 2, end_line: 2 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// scoped set form
+// ---------------------------------------------------------------------------
+
+describe("scoped set form", () => {
+  function tok_plugin(): AnnotationPlugin {
+    return {
+      verbs: ["hl"],
+      handle: ({ range }) => ({
+        overlays: [{ start: range.start, end: range.end, classification: "x" }],
+      }),
+    };
+  }
+
+  function starts(input: string, on_error?: (issue: any) => void): number[] {
+    const result = tokenize(input, grammar);
+    const extractor = build_annotation_extractor(
+      { plugins: [tok_plugin()], on_error },
+      result.token_types,
+    );
+    const overlays = extractor(input, result);
+    if (overlays === undefined) return [];
+    const out: number[] = [];
+    for (let i = 0; i < overlays.ranges.length; i += 4) out.push(overlays.ranges[i]);
+    return out;
+  }
+
+  const body = "Hello\nsay Hello Hello\nHello\n";
+
+  test("=Hello +2 wraps the two lines below and not the third", () => {
+    const input = "// [!hl =Hello +2]\n" + body;
+    expect(starts(input)).toEqual([19, 29, 35]);
+  });
+
+  test("=Hello :* wraps every occurrence", () => {
+    const input = "// [!hl =Hello :*]\n" + body;
+    expect(starts(input)).toHaveLength(4);
+  });
+
+  test("=Hello :3 wraps only line 3", () => {
+    const input = "// [!hl =Hello :3]\n" + body;
+    expect(starts(input)).toEqual([29, 35]);
+  });
+
+  test("=Hello :2...4 and :1..4 follow the line ref rules", () => {
+    expect(starts("// [!hl =Hello :2...4]\n" + body)).toHaveLength(4);
+    expect(starts("// [!hl =Hello :1..4]\n" + body)).toHaveLength(3);
+  });
+
+  test("unscoped set form keeps the marker's own line", () => {
+    const input = "Hello // [!hl =Hello]\nHello\n";
+    expect(starts(input)).toEqual([0]);
+  });
+
+  test("=Nope +2 reports anchor_not_found", () => {
+    const issues: any[] = [];
+    starts("// [!hl =Nope +2]\n" + body, (i) => issues.push(i));
+    expect(issues.map((i) => i.kind)).toEqual(["anchor_not_found"]);
+  });
+
+  test("=Hello * and =Hello + are malformed", () => {
+    const issues: any[] = [];
+    starts("// [!hl =Hello *]\n// [!hl =Hello +]\n" + body, (i) => issues.push(i));
+    expect(issues.map((i) => i.kind)).toEqual(["malformed", "malformed"]);
   });
 });
