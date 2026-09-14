@@ -52,8 +52,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   const first_line = inline ? 1 : first_line_number(options.line_numbers);
   let line_no = first_line;
   let open_class: string | null = null;
-  // the full open tag of a hook decorated token, so a line break inside the
-  // token reopens the same tag. null for every undecorated token.
+  // kept whole so a line break inside a decorated token reopens the same tag.
   let open_tag: string | null = null;
 
   begin_line();
@@ -231,8 +230,7 @@ interface HookDecoration {
 }
 
 // the class is escaped rather than validated so a hook can never break out
-// of the attribute, and the attrs go through the same checks as the
-// `attributes` option so the two cannot disagree on what is allowed.
+// of the attribute.
 function hook_output(value: unknown, hook: string): HookDecoration | null {
   if (value === undefined || value === null) return null;
   if (typeof value !== "object") {

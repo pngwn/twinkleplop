@@ -663,22 +663,18 @@ export interface RenderOptions {
   has_classes?: boolean;
   // merged with any marker overlays already on the tokenize result.
   overlays?: OverlayItem[];
-  // "inline" drops the block and line elements and separates lines with
-  // <br>, for code inside prose. the block and line level options have
-  // nothing to attach to there and are ignored.
+  // "inline" emits no block or line elements and <br> between lines. the
+  // block and line level options are ignored.
   structure?: "classic" | "inline";
-  // called once per visible line with its visible index (independent of a
-  // line_numbers start) and its 1-based source line. not called in inline
-  // mode.
+  // n is the visible index regardless of a line_numbers start, source_line
+  // the 1-based input line. not called in inline mode.
   line?: (n: number, source_line: number) => HookResult | void;
-  // called once per token in source order with the type name and byte
-  // range. a token the hook decorates renders as its own span and is never
-  // merged with a neighbour of the same type.
+  // a decorated token renders as its own span and is never merged.
   token?: (type: string, start: number, end: number) => HookResult | void;
 }
 
-// what a hook adds to its element. the class is appended after the
-// element's own classes and the attrs follow the rules of `attributes`.
+// class goes after the element's own classes; attrs follow the `attributes`
+// rules.
 export interface HookResult {
   class?: string;
   attrs?: Record<string, string | number | boolean>;

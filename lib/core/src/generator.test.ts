@@ -646,8 +646,8 @@ describe("inline structure and hooks", () => {
     return to_html(input, result, options);
   }
 
-  // the tokenizer merges same-type runs, so adjacent tokens of one type
-  // only exist in a hand-built result.
+  // the tokenizer merges same type runs, so adjacent tokens of one type need
+  // a hand built result.
   function hand_built(types: string[], triples: number[]): TokenizeResult {
     return { tokens: new Uint32Array(triples), token_types: types };
   }
