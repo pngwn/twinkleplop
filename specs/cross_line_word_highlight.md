@@ -76,13 +76,13 @@ type ParsedArgs = … | {
 - `=foo *` (bare wildcard) and `=foo +` (missing count) are `malformed`.
 
 ## Acceptance criteria
-- [ ] `// [!hl =Hello +2]` above three lines each containing `Hello` wraps the first two and not the third; the marker line is gone.
-- [ ] `// [!hl =Hello :*]` wraps all three.
-- [ ] `// [!hl =Hello :3]` wraps only line 3's occurrence.
-- [ ] `const a = 'Hello' // [!hl =Hello]` still wraps only that line's occurrence.
-- [ ] `// [!hl =Nope +2]` reports `anchor_not_found` through `on_error` and renders nothing extra.
-- [ ] A line containing `Hello` twice inside the scope gets two wrappers.
-- [ ] Existing set-form tests pass unchanged.
+- [x] `// [!hl =Hello +2]` above three lines each containing `Hello` wraps the first two and not the third; the marker line is gone.
+- [x] `// [!hl =Hello :*]` wraps all three.
+- [x] `// [!hl =Hello :3]` wraps only line 3's occurrence.
+- [x] `const a = 'Hello' // [!hl =Hello]` still wraps only that line's occurrence.
+- [x] `// [!hl =Nope +2]` reports `anchor_not_found` through `on_error` and renders nothing extra.
+- [x] A line containing `Hello` twice inside the scope gets two wrappers.
+- [x] Existing set-form tests pass unchanged.
 
 ## Dependencies
 - Depends on: [core](./core.md)
