@@ -1,6 +1,6 @@
 import { createTwoslasher } from "twoslash";
 import { language } from "./language.js";
-import { render } from "./render.js";
+import { create_pipeline, resolve_twoslash_options } from "./options.js";
 import type { HighlightOptions } from "./types.js";
 
 /**
@@ -8,13 +8,9 @@ import type { HighlightOptions } from "./types.js";
  * underlying twoslash instance for better performance on repeated calls.
  */
 export function create_highlighter(options: HighlightOptions = {}) {
-  const twoslasher = createTwoslasher(options.twoslash ?? {});
+  const twoslasher = createTwoslasher(resolve_twoslash_options(options));
   const lang = options.lang ?? "ts";
-  return (code: string) => {
-    const result = twoslasher(code, lang);
-    const tokens = language(result.code);
-    return render(result.code, tokens, result, options);
-  };
+  return create_pipeline((code) => twoslasher(code, lang), language, options);
 }
 
 /**
@@ -27,3 +23,5 @@ export function highlight(code: string, options: HighlightOptions = {}) {
 
 export { language };
 export { render } from "./render.js";
+export { create_pipeline, resolve_twoslash_options, DEFAULT_CUSTOM_TAGS } from "./options.js";
+export type { HighlightOptions, DocTag, CompletionItem } from "./types.js";

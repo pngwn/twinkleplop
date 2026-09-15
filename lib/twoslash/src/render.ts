@@ -23,7 +23,7 @@
 // and the query/error spans into block-level callouts.
 
 import { language } from "./language.js";
-import type { Wrapper, LineAnnotation, HighlightOptions } from "./types.js";
+import type { DocTag, Wrapper, LineAnnotation, HighlightOptions } from "./types.js";
 
 import { TwoslashOptions, type TwoslashReturn, type NodeError } from "twoslash";
 import type { TokenizeResult } from "@twinkleplop/core";
@@ -84,6 +84,81 @@ function highlight_fragment(text: string): string {
   return out;
 }
 
+/**
+ * The three caller hooks, resolved once per render call so the walk below can
+ * call them unconditionally. Absent hooks resolve to the behavior that was
+ * hard-coded before they existed.
+ */
+interface RenderContext {
+  render_docs: (markdown: string) => string;
+  process_type: (type: string) => string;
+  split_tags: boolean;
+}
+
+function resolve_render_context(options: HighlightOptions): RenderContext {
+  return {
+    render_docs: options.render_docs ?? escape_html,
+    process_type: options.process_type ?? ((type) => type),
+    split_tags: (options.docs_tags ?? "split") === "split",
+  };
+}
+
+// jsdoc tags whose value opens with the name of the thing they document, so
+// that name can be lifted out of the prose into its own element.
+const NAMED_TAGS = new Set([
+  "param",
+  "arg",
+  "argument",
+  "prop",
+  "property",
+  "template",
+  "typeparam",
+]);
+
+function is_tag_space(code: number): boolean {
+  return code === 32 || code === 9;
+}
+
+/**
+ * Render a hover's or query's JSDoc tags as one element per tag. `prefix` is
+ * the class stem of the enclosing block (`twoslash-popover`, `twoslash-query`)
+ * so the tag classes sit in the same family as the type and docs elements.
+ */
+function render_doc_tags(tags: DocTag[] | undefined, prefix: string, ctx: RenderContext): string {
+  if (!ctx.split_tags || !tags || tags.length === 0) return "";
+  let out = `<span class="${prefix}-tags">`;
+  for (const [name, text] of tags) {
+    out +=
+      `<span class="${prefix}-tag" data-tag="${escape_html(name)}">` +
+      render_doc_tag_value(name, text, prefix, ctx) +
+      `</span>`;
+  }
+  return out + `</span>`;
+}
+
+function render_doc_tag_value(
+  name: string,
+  text: string | undefined,
+  prefix: string,
+  ctx: RenderContext,
+): string {
+  // `@deprecated` and friends carry no value at all, and the boolean form of a
+  // custom tag reports `true` rather than a string.
+  if (typeof text !== "string" || text.length === 0) return "";
+  if (!NAMED_TAGS.has(name.toLowerCase())) return ctx.render_docs(text);
+
+  let name_end = 0;
+  while (name_end < text.length && !is_tag_space(text.charCodeAt(name_end))) name_end++;
+  let rest_start = name_end;
+  while (rest_start < text.length && is_tag_space(text.charCodeAt(rest_start))) rest_start++;
+
+  const named = `<span class="${prefix}-tag-name">${escape_html(
+    text.substring(0, name_end),
+  )}</span>`;
+  if (rest_start >= text.length) return named;
+  return `${named} ${ctx.render_docs(text.substring(rest_start))}`;
+}
+
 function add_line_annotation(
   map: Map<number, LineAnnotation[]>,
   line: number,
@@ -126,16 +201,17 @@ function line_for_offset(line_starts: number[], offset: number): number {
  * For hovers the close string also carries the popover payload so the
  * whole tooltip structure is baked into a single close event.
  */
-function wrapper_tags(w: Wrapper): { open: string; close: string } {
+function wrapper_tags(w: Wrapper, ctx: RenderContext): { open: string; close: string } {
   switch (w.kind) {
     case "hover": {
       const open = `<span class="twoslash-hover"><span class="twoslash-target">`;
       let popover = `<span class="twoslash-popover-type">${highlight_fragment(
-        w.text ?? "",
+        ctx.process_type(w.text ?? ""),
       )}</span>`;
       if (w.docs) {
-        popover += `<span class="twoslash-popover-docs">${escape_html(w.docs)}</span>`;
+        popover += `<span class="twoslash-popover-docs">${ctx.render_docs(w.docs)}</span>`;
       }
+      popover += render_doc_tags(w.tags, "twoslash-popover", ctx);
       const close = `</span><span class="twoslash-popover">${popover}</span></span>`;
       return { open, close };
     }
@@ -166,7 +242,11 @@ function wrapper_tags(w: Wrapper): { open: string; close: string } {
               (c) =>
                 `<span class="twoslash-completion-entry"${
                   c.kind ? ` data-kind="${escape_html(c.kind)}"` : ""
-                }>${escape_html(c.name)}</span>`,
+                }>${escape_html(c.name)}${
+                  c.docs
+                    ? `<span class="twoslash-completion-docs">${ctx.render_docs(c.docs)}</span>`
+                    : ""
+                }</span>`,
             )
             .join("") +
           `</span>`;
@@ -180,15 +260,16 @@ function wrapper_tags(w: Wrapper): { open: string; close: string } {
   return { open: "", close: "" };
 }
 
-function render_line_annotation(ann: LineAnnotation) {
+function render_line_annotation(ann: LineAnnotation, ctx: RenderContext) {
   switch (ann.kind) {
     case "query": {
       let out = `<span class="twoslash-query"><span class="twoslash-query-type">${highlight_fragment(
-        ann.text ?? "",
+        ctx.process_type(ann.text ?? ""),
       )}</span>`;
       if (ann.docs) {
-        out += `<span class="twoslash-query-docs">${escape_html(ann.docs)}</span>`;
+        out += `<span class="twoslash-query-docs">${ctx.render_docs(ann.docs)}</span>`;
       }
+      out += render_doc_tags(ann.tags, "twoslash-query", ctx);
       out += `</span>`;
       return out;
     }
@@ -216,6 +297,7 @@ export function render(
   const { class_name = "highlight twoslash" } = options;
   const { tokens, token_types } = token_result;
   const nodes = twoslash_result.nodes ?? [];
+  const ctx = resolve_render_context(options);
 
   // -- Partition nodes --------------------------------------------------
   const wrappers: Wrapper[] = [];
@@ -232,6 +314,7 @@ export function render(
           kind: "hover",
           text: node.text,
           docs: node.docs,
+          tags: node.tags,
         });
         break;
       case "error":
@@ -271,13 +354,16 @@ export function render(
           kind: "query",
           text: node.text,
           docs: node.docs,
+          tags: node.tags,
         });
         break;
       case "tag":
         add_line_annotation(line_annotations, node.line, {
           kind: "tag",
           name: node.name,
-          text: node.text,
+          // the boolean form of a tag (`// @log` with no value) reports
+          // `true` rather than a string.
+          text: typeof node.text === "string" ? node.text : undefined,
         });
         break;
     }
@@ -365,7 +451,7 @@ export function render(
     // Open new wrappers after the common prefix.
     while (stack.length < active_wrappers.length) {
       const w = active_wrappers[stack.length];
-      const { open, close } = wrapper_tags(w);
+      const { open, close } = wrapper_tags(w, ctx);
       out.push(open);
       stack.push({ ref: w, close });
     }
@@ -392,10 +478,10 @@ export function render(
         const saved = stack.slice();
         while (stack.length) out.push(stack.pop()!.close);
 
-        for (const ann of anns) out.push(render_line_annotation(ann));
+        for (const ann of anns) out.push(render_line_annotation(ann, ctx));
         // Restore the stack for subsequent segments.
         for (const entry of saved) {
-          const { open, close } = wrapper_tags(entry.ref);
+          const { open, close } = wrapper_tags(entry.ref, ctx);
           out.push(open);
           stack.push({ ref: entry.ref, close });
         }
