@@ -59,12 +59,13 @@ same options.
    `data-language` set to the unknown name.
 
 ### Block output
-5. Every highlighted fence renders as
-   `<figure class="twinkleplop-block" data-language="ts">` containing an
-   optional `<figcaption class="twinkleplop-title">` (only when a title is
-   present), then the `<pre class="twinkleplop language-ts" data-language="ts">`
-   block, then an optional `<figcaption class="twinkleplop-caption">` (only
-   when a caption is present).
+5. A highlighted fence renders as
+   `<pre class="twinkleplop language-ts" data-language="ts">`. A fence
+   carrying a title or a caption wraps that block in
+   `<figure class="twinkleplop-block" data-language="ts">`, with a
+   `<figcaption class="twinkleplop-title">` above the block when there is a
+   title and a `<figcaption class="twinkleplop-caption">` below it when
+   there is a caption. A fence with neither is the bare block.
 6. The fence body is passed to the highlighter exactly as written: entities
    decoded, tabs preserved, trailing newline removed.
 
@@ -72,9 +73,8 @@ same options.
 7. The meta string is parsed for the conventions below. Recognised parts
    are removed; unrecognised parts are ignored and left for `parse_meta`.
 
-   > **To discuss.** All known conventions are listed so nothing is
-   > forgotten; the set twinkleplop commits to, and which family wins where
-   > two conflict, is not decided. See *Open questions*.
+   Both families are recognised, so content written for any of the three
+   ecosystems ports unchanged.
 
    | convention | source | effect |
    | --- | --- | --- |
@@ -151,9 +151,8 @@ Output for the fence in *User-facing behavior*:
 
 ## Edge cases & error behavior
 - A line range in meta beyond the fence's last line is an error naming the
-  fence (a typo in docs should fail the build, matching shiki's
-  transformers which silently ignore it is the alternative; see open
-  questions).
+  fence, so a typo in docs fails the build rather than silently
+  highlighting nothing (shiki's transformers ignore it).
 - A `/word/` with no occurrence renders normally.
 - A title containing `"` or `<` is escaped in the caption.
 - A fence body that is empty renders an empty block with the figure and
@@ -164,15 +163,27 @@ Output for the fence in *User-facing behavior*:
   registered language's annotation plugins.
 
 ## Acceptance criteria
-- [ ] The example fence renders the documented HTML through each of the three plugins.
-- [ ] `js` aliased to `ts` renders identically to a `ts` fence with `data-language="js"`.
-- [ ] A `rust` fence with no `rust` entry throws an error containing `rust` and the source location; with `on_unknown_language: "plain"` it renders escaped text in the block markup.
-- [ ] `{2}` on a two-line fence highlights line 2; `{3}` throws naming the fence.
-- [ ] `:line-numbers=5` numbers from 5; `:no-line-numbers` on a site with `line_numbers: true` renders no numbers.
-- [ ] `` `x{:ts}` `` in a paragraph renders inline structure inside `code.twinkleplop-inline.language-ts` when `inline` is enabled and is untouched when it is not.
-- [ ] A fence with `twoslash` in its meta uses the entry's twoslash highlighter; without it, the plain one.
-- [ ] `parse_meta` receives `{1}` already turned into an overlay and can add a `class_name`.
-- [ ] The rehype and markdown-it plugins process a 200-fence document without re-creating highlighters per fence.
+Implemented in `lib/markdown-core` (registry, meta conventions, block
+markup, inline code) with one package per toolchain: `lib/rehype`,
+`lib/markdown-it`, `lib/remark`. The rehype plugin parses the block into
+hast so the pipeline needs no `allowDangerousHtml`, as `@shikijs/rehype`
+does not; `output: "raw"` takes the string as a raw node instead and keeps
+the parse (about as much again as rendering the block). Its bytes are then
+the pipeline stringifier's, so the three plugins are compared as markup
+rather than byte for byte. The unknown-language fallback renders
+through `to_html` with an empty token stream, so a plain fence honours every
+convention the same way a highlighted one does. No file in `lib/core`
+changed, so nothing on the perf harness's path moved.
+
+- [x] The example fence renders the documented HTML through each of the three plugins.
+- [x] `js` aliased to `ts` renders identically to a `ts` fence with `data-language="js"`.
+- [x] A `rust` fence with no `rust` entry throws an error containing `rust` and the source location; with `on_unknown_language: "plain"` it renders escaped text in the block markup.
+- [x] `{2}` on a two-line fence highlights line 2; `{3}` throws naming the fence.
+- [x] `:line-numbers=5` numbers from 5; `:no-line-numbers` on a site with `line_numbers: true` renders no numbers.
+- [x] `` `x{:ts}` `` in a paragraph renders inline structure inside `code.twinkleplop-inline.language-ts` when `inline` is enabled and is untouched when it is not.
+- [x] A fence with `twoslash` in its meta uses the entry's twoslash highlighter; without it, the plain one.
+- [x] `parse_meta` receives `{1}` already turned into an overlay and can add a `class_name`.
+- [x] The rehype and markdown-it plugins process a 200-fence document without re-creating highlighters per fence.
 
 ## Dependencies
 - Depends on: [core](./core.md), [render_options](./render_options.md), [overlays_option](./overlays_option.md), [inline_and_hooks](./inline_and_hooks.md), [twoslash_options](./twoslash_options.md)
@@ -180,14 +191,15 @@ Output for the fence in *User-facing behavior*:
 - Depended on by: none
 
 ## Open questions
-- **Which meta conventions to commit to.** The table lists both the
-  shiki/VitePress family and rehype-pretty-code's. Candidates for dropping:
-  `#id` groups, `/word/3-5`, `caption=`. Decide before implementation; the
-  parser should be one function with a table so adding or removing a
-  convention is a one-line change.
-- Whether an out-of-range line ref is an error or ignored (shiki ignores).
-- Whether the figure wrapper should be omitted when there is no title or
-  caption, giving bare `<pre>` output like shiki.
+- **Settled: every convention in the table ships.** Both families, `#id`
+  groups and `/word/3-5` included. The parser is one table in
+  `lib/markdown-core/src/meta.ts`, one row per convention, so adding or
+  removing one stays a small change. Word ids land on the token spans the
+  overlay wrapper holds rather than on the wrapper itself, since overlays
+  carry classes and not attributes.
+- **Settled: an out-of-range line ref is an error**, not ignored.
+- **Settled: the figure wrapper appears only with a title or a caption.**
+  A plain fence is a bare `<pre>`, as shiki's output is.
 - A `copy` control convention (`copy=false` as on svelte.dev): presentation,
   probably a site concern.
 - Caching across builds: a site concern for now; a `cache` adapter could be
