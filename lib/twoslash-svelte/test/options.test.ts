@@ -1,9 +1,6 @@
-// The svelte package takes the same options as @twinkleplop/twoslash, so
-// these mirror that package's options suite against .svelte fixtures.
-//
-// Custom tags are the one case that is genuinely different here: the tag
-// comments are parsed out of the svelte source before svelte2tsx runs, so the
-// nodes for them are built on this side rather than by the base twoslasher.
+// the same options suite as @twinkleplop/twoslash, over .svelte fixtures.
+// custom tags are the one case that genuinely differs: their nodes are built
+// in this package rather than by the base twoslasher.
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";

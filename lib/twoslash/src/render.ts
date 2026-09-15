@@ -85,9 +85,8 @@ function highlight_fragment(text: string): string {
 }
 
 /**
- * The three caller hooks, resolved once per render call so the walk below can
- * call them unconditionally. Absent hooks resolve to the behavior that was
- * hard-coded before they existed.
+ * the caller hooks, resolved once per call so the walk below can reach for
+ * them unconditionally; an absent one resolves to what was hard coded before.
  */
 interface RenderContext {
   render_docs: (markdown: string) => string;
@@ -103,8 +102,8 @@ function resolve_render_context(options: HighlightOptions): RenderContext {
   };
 }
 
-// jsdoc tags whose value opens with the name of the thing they document, so
-// that name can be lifted out of the prose into its own element.
+// jsdoc tags whose value opens with the name of what they document; that
+// name is lifted out of the prose into its own element.
 const NAMED_TAGS = new Set([
   "param",
   "arg",
@@ -119,11 +118,8 @@ function is_tag_space(code: number): boolean {
   return code === 32 || code === 9;
 }
 
-/**
- * Render a hover's or query's JSDoc tags as one element per tag. `prefix` is
- * the class stem of the enclosing block (`twoslash-popover`, `twoslash-query`)
- * so the tag classes sit in the same family as the type and docs elements.
- */
+// `prefix` is the enclosing block's class stem (`twoslash-popover`,
+// `twoslash-query`) so tags sit in the same family as its type and docs.
 function render_doc_tags(tags: DocTag[] | undefined, prefix: string, ctx: RenderContext): string {
   if (!ctx.split_tags || !tags || tags.length === 0) return "";
   let out = `<span class="${prefix}-tags">`;
@@ -142,8 +138,7 @@ function render_doc_tag_value(
   prefix: string,
   ctx: RenderContext,
 ): string {
-  // `@deprecated` and friends carry no value at all, and the boolean form of a
-  // custom tag reports `true` rather than a string.
+  // `@deprecated` carries no value, and a tag's boolean form reports `true`.
   if (typeof text !== "string" || text.length === 0) return "";
   if (!NAMED_TAGS.has(name.toLowerCase())) return ctx.render_docs(text);
 
@@ -361,8 +356,7 @@ export function render(
         add_line_annotation(line_annotations, node.line, {
           kind: "tag",
           name: node.name,
-          // the boolean form of a tag (`// @log` with no value) reports
-          // `true` rather than a string.
+          // `// @log` with no value reports `true` rather than a string.
           text: typeof node.text === "string" ? node.text : undefined,
         });
         break;

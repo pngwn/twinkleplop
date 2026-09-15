@@ -1,9 +1,5 @@
-// Tests for the option surface around the decorations: custom tags, the
-// `on_error` fallback, `render_docs`, `process_type` and `docs_tags`.
-//
-// Options are baked in when the highlighter is built, so each case needs its
-// own highlighter. They share one twoslash env cache so the suite stands up
-// the TypeScript language service once rather than once per test.
+// options are baked in when the highlighter is built, so each case needs its
+// own; one shared env cache keeps the suite to a single language service.
 
 import { describe, it, expect } from "vitest";
 import type { TwoslashReturn } from "twoslash";
@@ -45,8 +41,8 @@ describe("custom tags", () => {
 
   it("pre-registers annotate, log, warn and error", () => {
     expect(DEFAULT_CUSTOM_TAGS).toEqual(["annotate", "log", "warn", "error"]);
-    // twoslash merges adjacent removal ranges and drops nodes that land
-    // inside one, so stacked tag comments would collapse into the last.
+    // twoslash merges adjacent removals and drops the nodes inside one, so
+    // stacked tag comments would collapse into the last.
     const html = build()(
       `// @annotate: a\nconst a = 1\n// @log: l\nconst b = 2\n` +
         `// @warn: w\nconst c = 3\n// @error: e\nconst d = 4\n`,
@@ -136,8 +132,8 @@ describe("render_docs", () => {
     );
   });
 
-  // the compiler does not attach documentation to the entries it returns for a
-  // `^|` completion, so this drives `render` with a node that has some.
+  // the compiler attaches no documentation to `^|` completion entries, so this
+  // drives `render` with a node that has some.
   it("runs over completion entries that carry docs", () => {
     const code = `const a = 1\n`;
     const result = {

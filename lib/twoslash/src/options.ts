@@ -1,16 +1,14 @@
-// Option plumbing shared by @twinkleplop/twoslash and
-// @twinkleplop/twoslash-svelte, so both packages accept the same options with
-// the same meaning and differ only in how they reach twoslash.
+// shared by both twoslash packages, so they differ only in how they reach
+// twoslash and in the grammar they tokenize with.
 
 import type { TokenizeResult } from "@twinkleplop/core";
 import type { TwoslashOptions, TwoslashReturn } from "twoslash";
 import { render } from "./render.js";
 import type { HighlightOptions } from "./types.js";
 
-// twoslash treats an unrecognised `// @foo` as a mistyped compiler flag and
-// throws, so a tag has to be declared before it can be used. These four are
-// the ones twoslash itself documents; pre-registering them is what lets a
-// snippet author write `// @log: hello` with no configuration.
+// an undeclared `// @foo` is a mistyped compiler flag to twoslash, and throws.
+// these four are the ones twoslash documents; pre-registering them is what
+// lets an author write `// @log: hello` with no configuration.
 export const DEFAULT_CUSTOM_TAGS = ["annotate", "log", "warn", "error"];
 
 export function resolve_twoslash_options(options: HighlightOptions): TwoslashOptions {
@@ -23,10 +21,9 @@ export function resolve_twoslash_options(options: HighlightOptions): TwoslashOpt
 }
 
 /**
- * Build the highlight function both packages return from a twoslash runner and
- * a tokenizer. `on_error` covers the twoslash call alone: a snippet twoslash
- * rejects is the caller's problem to fall back from, while a failure in
- * tokenizing or rendering is a bug here and should surface as one.
+ * the highlight function both packages return. `on_error` covers the twoslash
+ * call alone: a rejected snippet is the caller's to fall back from, a failure
+ * in tokenizing or rendering is a bug here and should surface as one.
  */
 export function create_pipeline(
   run_twoslash: (code: string) => TwoslashReturn,

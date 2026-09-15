@@ -1,42 +1,41 @@
 // hover, error, error-line, highlight, completion, tag, query
 import type { NodeCompletion, NodeError, TwoslashOptions } from "twoslash";
 
-/** A JSDoc tag as twoslash reports it: `["param", "a the first operand"]`. */
+/** a jsdoc tag as twoslash reports it: `["param", "a the first operand"]`. */
 export type DocTag = [name: string, text: string | undefined];
 
-/** One completion list entry. `docs` is optional and rarely populated by the compiler. */
+/** a completion entry; the compiler seldom fills `docs` in, but may. */
 export type CompletionItem = NodeCompletion["completions"][number] & { docs?: string };
 
 export interface HighlightOptions {
   lang?: "ts" | "tsx" | "js" | "jsx";
   class_name?: string;
-  /** Passed straight through to twoslash. `customTags` here merges with `custom_tags`. */
+  /** passed through to twoslash; `customTags` here merges with `custom_tags`. */
   twoslash?: TwoslashOptions;
   /**
-   * Tags usable as `// @<tag>: text` without twoslash rejecting them as an
-   * unknown compiler flag. Defaults to `["annotate", "log", "warn", "error"]`.
-   * Pass `[]` to disable custom tags entirely.
+   * tags usable as `// @<tag>: text`; anything undeclared reads to twoslash as
+   * a mistyped compiler flag. defaults to annotate, log, warn and error, and
+   * `[]` disables them.
    */
   custom_tags?: string[];
   /**
-   * Called when twoslash rejects the snippet — an unlisted compiler error, an
-   * unknown flag, syntax it cannot process. Return a string to use as the
-   * result of the highlight call; return nothing to rethrow.
+   * called when twoslash rejects the snippet: an unlisted compiler error, an
+   * unknown flag, syntax it cannot process. a string return becomes the result
+   * of the highlight call, no return rethrows.
    */
   on_error?: (error: unknown, code: string) => string | void;
   /**
-   * Called with the raw JSDoc of every documented hover, query and completion
-   * entry, and with every doc-tag value. The return value is inserted into the
-   * docs element as-is, so it is trusted HTML: sanitise it yourself if the
-   * JSDoc it came from is untrusted. Without this option docs are escaped text.
+   * called with the raw jsdoc of every documented hover, query and completion
+   * entry, and with every doc tag value. the return value is inserted as is,
+   * so it is trusted html: sanitise it yourself if the jsdoc is untrusted.
+   * without this option docs are escaped text.
    */
   render_docs?: (markdown: string) => string;
-  /** Called with the type string of every hover and query before it is highlighted. */
+  /** called with every hover and query type before it is highlighted. */
   process_type?: (type: string) => string;
   /**
-   * `"split"` (the default) gives every JSDoc tag its own element. `"raw"`
-   * leaves the docs as the single escaped block they were before doc tags
-   * were rendered at all.
+   * `"split"` (the default) gives each jsdoc tag its own element; `"raw"`
+   * keeps the docs as one escaped block, with no tag elements at all.
    */
   docs_tags?: "split" | "raw";
 }

@@ -14,8 +14,7 @@ import { create_pipeline, resolve_twoslash_options } from "@twinkleplop/twoslash
 import type { HighlightOptions as TsHighlightOptions } from "@twinkleplop/twoslash";
 import { create_twoslasher } from "./twoslasher";
 
-// the same options the TypeScript package takes, minus the language, which
-// this package fixes to svelte.
+// the typescript package's options, minus the language this package fixes.
 export type HighlightOptions = Omit<TsHighlightOptions, "lang">;
 
 // bind a default-fidelity svelte tokenizer once; the twoslash flow is

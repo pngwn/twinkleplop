@@ -95,10 +95,8 @@ export function create_twoslasher(
 
     const flag_notations = findFlagNotations(code, custom_tags, option_declarations);
 
-    // custom tags are parsed out of the svelte source here and blanked before
-    // svelte2tsx runs, so the generated tsx carries no trace of them and the
-    // base twoslasher never sees them. Their nodes have to be built on this
-    // side, in svelte space, and merged back in below.
+    // tag comments are blanked before svelte2tsx runs, so the base twoslasher
+    // never sees them; their nodes get built here in svelte space instead.
     const tag_nodes: NodeTag[] = [];
 
     for (const flag of flag_notations) {
@@ -116,8 +114,8 @@ export function create_twoslasher(
           tag_nodes.push({
             type: "tag",
             name: flag.name,
-            // the node sits at the start of the line the tag annotates, which
-            // is where the comment ends once it has been removed.
+            // once the comment is removed its end is the start of the line
+            // the tag annotates.
             start: flag.end,
             length: 0,
             text: typeof flag.value === "string" ? flag.value : undefined,
@@ -272,9 +270,8 @@ export function create_twoslasher(
       result.nodes = resolveNodePositions(removed.nodes, result.code);
     } else {
       result.code = code;
-      // positions still carry the line/character the base twoslasher computed
-      // against the generated tsx, so resolve them against the svelte source
-      // the offsets were just mapped into.
+      // line/character still come from the generated tsx, so redo them against
+      // the svelte source the offsets were just mapped into.
       result.nodes = resolveNodePositions(mapped_nodes, code);
       result.meta.removals = mapped_removals;
     }
