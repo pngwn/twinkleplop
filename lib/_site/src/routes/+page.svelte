@@ -64,6 +64,7 @@
 				>↓ <span class="twinkle">twinkle</span> some code ↓</a
 			>
 			<p><a href="/explore/svelte">explore</a></p>
+			<p><a href="/how-it-works">how it works</a></p>
 		</div>
 	</div>
 </div>

@@ -11,8 +11,28 @@
 // exported names in Go are PascalCase regardless of whether they're types,
 // functions, variables, or constants, so a blind case-based promotion overfits.
 
-import { make_token_view, promote_by_upper_snake_case, tag } from "@twinkleplop/core";
-import type { LanguagePipeline, Reclassifier } from "@twinkleplop/core";
+import {
+  any_of,
+  as_claim_producer,
+  make_token_view,
+  optional,
+  params,
+  promote_by_upper_snake_case,
+  rewrite_types,
+  seq,
+  tag,
+  type,
+} from "@twinkleplop/core";
+import type { ClaimFn, LanguagePipeline, Reclassifier, RewriteRule } from "@twinkleplop/core";
+
+// go's pipeline priority is structural-over-casing: namespace position
+// beats parameter position beats function position beats the upper-snake
+// constant convention (table precedence 55). the shared precedence table
+// encodes the inverse, js-style casing-first convention, so the go passes
+// state their ordering explicitly.
+const GO_NAMESPACE_PREC = 65;
+const GO_PARAMETER_PREC = 60;
+const GO_FUNCTION_PREC = 58;
 
 export const promote_go_constants: Reclassifier = promote_by_upper_snake_case(
   "identifier",
@@ -25,11 +45,10 @@ export const promote_go_constants: Reclassifier = promote_by_upper_snake_case(
 // Go's square-bracket generic call syntax is lexically indistinguishable from
 // indexing followed by a call (`table[key](x)`), so the bracket+paren branch
 // intentionally favors useful highlighting over parser-level precision.
-export const promote_go_functions: Reclassifier = (input, result) => {
-  const { tokens, token_types } = result;
+const promote_go_functions_fn: ClaimFn = (input, tokens, token_types, sink) => {
   const identifier_id = token_types.indexOf("identifier");
   const punctuation_id = token_types.indexOf("punctuation");
-  if (identifier_id < 0 || punctuation_id < 0) return result;
+  if (identifier_id < 0 || punctuation_id < 0) return;
   let function_id = token_types.indexOf("function");
   if (function_id < 0) {
     function_id = token_types.length;
@@ -84,11 +103,11 @@ export const promote_go_functions: Reclassifier = (input, result) => {
 
   for (let i = 0; i < n; i++) {
     if (view.kind_of(i) !== identifier_id) continue;
-    if (is_function_position(i)) tokens[i * 3] = function_id;
+    if (is_function_position(i)) sink.emit(i, function_id, GO_FUNCTION_PREC);
   }
-
-  return { tokens, token_types };
 };
+
+export const promote_go_functions: Reclassifier = as_claim_producer(promote_go_functions_fn);
 
 // namespace promotion for Go package declarations and aliased imports:
 //   - `package foo`               → foo = namespace
@@ -97,13 +116,12 @@ export const promote_go_functions: Reclassifier = (input, result) => {
 // un-aliased imports `import "fmt"` use a string literal so there's no
 // identifier to promote. use-site package references (`fmt.Println`) need
 // scope tracking and are left as identifier.
-export const promote_go_namespaces: Reclassifier = (input, result) => {
-  const { tokens, token_types } = result;
+const promote_go_namespaces_fn: ClaimFn = (input, tokens, token_types, sink) => {
   const identifier_id = token_types.indexOf("identifier");
   const keyword_id = token_types.indexOf("keyword");
   const punctuation_id = token_types.indexOf("punctuation");
   const string_id = token_types.indexOf("string");
-  if (identifier_id < 0 || keyword_id < 0) return result;
+  if (identifier_id < 0 || keyword_id < 0) return;
   let namespace_id = token_types.indexOf("namespace");
   if (namespace_id < 0) {
     namespace_id = token_types.length;
@@ -121,7 +139,7 @@ export const promote_go_namespaces: Reclassifier = (input, result) => {
     if (kw === "package") {
       const j = view.next_non_trivia(i + 1);
       if (j >= 0 && view.kind_of(j) === identifier_id) {
-        tokens[j * 3] = namespace_id;
+        sink.emit(j, namespace_id, GO_NAMESPACE_PREC);
       }
       continue;
     }
@@ -153,7 +171,7 @@ export const promote_go_namespaces: Reclassifier = (input, result) => {
         if (k === identifier_id) {
           const after = view.next_non_trivia(j + 1);
           if (after >= 0 && view.kind_of(after) === string_id) {
-            tokens[j * 3] = namespace_id;
+            sink.emit(j, namespace_id, GO_NAMESPACE_PREC);
             j = view.next_non_trivia(after + 1);
             continue;
           }
@@ -176,224 +194,44 @@ export const promote_go_namespaces: Reclassifier = (input, result) => {
       }
     }
   }
-
-  return { tokens, token_types };
 };
+
+export const promote_go_namespaces: Reclassifier = as_claim_producer(promote_go_namespaces_fn);
 
 // Parameter promotion: after `func name(...)`, `func name[T any](...)`, or
 // `func (recv *R) name(...)`, tag declared parameter names. Go permits
-// unnamed parameters (`func(T) U`) and shared types (`x, y int`), so this is
-// chunk-based rather than "first identifier after every comma".
-export const promote_go_parameters: Reclassifier = (input, result) => {
-  const { tokens, token_types } = result;
-  const identifier_id = token_types.indexOf("identifier");
-  const function_id = token_types.indexOf("function");
-  const keyword_id = token_types.indexOf("keyword");
-  const punctuation_id = token_types.indexOf("punctuation");
-  if (identifier_id < 0 || keyword_id < 0 || punctuation_id < 0) {
-    return result;
-  }
-  let parameter_id = token_types.indexOf("parameter");
-  if (parameter_id < 0) {
-    parameter_id = token_types.length;
-    token_types.push("parameter");
-  }
-  const view = make_token_view(input, tokens, token_types);
-  const n = view.count;
+// unnamed parameters (`func(T) U`) and shared types (`x, y int`), so the
+// walk is chunk-based with pending-name carryover rather than "first
+// identifier after every comma".
+//
+// one rule over the `params()` walk construct with two branches: the named
+// form, and the receiver / anonymous form where the first paren group is
+// walked (receiver names are parameters too) before an optional name +
+// second list. "scan" rides the `[T any]` generics group between name and
+// paren. go keyword density is high (predeclared types are keywords), so
+// a single anchor keeps the per-keyword dispatch cost to one value check.
+const GO_PARAM_WALK = {
+  into: "p",
+  strategy: "carry_pending",
+  find_open: "scan",
+} as const;
+const go_func_name = any_of(type("identifier"), type("function"));
 
-  const is_name_like = (idx: number): boolean =>
-    view.kind_of(idx) === identifier_id || (function_id >= 0 && view.kind_of(idx) === function_id);
+const go_parameter_rules: RewriteRule[] = [
+  {
+    anchor: type("keyword", "func"),
+    when: any_of(
+      seq(go_func_name, params(GO_PARAM_WALK)),
+      seq(params(GO_PARAM_WALK), optional(seq(go_func_name, params(GO_PARAM_WALK)))),
+    ),
+    rewrite: { p: "parameter" },
+    precedence: GO_PARAMETER_PREC,
+  },
+];
 
-  const find_open_paren = (from: number): { idx: number; offset: number } | null => {
-    if (from < 0) return null;
-    let bracket_depth = 0;
-    let brace_depth = 0;
-    for (let k = from; k < n; k++) {
-      if (view.is_trivia(k)) continue;
-      if (view.kind_of(k) !== punctuation_id) continue;
-      const text = view.text_of(k);
-      for (let offset = 0; offset < text.length; offset++) {
-        const ch = text[offset];
-        if (ch === "[") bracket_depth++;
-        else if (ch === "]") bracket_depth = Math.max(0, bracket_depth - 1);
-        else if (ch === "{") brace_depth++;
-        else if (ch === "}") brace_depth = Math.max(0, brace_depth - 1);
-        else if (ch === "(" && bracket_depth === 0 && brace_depth === 0) {
-          return { idx: k, offset };
-        }
-      }
-    }
-    return null;
-  };
-
-  const find_param_open_after_name = (name_idx: number): { idx: number; offset: number } | null => {
-    const after = view.next_non_trivia(name_idx + 1);
-    if (after < 0 || view.kind_of(after) !== punctuation_id) return null;
-    return find_open_paren(after);
-  };
-
-  const square_has_trailing_type = (chunk: number[], start_pos: number): boolean => {
-    let depth = 0;
-    let seen_open = false;
-    for (let pos = start_pos; pos < chunk.length; pos++) {
-      const idx = chunk[pos];
-      if (view.kind_of(idx) !== punctuation_id) continue;
-      const text = view.text_of(idx);
-      for (let offset = 0; offset < text.length; offset++) {
-        const ch = text[offset];
-        if (ch === "[") {
-          depth++;
-          seen_open = true;
-        } else if (ch === "]" && depth > 0) {
-          depth--;
-          if (seen_open && depth === 0) {
-            for (let rest = offset + 1; rest < text.length; rest++) {
-              const trailing = text[rest];
-              if (trailing !== ")" && trailing !== ",") return true;
-            }
-            return pos < chunk.length - 1;
-          }
-        }
-      }
-    }
-    return true;
-  };
-
-  const has_type_after_first = (chunk: number[]): boolean => {
-    if (chunk.length < 2) return false;
-    const second = chunk[1];
-    if (view.kind_of(second) === punctuation_id) {
-      const text = view.text_of(second);
-      if (text.startsWith(".")) return false;
-      if (text.startsWith("[")) return square_has_trailing_type(chunk, 1);
-    }
-    return true;
-  };
-
-  const promote_parameter_chunks = (chunks: number[][]): void => {
-    let pending_names: number[] = [];
-    for (const chunk of chunks) {
-      if (chunk.length === 0) continue;
-      const first = chunk[0];
-      if (!is_name_like(first)) {
-        pending_names = [];
-        continue;
-      }
-      if (has_type_after_first(chunk)) {
-        for (const idx of pending_names) tokens[idx * 3] = parameter_id;
-        tokens[first * 3] = parameter_id;
-        pending_names = [];
-        continue;
-      }
-      if (chunk.length === 1) {
-        pending_names.push(first);
-      } else {
-        pending_names = [];
-      }
-    }
-  };
-
-  const promote_paren_list = (open: { idx: number; offset: number }): number => {
-    let paren_depth = 1;
-    let bracket_depth = 0;
-    let brace_depth = 0;
-    const chunks: number[][] = [];
-    let current: number[] = [];
-    let k = open.idx;
-    let offset = open.offset + 1;
-
-    while (k < n && paren_depth > 0) {
-      if (view.is_trivia(k)) {
-        k++;
-        offset = 0;
-        continue;
-      }
-      const kind = view.kind_of(k);
-      if (kind !== punctuation_id) {
-        current.push(k);
-        k++;
-        offset = 0;
-        continue;
-      }
-
-      const text = view.text_of(k);
-      let include_punctuation = false;
-      for (; offset < text.length; offset++) {
-        const ch = text[offset];
-        if (ch === "," && paren_depth === 1 && bracket_depth === 0 && brace_depth === 0) {
-          if (include_punctuation) current.push(k);
-          chunks.push(current);
-          current = [];
-          include_punctuation = false;
-          continue;
-        }
-        if (ch === "(") {
-          paren_depth++;
-          include_punctuation = true;
-        } else if (ch === ")") {
-          paren_depth--;
-          if (paren_depth === 0) break;
-          include_punctuation = true;
-        } else if (ch === "[") {
-          bracket_depth++;
-          include_punctuation = true;
-        } else if (ch === "]") {
-          bracket_depth = Math.max(0, bracket_depth - 1);
-          include_punctuation = true;
-        } else if (ch === "{") {
-          brace_depth++;
-          include_punctuation = true;
-        } else if (ch === "}") {
-          brace_depth = Math.max(0, brace_depth - 1);
-          include_punctuation = true;
-        } else {
-          include_punctuation = true;
-        }
-      }
-      if (include_punctuation) current.push(k);
-      k++;
-      offset = 0;
-    }
-    if (current.length > 0) chunks.push(current);
-    promote_parameter_chunks(chunks);
-    return k;
-  };
-
-  for (let i = 0; i < n; i++) {
-    if (view.is_trivia(i)) continue;
-    if (view.kind_of(i) !== keyword_id) continue;
-    if (view.text_of(i) !== "func") continue;
-
-    let j = view.next_non_trivia(i + 1);
-    if (j < 0) continue;
-
-    if (is_name_like(j)) {
-      const param_open = find_param_open_after_name(j);
-      if (param_open != null) {
-        j = promote_paren_list(param_open);
-        i = j - 1;
-      }
-      continue;
-    }
-
-    const first_open = find_open_paren(j);
-    if (first_open == null) continue;
-    j = promote_paren_list(first_open);
-
-    // If the list is followed by a name and another paren list, the first
-    // list was a method receiver and the second list holds real params.
-    j = view.next_non_trivia(j);
-    if (j >= 0 && is_name_like(j)) {
-      const param_open = find_param_open_after_name(j);
-      if (param_open != null) {
-        j = promote_paren_list(param_open);
-      }
-    }
-    if (j > i) i = j - 1;
-  }
-
-  return { tokens, token_types };
-};
+export const promote_go_parameters: Reclassifier = rewrite_types(go_parameter_rules, {
+  trivia: ["comment"],
+});
 
 export const reclassifiers: LanguagePipeline = [
   tag(promote_go_namespaces, ["namespace"]),

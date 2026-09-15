@@ -1,0 +1,21 @@
+%YAML 1.2
+---
+# site deployment configuration
+name: "twinkleplop\nhighlighter"
+version: 1.0.0
+published: true
+owners: null
+banner: |
+  line one
+  line two
+rollout: &base
+  retries: 3
+  timeout: 30s
+environments:
+  - name: "staging"
+    url: "https://staging.example.com"
+    <<: *base
+  - name: "prod"
+    url: "https://example.com"
+    retries: 5
+tags: [demo, showcase]

@@ -544,3 +544,25 @@ describe("TypeScript fidelity — decorator downgrade", () => {
     expect(tokens.find((t) => t.value === "T")?.type).toBe("type");
   });
 });
+
+describe("TypeScript reclassifier — ternary colons around casts", () => {
+  it("a cast ending at a ternary `?` does not promote the else branch", () => {
+    // the imperative promoter dropped the pending `?` when the cast span
+    // exited on it, then misread the ternary `:` as a variable annotation
+    // and promoted `c`. the frame tracker's qmark counting survives the
+    // cast, so the colon reads as the ternary's and `c` stays a value.
+    const tokens = enrich("const z = a as T ? b : c;");
+    expect(type_of(tokens, "T")).toBe("type");
+    expect(type_of(tokens, "b")).toBe("identifier");
+    expect(type_of(tokens, "c")).toBe("identifier");
+  });
+
+  it("a cast inside a ternary branch spans to the statement end", () => {
+    // parity with the imperative promoter: the cast does not exit at the
+    // ternary `:` (an in-span colon is type-level), so the else branch
+    // promotes with it. known cosmetic limitation, kept deliberately.
+    const tokens = enrich("const z = cond ? x as T : y;");
+    expect(type_of(tokens, "T")).toBe("type");
+    expect(type_of(tokens, "y")).toBe("type");
+  });
+});

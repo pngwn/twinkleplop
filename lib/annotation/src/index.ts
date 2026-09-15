@@ -5,9 +5,8 @@
 // and return an AnnotationOutput. the framework owns dispatch, anchor
 // resolution, pairing, and overlay collection.
 //
-// phase 1: em, hl. phase 2: dim, add/del/mod (diffs), err/warn/info
-// (diagnostics). phase 3 will add focus (which needs the global
-// `not-focused` propagation implemented in core).
+// the shiki compatibility plugin lives in "./shiki" so the default entry
+// stays free of it.
 //
 // every plugin auto-selects line-mode vs token-mode from its args:
 // bare / +N / :N / :N..M render line-mode; anchor ranges and `=anchor` set
@@ -15,6 +14,7 @@
 
 export { em } from "./em";
 export { hl } from "./hl";
+export { focus } from "./focus";
 export { dim } from "./dim";
 export { add, del, mod } from "./diff";
 export { err, warn, info } from "./diagnostics";

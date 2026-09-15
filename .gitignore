@@ -7,3 +7,11 @@ CLAUDE.md
 AGENTS.md
 dist/
 scripts/
+docs/
+
+# frozen reference builds for the perf harness
+.perf/
+lib/bench/perf/reports/
+
+# generated comparison bundles for the cold start harness
+lib/bench/coldstart/.artifacts/

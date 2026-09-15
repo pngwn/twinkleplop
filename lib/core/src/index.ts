@@ -6,8 +6,10 @@ export { verify, type VerifyIssue } from "./verify";
 export { to_html } from "./generator";
 export {
   create_language,
+  disassemble_rules,
   embed_grammars,
   embed_interleaved,
+  precedence_for,
   reclassify,
   rewrite_types,
   tag,
@@ -19,11 +21,21 @@ export {
   optional,
   capture,
   balanced_parens,
+  repeat,
+  not,
+  params,
+  type_span,
   GRAMMAR_EXTENSION_DOWNGRADES,
   GRAMMAR_EXTENSION_CATEGORIES,
 } from "./reclassifier";
+export { debug_enabled, set_debug_warnings, warn_once } from "./debug";
+export type { DebugIssue } from "./debug";
 export { make_token_view, make_scope_stack } from "./scan";
 export type { TokenView, Scope, ScopeStack, Bracket } from "./scan";
+export { frame_track } from "./frame_track";
+export { merge_adjacent } from "./merge_adjacent";
+export { matched_bracket } from "./matched_bracket";
+export { compound_compose } from "./compound_compose";
 export {
   permute_claim_producers,
   tokens_to_named,
@@ -41,3 +53,4 @@ export type { FunctionCallVariants } from "./fidelity";
 export * from "./types";
 export * from "./dsl";
 export { build_annotation_extractor } from "./annotation";
+export { overlays } from "./overlays";

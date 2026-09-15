@@ -65,7 +65,10 @@ export const promote_python_constants: Reclassifier = promote_by_upper_snake_cas
 
 export const type_alias_rules = [
   {
-    anchor: type("builtin", "type"),
+    // anchors the BASE stream's identifier, not the builtin the promoter
+    // batch turns it into -- both passes now claim against the same frozen
+    // input and the keyword claim outranks the builtin claim on conflict.
+    anchor: type("identifier", "type"),
     when: seq(
       // the alias name. PascalCase by convention (`type Vec = ...`) so
       // usually class_name; lowercase aliases (`type my_alias = ...`)

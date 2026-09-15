@@ -30,7 +30,12 @@ diagnostics.
 | `foo..bar`        | from anchor `foo` to anchor `bar`                   | token |
 | `foo...bar`       | inclusive variant                                   | token |
 | `foo..` / `..bar` | half-open; pairs with a closing marker of same verb | token |
-| `=foo`            | every occurrence of `foo`                           | token |
+| `=foo`            | every occurrence of `foo` on the marker's line      | token |
+| `=foo +N`         | every `foo` on the N lines below the marker         | token |
+| `=foo :N`         | every `foo` on line N                               | token |
+| `=foo :N..M`      | every `foo` on lines N+1 to M-1                     | token |
+| `=foo :N...M`     | every `foo` on lines N to M                         | token |
+| `=foo :*`         | every `foo` in the snippet                          | token |
 
 Anchors are bare words (`foo`), quoted literals (`"a.b"`), or `*` wildcards.
 Anchors point at code, not at marker comments — the resolver skips matches
@@ -56,7 +61,10 @@ In practice this means inline trailing-comment markers
 (`const x = foo(); // [!em =foo]`) work as expected, while standalone
 comment lines above code (`// [!em foo..bar]\nfoo + bar`) report
 `anchor_not_found` — use `+N` / `:N..M` line refs or a half-open pair if
-you want to reach across lines.
+you want to reach across lines. The set form is the exception: it takes a
+line scope, so `// [!hl =Hello +2]` on its own line wraps every `Hello` on
+the two lines below it and `[!hl =Hello :*]` every `Hello` in the snippet.
+Zero occurrences across the scoped lines is still `anchor_not_found`.
 
 ### Comment elision
 
@@ -70,6 +78,7 @@ prose (`// [!em] note`), only the marker bytes are stripped.
 | -------- | ------ | -------------- | ------------------------------------ |
 | `em`     | `em`   | `emphasis`     | draw attention                       |
 | `hl`     | `hl`   | `highlight`    | persistent highlight                 |
+| `focus`  | `focus`| `focus`        | the lines to look at                 |
 | `dim`    | `dim`  | `subdued`      | fade siblings                        |
 | `add`    | `add`  | `diff-add`     | diff: added                          |
 | `del`    | `del`  | `diff-del`     | diff: removed                        |
@@ -81,6 +90,157 @@ prose (`// [!em] note`), only the marker bytes are stripped.
 All built-ins auto-select line-mode vs token-mode from the marker's args
 kind: bare / `+N` / `:N` / `:N..M` render line-mode; anchor ranges and
 `=anchor` render token-mode.
+
+`focus` does not mark the other lines. The block gains `has-focus` (see
+below), so dimming the rest is one rule:
+
+```css
+.has-focus .l:not(.focus) { opacity: 0.5; }
+```
+
+### Block-level `has-*` classes
+
+The `<pre>` element also gains one `has-<classification>` class for every
+classification the snippet contains, in order of first appearance, so a
+theme can style the block as a whole (a diff gutter, say). A snippet with
+`[!add]` and `[!del]` markers renders as
+`<pre class="twinkleplop has-diff-add has-diff-del">`.
+
+Only the first class of a classification is prefixed. A plugin that emits
+`diff add` and another that emits `diff del` both contribute `has-diff`,
+which is what shiki does for the same markup. Pass `has_classes: false` in
+the render options to turn the classes off.
+
+### Programmatic overlays
+
+The same decorations can be attached per call without writing a marker into
+the source, through the `overlays` render option. Each item is a range with
+a class, a single line with a class, a set of lines with a class, or a range
+to hide:
+
+```ts
+ts(code, {
+  overlays: [
+    { start: 6, end: 11, class: "highlighted-word" },
+    { start: { line: 2, character: 0 }, end: { line: 2, character: 7 }, class: "mark" },
+    { lines: [1, [3, 4]], class: "highlight" },
+    { start: 30, end: 45, hide: true },
+  ],
+});
+```
+
+Positions are byte offsets in the same units as token positions, or
+`{ line, character }` with a 1-based line and a 0-based character; `end` is
+exclusive. `lines` takes line numbers and inclusive `[from, to]` pairs.
+Range items render token-mode, line items line-mode, and hidden ranges
+follow the comment elision rules above. Option overlays merge with marker
+overlays from the same call, and the result does not depend on item order.
+
+Pipelines that keep tokens around call the `overlays()` builder from
+`@twinkleplop/core` instead and attach its result before `to_html`:
+
+```ts
+const result = tokenize_ts(code);
+result.overlays = overlays(code, items, result.overlays);
+const html = to_html(code, result);
+```
+
+### Inline structure and hooks
+
+`structure: "inline"` renders the tokens with no `<pre>`, `<code>` or line
+elements, with `<br>` between lines, for code inside prose. Token-mode
+markers and hidden ranges apply exactly as in the block form. Line-mode
+markers, `line_numbers`, `class_name`, `attributes` and `has_classes` have
+nothing to attach to and are ignored. A line that disappears because it held
+only markers produces no `<br>`, so the visible line count matches.
+
+The `line` and `token` render hooks put a class or attributes on one line or
+token. `line(n, source_line)` receives the visible index and the source
+line, so it can tell that visible line 2 is source line 3 when line 2 held
+only a marker; its class lands after the marker classes on `span.l`. A
+token the `token` hook decorates is rendered as its own span, inside any
+overlay wrapper it sits in, and is never merged with a neighbour of the
+same type:
+
+```ts
+ts(code, {
+  line: (n, source_line) => ({ attrs: { "data-line": String(source_line) } }),
+  token: (type, start, end) =>
+    type === "function" ? { attrs: { "data-range": `${start}-${end}` } } : undefined,
+});
+```
+
+Hook attributes follow the rules of the `attributes` render option: values
+are escaped, `true` is a bare name, `false` is omitted, and `class` and
+`style` are rejected.
+
+### Whitespace and indent guides
+
+Whitespace between tokens is bare text, so a theme cannot mark it. The
+`whitespace` render option wraps each space and tab between tokens in its
+own `span.tok.space` or `span.tok.tab`: `"leading"` before the first token
+of a line, `"trailing"` after the last, `"boundary"` both, `"all"` every
+run. Whitespace inside a token (a string, a comment) stays part of it, and
+the spaces that stand in for a hidden marker are never wrapped.
+
+`indent_guides` splits leading indentation into `span.indent` levels, one
+per tab or per `size` spaces (default 2), with any shorter remainder left
+bare. When both options apply, the indent span is the outer element:
+
+```ts
+ts(code, { whitespace: "trailing", indent_guides: { size: 4 } });
+```
+
+```css
+.tok.space::before { content: "\b7"; position: absolute; }
+.indent { box-shadow: inset 1px 0 var(--guide); }
+```
+
+Both work in the inline structure. Trailing whitespace on a line that ends
+in a hidden marker goes with the marker, as it does without the option.
+
+## Shiki notation
+
+Content written for `@shikijs/transformers` keeps working without edits.
+The `shiki_notation` plugin claims the `code` verb and reads every notation
+of shiki 4.4.3: `highlight`, `hl`, `focus`, `++`, `--`, `error`, `warning`,
+`info`, each with an optional `:N` count, and `word:text` with an optional
+`:N`.
+
+```ts
+import { shiki_notation } from "@twinkleplop/annotation/shiki";
+
+const highlight = language({ annotation: { plugins: [shiki_notation()] } });
+```
+
+```ts
+const a = 1 // [!code highlight]
+// [!code focus:2]
+const b = 2
+const c = 3 // [!code --]
+const d = 4 // [!code ++]
+```
+
+Line selection follows shiki's v3 matching. A marker on a line of its own
+applies to the `N` lines below it and the line disappears; a trailing
+marker applies to its own line and the `N-1` lines below it. Several
+notations may share one comment (`// [!code highlight] [!code focus]`).
+`word:text` wraps every occurrence of `text` on the selected lines (every
+line after the marker when there is no count), skipping comments, and
+unescapes `\:` and `\]` in `text`.
+
+By default the plugin emits twinkleplop's class names (`highlight`,
+`focus`, `diff-add`, `diff-del`, `error`, `warning`, `info`, and
+`highlight` for words) so one theme covers both marker syntaxes.
+`shiki_notation({ classes: "shiki" })` emits shiki's names instead
+(`highlighted`, `focused`, `diff add`, `diff remove`, `highlighted error`,
+`highlighted warning`, `highlighted info`, `highlighted-word`), which makes
+the block classes read `has-highlighted`, `has-focused`, `has-diff` and
+`has-highlighted-word` as shiki's `classActivePre` defaults do.
+
+A `[!code xyz]` shiki would not recognise is left in the output as comment
+text and not reported. A zero or non-numeric count (`highlight:0`) is
+reported as `malformed` and the marker is still removed.
 
 ## Usage
 
@@ -136,3 +296,32 @@ Plugins are pure: they consume an `AnnotationInput` (verb, id, parsed args,
 resolved range, marker position) and return overlay contributions. The
 framework owns marker scanning, argument parsing, anchor resolution, and
 pair matching — plugins only decide the classification and the mode.
+
+### Raw arguments
+
+A plugin that wants its own argument syntax declares `parse: "raw"` and
+receives `args` as the text between the verb (and optional `#id`) and the
+closing bracket, with the single separating space removed and trailing
+whitespace trimmed. `[!code highlight:2]` arrives as `"highlight:2"`,
+`[!code]` as `""`. The framework still finds the marker, hides its bytes,
+drops marker-only comment lines, honours `\[!` escapes and reports
+`marker_spans_newline` and `malformed` shapes; it does not resolve anchors,
+line refs or pairs, and `#id` is passed through as `id` without pairing.
+
+The input carries what a raw plugin needs to do that itself:
+
+- `standalone` is true when the marker's line holds nothing but the
+  comment and the comment nothing but markers, so a plugin can tell a
+  marker above its target from a trailing one.
+- `resolve(fragment)` resolves any fragment of the shared grammar relative
+  to the marker (`resolve("+2")` is the two lines below, `resolve("foo..bar")`
+  the anchor range on the marker's line) and returns the range a shared
+  plugin would have received. `resolve_all(fragment)` returns every range,
+  one per occurrence for the set form.
+- `issues` on the output reach the configured `on_error` sink at the
+  marker's position, exactly like framework-detected issues.
+- `consumed: false` on the output leaves the marker text in place, for
+  the part of the verb's argument space the plugin does not recognise.
+
+An overlay outside the source throws a `RangeError` naming the verb, since
+that is a plugin bug rather than an authoring error.

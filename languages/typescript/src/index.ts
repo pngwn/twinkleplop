@@ -7,6 +7,7 @@ import {
   function_variable_rules,
   reclassifiers,
   scan_tagged_template,
+  ts_frame_track,
 } from "./reclassifiers.js";
 
 // public API:
@@ -35,4 +36,5 @@ export {
   claim_property_scope,
   function_variable_rules,
   scan_tagged_template,
+  ts_frame_track,
 };

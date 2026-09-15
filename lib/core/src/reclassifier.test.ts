@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { compile } from "./compiler";
+import { frame_track } from "./frame_track";
 import { tokenize } from "./tokenizer";
 import {
   any_of,
@@ -8,11 +9,15 @@ import {
   create_language,
   embed_grammars,
   embed_interleaved,
+  not,
   optional,
+  params,
   reclassify,
+  repeat,
   rewrite_types,
   seq,
   type,
+  type_span,
 } from "./reclassifier";
 import type {
   Grammar,
@@ -160,6 +165,647 @@ describe("reclassifier — rewrite_types", () => {
   });
 });
 
+describe("reclassifier — repeat combinator", () => {
+  test("captures inside repeat record every iteration", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "var" },
+        when: seq(
+          capture("elem", type("identifier")),
+          repeat(seq(type("operator", "*"), capture("elem", type("identifier")))),
+        ),
+        rewrite: { elem: "function" },
+      },
+    ];
+    const src = "var a * b * c ;";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("function");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("function");
+    expect(tokens.find((t) => t.value === "c")?.type).toBe("function");
+  });
+
+  test("chain-last idiom: repeated head captures plus a trailing capture", () => {
+    // `new pkg.util.Foo` shape: every chain element before the last is a
+    // namespace, the final element is the class. the failed final
+    // iteration (`c` matched, no trailing `*`) is truncated from the
+    // capture log, so `c` is claimed only by the trailing capture.
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "var" },
+        when: seq(
+          repeat(seq(capture("ns", type("identifier")), type("operator", "*"))),
+          capture("last", type("identifier")),
+        ),
+        rewrite: { ns: "property", last: "function" },
+      },
+    ];
+    const src = "var a * b * c ;";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("property");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("property");
+    expect(tokens.find((t) => t.value === "c")?.type).toBe("function");
+  });
+
+  test("separated repeat captures every item", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "let" },
+        when: seq(
+          repeat(capture("p", type("identifier")), type("punctuation", ",")),
+          type("punctuation", ";"),
+        ),
+        rewrite: { p: "parameter" },
+      },
+    ];
+    const src = "let a , b , c ;";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "c")?.type).toBe("parameter");
+  });
+
+  test("zero iterations match (repeat is optional)", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(repeat(type("keyword", "async")), type("operator", "=>")),
+        rewrite: "function",
+      },
+    ];
+    const src = "x => 1";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "x")?.type).toBe("function");
+  });
+
+  test("separated repeat matches comma lists", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "let" },
+        when: seq(repeat(type("identifier"), type("punctuation", ",")), type("punctuation", ";")),
+        rewrite: "keyword",
+      },
+    ];
+    for (const src of ["let ;", "let a ;", "let a , b , c ;"]) {
+      const tokens = types_only(run(src, rules), src);
+      expect(tokens[0].type).toBe("keyword");
+    }
+    // trailing separator without an item does not match the `;`.
+    const bad = "let a , ;";
+    const tokens = types_only(run(bad, rules), bad);
+    // the rule still needs the `;` right after the list; `a ,` consumed
+    // the comma expecting another item, so the match fails and the
+    // anchor target type stays untouched. keyword anchor rewrite to
+    // keyword is unobservable, so assert via a distinct marker instead.
+    const marker_rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "keyword", value: "let" },
+        when: seq(repeat(type("identifier"), type("punctuation", ",")), type("punctuation", ";")),
+        rewrite: "boolean",
+      },
+    ];
+    const ok = types_only(run("let a , b ;", marker_rules), "let a , b ;");
+    expect(ok[0].type).toBe("boolean");
+    const fail = types_only(run(bad, marker_rules), bad);
+    expect(fail[0].type).toBe("keyword");
+  });
+
+  test("an empty-matching body terminates instead of looping forever", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(repeat(optional(type("keyword", "async"))), type("operator", "=>")),
+        rewrite: "function",
+      },
+    ];
+    const src = "x => 1";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "x")?.type).toBe("function");
+  });
+});
+
+describe("reclassifier — not combinator", () => {
+  const colon_not_keyword: RewriteRule[] = [
+    {
+      anchor: "identifier",
+      when: seq(type("operator", ":"), not(type("keyword"))),
+      rewrite: "function",
+    },
+  ];
+
+  test("succeeds when the next token differs", () => {
+    const src = "a : b";
+    const tokens = types_only(run(src, colon_not_keyword), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("function");
+  });
+
+  test("fails when the next token matches", () => {
+    const src = "a : var b";
+    const tokens = types_only(run(src, colon_not_keyword), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("identifier");
+  });
+
+  test("succeeds at end of stream and consumes nothing", () => {
+    const src = "a :";
+    const tokens = types_only(run(src, colon_not_keyword), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("function");
+  });
+
+  test("value-constrained negation", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(type("operator", ":"), not(type("keyword", ["var", "let"]))),
+        rewrite: "function",
+      },
+    ];
+    const blocked = types_only(run("a : var b", rules), "a : var b");
+    expect(blocked.find((t) => t.value === "a")?.type).toBe("identifier");
+    const allowed = types_only(run("a : const b", rules), "a : const b");
+    expect(allowed.find((t) => t.value === "a")?.type).toBe("function");
+  });
+
+  test("unknown inner type fails the rule closed", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(type("operator", ":"), not(type("no_such_type"))),
+        rewrite: "function",
+      },
+    ];
+    const src = "a : b";
+    const tokens = types_only(run(src, rules), src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("identifier");
+  });
+});
+
+describe("reclassifier — anchor frame gates", () => {
+  // js-shaped frame_track so rules can gate on member position and the
+  // enclosing brace kind. mirrors the js_frame_track shape minimally.
+  const tracker = frame_track({
+    punct_type: "punctuation",
+    brackets: {
+      paren: { open: "(", close: ")" },
+      brace: { open: "{", close: "}" },
+      bracket: { open: "[", close: "]" },
+    },
+    brace_kinds: {
+      body_markers: [{ type: "keyword", text: "function", kind: "class" }],
+      prev_rules: [{ prev_type: "operator", prev_texts: ["=>"], kind: "block" }],
+      default_kind: "object",
+      start_kind: "block",
+    },
+    at_start: { reset_chars: ",;" },
+  });
+
+  const gated_rules: RewriteRule[] = [
+    {
+      anchor: {
+        type_name: "identifier",
+        at_start: true,
+        frame_kinds: ["object"],
+      },
+      when: type("operator", ":"),
+      rewrite: "boolean",
+    },
+  ];
+
+  function run_gated(src: string): { type: string; value: string }[] {
+    const raw = tokenize(src, compiled);
+    const out = reclassify([tracker, rewrite_types(gated_rules, { trivia: ["comment"] })])(
+      src,
+      raw,
+    );
+    return types_only(out, src);
+  }
+
+  test("fires at member start of a matching brace kind", () => {
+    const t = run_gated("x = { a : 1 , b : 2 }");
+    expect(t.find((tok) => tok.value === "a")?.type).toBe("boolean");
+    expect(t.find((tok) => tok.value === "b")?.type).toBe("boolean");
+  });
+
+  test("does not fire when at_start was consumed", () => {
+    // `c` sits after `a` with no separator, so it is not at member start.
+    const t = run_gated("x = { a c : 1 }");
+    expect(t.find((tok) => tok.value === "c")?.type).toBe("identifier");
+  });
+
+  test("does not fire in non-matching brace kinds", () => {
+    // the body_markers spec classifies a `function`-keyword brace as
+    // "class", which the rule's frame_kinds excludes.
+    const t = run_gated("function f { a : 1 }");
+    expect(t.find((tok) => tok.value === "a")?.type).toBe("identifier");
+  });
+
+  test("walks past paren frames to the nearest brace", () => {
+    // `b` re-arms at_start after the comma inside the parens; the nearest
+    // BRACE frame is the object, so the gate passes.
+    const t = run_gated("x = { a : f ( c , b : 1 ) }");
+    expect(t.find((tok) => tok.value === "b")?.type).toBe("boolean");
+  });
+
+  test("fails closed without a frame_track stage", () => {
+    const src = "x = { a : 1 }";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([rewrite_types(gated_rules, { trivia: ["comment"] })])(src, raw);
+    const t = types_only(out, src);
+    expect(t.find((tok) => tok.value === "a")?.type).toBe("identifier");
+  });
+
+  test("top kind matches tokens outside any brace", () => {
+    const top_rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "identifier", frame_kinds: ["top"] },
+        when: type("operator", ":"),
+        rewrite: "boolean",
+      },
+    ];
+    const src = "a : 1 ; x = { b : 2 }";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([tracker, rewrite_types(top_rules, { trivia: ["comment"] })])(src, raw);
+    const t = types_only(out, src);
+    expect(t.find((tok) => tok.value === "a")?.type).toBe("boolean");
+    expect(t.find((tok) => tok.value === "b")?.type).toBe("identifier");
+  });
+});
+
+describe("reclassifier — anchor signal gates", () => {
+  // grammar with a `?` operator and `:` punctuation so the tracker's
+  // ternary counting and stmt flags have something to bite on. the main
+  // toy grammar emits `:` as an operator, which the signal walk ignores.
+  const sig_grammar: Grammar = {
+    name: "sig",
+    states: {
+      root: {
+        rules: [
+          { match: ["let", "const", "if"], boundary: true, token: "keyword" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { range: [["0", "9"]], token: "number" },
+          { match: ["?", "="], token: "operator" },
+          { match: ["(", ")", "{", "}", ",", ";", ":"], token: "punctuation" },
+          { match: [" ", "\t", "\n"] },
+        ],
+      },
+    },
+  };
+  const sig_compiled = compile(sig_grammar);
+
+  const sig_tracker = frame_track({
+    punct_type: "punctuation",
+    brackets: {
+      paren: { open: "(", close: ")" },
+      brace: { open: "{", close: "}" },
+    },
+    ternary: { qmark: { type: "operator", text: "?" }, colon_char: ":" },
+    stmt_flags: [
+      {
+        name: "var_decl",
+        arm: { type: "keyword", texts: ["let", "const"] },
+        clear: { type: "keyword", texts: ["if"] },
+        clear_chars: ";",
+        clear_on_brace_close: true,
+      },
+    ],
+  });
+
+  function run_sig(src: string, rules: RewriteRule[], tracker = sig_tracker) {
+    const raw = tokenize(src, sig_compiled);
+    const out = reclassify([tracker, rewrite_types(rules, { trivia: ["comment"] })])(src, raw);
+    return types_only(out, src);
+  }
+
+  function colon_types(t: { type: string; value: string }[]): string[] {
+    return t.filter((tok) => tok.value === ":").map((tok) => tok.type);
+  }
+
+  test("ternary_colon false fires only on non-ternary colons", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", ternary_colon: false },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("a ? b : c ; x : y", rules);
+    expect(colon_types(t)).toEqual(["punctuation", "boolean"]);
+  });
+
+  test("ternary_colon true fires only on ternary colons", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", ternary_colon: true },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("a ? b : c ; x : y", rules);
+    expect(colon_types(t)).toEqual(["boolean", "punctuation"]);
+  });
+
+  test("stmt_flags_all requires the named flag armed at the anchor", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", stmt_flags_all: ["var_decl"] },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("let a : b ; c : d", rules);
+    expect(colon_types(t)).toEqual(["boolean", "punctuation"]);
+  });
+
+  test("stmt_flags_none rejects while the named flag is armed", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", stmt_flags_none: ["var_decl"] },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("let a : b ; c : d", rules);
+    expect(colon_types(t)).toEqual(["punctuation", "boolean"]);
+  });
+
+  test("signal gates combine", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: {
+          type_name: "punctuation",
+          value: ":",
+          ternary_colon: false,
+          stmt_flags_all: ["var_decl"],
+        },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    // comma does not clear the flag, so the second colon still sees
+    // var_decl armed; the first is blocked by the ternary gate.
+    const t = run_sig("let a = b ? c : d , e : f", rules);
+    expect(colon_types(t)).toEqual(["punctuation", "boolean"]);
+  });
+
+  test("an unknown flag name fails closed", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", stmt_flags_all: ["no_such_flag"] },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("let a : b", rules);
+    expect(colon_types(t)).toEqual(["punctuation"]);
+  });
+
+  test("signal gates fail closed when the tracker has no signal config", () => {
+    const plain_tracker = frame_track({
+      punct_type: "punctuation",
+      brackets: {
+        paren: { open: "(", close: ")" },
+        brace: { open: "{", close: "}" },
+      },
+    });
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value: ":", ternary_colon: false },
+        when: type("identifier"),
+        rewrite: "boolean",
+      },
+    ];
+    const t = run_sig("x : y", rules, plain_tracker);
+    expect(colon_types(t)).toEqual(["punctuation"]);
+  });
+});
+
+describe("reclassifier — per-rule precedence override", () => {
+  // two claim producers in one batch claiming the same token. by the
+  // shared table, boolean (75) beats function (30); a rule-level override
+  // inverts the outcome without a custom ClaimFn.
+  const fn_rule_default: RewriteRule[] = [
+    { anchor: "identifier", when: type("operator", "=>"), rewrite: "function" },
+  ];
+  const bool_rule: RewriteRule[] = [
+    { anchor: "identifier", when: type("operator", "=>"), rewrite: "boolean" },
+  ];
+
+  test("table precedence decides without an override", () => {
+    const src = "x => 1";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([rewrite_types(fn_rule_default), rewrite_types(bool_rule)])(src, raw);
+    expect(types_only(out, src).find((t) => t.value === "x")?.type).toBe("boolean");
+  });
+
+  test("rule precedence override beats the table", () => {
+    const fn_rule_boosted: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: type("operator", "=>"),
+        rewrite: "function",
+        precedence: 90,
+      },
+    ];
+    const src = "x => 1";
+    const raw = tokenize(src, compiled);
+    const out = reclassify([rewrite_types(fn_rule_boosted), rewrite_types(bool_rule)])(src, raw);
+    expect(types_only(out, src).find((t) => t.value === "x")?.type).toBe("function");
+  });
+});
+
+describe("reclassifier — balanced punct_type", () => {
+  test("counts brackets carried by a non-punctuation type", () => {
+    // a grammar that emits parens as `expression` tokens, like svelte's
+    // template braces. the default "punctuation" spec would never match.
+    const expr_toy: Grammar = {
+      name: "expr_toy",
+      states: {
+        root: {
+          rules: [
+            { match: ["(", ")"], token: "expression" },
+            { match: "=>", token: "operator" },
+            { range: [["a", "z"]], token: "identifier" },
+            { match: [","], token: "punctuation" },
+            { match: [" "] },
+          ],
+        },
+      },
+    };
+    const expr_compiled = compile(expr_toy);
+    const rules: RewriteRule[] = [
+      {
+        anchor: "identifier",
+        when: seq(
+          type("operator", "=>"),
+          balanced_parens("(", ")", 200, "expression"),
+          type("operator", "=>"),
+        ),
+        rewrite: "function",
+      },
+    ];
+    const src = "f => ( a , b ) => g";
+    const raw = tokenize(src, expr_compiled);
+    const out = reclassify([rewrite_types(rules)])(src, raw);
+    expect(types_only(out, src).find((t) => t.value === "f")?.type).toBe("function");
+  });
+});
+
+describe("reclassifier — compiled state cache", () => {
+  // two grammars whose vocabularies contain the same names at DIFFERENT
+  // indices (rule order swapped). one rewrite_types instance serves both:
+  // the per-vocabulary cache must compile a separate state per content
+  // rather than reusing the first state, whose baked matcher ids would
+  // point at the wrong types under the other grammar.
+  const sigil_first: Grammar = {
+    name: "sigil_first",
+    states: {
+      root: {
+        rules: [
+          { match: "!", token: "sigil" },
+          { range: [["a", "z"]], token: "identifier" },
+          { match: [" "] },
+        ],
+      },
+    },
+  };
+  const ident_first: Grammar = {
+    name: "ident_first",
+    states: {
+      root: {
+        rules: [
+          { range: [["a", "z"]], token: "identifier" },
+          { match: "!", token: "sigil" },
+          { match: [" "] },
+        ],
+      },
+    },
+  };
+  const sigil_first_compiled = compile(sigil_first);
+  const ident_first_compiled = compile(ident_first);
+
+  test("one instance serves vocabularies with differing id layouts", () => {
+    const pass = rewrite_types([
+      { anchor: "identifier", when: type("sigil", "!"), rewrite: "function" },
+    ]);
+    const pipeline = reclassify([pass]);
+    const src = "foo !";
+
+    const run_with = (grammar: typeof sigil_first_compiled) =>
+      types_only(pipeline(src, tokenize(src, grammar)), src).find((t) => t.value === "foo")?.type;
+
+    expect(run_with(sigil_first_compiled)).toBe("function");
+    expect(run_with(ident_first_compiled)).toBe("function");
+    // back to the first vocabulary: the cached first state must be the
+    // one reused, not the second.
+    expect(run_with(sigil_first_compiled)).toBe("function");
+  });
+});
+
+describe("reclassifier — anchor text_pred", () => {
+  // the toy grammar's identifier range is [a-z A-Z] only, so test inputs
+  // here avoid underscores and digits — upper_snake's defining feature.
+  // the predicate is still meaningfully exercised (length >= 2, first char
+  // uppercase, body all uppercase letters).
+
+  test("upper_snake_case promotes ALL-CAPS identifiers", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", undefined, { text_pred: "upper_snake_case" }),
+      rewrite: "constant",
+    };
+    const src = "const MAX = 10; const items = 0; const HTTP = 200";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "MAX")?.type).toBe("constant");
+    expect(tokens.find((t) => t.value === "HTTP")?.type).toBe("constant");
+    expect(tokens.find((t) => t.value === "items")?.type).toBe("identifier");
+  });
+
+  test("upper_snake_case rejects single-char and PascalCase identifiers", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", undefined, { text_pred: "upper_snake_case" }),
+      rewrite: "constant",
+    };
+    const src = "const T = 1; const Foo = 2; const M = 3";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "T")?.type).toBe("identifier");
+    expect(tokens.find((t) => t.value === "Foo")?.type).toBe("identifier");
+    expect(tokens.find((t) => t.value === "M")?.type).toBe("identifier");
+  });
+
+  test("pascal_case promotes PascalCase identifiers including single-char", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", undefined, { text_pred: "pascal_case" }),
+      rewrite: "class_name",
+    };
+    const src = "const Cat = 1; const dog = 2; const T = 3; const FOO = 4";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "Cat")?.type).toBe("class_name");
+    expect(tokens.find((t) => t.value === "T")?.type).toBe("class_name");
+    expect(tokens.find((t) => t.value === "dog")?.type).toBe("identifier");
+    // all-uppercase multi-char names are upper_snake territory, not pascal.
+    expect(tokens.find((t) => t.value === "FOO")?.type).toBe("identifier");
+  });
+
+  test("text_pred combines with value constraint (AND semantics)", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", ["FOO", "BAR", "items"], {
+        text_pred: "upper_snake_case",
+      }),
+      rewrite: "constant",
+    };
+    const src = "const FOO = 1; const items = 2";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "FOO")?.type).toBe("constant");
+    // "items" passes the value filter but fails the text predicate (lowercase).
+    expect(tokens.find((t) => t.value === "items")?.type).toBe("identifier");
+  });
+
+  test("unknown predicate name silently never matches", () => {
+    const rule: RewriteRule = {
+      anchor: type("identifier", undefined, {
+        text_pred: "definitely_not_real" as unknown as "upper_snake_case",
+      }),
+      rewrite: "constant",
+    };
+    const src = "const FOO = 1";
+    const result = run(src, [rule]);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "FOO")?.type).toBe("identifier");
+  });
+
+  test("text_pred works inside when clauses, not just anchors", () => {
+    // anchor is `new`; the next identifier must be PascalCase to qualify.
+    const rule: RewriteRule = {
+      anchor: type("keyword", "function"),
+      when: type("identifier", undefined, { text_pred: "pascal_case" }),
+      rewrite: "boolean",
+    };
+    const ok = run("function Foo", [rule]);
+    expect(types_only(ok, "function Foo")[0].type).toBe("boolean");
+    const not_ok = run("function foo", [rule]);
+    expect(types_only(not_ok, "function foo")[0].type).toBe("keyword");
+  });
+
+  test("unknown predicate name inside when clause fails closed", () => {
+    const rule: RewriteRule = {
+      anchor: type("keyword", "function"),
+      when: type("identifier", undefined, {
+        text_pred: "definitely_not_real" as unknown as "upper_snake_case",
+      }),
+      rewrite: "boolean",
+    };
+    const result = run("function Foo", [rule]);
+    expect(types_only(result, "function Foo")[0].type).toBe("keyword");
+  });
+});
+
 describe("reclassifier — matcher primitives", () => {
   test("seq matches a sequence in order", () => {
     const rule: RewriteRule = {
@@ -235,6 +881,87 @@ describe("reclassifier — matcher primitives", () => {
     const result = run("const foo = 1", [rule]);
     const tokens = types_only(result, "const foo = 1");
     expect(tokens.find((t) => t.value === "foo")?.type).toBe("function");
+  });
+
+  test("`before` seq matches children right-to-left", () => {
+    // matches `function async foo` -> seq(keyword "function", keyword "async")
+    // walking left from foo, we see async first then function.
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: seq(type("keyword", "function"), type("keyword", "async")),
+      rewrite: "function",
+    };
+    const ok = run("function async foo", [rule]);
+    expect(types_only(ok, "function async foo").find((t) => t.value === "foo")?.type).toBe(
+      "function",
+    );
+    // wrong order: should not match
+    const wrong = run("async function foo", [rule]);
+    expect(types_only(wrong, "async function foo").find((t) => t.value === "foo")?.type).toBe(
+      "identifier",
+    );
+  });
+
+  test("`before` any_of tries branches in order", () => {
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: any_of(type("keyword", "let"), type("keyword", "var")),
+      rewrite: "function",
+    };
+    expect(
+      types_only(run("let foo = 1", [rule]), "let foo = 1").find((t) => t.value === "foo")?.type,
+    ).toBe("function");
+    expect(
+      types_only(run("var foo = 1", [rule]), "var foo = 1").find((t) => t.value === "foo")?.type,
+    ).toBe("function");
+    expect(
+      types_only(run("const foo = 1", [rule]), "const foo = 1").find((t) => t.value === "foo")
+        ?.type,
+    ).toBe("identifier");
+  });
+
+  test("`before` optional matches with or without the inner pattern", () => {
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: seq(type("keyword", "const"), optional(type("keyword", "async"))),
+      rewrite: "function",
+    };
+    expect(
+      types_only(run("const foo = 1", [rule]), "const foo = 1").find((t) => t.value === "foo")
+        ?.type,
+    ).toBe("function");
+    expect(
+      types_only(run("const async foo = 1", [rule]), "const async foo = 1").find(
+        (t) => t.value === "foo",
+      )?.type,
+    ).toBe("function");
+  });
+
+  test("`before` value uses ends-with semantics for coalesced punctuation", () => {
+    // when the tokenizer coalesces `;}` into one punctuation token, a
+    // lookbehind for "}" should still match because "}" is the suffix.
+    // build a tiny case using "==" which gets emitted as one operator
+    // token; a lookbehind for "=" should match.
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: type("operator", "="),
+      rewrite: "function",
+    };
+    const result = run("foo === bar", [rule]);
+    // "bar" follows the "===" operator -- the ends-with "=" check matches.
+    expect(types_only(result, "foo === bar").find((t) => t.value === "bar")?.type).toBe("function");
+  });
+
+  test("`before` skips trivia (comments) walking left", () => {
+    const rule: RewriteRule = {
+      anchor: "identifier",
+      before: type("keyword", "const"),
+      rewrite: "function",
+    };
+    const result = run("const /* tag */ foo = 1", [rule]);
+    expect(types_only(result, "const /* tag */ foo = 1").find((t) => t.value === "foo")?.type).toBe(
+      "function",
+    );
   });
 });
 
@@ -504,6 +1231,24 @@ describe("reclassifier — capture-based rewrites", () => {
     const t2 = types_only(r2, src2);
     expect(t2.find((t) => t.value === "bar")?.type).toBe("function");
     expect(t2.find((t) => t.value === "5")?.type).toBe("boolean");
+  });
+
+  test("captures inside abandoned branches do not fire", () => {
+    // branch 1 captures `a` then fails on the missing number; branch 2
+    // matches without capturing. the abandoned capture must not retag.
+    const rule: RewriteRule = {
+      anchor: type("keyword", "var"),
+      when: any_of(
+        seq(capture("x", type("identifier")), type("number")),
+        seq(type("identifier"), type("identifier")),
+      ),
+      rewrite: { x: "function" },
+    };
+    const src = "var a b";
+    const raw = tokenize(src, compiled);
+    const result = reclassify([rewrite_types([rule])])(src, raw);
+    const tokens = types_only(result, src);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("identifier");
   });
 
   test("Phase 1 string rewrite still works (anchor-only rewrite)", () => {
@@ -1163,5 +1908,386 @@ describe("create_language — fidelity downgrade for grammar extensions", () => 
     const t = tokens_of(lang, "true fn other");
     expect(t.find((x) => x.value === "true")?.type).toBe("identifier");
     expect(t.find((x) => x.value === "fn")?.type).toBe("identifier");
+  });
+});
+
+describe("reclassifier — params construct", () => {
+  // dedicated grammar with COALESCED punctuation runs ("((", "({", "](",
+  // "})", "))") so the char-aware walk is exercised the way real grammars
+  // emit it. ":" and "." are punctuation, matching the js family.
+  const ptoy: Grammar = {
+    name: "ptoy",
+    states: {
+      root: {
+        rules: [
+          { match: ["function", "func", "class"], boundary: true, token: "keyword" },
+          { match: "/*", token: "comment", state: "comment" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { range: [["0", "9"]], token: "number" },
+          { match: ["=>", "...", "<", ">", "*", "="], token: "operator" },
+          {
+            match: ["((", "({", "})", "))", "]("],
+            token: "punctuation",
+          },
+          { match: ["(", ")", "{", "}", "[", "]", ",", ";", ":", "."], token: "punctuation" },
+          { match: [" ", "\n"] },
+        ],
+      },
+      comment: {
+        rules: [
+          { match: "*/", token: "comment", exit: true },
+          { any: true, token: "comment" },
+        ],
+      },
+    },
+  };
+  const pcompiled = compile(ptoy);
+
+  const ptrack = frame_track({
+    punct_type: "punctuation",
+    brackets: {
+      paren: { open: "(", close: ")" },
+      brace: { open: "{", close: "}" },
+      bracket: { open: "[", close: "]" },
+    },
+    brace_kinds: {
+      body_markers: [{ type: "keyword", text: "class", kind: "class" }],
+      default_kind: "object",
+      start_kind: "block",
+    },
+    at_start: { reset_chars: ",;", rearm_after_close_kinds: ["class"] },
+  });
+
+  function prun(input: string, rules: RewriteRule[], with_frames = false) {
+    const raw = tokenize(input, pcompiled);
+    const rewrite = rewrite_types(rules, { trivia: ["comment"] });
+    const passes = with_frames ? [ptrack, rewrite] : [rewrite];
+    return types_only(reclassify(passes)(input, raw), input);
+  }
+
+  const JS_WALK = { into: "p", default_introducer: "=", transparent_operators: ["..."] };
+
+  test("function declaration walk tags first identifier per chunk", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: type("keyword", "function"),
+        when: seq(optional(type("operator", "*")), optional(type("identifier")), params(JS_WALK)),
+        rewrite: { p: "parameter" },
+      },
+    ];
+    const src = "function f(a, b = 1, ...rest) {}";
+    const tokens = prun(src, rules);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "rest")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "1")?.type).toBe("number");
+    expect(tokens.find((t) => t.value === "f")?.type).toBe("identifier");
+
+    // destructured chunks have no depth-1 identifier; later chunks resume.
+    const src2 = "function g(({x}), y) {}";
+    const tokens2 = prun(src2, rules);
+    expect(tokens2.find((t) => t.value === "x")?.type).toBe("identifier");
+    expect(tokens2.find((t) => t.value === "y")?.type).toBe("parameter");
+
+    // unterminated list still records the names it reached.
+    const src3 = "function h(a, b";
+    const tokens3 = prun(src3, rules);
+    expect(tokens3.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens3.find((t) => t.value === "b")?.type).toBe("parameter");
+  });
+
+  test("skip_generics rides over a leading angle group", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: type("keyword", "function"),
+        when: seq(optional(type("identifier")), params({ ...JS_WALK, skip_generics: true })),
+        rewrite: { p: "parameter" },
+      },
+    ];
+    const src = "function f<T>(a) {}";
+    const tokens = prun(src, rules);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "T")?.type).toBe("identifier");
+  });
+
+  test("arrow mode validates each open offset in a coalesced token", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: "punctuation",
+        when: params({ ...JS_WALK, find_open: "arrow", skip_ts_return_type: true }),
+        rewrite: { p: "parameter" },
+      },
+    ];
+    // "((" carries both parens; only the inner one is an arrow head.
+    const src = "f((a) => a)";
+    const tokens = prun(src, rules);
+    expect(tokens[2]).toEqual({ type: "parameter", value: "a" });
+    expect(tokens[5]).toEqual({ type: "identifier", value: "a" });
+
+    // plain call parens are not arrows.
+    const src2 = "f(b, c)";
+    const tokens2 = prun(src2, rules);
+    expect(tokens2.find((t) => t.value === "b")?.type).toBe("identifier");
+    expect(tokens2.find((t) => t.value === "c")?.type).toBe("identifier");
+
+    // a ts return annotation between close and arrow.
+    const src3 = "(a) : T => a";
+    const tokens3 = prun(src3, rules);
+    expect(tokens3.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens3.find((t) => t.value === "T")?.type).toBe("identifier");
+  });
+
+  test("frame_direct member gate rejects paren-nested member starts", () => {
+    const member_rule = (frame_direct: boolean): RewriteRule => ({
+      anchor: {
+        type_name: "identifier",
+        at_start: true,
+        frame_kinds: ["object"],
+        frame_direct,
+      },
+      when: params(JS_WALK),
+      rewrite: { p: "parameter" },
+    });
+
+    const src = "y = { m(a) {} }";
+    const tokens = prun(src, [member_rule(true)], true);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+
+    // b sits at a comma-armed member start INSIDE call parens. the direct
+    // gate sees the paren frame and rejects; the walking gate would reach
+    // the object brace and tag c.
+    const src2 = "y = { m : f(a, b(c)) }";
+    const direct = prun(src2, [member_rule(true)], true);
+    expect(direct.find((t) => t.value === "c")?.type).toBe("identifier");
+    const walking = prun(src2, [member_rule(false)], true);
+    expect(walking.find((t) => t.value === "c")?.type).toBe("parameter");
+  });
+
+  test("scan + carry_pending walks go-style lists", () => {
+    const GO_WALK = {
+      into: "p",
+      strategy: "carry_pending",
+      find_open: "scan",
+    } as const;
+    const rules: RewriteRule[] = [
+      {
+        anchor: type("keyword", "func"),
+        when: seq(type("identifier"), params(GO_WALK)),
+        rewrite: { p: "parameter" },
+      },
+      {
+        anchor: type("keyword", "func"),
+        when: seq(params(GO_WALK), optional(seq(type("identifier"), params(GO_WALK)))),
+        rewrite: { p: "parameter" },
+      },
+    ];
+
+    // shared-type chunks promote pending bare names retroactively.
+    const src = "func f(x, y int) {}";
+    const tokens = prun(src, rules);
+    expect(tokens.find((t) => t.value === "x")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "y")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "int")?.type).toBe("identifier");
+
+    // unnamed lists (types only) tag nothing.
+    const src2 = "func g(int, string) {}";
+    const tokens2 = prun(src2, rules);
+    expect(tokens2.find((t) => t.value === "int")?.type).toBe("identifier");
+    expect(tokens2.find((t) => t.value === "string")?.type).toBe("identifier");
+
+    // method receiver: both the receiver and the param list are walked.
+    const src3 = "func (r T) m(a B) {}";
+    const tokens3 = prun(src3, rules);
+    expect(tokens3.find((t) => t.value === "r")?.type).toBe("parameter");
+    expect(tokens3.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens3.find((t) => t.value === "m")?.type).toBe("identifier");
+
+    // generics between name and paren: scan rides the bracket group,
+    // including the coalesced "](" open.
+    const src4 = "func h[T any](x T) {}";
+    const tokens4 = prun(src4, rules);
+    expect(tokens4.find((t) => t.value === "x")?.type).toBe("parameter");
+
+    // anonymous func literal: the optional name+params tail is absent.
+    const src5 = "func(x int) {}";
+    const tokens5 = prun(src5, rules);
+    expect(tokens5.find((t) => t.value === "x")?.type).toBe("parameter");
+  });
+});
+
+describe("reclassifier — type_span construct", () => {
+  // ts-shaped grammar: `:` punctuation, `?` / `<` / `>` operators, and a
+  // few keywords so terminator classes have something to bite on. the
+  // main toy grammar emits `:` as an operator, which the span's colon
+  // checks ignore.
+  const span_grammar: Grammar = {
+    name: "span",
+    states: {
+      root: {
+        rules: [
+          { match: ["let", "return", "void", "this"], boundary: true, token: "keyword" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { range: [["0", "9"]], token: "number" },
+          { match: ["=>", "?:"], token: "operator" },
+          { match: ["=", "?", "<", ">", "+", "|"], token: "operator" },
+          { match: ["(", ")", "{", "}", "[", "]", ",", ";", ":", "."], token: "punctuation" },
+          { match: [" ", "\t", "\n"] },
+        ],
+      },
+    },
+  };
+  const span_compiled = compile(span_grammar);
+
+  function span_rule(options: Parameters<typeof type_span>[0] = { into: "types" }): RewriteRule[] {
+    return [
+      {
+        anchor: { type_name: "punctuation", value: ":" },
+        when: type_span({ ...options, into: "types" }),
+        rewrite: { types: "type" },
+      },
+    ];
+  }
+
+  function srun(src: string, rules: RewriteRule[]): string[] {
+    const raw = tokenize(src, span_compiled);
+    const out = reclassify([rewrite_types(rules, { trivia: ["comment"] })])(src, raw);
+    return types_only(out, src)
+      .filter((t) => t.type === "type")
+      .map((t) => t.value);
+  }
+
+  test("claims identifiers and stops at a semicolon", () => {
+    expect(srun("x : a . b ; c", span_rule())).toEqual(["a", "b"]);
+  });
+
+  test("exits on assignment by default", () => {
+    expect(srun("x : a = b ;", span_rule())).toEqual(["a"]);
+  });
+
+  test("exit_on_eq false rides over default types", () => {
+    expect(srun("x : a = b ;", span_rule({ into: "types", exit_on_eq: false }))).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  test("comma exits by default; exit_on_comma false continues", () => {
+    expect(srun("x : a , b ;", span_rule())).toEqual(["a"]);
+    expect(srun("x : a , b ;", span_rule({ into: "types", exit_on_comma: false }))).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  test("function type: parameter names skip, their types and the result claim", () => {
+    expect(srun("x : ( a : b , c : d ) => e ;", span_rule())).toEqual(["b", "d", "e"]);
+  });
+
+  test("arrow not preceded by a close paren ends the span", () => {
+    expect(srun("x : a => b ;", span_rule())).toEqual(["a"]);
+  });
+
+  test("object type: keys skip, value types claim, the union continues", () => {
+    expect(srun("x : { a : b } | c ;", span_rule())).toEqual(["b", "c"]);
+  });
+
+  test("value op terminators end the span", () => {
+    expect(srun("x : a + b ;", span_rule({ into: "types", value_op_terminators: ["+"] }))).toEqual([
+      "a",
+    ]);
+  });
+
+  test("stmt keyword terminators end the span at entry depth", () => {
+    expect(
+      srun("x : a return b ;", span_rule({ into: "types", stmt_keyword_terminators: ["return"] })),
+    ).toEqual(["a"]);
+  });
+
+  test("angle groups ride along with their commas", () => {
+    expect(srun("x : a < b , c > d ;", span_rule())).toEqual(["a", "b", "c", "d"]);
+  });
+
+  test("enter_angle exits at the unmatched close", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "operator", value: "<" },
+        when: type_span({ into: "types", enter_angle: true, exit_on_comma: false }),
+        rewrite: { types: "type" },
+      },
+    ];
+    expect(srun("f < a , b > c ;", rules)).toEqual(["a", "b"]);
+  });
+
+  test("stray close angle without enter_angle is inert", () => {
+    expect(srun("x : a > b ;", span_rule())).toEqual(["a", "b"]);
+  });
+
+  test("qmark exits only when configured", () => {
+    expect(srun("x : a ? b ;", span_rule({ into: "types", exit_on_qmark: true }))).toEqual(["a"]);
+    expect(srun("x : a ? b ;", span_rule())).toEqual(["a", "b"]);
+  });
+
+  test("brace exit on type closer ends return-type spans at the body", () => {
+    const rules = span_rule({
+      into: "types",
+      brace_exit_on_closer: true,
+      type_terminal_keywords: ["void", "this"],
+    });
+    expect(srun("f ( ) : a { b ; }", rules)).toEqual(["a"]);
+    expect(srun("f ( ) : void { b ; }", rules)).toEqual([]);
+    // an annotation's object type is NOT a body: the brace follows the
+    // anchor colon directly, which never reads as a type closer.
+    expect(srun("x : { a : b } ;", rules)).toEqual(["b"]);
+  });
+
+  test("a close below entry depth ends the span", () => {
+    expect(srun("f ( x : a ) b ;", span_rule())).toEqual(["a"]);
+  });
+
+  test("an unterminated span records what it reached", () => {
+    expect(srun("x : a b", span_rule())).toEqual(["a", "b"]);
+  });
+
+  test("ends-with anchors match coalesced punctuation bundles", () => {
+    // `):`  coalesces into one token; an exact value set cannot anchor it.
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "punctuation", value_ends_with: "):" },
+        when: type_span({ into: "types", brace_exit_on_closer: true }),
+        rewrite: { types: "type" },
+      },
+    ];
+    expect(srun("f ( x ): a { b }", rules)).toEqual(["a"]);
+    expect(srun("x : a ;", rules)).toEqual([]);
+  });
+
+  test("verify_generic_args accepts argument lists and rejects comparisons", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "operator", value: "<" },
+        before: type("identifier"),
+        when: type_span({
+          into: "types",
+          enter_angle: true,
+          exit_on_comma: false,
+          verify_generic_args: true,
+        }),
+        rewrite: { types: "type" },
+      },
+    ];
+    expect(srun("f < a , b > ( )", rules)).toEqual(["a", "b"]);
+    expect(srun("x < y ; z > w ;", rules)).toEqual([]);
   });
 });

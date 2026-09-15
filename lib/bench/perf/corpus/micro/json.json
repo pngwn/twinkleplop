@@ -1,0 +1,10 @@
+{
+  "name": "@acme/edge-router",
+  "version": "0.14.3",
+  "private": false,
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "scripts": { "build": "tsc -p tsconfig.build.json", "test": "vitest run" },
+  "dependencies": { "hyperid": "^3.2.0", "undici": "^6.19.8" },
+  "engines": { "node": ">=20.11" },
+  "keywords": ["proxy", "edge", "http"]
+}

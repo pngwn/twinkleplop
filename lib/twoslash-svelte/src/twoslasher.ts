@@ -28,7 +28,9 @@ import type {
   TwoslashExecuteOptions,
   CreateTwoslashOptions,
   CompilerOptionDeclaration,
+  NodeTag,
   Range,
+  TwoslashNode,
 } from "twoslash";
 /**
  * Advance a generator/iterator N steps and return the Nth item (or
@@ -93,6 +95,10 @@ export function create_twoslasher(
 
     const flag_notations = findFlagNotations(code, custom_tags, option_declarations);
 
+    // tag comments are blanked before svelte2tsx runs, so the base twoslasher
+    // never sees them; their nodes get built here in svelte space instead.
+    const tag_nodes: NodeTag[] = [];
+
     for (const flag of flag_notations) {
       switch (flag.type) {
         case "unknown":
@@ -103,6 +109,19 @@ export function create_twoslasher(
         case "handbookOptions":
           // @ts-expect-error -- dynamic
           handbook_options[flag.name] = flag.value;
+          break;
+        case "tag":
+          tag_nodes.push({
+            type: "tag",
+            name: flag.name,
+            // once the comment is removed its end is the start of the line
+            // the tag annotates.
+            start: flag.end,
+            length: 0,
+            text: typeof flag.value === "string" ? flag.value : undefined,
+            line: 0,
+            character: 0,
+          });
           break;
       }
       source_meta.removals.push([flag.start, flag.end]);
@@ -199,7 +218,7 @@ export function create_twoslasher(
     // map twoslash node positions back to the svelte source. Drop any
     // node whose range can't be mapped (svelte2tsx wrapper boilerplate),
     // and drop `any` hovers, which are overwhelmingly noise.
-    const mapped_nodes = result.nodes
+    const mapped_nodes: TwoslashNode[] = result.nodes
       .map((node) => {
         if ("text" in node && node.text === "any") return undefined;
         const start_map = get(map.toSourceLocation(node.start), 0);
@@ -223,6 +242,8 @@ export function create_twoslasher(
         };
       })
       .filter((v) => v != null);
+
+    mapped_nodes.push(...tag_nodes);
 
     // remap twoslash's own removals (things it cut from the tsx) and
     // concat them with our svelte-source removals so the full list of
@@ -249,7 +270,9 @@ export function create_twoslasher(
       result.nodes = resolveNodePositions(removed.nodes, result.code);
     } else {
       result.code = code;
-      result.nodes = mapped_nodes;
+      // line/character still come from the generated tsx, so redo them against
+      // the svelte source the offsets were just mapped into.
+      result.nodes = resolveNodePositions(mapped_nodes, code);
       result.meta.removals = mapped_removals;
     }
 

@@ -6,6 +6,7 @@
 import { describe, expect, test } from "vitest";
 import { compile, create_language, to_html } from "@twinkleplop/core";
 import type { Grammar } from "@twinkleplop/core";
+import { add, del } from "../diff";
 import { em } from "../em";
 import { hl } from "../hl";
 
@@ -62,5 +63,147 @@ describe("end-to-end: create_language + annotation", () => {
     const html = to_html(input, result);
     expect(html).toMatch(/<span class="l emphasis">/);
     expect(html).toMatch(/<span class="l highlight">/);
+  });
+
+  test("the pre element gains a has- class per classification, in source order", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [add, del] } });
+    const input = "foo // [!add]\nbar // [!del]\nbaz // [!add]\n";
+    const html = to_html(input, fn(input));
+    expect(html).toMatch(/^<pre class="twinkleplop has-diff-add has-diff-del"><code>/);
+    expect(to_html(input, fn(input), { has_classes: false })).toMatch(
+      /^<pre class="twinkleplop"><code>/,
+    );
+  });
+
+  test("a snippet without markers gets no has- class", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [add, del] } });
+    const input = "foo\nbar\n";
+    expect(to_html(input, fn(input))).toMatch(/^<pre class="twinkleplop"><code>/);
+  });
+});
+
+describe("markers combined with the overlays render option", () => {
+  test("classes and has- classes from both sources apply", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [add, hl] } });
+    const input = "foo bar // [!add]\nbaz qux\n";
+    const html = to_html(input, fn(input), {
+      overlays: [
+        { start: { line: 2, character: 4 }, end: { line: 2, character: 7 }, class: "mark" },
+        { start: 0, end: 3, hide: true },
+      ],
+    });
+    expect(html).toMatch(/^<pre class="twinkleplop has-diff-add has-mark"><code>/);
+    expect(html).toMatch(/<span class="l diff-add">/);
+    expect(html).toContain('<span class="tok mark"><span class="tok identifier">qux</span></span>');
+    expect(html).not.toContain("foo");
+    expect(html).not.toContain("[!add]");
+    expect(html).toContain('<span class="tok identifier">bar</span></span>\n');
+  });
+
+  test("the option alone works without any annotation config", () => {
+    const fn = create_language(grammar)();
+    const input = "foo\nbar\n";
+    const html = to_html(input, fn(input), { overlays: [{ line: 2, class: "highlight" }] });
+    expect(html).toMatch(/^<pre class="twinkleplop has-highlight"><code>/);
+    expect(html).toContain('<span class="l highlight"><span class="tok identifier">bar</span>');
+  });
+});
+
+describe("inline structure and hooks with markers", () => {
+  test("the line hook sees visible and source line numbers", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [hl] } });
+    const input = "foo\n// [!hl :3]\nbar\n";
+    const calls: [number, number][] = [];
+    const html = to_html(input, fn(input), {
+      line: (n, source_line) => {
+        calls.push([n, source_line]);
+        return { attrs: { "data-line": source_line } };
+      },
+    });
+    expect(calls).toEqual([
+      [1, 1],
+      [2, 3],
+      [3, 4],
+    ]);
+    expect(html).toContain('<span class="l highlight" data-line="3">');
+  });
+
+  test("inline keeps token mode markers and drops line mode ones", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [hl, em] } });
+    const input = "foo bar baz // [!hl foo...bar]\nqux // [!em]\n";
+    const html = to_html(input, fn(input), { structure: "inline" });
+    expect(html).toBe(
+      '<span class="tok highlight"><span class="tok identifier">foo</span> <span class="tok identifier">bar</span></span> <span class="tok identifier">baz</span><br><span class="tok identifier">qux</span><br>',
+    );
+  });
+
+  test("token hook output lands inside an overlay wrapper", () => {
+    const fn = create_language(grammar)({ annotation: { plugins: [hl] } });
+    const input = "foo bar // [!hl foo...bar]";
+    const html = to_html(input, fn(input), {
+      token: (type, start, end) =>
+        type === "identifier" ? { attrs: { "data-range": `${start}-${end}` } } : undefined,
+    });
+    expect(html).toContain(
+      '<span class="tok highlight"><span class="tok identifier" data-range="0-3">foo</span> <span class="tok identifier" data-range="4-7">bar</span></span>',
+    );
+  });
+});
+
+describe("cross-line word highlight", () => {
+  const body = "const msg = Hello World\nconsole log Hello\nconst other = Hello\n";
+
+  function render(input: string, on_error?: (issue: unknown) => void): string {
+    const fn = create_language(grammar)({ annotation: { plugins: [hl, em], on_error } });
+    return to_html(input, fn(input));
+  }
+
+  const wrapped = (text: string) =>
+    `<span class="tok highlight"><span class="tok identifier">${text}</span></span>`;
+
+  test("=Hello +2 wraps the two lines below and drops the marker line", () => {
+    const html = render("// [!hl =Hello +2]\n" + body);
+    expect(html.match(/class="tok highlight"/g)).toHaveLength(2);
+    expect(html).not.toContain("[!hl");
+    expect(html.split("\n")[0]).toContain("const");
+  });
+
+  test("=Hello :* wraps every occurrence in the snippet", () => {
+    const html = render("// [!hl =Hello :*]\n" + body);
+    expect(html.match(/class="tok highlight"/g)).toHaveLength(3);
+  });
+
+  test("=Hello :3 wraps only that line's occurrence", () => {
+    const lines = render("// [!hl =Hello :3]\n" + body).split("\n");
+    expect(lines[0]).not.toContain('class="tok highlight"');
+    expect(lines[1]).toContain(wrapped("Hello"));
+    expect(lines[2]).not.toContain('class="tok highlight"');
+  });
+
+  test("an unscoped trailing set form still wraps its own line only", () => {
+    const lines = render("const a = Hello\nconst b = Hello // [!hl =Hello]\n").split("\n");
+    expect(lines[0]).not.toContain('class="tok highlight"');
+    expect(lines[1]).toContain(wrapped("Hello"));
+  });
+
+  test("an anchor with no match in scope reports anchor_not_found and renders nothing extra", () => {
+    const issues: any[] = [];
+    const html = render("// [!hl =Nope +2]\n" + body, (i) => issues.push(i));
+    expect(issues.map((i) => i.kind)).toEqual(["anchor_not_found"]);
+    expect(html).not.toContain("highlight");
+    expect(html).not.toContain("[!hl");
+    expect(html.match(/<span class="l"/g)).toHaveLength(body.split("\n").length);
+  });
+
+  test("two occurrences on one line in scope get two wrappers", () => {
+    const html = render("// [!hl =Hello +1]\nsay Hello and Hello\n");
+    expect(html.match(/class="tok highlight"/g)).toHaveLength(2);
+  });
+
+  test("the same occurrence selected twice is wrapped once with both classes", () => {
+    const html = render("// [!hl =Hello :*]\n// [!em =Hello :*]\nHello\n");
+    expect(html).toContain(
+      '<span class="tok highlight emphasis"><span class="tok identifier">Hello</span></span>',
+    );
   });
 });
