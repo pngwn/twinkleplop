@@ -1,7 +1,13 @@
 name: Benchmarks
 
 on:
+  # `labeled` is in the list so that adding `bench:compare` actually triggers a
+  # run. without it the label only takes effect on the next push, which makes
+  # it look broken at exactly the moment someone reaches for it. the cost is
+  # that any label change re-runs the A/B; concurrency cancels the superseded
+  # run, so the waste is bounded by however far the previous one got.
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
   workflow_dispatch:
