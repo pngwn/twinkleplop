@@ -72,9 +72,12 @@ jobs:
           if [ -z "$run_id" ]; then
             # manual deploy: fall back to the newest benchmark run on main
             # that actually produced an artifact.
+            # must be completed AND successful: an in-progress run has a
+            # null conclusion and no artifact yet, and picking it would
+            # silently deploy the empty-state page.
             run_id=$(gh run list --workflow Benchmarks --branch main \
-              --limit 20 --json databaseId,conclusion \
-              --jq 'map(select(.conclusion != "cancelled")) | .[0].databaseId // empty')
+              --limit 20 --json databaseId,status,conclusion \
+              --jq 'map(select(.status == "completed" and .conclusion == "success")) | .[0].databaseId // empty')
           fi
           if [ -z "$run_id" ]; then
             echo "no benchmark run found; the site will build with an empty benchmarks page"
