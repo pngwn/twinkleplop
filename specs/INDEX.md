@@ -57,7 +57,7 @@ graph TD
 
 ## Open cross-cutting questions
 
-- **Fence meta conventions.** [markdown_integration](./markdown_integration.md) lists both the shiki/VitePress family and rehype-pretty-code's and does not decide between them. To discuss before implementation.
+- **Fence meta conventions.** [markdown_integration](./markdown_integration.md) lists both the shiki/VitePress family and rehype-pretty-code's. Settled with that implementation: all of them ship, from one table in `lib/markdown-core/src/meta.ts`.
 - **`has-*` naming for multi-class classifications.** A classification may hold several classes (the shiki-compat mapping emits `diff add`); `has-` prefixes only the first token. Confirmed in [render_options](./render_options.md) and documented in the annotation README with that implementation.
 - **Performance budget for opt-in features.** Every spec requires the no-option path to stay within the perf harness noise floor. What overhead is acceptable when an option *is* used is the feature's cost, not waste, but nobody has put a number on it.
 

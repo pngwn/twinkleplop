@@ -1,0 +1,37 @@
+{
+  "name": "@twinkleplop/markdown-it",
+  "version": "0.1.0",
+  "homepage": "https://twinkleplop.pngwn.dev",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues",
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pngwn/twinkleplop",
+    "directory": "lib/markdown-it"
+  },
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@twinkleplop/markdown-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@twinkleplop/css": "workspace:*",
+    "@twinkleplop/typescript": "workspace:*",
+    "@types/markdown-it": "^14.1.2",
+    "markdown-it": "^14.1.0",
+    "vitest": "^4.1.5"
+  }
+}
