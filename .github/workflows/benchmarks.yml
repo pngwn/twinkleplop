@@ -35,10 +35,12 @@ permissions:
   pull-requests: write
 
 env:
-  # the frozen reference build must NOT live in the workspace: the checkout
-  # action wipes it, and rebuilding two full installs on every run is most of
-  # the job's wall time. parked on the cache volume instead, where
-  # setup-baseline.mjs will reuse it whenever the base commit has not moved.
+  # the frozen reference build must not live in the workspace, because the
+  # checkout action wipes it. it is NOT cached between runs: measured on this
+  # runner, building both reference arms from scratch costs 16 seconds, which
+  # is not worth a mount point — the pnpm store cache is what makes the
+  # installs fast, and caching this directory on top of that bought nothing
+  # while adding a failure mode (rmdir on a mount is EBUSY).
   TWINKLEPLOP_PERF_DIR: /home/runner/.cache/twinkleplop-perf
   NODE_VERSION: "22"
   PNPM_VERSION: "10"
@@ -70,12 +72,10 @@ jobs:
 
       # must come after checkout (which wipes the workspace) and after the
       # toolchains (the pnpm mode needs pnpm on PATH to find its store).
-      - name: Set up caches
+      - name: Set up pnpm store cache
         uses: namespacelabs/nscloud-cache-action@v1
         with:
           cache: pnpm
-          path: |
-            /home/runner/.cache/twinkleplop-perf
 
       - name: Resolve baseline commit
         id: baseline
@@ -116,7 +116,14 @@ jobs:
         # in the comment is derived from it. the floor checked into the repo
         # was measured on a laptop and means nothing here, so this overwrites
         # it — on the runner only, never committed.
-        run: node --expose-gc lib/bench/perf/bin/calibrate.mjs --suite ci
+        #
+        # --rounds 15 matches ab.mjs, and is NOT the harness default of 9.
+        # the per-workload statistic is a median of per-round ratios, so its
+        # robustness scales with round count: a floor measured at 9 rounds
+        # describes a noisier measurement than the 15-round A/B it gates, and
+        # the gate ends up less sensitive than the data it is judging. the
+        # two numbers have to be taken the same way to be comparable at all.
+        run: node --expose-gc lib/bench/perf/bin/calibrate.mjs --suite ci --rounds 15
 
       - name: A/B against baseline
         id: ab

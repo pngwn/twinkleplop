@@ -230,8 +230,11 @@ Three things about that workflow are not obvious and are load-bearing:
 directory was measured on a laptop. A CI runner is a different, shared,
 virtualised machine whose floor is several times higher, and applying the
 laptop's 3.4% there would turn every quiet pull request into a page of green
-"wins". The workflow runs `bin/calibrate.mjs --suite ci` before the A/B and
-overwrites the file on the runner. `bin/pr-comment.mjs` checks the
+"wins". The workflow runs `bin/calibrate.mjs --suite ci --rounds 15` before the A/B
+and overwrites the file on the runner. The round count is passed explicitly
+and must stay equal to the A/B's: the harness defaults differ (9 versus 15),
+and a floor measured at fewer rounds describes a noisier measurement than the
+one it is gating. `bin/pr-comment.mjs` checks the
 provenance of whatever floor it ends up reading and says so in the comment if
 it did not come from the same machine, corpus and node — and refuses to gate
 on a borrowed one.
@@ -249,7 +252,34 @@ purpose is to change output. Failing those would put a red benchmark check on
 every feature. The comment says plainly when the two arms are not the same
 library, and leaves the judgement to the reader.
 
-The frozen reference build is cached between runs at
-`$TWINKLEPLOP_PERF_DIR`, outside the workspace, because the checkout action
-wipes the workspace and rebuilding two full installs dominates the job.
-`bin/setup-baseline.mjs` reuses it whenever the merge base has not moved.
+The frozen reference build lives at `$TWINKLEPLOP_PERF_DIR`, outside the
+workspace, because the checkout action wipes the workspace. It is deliberately
+**not** cached between runs: measured on `namespace-profile-basic`, exporting
+and building both reference arms costs 16 seconds, which is cheaper than the
+mount point was worth. (`rmdir` on a mounted cache volume is `EBUSY`, which is
+how that was discovered.) The pnpm store cache is what makes the installs
+fast.
+
+Measured on that runner, a pull request's whole job is about six minutes:
+
+| step | time |
+| ---- | ---: |
+| checkout, toolchains, install, build candidate | 16s |
+| build both reference arms | 16s |
+| calibrate (A/A, 195 workloads) | 132s at 9 rounds |
+| A/B (195 workloads, 15 rounds) | 178s |
+| parity (550 checks) | 6s |
+
+And the floor it measures there is **18.6%**, against 3.4% on an idle M1 Max.
+That number is per-workload and nothing gates on it; the group thresholds
+derived from the same distribution come out at 1.91% for a mode geomean and
+1.16% over the whole suite. A run against a commit that changed no library
+code reported +0.1% overall, every mode flat.
+
+The distribution is the interesting part: p50 2.90%, p95 14.84%, worst 48%.
+That is not a uniformly slow machine, it is a mostly-clean one with a heavy
+tail — a minority of rounds badly disturbed, most likely by co-tenants on the
+shared physical host. The lever for that shape is round count, because the
+statistic is a median of per-round ratios and a median's resistance to
+contaminated samples scales with how many it has. Raising `--target-ms`
+attacks per-sample variance instead, which is the wrong end of this problem.
