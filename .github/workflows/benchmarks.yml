@@ -1,0 +1,226 @@
+name: Benchmarks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      comparison:
+        description: "Run the cross-library comparison (~25 min)"
+        type: boolean
+        default: true
+      repeat:
+        description: "Independent A/B passes (2 for anything you intend to claim)"
+        type: string
+        default: "1"
+
+# a benchmark is a measurement of a machine. two of them running at once do
+# not give two noisy results, they give two wrong ones, and the distortion is
+# not symmetric between the arms being compared. one run per ref, and never
+# cancel a push to main half way through - that is the run the published
+# charts come from.
+concurrency:
+  group: benchmarks-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  # the frozen reference build must NOT live in the workspace: the checkout
+  # action wipes it, and rebuilding two full installs on every run is most of
+  # the job's wall time. parked on the cache volume instead, where
+  # setup-baseline.mjs will reuse it whenever the base commit has not moved.
+  TWINKLEPLOP_PERF_DIR: /home/runner/.cache/twinkleplop-perf
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10"
+
+jobs:
+  bench:
+    name: Benchmark
+    runs-on: namespace-profile-basic
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out
+        uses: namespacelabs/nscloud-checkout-action@v8
+        with:
+          # the A/B compares this branch against its merge base, so the
+          # history has to be deep enough to find one. Namespace caches the
+          # git objects, so full history costs little after the first run.
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # must come after checkout (which wipes the workspace) and after the
+      # toolchains (the pnpm mode needs pnpm on PATH to find its store).
+      - name: Set up caches
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: pnpm
+          path: |
+            /home/runner/.cache/twinkleplop-perf
+
+      - name: Resolve baseline commit
+        id: baseline
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # the merge base of the branch and its target, computed from the
+            # event's own SHAs rather than from HEAD. a pull_request checkout
+            # is the MERGE commit, so `merge-base origin/main HEAD` there
+            # resolves to the tip of main and the A/B would charge this branch
+            # for everything that landed on main since it forked - someone
+            # else's delta, attributed to whoever opened the PR.
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+            git fetch --no-tags --quiet origin "$base" "$head"
+            sha=$(git merge-base "$base" "$head")
+          else
+            sha=$(git rev-parse HEAD^)
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Baseline: $sha — $(git log -1 --format=%s "$sha")"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build candidate
+        # both arms load `dist`, which is what consumers import. measuring the
+        # TypeScript sources through a transform would measure the transform.
+        run: pnpm build
+
+      - name: Build reference at baseline
+        run: node lib/bench/perf/bin/setup-baseline.mjs --ref "${{ steps.baseline.outputs.sha }}"
+
+      - name: Calibrate the noise floor on this runner
+        # A/A: two independent builds of the SAME commit, where the true
+        # answer is 1.00 everywhere. whatever spread comes back is the
+        # smallest effect this machine can resolve today, and every threshold
+        # in the comment is derived from it. the floor checked into the repo
+        # was measured on a laptop and means nothing here, so this overwrites
+        # it — on the runner only, never committed.
+        run: node --expose-gc lib/bench/perf/bin/calibrate.mjs --suite ci
+
+      - name: A/B against baseline
+        id: ab
+        # exits 1 on any single-workload regression. that is too trigger-happy
+        # a gate for a shared runner, so the verdict is left to the comment
+        # step, which gates on group geomeans instead.
+        continue-on-error: true
+        run: |
+          node --expose-gc lib/bench/perf/bin/ab.mjs \
+            --suite ci \
+            --repeat "${{ github.event.inputs.repeat || '1' }}" \
+            --label "${{ github.head_ref || github.ref_name }}" \
+            --out lib/bench/results/ab.json
+
+      - name: Output parity against baseline
+        id: parity
+        # reported, not gated. a speedup that changes output is not a speedup,
+        # but this workflow also runs on feature branches whose whole purpose
+        # is to change output. failing them here would mean every feature PR
+        # ships with a red benchmark check, which is the fastest way to teach
+        # everyone to ignore benchmark checks. the comment says plainly when
+        # the two arms are not the same library.
+        continue-on-error: true
+        run: node lib/bench/perf/bin/parity.mjs
+
+      - name: Cross-library comparison
+        # the expensive one, and the one the website's charts are built from.
+        # the site deploys from main, so main is where it has to run. on a
+        # pull request it is opt-in, because ~25 minutes on every push would
+        # buy context nobody asked for.
+        if: >-
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.comparison == 'true') ||
+          contains(github.event.pull_request.labels.*.name, 'bench:compare')
+        env:
+          RUNNER_LABEL: namespace-profile-basic
+        run: |
+          node --expose-gc lib/bench/compare/bin/compare.mjs \
+            --out lib/bench/results/comparison.json
+
+      - name: Render comment
+        # --fail-on none so that a rendering error is a real failure and a
+        # regression is not. the gate is a separate step below, after the
+        # comment has been posted and the artifact uploaded: a red check
+        # should never arrive without the evidence for it.
+        run: |
+          set -euo pipefail
+          args=(--ab lib/bench/results/ab.json --fail-on none)
+          if [ -f lib/bench/results/comparison.json ]; then
+            args+=(--comparison lib/bench/results/comparison.json)
+          fi
+          if [ "${{ steps.parity.outcome }}" = "success" ]; then
+            args+=(--parity-status clean)
+          else
+            args+=(--parity-status diverged --parity lib/bench/perf/reports/parity-latest.json)
+          fi
+          node lib/bench/perf/bin/pr-comment.mjs "${args[@]}" --out lib/bench/results/comment.md
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: |
+            lib/bench/results/
+            lib/bench/perf/calibration.json
+            lib/bench/perf/reports/parity-latest.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Post comment
+        if: github.event_name == 'pull_request'
+        # a fork PR has a read-only token, so this cannot work there. the
+        # markdown is in the artifact either way, so failing here should not
+        # fail the run.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # update in place rather than appending: a PR with fifteen pushes
+          # should not carry fifteen benchmark comments, and only the newest
+          # one is true. the marker is the first line of the rendered
+          # markdown, which is what makes the comment findable.
+          id=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
+                 --jq 'first(.[] | select(.body | startswith("<!-- twinkleplop-benchmarks -->")) | .id) // empty')
+          # -F body=@file, not -f body="$(cat ...)": the markdown is full of
+          # backticks, quotes and pipes, and passing it through the shell is
+          # asking for a comment that renders as something else.
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" \
+              -F body=@lib/bench/results/comment.md >/dev/null
+            echo "updated comment $id"
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" \
+              -F body=@lib/bench/results/comment.md >/dev/null
+            echo "posted new comment"
+          fi
+
+      - name: Verdict
+        # the gate, deliberately last: the comment and the artifact already
+        # exist whatever the answer is, so a red check always arrives with the
+        # evidence for it attached.
+        #
+        # gates on GROUP geomeans, not individual workloads. the A/A
+        # calibration flags roughly one workload in eight as "significant"
+        # when both arms are the same commit, so a per-workload gate on a
+        # shared runner would go red on PRs that changed nothing.
+        run: |
+          node lib/bench/perf/bin/pr-comment.mjs \
+            --ab lib/bench/results/ab.json \
+            --fail-on group \
+            --out /dev/null

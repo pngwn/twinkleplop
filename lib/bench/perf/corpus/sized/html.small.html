@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://use.typekit.net/pyq0xig.css" />
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Demo</title>
+    <style>
+      :root {
+        --fg: #1f2328;
+      }
+      body.main > .card {
+        color: var(--fg);
+        padding: 1rem;
+      }
+    </style>
+  </head>
+  <body class="main">
+    <!-- hello -->
+    <h1 id="top">Welcome</h1>
+    <a href="https://example.com">link</a>
+    <script>
+      class Greeter {
+        constructor(prefix) {
+          this.prefix = prefix;
+        }
+        greet(name) {
+          return `${this.prefix}, ${name}`;
+        }
+      }
+      const g = new Greeter("hello");
+      console.log(g.greet("world"));
+    </script>
+  </body>
+</html>

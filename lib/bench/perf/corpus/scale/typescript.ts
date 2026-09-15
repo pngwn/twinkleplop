@@ -351,6 +351,10 @@ interface ProbeEntry {
 
 declare const INTROSPECTION: boolean;
 
+// one 4k page worth of Uint32 slots. below this there is nothing worth
+// reclaiming from the scan scratch buffer and the copy is pure cost.
+const MIN_RECLAIMED_SLOTS = 1024;
+
 // helper function to check if a character is an identifier continuation character
 function is_identifier_char(char_code: number): boolean {
   return (
@@ -373,7 +377,7 @@ export function tokenize(
     token_types,
     patterns,
     fallback_transitions,
-    non_ascii_chars,
+    non_ascii_ranges,
     probe_states,
     probe_mask,
     probe_fallbacks,
@@ -395,8 +399,7 @@ export function tokenize(
   let state_buckets: (PatternInfo[] | null)[] | undefined = patterns && patterns.get(0);
   let char_map_base: number = 0; // current_state * 128
   let trans_base3: number = 0; // (current_state * 256) * 3
-  let non_ascii_state: Record<number, number> | undefined =
-    non_ascii_chars && non_ascii_chars.get(0 as any);
+  let non_ascii_state: Int32Array | undefined = non_ascii_ranges && non_ascii_ranges.get(0 as any);
 
   let pos = 0;
   let prev_advanced_pos = -1;
@@ -448,7 +451,7 @@ export function tokenize(
     state_buckets = patterns && patterns.get(current_state);
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
   }
 
   function rewind_to_probe_entry(): void {
@@ -468,7 +471,7 @@ export function tokenize(
     state_buckets = patterns && patterns.get(current_state);
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
   }
 
   // INTROSPECTION_START
@@ -624,6 +627,50 @@ export function tokenize(
         const transition = transitions[t_base];
         const token_type = transitions[t_base + 1];
         const stack_op = transitions[t_base + 2];
+
+        // run fast path. the three table reads above already say whether this
+        // rule can change state; one that cannot is a self-loop, so the whole
+        // run of characters it matches can be consumed here instead of paying
+        // a full dispatch per character. string bodies, comment bodies,
+        // identifier runs and digit runs are all this shape, which is why a
+        // hand-written lexer's inner loops beat the table walk.
+        //
+        // the run stops at a character that maps to a different rule, at a
+        // character that begins one of this state's multi-char patterns (the
+        // bucket is consulted before the char map, so it would have won), and
+        // at non-ascii (the fallback path owns those).
+        if (
+          transition === 65535 &&
+          stack_op === 0 &&
+          token_type !== 65535 &&
+          matched_length === 0 &&
+          !is_in_probe_state &&
+          !has_failed_probes &&
+          (!has_seals || !seal_flags![current_state * 256 + char_class]) &&
+          (!boundary_rules || !boundary_rules.has(current_state * 256 + char_class)) &&
+          !(INTROSPECTION && introspector)
+        ) {
+          if (token_type === last_token_type && pos === last_token_end) {
+            pos++;
+          } else {
+            const out_idx = token_count * 3;
+            tokens[out_idx] = token_type;
+            tokens[out_idx + 1] = pos;
+            token_count++;
+            pos++;
+          }
+          while (pos < len) {
+            const next = input.charCodeAt(pos);
+            if (next > 127) break;
+            if (char_maps[char_map_base + next] !== char_class) break;
+            if (state_buckets !== undefined && state_buckets[next] !== null) break;
+            pos++;
+          }
+          tokens[(token_count - 1) * 3 + 2] = pos;
+          last_token_type = token_type;
+          last_token_end = pos;
+          continue;
+        }
 
         // determine target state
         let target_state = current_state;
@@ -790,7 +837,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7; // *128
           trans_base3 = (current_state << 8) * 3; // *256*3
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -838,7 +885,7 @@ export function tokenize(
           state_buckets = patterns ? patterns.get(current_state) : undefined;
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -859,7 +906,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
 
         // check if exiting probe state
@@ -900,7 +947,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
 
         // check if we've reached the end while in probe mode
@@ -975,9 +1022,15 @@ export function tokenize(
       // first check if there's a specific match for this character
       let matched_rule_idx = 65535;
       // early bail if no non-ASCII mappings exist at all
-      if (non_ascii_state) {
-        const v = (non_ascii_state as any)[char];
-        if (v !== undefined) matched_rule_idx = v as number;
+      if (non_ascii_state !== undefined) {
+        // short list, and only reached for codepoints >= 128, so the scan
+        // costs far less than the per-codepoint map it replaced cost to build.
+        for (let i = 0; i < non_ascii_state.length; i += 3) {
+          if (char >= non_ascii_state[i] && char <= non_ascii_state[i + 1]) {
+            matched_rule_idx = non_ascii_state[i + 2];
+            break;
+          }
+        }
       }
 
       if (matched_rule_idx !== 65535) {
@@ -1427,8 +1480,20 @@ export function tokenize(
   // (promote_by_text_set, interface_member_promoter, class_name_promoter,
   // ...) are responsible for cloning before they push new names. cloning
   // here penalised every tokenize call, including reclassifier-free ones.
+  //
+  // copy out rather than returning a view. the scratch buffer is sized at
+  // 3 slots per input character but real grammars fill 13-15% of it, so a
+  // subarray keeps 12 bytes per input character reachable for as long as the
+  // caller holds the result. a consumer that highlights many blocks and keeps
+  // the streams pays that on every one.
+  //
+  // the copy costs one allocation, which is measurable on inputs small enough
+  // that the whole call is a microsecond, so keep the view when the memory it
+  // pins is under a page and reclaiming it would not return anything to the
+  // allocator anyway.
+  const used = token_count * 3;
   return {
-    tokens: tokens.subarray(0, token_count * 3),
+    tokens: len * 3 - used > MIN_RECLAIMED_SLOTS ? tokens.slice(0, used) : tokens.subarray(0, used),
     token_types,
   };
 }
@@ -1621,6 +1686,42 @@ function set_char_mapping(
   }
 }
 
+// record a rule's claim over a span of codepoints >= 128, as a range.
+//
+// this used to be a per-codepoint object map, which meant a rule written as
+// range([[0x80, 0xffff]]) - the usual way to say "any unicode identifier
+// character" - materialised 65408 own properties per state it appeared in.
+// python does that in three states and paid roughly 11ms at import for it, ten
+// times what every other grammar paid. ranges are stored as ranges instead;
+// the tokenizer scans the list, which stays short because non-ascii rules are
+// rare. module scope rather than a closure inside compile() so that grammars
+// with no non-ascii rules at all do not allocate one per compile.
+function add_non_ascii(
+  build: Map<number, number[]>,
+  state_id: number,
+  start: number,
+  end: number,
+  rule_idx: number,
+  state_name: string,
+  subject: string,
+): void {
+  let list = build.get(state_id);
+  if (list === undefined) {
+    list = [];
+    build.set(state_id, list);
+  }
+  for (let i = 0; i < list.length; i += 3) {
+    if (start <= list[i + 1] && end >= list[i]) {
+      throw new Error(
+        `Grammar validation error in state "${state_name}": ` +
+          `Multiple rules match ${subject}. ` +
+          `Rule ${list[i + 2]} and rule ${rule_idx} both match this character.`,
+      );
+    }
+  }
+  list.push(start, end, rule_idx);
+}
+
 // preprocess grammar to expand match_within rules into states
 function preprocess_grammar(grammar: Grammar): Grammar {
   const processed_grammar: Grammar = {
@@ -1791,7 +1892,9 @@ export function compile(grammar: Grammar): CompiledGrammar {
 
   const keywords = new Map();
   const patterns = new Map(); // state -> char -> Array<{codes, length, rule_idx}>
-  const non_ascii_chars = new Map<number, Record<number, number>>(); // state -> object map: charCode -> rule_idx
+  // state -> flat [start, end, rule_idx] triples covering codepoints >= 128.
+  // see add_non_ascii for why these are ranges and not per-codepoint entries.
+  const non_ascii_build = new Map<number, number[]>();
   const boundary_rules = new Set<number>(); // track rules that require boundary checking
   // track which states are probe states based on state.mode property
   const probe_states = new Set<number>();
@@ -2000,18 +2103,15 @@ export function compile(grammar: Grammar): CompiledGrammar {
                 }
               } else {
                 // non ASCII character
-                if (!non_ascii_chars.has(state_id)) {
-                  non_ascii_chars.set(state_id, Object.create(null));
-                }
-                const state_non_ascii = non_ascii_chars.get(state_id)!;
-                if (state_non_ascii[code] !== undefined) {
-                  throw new Error(
-                    `Grammar validation error in state "${name}": ` +
-                      `Multiple rules match non-ASCII character '${match}' (code: ${code}). ` +
-                      `Rule ${state_non_ascii[code]} and rule ${rule_idx} both match this character.`,
-                  );
-                }
-                state_non_ascii[code] = rule_idx;
+                add_non_ascii(
+                  non_ascii_build,
+                  state_id,
+                  code,
+                  code,
+                  rule_idx,
+                  name,
+                  `non-ASCII character '${match}' (code: ${code})`,
+                );
                 // track if this rule requires boundary checking
                 if (rule.boundary) {
                   boundary_rules.add(state_id * 256 + rule_idx);
@@ -2057,23 +2157,24 @@ export function compile(grammar: Grammar): CompiledGrammar {
           const start = typeof range[0] === "string" ? range[0].charCodeAt(0) : range[0];
           const end = typeof range[1] === "string" ? range[1].charCodeAt(0) : range[1];
 
-          for (let code = start; code <= end; code++) {
-            if (code < 128) {
-              set_char_mapping(char_maps, state_id, code, rule_idx);
-            } else {
-              if (!non_ascii_chars.has(state_id)) {
-                non_ascii_chars.set(state_id, Object.create(null));
-              }
-              const state_non_ascii = non_ascii_chars.get(state_id)!;
-              if (state_non_ascii[code] !== undefined) {
-                throw new Error(
-                  `Grammar validation error in state "${name}": ` +
-                    `Multiple rules match character with code ${code} in range. ` +
-                    `Rule ${state_non_ascii[code]} and rule ${rule_idx} both match this character.`,
-                );
-              }
-              state_non_ascii[code] = rule_idx;
-            }
+          // the ascii half still expands per character because char_maps is a
+          // dense table keyed by codepoint. the non-ascii half must not: it is
+          // unbounded in principle and 65408 wide in practice.
+          const ascii_end = end < 127 ? end : 127;
+          for (let code = start; code <= ascii_end; code++) {
+            set_char_mapping(char_maps, state_id, code, rule_idx);
+          }
+          if (end >= 128) {
+            const non_ascii_start = start < 128 ? 128 : start;
+            add_non_ascii(
+              non_ascii_build,
+              state_id,
+              non_ascii_start,
+              end,
+              rule_idx,
+              name,
+              `characters in range ${non_ascii_start}..${end}`,
+            );
           }
         }
       }
@@ -2111,6 +2212,13 @@ export function compile(grammar: Grammar): CompiledGrammar {
     probe_mask[id] = 1;
   });
 
+  // order does not matter: overlapping ranges are rejected above, so at most
+  // one entry can match a given codepoint whatever order the scan takes.
+  const non_ascii_ranges = new Map<number, Int32Array>();
+  for (const [state_id, list] of non_ascii_build) {
+    non_ascii_ranges.set(state_id, Int32Array.from(list));
+  }
+
   return {
     states: state_map,
     transitions,
@@ -2119,7 +2227,7 @@ export function compile(grammar: Grammar): CompiledGrammar {
     token_types,
     patterns: patterns,
     fallback_transitions,
-    non_ascii_chars: non_ascii_chars,
+    non_ascii_ranges,
     probe_states: probe_states,
     probe_mask,
     probe_fallbacks: probe_fallbacks,
@@ -3139,12 +3247,78 @@ import type {
 // PRIMITIVE_TYPES (i32, u64, …) → class_name; JS / Python / Rust boolean
 // literals → boolean.
 
+// candidate texts compiled to code-unit arrays, bucketed by leading char.
+// membership then answers from `input` directly instead of materialising a
+// substring per candidate token: `input.slice(s, e)` allocated a string for
+// every token of the source type on every highlight purely to feed
+// Set.has, and these passes run over the whole stream.
+const ASCII_BUCKETS = 128;
+
+interface CompiledTextSet {
+  buckets: (Uint16Array[] | null)[];
+  // entries whose first code unit is outside ascii keep the string path.
+  wide: Set<string> | null;
+  min_len: number;
+  max_len: number;
+}
+
+function compile_text_set(texts: Iterable<string>): CompiledTextSet {
+  const buckets: (Uint16Array[] | null)[] = new Array(ASCII_BUCKETS).fill(null);
+  let wide: Set<string> | null = null;
+  let min_len = Infinity;
+  let max_len = 0;
+  for (const text of texts) {
+    if (text.length === 0) continue;
+    if (text.length < min_len) min_len = text.length;
+    if (text.length > max_len) max_len = text.length;
+    const first = text.charCodeAt(0);
+    if (first >= ASCII_BUCKETS) {
+      wide ??= new Set();
+      wide.add(text);
+      continue;
+    }
+    const codes = new Uint16Array(text.length);
+    for (let i = 0; i < text.length; i++) codes[i] = text.charCodeAt(i);
+    let bucket = buckets[first];
+    if (bucket === null) {
+      bucket = [];
+      buckets[first] = bucket;
+    }
+    bucket.push(codes);
+  }
+  return { buckets, wide, min_len: min_len === Infinity ? 1 : min_len, max_len };
+}
+
+function text_set_has(set: CompiledTextSet, input: string, s: number, e: number): boolean {
+  const len = e - s;
+  if (len < set.min_len || len > set.max_len) return false;
+  const first = input.charCodeAt(s);
+  if (first >= ASCII_BUCKETS) {
+    return set.wide !== null && set.wide.has(input.slice(s, e));
+  }
+  const bucket = set.buckets[first];
+  if (bucket === null) return false;
+  for (let b = 0; b < bucket.length; b++) {
+    const codes = bucket[b];
+    if (codes.length !== len) continue;
+    let ok = true;
+    for (let k = 1; k < len; k++) {
+      if (input.charCodeAt(s + k) !== codes[k]) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) return true;
+  }
+  return false;
+}
+
 export function promote_by_text_set(
   source_type: string,
   target_type: string,
   text_set: Iterable<string>,
 ): ClaimingReclassifier {
-  const set = text_set instanceof Set ? text_set : new Set(text_set);
+  const set = compile_text_set(text_set);
   const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
     const source_id = token_types.indexOf(source_type);
     if (source_id < 0) {
@@ -3168,7 +3342,7 @@ export function promote_by_text_set(
       if (tokens[i * 3] !== source_id) continue;
       const s = tokens[i * 3 + 1];
       const e = tokens[i * 3 + 2];
-      if (set.has(input.slice(s, e))) {
+      if (text_set_has(set, input, s, e)) {
         sink.emit(i, target_id, prec);
       }
     }
@@ -3677,8 +3851,11 @@ export interface CompiledGrammar {
   token_types: string[];
   patterns: Map<number, (PatternInfo[] | null)[]>;
   fallback_transitions: Uint16Array;
-  // use object map for faster non-ascii lookups per state
-  non_ascii_chars: Map<number, Record<number, number>>;
+  // per state, flat [start, end, rule_idx] triples over codepoints >= 128.
+  // ranges rather than one entry per codepoint: a grammar that accepts any
+  // unicode identifier character covers 65408 of them, and materialising that
+  // per codepoint dominated compile time for the grammars that do it.
+  non_ascii_ranges: Map<number, Int32Array>;
   // retain set for external tooling, but also include fast mask for hot path
   probe_states: Set<number>;
   probe_mask?: Uint8Array;
@@ -4139,11 +4316,12 @@ export interface AnnotationConfig {
 export interface AnnotationPlugin {
   // verbs claimed by this plugin. registration-time collision is an error.
   verbs: string[];
-  // 'shared' (default) means the framework parses the marker args and passes
-  // a ParsedArgs to the plugin. 'raw' passes the raw string and the plugin
-  // parses it itself. phase 1 supports only 'shared'.
+  // 'shared' (default) parses the args into ParsedArgs. 'raw' passes the
+  // text after the verb (and #id) with trailing whitespace trimmed; the
+  // framework still finds, hides and validates the marker but resolves
+  // anchors, line refs and pairs only when the plugin asks via `resolve`.
   parse?: "shared" | "raw";
-  handle(input: AnnotationInput): AnnotationOutput;
+  handle(input: AnnotationInput): AnnotationOutput | void;
 }
 
 export interface AnnotationInput {
@@ -4151,13 +4329,36 @@ export interface AnnotationInput {
   id?: string;
   args: ParsedArgs | string;
   // resolved source range the marker targets (already includes pair resolution
-  // and anchor lookup, so plugins receive a fully-resolved span).
+  // and anchor lookup, so plugins receive a fully-resolved span). the
+  // marker's own line for raw plugins.
   range: SourceRange;
   marker: SourcePosition;
+  // the marker's line holds only markers and will disappear. lets a raw
+  // plugin tell a marker above its target from a trailing one.
+  standalone: boolean;
+  // resolves a fragment of the shared grammar (`+2`, `foo..bar`, `=foo +3`)
+  // relative to this marker. half-open pairs cannot be resolved. throws
+  // with an AnnotationIssueKind on failure; an escaped throw is reported at
+  // the marker's position.
+  resolve(fragment: string): SourceRange;
+  // every range, one per occurrence for the set form.
+  resolve_all(fragment: string): SourceRange[];
 }
 
 export interface AnnotationOutput {
   overlays?: OverlayContribution[];
+  // reported like framework issues, at the marker's position unless one
+  // carries its own.
+  issues?: PluginIssue[];
+  // false leaves the marker text visible, for a plugin that recognises only
+  // part of its verb's argument space. default true.
+  consumed?: boolean;
+}
+
+export interface PluginIssue {
+  kind: AnnotationIssueKind;
+  message: string;
+  position?: SourcePosition;
 }
 
 export interface OverlayContribution {
@@ -4194,12 +4395,19 @@ export type ParsedArgs =
       inclusive_start: boolean;
       inclusive_end: boolean;
     }
-  | { kind: "set"; anchor: Anchor }
+  // `=foo` matches on the marker's own line; a scope (`=foo +2`, `=foo :*`)
+  // searches those lines instead.
+  | { kind: "set"; anchor: Anchor; scope?: SetScope }
   // `***` shorthand: every byte on the marker's own line, token-mode. the
   // cleaner equivalent of `*..*` (which the parser rejects as malformed
   // because it has no anchor reference). use bare `[!em]` for line-mode
   // styling instead.
   | { kind: "wholeLine" };
+
+export type SetScope =
+  | { kind: "lineCount"; count: number }
+  | { kind: "lineRef"; from: number; to?: number; inclusive?: boolean }
+  | { kind: "all" };
 
 export type Anchor =
   | { kind: "word"; value: string }
@@ -4265,8 +4473,51 @@ export type LanguageFactory = (options?: LanguageOptions) => LanguageFn;
 // directly by `to_html`.
 export interface RenderOptions {
   class_name?: string;
-  line_numbers?: boolean;
+  // numbering counts visible lines, so a line elided by an annotation never
+  // leaves a gap.
+  line_numbers?: boolean | { start?: number };
+  // emitted on <pre> after class, in the order given. true is a bare name,
+  // false emits nothing. `class` and `style` are reserved.
+  attributes?: Record<string, string | number | boolean>;
+  // `has-<classification>` on <pre> for every overlay the snippet carries.
+  // default true.
+  has_classes?: boolean;
+  // merged with any marker overlays already on the tokenize result.
+  overlays?: OverlayItem[];
+  // "inline" emits no block or line elements and <br> between lines. the
+  // block and line level options are ignored.
+  structure?: "classic" | "inline";
+  // n is the visible index regardless of a line_numbers start, source_line
+  // the 1-based input line. not called in inline mode.
+  line?: (n: number, source_line: number) => HookResult | void;
+  // a decorated token renders as its own span and is never merged.
+  token?: (type: string, start: number, end: number) => HookResult | void;
+  // wraps spaces and tabs between tokens, one span per character. whitespace
+  // inside a token stays part of it.
+  whitespace?: "all" | "boundary" | "leading" | "trailing";
+  // splits leading indentation into <span class="indent"> levels: a tab is
+  // one level, `size` spaces are one level (default 2).
+  indent_guides?: boolean | { size?: number };
 }
+
+// class goes after the element's own classes; attrs follow the `attributes`
+// rules.
+export interface HookResult {
+  class?: string;
+  attrs?: Record<string, string | number | boolean>;
+}
+
+// offsets are utf-16 code units, the same units as token positions. lines
+// are 1-based and characters 0-based. `end` is exclusive in both forms.
+export type OverlayPosition = number | { line: number; character: number };
+
+// a hidden range renders as spaces of equal width and takes any line it
+// empties with it.
+export type OverlayItem =
+  | { start: OverlayPosition; end: OverlayPosition; class: string }
+  | { line: number; class: string }
+  | { lines: (number | [number, number])[]; class: string }
+  | { start: OverlayPosition; end: OverlayPosition; hide: true };
 
 // Pattern language for `rewrite_types` — tag-discriminated union so authors
 // build patterns with the exported combinator helpers (`type`, `seq`,
@@ -5296,6 +5547,10 @@ interface ProbeEntry {
 
 declare const INTROSPECTION: boolean;
 
+// one 4k page worth of Uint32 slots. below this there is nothing worth
+// reclaiming from the scan scratch buffer and the copy is pure cost.
+const MIN_RECLAIMED_SLOTS = 1024;
+
 // helper function to check if a character is an identifier continuation character
 function is_identifier_char(char_code: number): boolean {
   return (
@@ -5318,7 +5573,7 @@ export function tokenize(
     token_types,
     patterns,
     fallback_transitions,
-    non_ascii_chars,
+    non_ascii_ranges,
     probe_states,
     probe_mask,
     probe_fallbacks,
@@ -5340,8 +5595,7 @@ export function tokenize(
   let state_buckets: (PatternInfo[] | null)[] | undefined = patterns && patterns.get(0);
   let char_map_base: number = 0; // current_state * 128
   let trans_base3: number = 0; // (current_state * 256) * 3
-  let non_ascii_state: Record<number, number> | undefined =
-    non_ascii_chars && non_ascii_chars.get(0 as any);
+  let non_ascii_state: Int32Array | undefined = non_ascii_ranges && non_ascii_ranges.get(0 as any);
 
   let pos = 0;
   let prev_advanced_pos = -1;
@@ -5393,7 +5647,7 @@ export function tokenize(
     state_buckets = patterns && patterns.get(current_state);
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
   }
 
   function rewind_to_probe_entry(): void {
@@ -5413,7 +5667,7 @@ export function tokenize(
     state_buckets = patterns && patterns.get(current_state);
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
   }
 
   // INTROSPECTION_START
@@ -5569,6 +5823,50 @@ export function tokenize(
         const transition = transitions[t_base];
         const token_type = transitions[t_base + 1];
         const stack_op = transitions[t_base + 2];
+
+        // run fast path. the three table reads above already say whether this
+        // rule can change state; one that cannot is a self-loop, so the whole
+        // run of characters it matches can be consumed here instead of paying
+        // a full dispatch per character. string bodies, comment bodies,
+        // identifier runs and digit runs are all this shape, which is why a
+        // hand-written lexer's inner loops beat the table walk.
+        //
+        // the run stops at a character that maps to a different rule, at a
+        // character that begins one of this state's multi-char patterns (the
+        // bucket is consulted before the char map, so it would have won), and
+        // at non-ascii (the fallback path owns those).
+        if (
+          transition === 65535 &&
+          stack_op === 0 &&
+          token_type !== 65535 &&
+          matched_length === 0 &&
+          !is_in_probe_state &&
+          !has_failed_probes &&
+          (!has_seals || !seal_flags![current_state * 256 + char_class]) &&
+          (!boundary_rules || !boundary_rules.has(current_state * 256 + char_class)) &&
+          !(INTROSPECTION && introspector)
+        ) {
+          if (token_type === last_token_type && pos === last_token_end) {
+            pos++;
+          } else {
+            const out_idx = token_count * 3;
+            tokens[out_idx] = token_type;
+            tokens[out_idx + 1] = pos;
+            token_count++;
+            pos++;
+          }
+          while (pos < len) {
+            const next = input.charCodeAt(pos);
+            if (next > 127) break;
+            if (char_maps[char_map_base + next] !== char_class) break;
+            if (state_buckets !== undefined && state_buckets[next] !== null) break;
+            pos++;
+          }
+          tokens[(token_count - 1) * 3 + 2] = pos;
+          last_token_type = token_type;
+          last_token_end = pos;
+          continue;
+        }
 
         // determine target state
         let target_state = current_state;
@@ -5735,7 +6033,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7; // *128
           trans_base3 = (current_state << 8) * 3; // *256*3
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -5783,7 +6081,7 @@ export function tokenize(
           state_buckets = patterns ? patterns.get(current_state) : undefined;
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -5804,7 +6102,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
 
         // check if exiting probe state
@@ -5845,7 +6143,7 @@ export function tokenize(
           state_buckets = patterns && patterns.get(current_state);
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_chars && (non_ascii_chars as any).get(current_state);
+          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
 
         // check if we've reached the end while in probe mode
@@ -5920,9 +6218,15 @@ export function tokenize(
       // first check if there's a specific match for this character
       let matched_rule_idx = 65535;
       // early bail if no non-ASCII mappings exist at all
-      if (non_ascii_state) {
-        const v = (non_ascii_state as any)[char];
-        if (v !== undefined) matched_rule_idx = v as number;
+      if (non_ascii_state !== undefined) {
+        // short list, and only reached for codepoints >= 128, so the scan
+        // costs far less than the per-codepoint map it replaced cost to build.
+        for (let i = 0; i < non_ascii_state.length; i += 3) {
+          if (char >= non_ascii_state[i] && char <= non_ascii_state[i + 1]) {
+            matched_rule_idx = non_ascii_state[i + 2];
+            break;
+          }
+        }
       }
 
       if (matched_rule_idx !== 65535) {
@@ -6372,8 +6676,20 @@ export function tokenize(
   // (promote_by_text_set, interface_member_promoter, class_name_promoter,
   // ...) are responsible for cloning before they push new names. cloning
   // here penalised every tokenize call, including reclassifier-free ones.
+  //
+  // copy out rather than returning a view. the scratch buffer is sized at
+  // 3 slots per input character but real grammars fill 13-15% of it, so a
+  // subarray keeps 12 bytes per input character reachable for as long as the
+  // caller holds the result. a consumer that highlights many blocks and keeps
+  // the streams pays that on every one.
+  //
+  // the copy costs one allocation, which is measurable on inputs small enough
+  // that the whole call is a microsecond, so keep the view when the memory it
+  // pins is under a page and reclaiming it would not return anything to the
+  // allocator anyway.
+  const used = token_count * 3;
   return {
-    tokens: tokens.subarray(0, token_count * 3),
+    tokens: len * 3 - used > MIN_RECLAIMED_SLOTS ? tokens.slice(0, used) : tokens.subarray(0, used),
     token_types,
   };
 }
@@ -6566,6 +6882,42 @@ function set_char_mapping(
   }
 }
 
+// record a rule's claim over a span of codepoints >= 128, as a range.
+//
+// this used to be a per-codepoint object map, which meant a rule written as
+// range([[0x80, 0xffff]]) - the usual way to say "any unicode identifier
+// character" - materialised 65408 own properties per state it appeared in.
+// python does that in three states and paid roughly 11ms at import for it, ten
+// times what every other grammar paid. ranges are stored as ranges instead;
+// the tokenizer scans the list, which stays short because non-ascii rules are
+// rare. module scope rather than a closure inside compile() so that grammars
+// with no non-ascii rules at all do not allocate one per compile.
+function add_non_ascii(
+  build: Map<number, number[]>,
+  state_id: number,
+  start: number,
+  end: number,
+  rule_idx: number,
+  state_name: string,
+  subject: string,
+): void {
+  let list = build.get(state_id);
+  if (list === undefined) {
+    list = [];
+    build.set(state_id, list);
+  }
+  for (let i = 0; i < list.length; i += 3) {
+    if (start <= list[i + 1] && end >= list[i]) {
+      throw new Error(
+        `Grammar validation error in state "${state_name}": ` +
+          `Multiple rules match ${subject}. ` +
+          `Rule ${list[i + 2]} and rule ${rule_idx} both match this character.`,
+      );
+    }
+  }
+  list.push(start, end, rule_idx);
+}
+
 // preprocess grammar to expand match_within rules into states
 function preprocess_grammar(grammar: Grammar): Grammar {
   const processed_grammar: Grammar = {
@@ -6736,7 +7088,9 @@ export function compile(grammar: Grammar): CompiledGrammar {
 
   const keywords = new Map();
   const patterns = new Map(); // state -> char -> Array<{codes, length, rule_idx}>
-  const non_ascii_chars = new Map<number, Record<number, number>>(); // state -> object map: charCode -> rule_idx
+  // state -> flat [start, end, rule_idx] triples covering codepoints >= 128.
+  // see add_non_ascii for why these are ranges and not per-codepoint entries.
+  const non_ascii_build = new Map<number, number[]>();
   const boundary_rules = new Set<number>(); // track rules that require boundary checking
   // track which states are probe states based on state.mode property
   const probe_states = new Set<number>();
@@ -6945,18 +7299,15 @@ export function compile(grammar: Grammar): CompiledGrammar {
                 }
               } else {
                 // non ASCII character
-                if (!non_ascii_chars.has(state_id)) {
-                  non_ascii_chars.set(state_id, Object.create(null));
-                }
-                const state_non_ascii = non_ascii_chars.get(state_id)!;
-                if (state_non_ascii[code] !== undefined) {
-                  throw new Error(
-                    `Grammar validation error in state "${name}": ` +
-                      `Multiple rules match non-ASCII character '${match}' (code: ${code}). ` +
-                      `Rule ${state_non_ascii[code]} and rule ${rule_idx} both match this character.`,
-                  );
-                }
-                state_non_ascii[code] = rule_idx;
+                add_non_ascii(
+                  non_ascii_build,
+                  state_id,
+                  code,
+                  code,
+                  rule_idx,
+                  name,
+                  `non-ASCII character '${match}' (code: ${code})`,
+                );
                 // track if this rule requires boundary checking
                 if (rule.boundary) {
                   boundary_rules.add(state_id * 256 + rule_idx);
@@ -7002,23 +7353,24 @@ export function compile(grammar: Grammar): CompiledGrammar {
           const start = typeof range[0] === "string" ? range[0].charCodeAt(0) : range[0];
           const end = typeof range[1] === "string" ? range[1].charCodeAt(0) : range[1];
 
-          for (let code = start; code <= end; code++) {
-            if (code < 128) {
-              set_char_mapping(char_maps, state_id, code, rule_idx);
-            } else {
-              if (!non_ascii_chars.has(state_id)) {
-                non_ascii_chars.set(state_id, Object.create(null));
-              }
-              const state_non_ascii = non_ascii_chars.get(state_id)!;
-              if (state_non_ascii[code] !== undefined) {
-                throw new Error(
-                  `Grammar validation error in state "${name}": ` +
-                    `Multiple rules match character with code ${code} in range. ` +
-                    `Rule ${state_non_ascii[code]} and rule ${rule_idx} both match this character.`,
-                );
-              }
-              state_non_ascii[code] = rule_idx;
-            }
+          // the ascii half still expands per character because char_maps is a
+          // dense table keyed by codepoint. the non-ascii half must not: it is
+          // unbounded in principle and 65408 wide in practice.
+          const ascii_end = end < 127 ? end : 127;
+          for (let code = start; code <= ascii_end; code++) {
+            set_char_mapping(char_maps, state_id, code, rule_idx);
+          }
+          if (end >= 128) {
+            const non_ascii_start = start < 128 ? 128 : start;
+            add_non_ascii(
+              non_ascii_build,
+              state_id,
+              non_ascii_start,
+              end,
+              rule_idx,
+              name,
+              `characters in range ${non_ascii_start}..${end}`,
+            );
           }
         }
       }
@@ -7056,6 +7408,13 @@ export function compile(grammar: Grammar): CompiledGrammar {
     probe_mask[id] = 1;
   });
 
+  // order does not matter: overlapping ranges are rejected above, so at most
+  // one entry can match a given codepoint whatever order the scan takes.
+  const non_ascii_ranges = new Map<number, Int32Array>();
+  for (const [state_id, list] of non_ascii_build) {
+    non_ascii_ranges.set(state_id, Int32Array.from(list));
+  }
+
   return {
     states: state_map,
     transitions,
@@ -7064,7 +7423,7 @@ export function compile(grammar: Grammar): CompiledGrammar {
     token_types,
     patterns: patterns,
     fallback_transitions,
-    non_ascii_chars: non_ascii_chars,
+    non_ascii_ranges,
     probe_states: probe_states,
     probe_mask,
     probe_fallbacks: probe_fallbacks,

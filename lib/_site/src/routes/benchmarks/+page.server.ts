@@ -1,172 +1,193 @@
-import fs from "node:fs";
-import path from "node:path";
+import fs from 'node:fs';
+import path from 'node:path';
 
-// Shape we want to hand to the page: for each mode ("tokenise" vs "render"),
-// a list of samples (tiny/small/medium/…), and within each sample a sorted
-// list of library bars with ops/sec. The mapping from vitest's raw JSON to
-// this shape is done here so the page component can stay presentational.
+// Reads the artifact produced by `lib/bench/compare/bin/compare.mjs` — the
+// same JSON the CI benchmark job uploads. The site build downloads that
+// artifact into `lib/bench/results/` before running, so a deploy publishes
+// numbers from one known machine and one known commit rather than whatever
+// the last person to run a benchmark locally happened to get.
+//
+// The file is deliberately NOT committed. A checked-in benchmark result goes
+// stale silently: it keeps rendering confident bar charts long after the
+// numbers stopped being true. Missing data renders an honest empty state.
 
-interface LibraryResult {
-  library: string;
-  hz: number;
-  mean: number; // ms per op
+interface RawLibrary {
+	id: string;
+	ns_per_op: number;
+	ops_per_sec: number;
+	mb_per_sec: number;
+	spread: number;
 }
 
-interface SampleChart {
-  sample_name: string; // "tiny", "small", …
-  sample_size: string; // "1 line", "10 lines", …
-  results: LibraryResult[];
+interface RawCell {
+	corpus: 'sized' | 'upstream';
+	lang: string;
+	tier: 'small' | 'medium' | 'large' | null;
+	bytes: number;
+	lines: number;
+	mode: 'tokenize' | 'html';
+	tokens: Record<string, number> | null;
+	libraries: RawLibrary[];
 }
 
-interface ModeSection {
-  mode: "tokenise" | "render";
-  label: string;
-  description: string;
-  charts: SampleChart[];
+interface RawComparison {
+	meta: {
+		generated_at: string;
+		commit: string | null;
+		node: string;
+		platform: string;
+		cpu: string;
+		runner: string;
+		anchor: { drift: number; stable: boolean };
+		libraries: Array<{ id: string; label: string; version: string; note: string }>;
+		upstream: { repo: string; commit: string } | null;
+		excluded: Array<{ cell: string; library: string; reason: string }>;
+	};
+	results: RawCell[];
 }
 
-interface BenchmarkData {
-  sections: ModeSection[];
-  generated_at: string;
+export interface Bar {
+	id: string;
+	label: string;
+	ops_per_sec: number;
+	ns_per_op: number;
+	mb_per_sec: number;
+	tokens: number | null;
+	/** How many times slower than the fastest bar in this chart. 1 for the fastest. */
+	ratio: number;
+	/** Max/min across rounds. Well above 1 means the machine was busy. */
+	spread: number;
 }
 
-// Vitest benchmark-results.json shape (relevant bits only).
-interface RawResults {
-  files: Record<
-    string | number,
-    {
-      filepath: string;
-      groups: Array<{
-        fullName: string;
-        benchmarks: Array<{
-          name: string;
-          hz: number;
-          mean: number;
-        }>;
-      }>;
-    }
-  >;
+export interface Chart {
+	key: string;
+	corpus: 'sized' | 'upstream';
+	lang: string;
+	tier: 'small' | 'medium' | 'large' | null;
+	mode: 'tokenize' | 'html';
+	bytes: number;
+	lines: number;
+	bars: Bar[];
 }
 
-// parse a group's fullName into its parts. two shapes:
-//   "…bench.js > HTML (tokenise) - tiny (1 line)"
-//   "…bench.js > HTML - tiny (1 line)"
-// Returns null for non-HTML groups.
-function parse_group_name(
-  full_name: string,
-): { mode: "tokenise" | "render"; sample_name: string; sample_size: string } | null {
-  const after_gt = full_name.split(" > ").pop() ?? full_name;
-  // HTML (tokenise) - <name> (<size>)
-  // HTML - <name> (<size>)
-  const match = after_gt.match(/^HTML(?: \((tokenise)\))? - (\S+) \(([^)]+)\)$/);
-  if (!match) return null;
-  const mode = match[1] === "tokenise" ? "tokenise" : "render";
-  return { mode, sample_name: match[2], sample_size: match[3] };
-}
+const TIER_ORDER = ['small', 'medium', 'large'];
 
-// Natural sample ordering so charts read small → large regardless of the
-// benchmark file's source order.
-const SAMPLE_ORDER = ["tiny", "small", "medium", "large", "largeEmbedded"];
-const sample_rank = (name: string) => {
-  const i = SAMPLE_ORDER.indexOf(name);
-  return i === -1 ? SAMPLE_ORDER.length : i;
+const MODE_LABEL: Record<string, { label: string; description: string }> = {
+	tokenize: {
+		label: 'Tokenise only',
+		description: 'Source in, structured token stream out. No HTML, no rendering — just the parse.'
+	},
+	html: {
+		label: 'Tokenise + render HTML',
+		description: 'End-to-end: parse the source and produce styled HTML ready to drop into a page.'
+	}
 };
 
+const CORPUS_COPY: Record<string, { label: string; description: string }> = {
+	sized: {
+		label: 'Our corpus, three sizes',
+		description:
+			'Every language at roughly 1KB, 10KB and 100KB. The small tier is the docs-snippet case, where fixed per-call cost still dominates; the large tier is a big vendored file. These are inputs we assembled, so read them alongside the set below.'
+	},
+	upstream: {
+		label: "Shiki's own benchmark inputs",
+		description:
+			"The sample files from shikijs/textmate-grammars-themes, vendored and pinned. Shiki's own engine benchmark runs on these. We did not choose them, which is the point: a highlighter benchmark published by the people who wrote the highlighter is worth exactly as much as its inputs."
+	}
+};
+
+function build(raw: RawComparison) {
+	const labels = new Map(raw.meta.libraries.map((l) => [l.id, l.label]));
+
+	const charts: Chart[] = raw.results.map((cell) => {
+		const sorted = [...cell.libraries].sort((a, b) => a.ns_per_op - b.ns_per_op);
+		const fastest = sorted[0]?.ns_per_op ?? 0;
+		return {
+			key: `${cell.corpus}:${cell.lang}:${cell.tier ?? '-'}:${cell.mode}`,
+			corpus: cell.corpus,
+			lang: cell.lang,
+			tier: cell.tier,
+			mode: cell.mode,
+			bytes: cell.bytes,
+			lines: cell.lines,
+			bars: sorted.map((l) => ({
+				id: l.id,
+				label: labels.get(l.id) ?? l.id,
+				ops_per_sec: l.ops_per_sec,
+				ns_per_op: l.ns_per_op,
+				mb_per_sec: l.mb_per_sec,
+				tokens: cell.tokens?.[l.id] ?? null,
+				ratio: fastest > 0 ? l.ns_per_op / fastest : 1,
+				spread: l.spread
+			}))
+		};
+	});
+
+	const languages = [...new Set(charts.map((c) => c.lang))].sort();
+	const modes = [...new Set(charts.map((c) => c.mode))].sort();
+
+	return {
+		meta: raw.meta,
+		languages,
+		modes: modes.map((m) => ({ id: m, ...MODE_LABEL[m] })),
+		tier_order: TIER_ORDER,
+		corpus_copy: CORPUS_COPY,
+		charts
+	};
+}
+
+// Where to look for the results file, in order.
+//
+// `import.meta.dirname` is NOT usable here. This module is bundled into
+// `.svelte-kit/output/server/entries/pages/…` before prerendering runs, so at
+// the point the path is resolved it points into the build output and every
+// relative hop from it lands somewhere that does not exist. The failure is
+// silent — the catch below turns it into "no benchmark data yet" — which is
+// how a page can go on rendering an empty state for months while the data it
+// wanted was sitting on disk the whole time.
+//
+// So: resolve from the working directory, which prerendering inherits, and
+// accept both the package-relative and repo-root-relative shapes rather than
+// betting on which one the build was invoked from.
+const CANDIDATES = [
+	// `pnpm --filter=site build` — cwd is lib/_site
+	['..', 'bench', 'results', 'comparison.json'],
+	// `vite build` from the repo root
+	['lib', 'bench', 'results', 'comparison.json']
+];
+
+function find_results(): string | null {
+	const override = process.env.TWINKLEPLOP_BENCH_RESULTS;
+	if (override) return fs.existsSync(override) ? override : null;
+	for (const parts of CANDIDATES) {
+		const candidate = path.resolve(process.cwd(), ...parts);
+		if (fs.existsSync(candidate)) return candidate;
+	}
+	return null;
+}
+
 export const load = async () => {
-  // Benchmark JSON lives in the bench package alongside the bench file.
-  // Relative hops from packages/_site/src/routes/benchmarks/:
-  //   .. → routes/       .. → src/       .. → _site/       .. → packages/
-  // then into bench/.
-  const json_path = path.join(
-    import.meta.dirname,
-    "..",
-    "..",
-    "..",
-    "..",
-    "bench",
-    "benchmark-results.json",
-  );
+	const json_path = find_results();
 
-  let raw: RawResults;
-  try {
-    const text = fs.readFileSync(json_path, "utf-8");
-    raw = JSON.parse(text) as RawResults;
-  } catch (err) {
-    // Benchmark hasn't been run yet — return an empty payload so the page
-    // can render a friendly "run the bench" message.
-    return {
-      benchmarks: {
-        sections: [],
-        generated_at: "",
-      } as BenchmarkData,
-      missing: true as const,
-    };
-  }
+	if (json_path === null) {
+		// say so in the build log. a benchmark page that quietly renders an
+		// empty state is indistinguishable from one whose data went missing,
+		// and the whole point of running this in CI is that someone notices.
+		console.warn(
+			`[benchmarks] no comparison.json found (looked in ${CANDIDATES.map((c) =>
+				path.resolve(process.cwd(), ...c)
+			).join(', ')}). The benchmarks page will render its empty state.`
+		);
+		return { benchmarks: null, missing: true as const };
+	}
 
-  const tokenise_charts = new Map<string, SampleChart>();
-  const render_charts = new Map<string, SampleChart>();
-
-  for (const key of Object.keys(raw.files)) {
-    const file = raw.files[key];
-    for (const group of file.groups ?? []) {
-      const parsed = parse_group_name(group.fullName);
-      if (!parsed) continue;
-
-      const target = parsed.mode === "tokenise" ? tokenise_charts : render_charts;
-
-      const chart: SampleChart = target.get(parsed.sample_name) ?? {
-        sample_name: parsed.sample_name,
-        sample_size: parsed.sample_size,
-        results: [],
-      };
-
-      for (const b of group.benchmarks ?? []) {
-        chart.results.push({
-          library: b.name.trim(),
-          hz: b.hz,
-          mean: b.mean,
-        });
-      }
-
-      // Sort fastest-to-slowest so the chart reads top → bottom clearly.
-      chart.results.sort((a, b) => b.hz - a.hz);
-      target.set(parsed.sample_name, chart);
-    }
-  }
-
-  const order_chart = (a: SampleChart, b: SampleChart) =>
-    sample_rank(a.sample_name) - sample_rank(b.sample_name);
-
-  const sections: ModeSection[] = [
-    {
-      mode: "tokenise",
-      label: "Tokenise only",
-      description:
-        "How fast each library can turn HTML source into a structured token stream. No HTML output, no rendering — just the parse.",
-      charts: [...tokenise_charts.values()].sort(order_chart),
-    },
-    {
-      mode: "render",
-      label: "Tokenise + render HTML",
-      description:
-        "End-to-end highlighting: tokenise the input AND produce styled HTML output ready to drop into a page.",
-      charts: [...render_charts.values()].sort(order_chart),
-    },
-  ];
-
-  let generated_at = "";
-  try {
-    const stat = fs.statSync(json_path);
-    generated_at = stat.mtime.toISOString();
-  } catch {
-    // ignore
-  }
-
-  return {
-    benchmarks: {
-      sections,
-      generated_at,
-    } as BenchmarkData,
-    missing: false as const,
-  };
+	try {
+		const raw = JSON.parse(fs.readFileSync(json_path, 'utf-8')) as RawComparison;
+		return { benchmarks: build(raw), missing: false as const };
+	} catch (err) {
+		// a malformed file is a different problem from a missing one, and
+		// swallowing it into the same empty state hides a broken artifact.
+		console.error(`[benchmarks] ${json_path} could not be read: ${(err as Error).message}`);
+		return { benchmarks: null, missing: true as const };
+	}
 };

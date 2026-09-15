@@ -15,3 +15,7 @@ lib/bench/perf/reports/
 
 # generated comparison bundles for the cold start harness
 lib/bench/coldstart/.artifacts/
+
+# benchmark results are produced by CI and downloaded at build time.
+# checking them in would let a stale run keep rendering confident charts.
+lib/bench/results/

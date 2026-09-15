@@ -62,8 +62,11 @@ export interface CompiledGrammar {
   token_types: string[];
   patterns: Map<number, (PatternInfo[] | null)[]>;
   fallback_transitions: Uint16Array;
-  // use object map for faster non-ascii lookups per state
-  non_ascii_chars: Map<number, Record<number, number>>;
+  // per state, flat [start, end, rule_idx] triples over codepoints >= 128.
+  // ranges rather than one entry per codepoint: a grammar that accepts any
+  // unicode identifier character covers 65408 of them, and materialising that
+  // per codepoint dominated compile time for the grammars that do it.
+  non_ascii_ranges: Map<number, Int32Array>;
   // retain set for external tooling, but also include fast mask for hot path
   probe_states: Set<number>;
   probe_mask?: Uint8Array;
@@ -524,11 +527,12 @@ export interface AnnotationConfig {
 export interface AnnotationPlugin {
   // verbs claimed by this plugin. registration-time collision is an error.
   verbs: string[];
-  // 'shared' (default) means the framework parses the marker args and passes
-  // a ParsedArgs to the plugin. 'raw' passes the raw string and the plugin
-  // parses it itself. phase 1 supports only 'shared'.
+  // 'shared' (default) parses the args into ParsedArgs. 'raw' passes the
+  // text after the verb (and #id) with trailing whitespace trimmed; the
+  // framework still finds, hides and validates the marker but resolves
+  // anchors, line refs and pairs only when the plugin asks via `resolve`.
   parse?: "shared" | "raw";
-  handle(input: AnnotationInput): AnnotationOutput;
+  handle(input: AnnotationInput): AnnotationOutput | void;
 }
 
 export interface AnnotationInput {
@@ -536,13 +540,36 @@ export interface AnnotationInput {
   id?: string;
   args: ParsedArgs | string;
   // resolved source range the marker targets (already includes pair resolution
-  // and anchor lookup, so plugins receive a fully-resolved span).
+  // and anchor lookup, so plugins receive a fully-resolved span). the
+  // marker's own line for raw plugins.
   range: SourceRange;
   marker: SourcePosition;
+  // the marker's line holds only markers and will disappear. lets a raw
+  // plugin tell a marker above its target from a trailing one.
+  standalone: boolean;
+  // resolves a fragment of the shared grammar (`+2`, `foo..bar`, `=foo +3`)
+  // relative to this marker. half-open pairs cannot be resolved. throws
+  // with an AnnotationIssueKind on failure; an escaped throw is reported at
+  // the marker's position.
+  resolve(fragment: string): SourceRange;
+  // every range, one per occurrence for the set form.
+  resolve_all(fragment: string): SourceRange[];
 }
 
 export interface AnnotationOutput {
   overlays?: OverlayContribution[];
+  // reported like framework issues, at the marker's position unless one
+  // carries its own.
+  issues?: PluginIssue[];
+  // false leaves the marker text visible, for a plugin that recognises only
+  // part of its verb's argument space. default true.
+  consumed?: boolean;
+}
+
+export interface PluginIssue {
+  kind: AnnotationIssueKind;
+  message: string;
+  position?: SourcePosition;
 }
 
 export interface OverlayContribution {
@@ -579,12 +606,19 @@ export type ParsedArgs =
       inclusive_start: boolean;
       inclusive_end: boolean;
     }
-  | { kind: "set"; anchor: Anchor }
+  // `=foo` matches on the marker's own line; a scope (`=foo +2`, `=foo :*`)
+  // searches those lines instead.
+  | { kind: "set"; anchor: Anchor; scope?: SetScope }
   // `***` shorthand: every byte on the marker's own line, token-mode. the
   // cleaner equivalent of `*..*` (which the parser rejects as malformed
   // because it has no anchor reference). use bare `[!em]` for line-mode
   // styling instead.
   | { kind: "wholeLine" };
+
+export type SetScope =
+  | { kind: "lineCount"; count: number }
+  | { kind: "lineRef"; from: number; to?: number; inclusive?: boolean }
+  | { kind: "all" };
 
 export type Anchor =
   | { kind: "word"; value: string }
@@ -650,8 +684,51 @@ export type LanguageFactory = (options?: LanguageOptions) => LanguageFn;
 // directly by `to_html`.
 export interface RenderOptions {
   class_name?: string;
-  line_numbers?: boolean;
+  // numbering counts visible lines, so a line elided by an annotation never
+  // leaves a gap.
+  line_numbers?: boolean | { start?: number };
+  // emitted on <pre> after class, in the order given. true is a bare name,
+  // false emits nothing. `class` and `style` are reserved.
+  attributes?: Record<string, string | number | boolean>;
+  // `has-<classification>` on <pre> for every overlay the snippet carries.
+  // default true.
+  has_classes?: boolean;
+  // merged with any marker overlays already on the tokenize result.
+  overlays?: OverlayItem[];
+  // "inline" emits no block or line elements and <br> between lines. the
+  // block and line level options are ignored.
+  structure?: "classic" | "inline";
+  // n is the visible index regardless of a line_numbers start, source_line
+  // the 1-based input line. not called in inline mode.
+  line?: (n: number, source_line: number) => HookResult | void;
+  // a decorated token renders as its own span and is never merged.
+  token?: (type: string, start: number, end: number) => HookResult | void;
+  // wraps spaces and tabs between tokens, one span per character. whitespace
+  // inside a token stays part of it.
+  whitespace?: "all" | "boundary" | "leading" | "trailing";
+  // splits leading indentation into <span class="indent"> levels: a tab is
+  // one level, `size` spaces are one level (default 2).
+  indent_guides?: boolean | { size?: number };
 }
+
+// class goes after the element's own classes; attrs follow the `attributes`
+// rules.
+export interface HookResult {
+  class?: string;
+  attrs?: Record<string, string | number | boolean>;
+}
+
+// offsets are utf-16 code units, the same units as token positions. lines
+// are 1-based and characters 0-based. `end` is exclusive in both forms.
+export type OverlayPosition = number | { line: number; character: number };
+
+// a hidden range renders as spaces of equal width and takes any line it
+// empties with it.
+export type OverlayItem =
+  | { start: OverlayPosition; end: OverlayPosition; class: string }
+  | { line: number; class: string }
+  | { lines: (number | [number, number])[]; class: string }
+  | { start: OverlayPosition; end: OverlayPosition; hide: true };
 
 // Pattern language for `rewrite_types` — tag-discriminated union so authors
 // build patterns with the exported combinator helpers (`type`, `seq`,
