@@ -1,11 +1,8 @@
 name: Benchmarks
 
 on:
-  # `labeled` is in the list so that adding `bench:compare` actually triggers a
-  # run. without it the label only takes effect on the next push, which makes
-  # it look broken at exactly the moment someone reaches for it. the cost is
-  # that any label change re-runs the A/B; concurrency cancels the superseded
-  # run, so the waste is bounded by however far the previous one got.
+  # `labeled` is required or adding `bench:compare` does nothing until the
+  # next push. the cost is that any label change re-runs the A/B.
   pull_request:
     types: [opened, synchronize, reopened, labeled]
   push:
@@ -21,11 +18,8 @@ on:
         type: string
         default: "1"
 
-# a benchmark is a measurement of a machine. two of them running at once do
-# not give two noisy results, they give two wrong ones, and the distortion is
-# not symmetric between the arms being compared. one run per ref, and never
-# cancel a push to main half way through - that is the run the published
-# charts come from.
+# two benchmarks on one machine do not give two noisy results, they give two
+# wrong ones. main is never cancelled: that run is what the charts come from.
 concurrency:
   group: benchmarks-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -35,12 +29,9 @@ permissions:
   pull-requests: write
 
 env:
-  # the frozen reference build must not live in the workspace, because the
-  # checkout action wipes it. it is NOT cached between runs: measured on this
-  # runner, building both reference arms from scratch costs 16 seconds, which
-  # is not worth a mount point — the pnpm store cache is what makes the
-  # installs fast, and caching this directory on top of that bought nothing
-  # while adding a failure mode (rmdir on a mount is EBUSY).
+  # outside the workspace, which the checkout action wipes. deliberately NOT
+  # cached: both reference arms build in 16s here, and mounting a cache volume
+  # over this path only bought an EBUSY on rmdir.
   TWINKLEPLOP_PERF_DIR: /home/runner/.cache/twinkleplop-perf
   NODE_VERSION: "22"
   PNPM_VERSION: "10"
@@ -55,9 +46,7 @@ jobs:
       - name: Check out
         uses: namespacelabs/nscloud-checkout-action@v8
         with:
-          # the A/B compares this branch against its merge base, so the
-          # history has to be deep enough to find one. Namespace caches the
-          # git objects, so full history costs little after the first run.
+          # deep enough to find the merge base the A/B compares against.
           fetch-depth: 0
 
       - name: Set up pnpm
@@ -102,34 +91,27 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build candidate
-        # both arms load `dist`, which is what consumers import. measuring the
-        # TypeScript sources through a transform would measure the transform.
+        # both arms load `dist`; measuring the sources would measure the
+        # TypeScript transform.
         run: pnpm build
 
       - name: Build reference at baseline
         run: node lib/bench/perf/bin/setup-baseline.mjs --ref "${{ steps.baseline.outputs.sha }}"
 
       - name: Calibrate the noise floor on this runner
-        # A/A: two independent builds of the SAME commit, where the true
-        # answer is 1.00 everywhere. whatever spread comes back is the
-        # smallest effect this machine can resolve today, and every threshold
-        # in the comment is derived from it. the floor checked into the repo
-        # was measured on a laptop and means nothing here, so this overwrites
-        # it — on the runner only, never committed.
+        # the floor is a property of THIS machine; the one checked into the
+        # repo was measured on a laptop. overwritten on the runner only.
         #
-        # --rounds 15 matches ab.mjs, and is NOT the harness default of 9.
-        # the per-workload statistic is a median of per-round ratios, so its
-        # robustness scales with round count: a floor measured at 9 rounds
-        # describes a noisier measurement than the 15-round A/B it gates, and
-        # the gate ends up less sensitive than the data it is judging. the
-        # two numbers have to be taken the same way to be comparable at all.
+        # --rounds 15 is deliberate and is not the harness default of 9. the
+        # statistic is a median of per-round ratios, so a floor taken at 9
+        # rounds describes a noisier measurement than the 15-round A/B it
+        # gates. measured here: 9 rounds gave ~17%, 15 rounds gave 9.5%.
         run: node --expose-gc lib/bench/perf/bin/calibrate.mjs --suite ci --rounds 15
 
       - name: A/B against baseline
         id: ab
-        # exits 1 on any single-workload regression. that is too trigger-happy
-        # a gate for a shared runner, so the verdict is left to the comment
-        # step, which gates on group geomeans instead.
+        # exits 1 on any single-workload regression, which is too
+        # trigger-happy for a shared runner. the Verdict step gates instead.
         continue-on-error: true
         run: |
           node --expose-gc lib/bench/perf/bin/ab.mjs \
@@ -140,20 +122,16 @@ jobs:
 
       - name: Output parity against baseline
         id: parity
-        # reported, not gated. a speedup that changes output is not a speedup,
-        # but this workflow also runs on feature branches whose whole purpose
-        # is to change output. failing them here would mean every feature PR
-        # ships with a red benchmark check, which is the fastest way to teach
-        # everyone to ignore benchmark checks. the comment says plainly when
-        # the two arms are not the same library.
+        # reported, not gated: this workflow also runs on feature branches
+        # whose whole purpose is to change output. the comment says plainly
+        # when the two arms are no longer the same library.
         continue-on-error: true
         run: node lib/bench/perf/bin/parity.mjs
 
       - name: Cross-library comparison
-        # the expensive one, and the one the website's charts are built from.
-        # the site deploys from main, so main is where it has to run. on a
-        # pull request it is opt-in, because ~25 minutes on every push would
-        # buy context nobody asked for.
+        # ~6.5 min, and the source of the website's charts. main-only,
+        # because a PR cannot move competitor numbers — the A/B already
+        # catches "we got slower" more sensitively. opt in with the label.
         if: >-
           github.event_name == 'push' ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.comparison == 'true') ||
@@ -165,10 +143,9 @@ jobs:
             --out lib/bench/results/comparison.json
 
       - name: Render comment
-        # --fail-on none so that a rendering error is a real failure and a
-        # regression is not. the gate is a separate step below, after the
-        # comment has been posted and the artifact uploaded: a red check
-        # should never arrive without the evidence for it.
+        # --fail-on none: a rendering error should fail here, a regression
+        # should not. the gate is the last step, so a red check never arrives
+        # before the evidence for it.
         run: |
           set -euo pipefail
           args=(--ab lib/bench/results/ab.json --fail-on none)
@@ -195,24 +172,20 @@ jobs:
 
       - name: Post comment
         if: github.event_name == 'pull_request'
-        # a fork PR has a read-only token, so this cannot work there. the
-        # markdown is in the artifact either way, so failing here should not
-        # fail the run.
+        # a fork PR has a read-only token. the markdown is in the artifact
+        # either way, so this failing should not fail the run.
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          # update in place rather than appending: a PR with fifteen pushes
-          # should not carry fifteen benchmark comments, and only the newest
-          # one is true. the marker is the first line of the rendered
-          # markdown, which is what makes the comment findable.
+          # update in place: only the newest comment is true. the marker is
+          # the first line of the rendered markdown.
           id=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
                  --jq 'first(.[] | select(.body | startswith("<!-- twinkleplop-benchmarks -->")) | .id) // empty')
-          # -F body=@file, not -f body="$(cat ...)": the markdown is full of
-          # backticks, quotes and pipes, and passing it through the shell is
-          # asking for a comment that renders as something else.
+          # -F body=@file, not -f body="$(cat ...)" — the markdown is full
+          # of backticks and pipes and must not go through the shell.
           if [ -n "$id" ]; then
             gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" \
               -F body=@lib/bench/results/comment.md >/dev/null
@@ -224,14 +197,10 @@ jobs:
           fi
 
       - name: Verdict
-        # the gate, deliberately last: the comment and the artifact already
-        # exist whatever the answer is, so a red check always arrives with the
-        # evidence for it attached.
-        #
-        # gates on GROUP geomeans, not individual workloads. the A/A
-        # calibration flags roughly one workload in eight as "significant"
-        # when both arms are the same commit, so a per-workload gate on a
-        # shared runner would go red on PRs that changed nothing.
+        # gates on GROUP geomeans. the A/A calibration flags roughly one
+        # workload in eight as "significant" when both arms are the same
+        # commit, so a per-workload gate here would go red on PRs that
+        # changed nothing.
         run: |
           node lib/bench/perf/bin/pr-comment.mjs \
             --ab lib/bench/results/ab.json \

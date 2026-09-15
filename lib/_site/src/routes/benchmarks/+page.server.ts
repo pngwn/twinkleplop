@@ -1,15 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Reads the artifact produced by `lib/bench/compare/bin/compare.mjs` — the
-// same JSON the CI benchmark job uploads. The site build downloads that
-// artifact into `lib/bench/results/` before running, so a deploy publishes
-// numbers from one known machine and one known commit rather than whatever
-// the last person to run a benchmark locally happened to get.
+// Reads the artifact the CI benchmark job uploads, downloaded into
+// `lib/bench/results/` before the site build runs.
 //
-// The file is deliberately NOT committed. A checked-in benchmark result goes
-// stale silently: it keeps rendering confident bar charts long after the
-// numbers stopped being true. Missing data renders an honest empty state.
+// Deliberately not committed: a checked-in benchmark goes stale silently,
+// rendering confident charts long after they stopped being true.
 
 interface RawLibrary {
 	id: string;
@@ -136,19 +132,14 @@ function build(raw: RawComparison) {
 	};
 }
 
-// Where to look for the results file, in order.
+// `import.meta.dirname` is NOT usable here: this module is bundled into
+// `.svelte-kit/output/server/` before prerendering runs, so every relative hop
+// from it lands somewhere that does not exist — silently, because the catch
+// below turns it into "no benchmark data yet". That is how this page rendered
+// an empty state while the data sat on disk.
 //
-// `import.meta.dirname` is NOT usable here. This module is bundled into
-// `.svelte-kit/output/server/entries/pages/…` before prerendering runs, so at
-// the point the path is resolved it points into the build output and every
-// relative hop from it lands somewhere that does not exist. The failure is
-// silent — the catch below turns it into "no benchmark data yet" — which is
-// how a page can go on rendering an empty state for months while the data it
-// wanted was sitting on disk the whole time.
-//
-// So: resolve from the working directory, which prerendering inherits, and
-// accept both the package-relative and repo-root-relative shapes rather than
-// betting on which one the build was invoked from.
+// Resolve from the working directory instead, accepting both shapes rather
+// than betting on where the build was invoked from.
 const CANDIDATES = [
 	// `pnpm --filter=site build` — cwd is lib/_site
 	['..', 'bench', 'results', 'comparison.json'],
