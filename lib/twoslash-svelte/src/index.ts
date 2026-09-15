@@ -10,13 +10,12 @@
 // svelte grammar to emit the final <pre><code> HTML.
 
 import { tokenize as svelte_tokenize } from "@twinkleplop/svelte";
-import { render } from "@twinkleplop/twoslash";
+import { create_pipeline, resolve_twoslash_options } from "@twinkleplop/twoslash";
+import type { HighlightOptions as TsHighlightOptions } from "@twinkleplop/twoslash";
 import { create_twoslasher } from "./twoslasher";
 
-interface HighlightOptions {
-  class_name?: string;
-  twoslash?: object;
-}
+// the typescript package's options, minus the language this package fixes.
+export type HighlightOptions = Omit<TsHighlightOptions, "lang">;
 
 // bind a default-fidelity svelte tokenizer once; the twoslash flow is
 // not fidelity-configurable today.
@@ -27,12 +26,8 @@ const svelte = svelte_tokenize();
  * twoslash TypeScript environment across calls.
  */
 export function create_highlighter(options: HighlightOptions = {}) {
-  const twoslasher = create_twoslasher(options.twoslash ?? {});
-  return (code: string) => {
-    const result = twoslasher(code, "svelte");
-    const tokens = svelte(result.code);
-    return render(result.code, tokens, result, options);
-  };
+  const twoslasher = create_twoslasher(resolve_twoslash_options(options));
+  return create_pipeline((code) => twoslasher(code, "svelte"), svelte, options);
 }
 
 /**
