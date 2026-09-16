@@ -106,7 +106,7 @@
 			<h2>No benchmark data yet</h2>
 			<p>
 				This page renders <code>lib/bench/published/comparison.json</code> when it is committed, and
-				otherwise the artifact the CI benchmark job uploads. To generate one locally, run
+				otherwise <code>lib/bench/results/comparison.json</code>. To generate one locally, run
 				<code>node lib/bench/compare/bin/compare.mjs</code> from the repo root, then rebuild the site.
 			</p>
 			<p>

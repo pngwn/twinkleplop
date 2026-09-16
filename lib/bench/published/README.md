@@ -6,10 +6,12 @@ because a number nobody can reproduce is worth less than a slightly old one
 that anybody can: the run was taken on a named machine, by the commands below,
 and the page prints the commit it measured and how far `main` has moved since.
 
-The CI benchmark job still runs the same comparison on every push to `main`
-and uploads its artifact; the site falls back to that artifact only when this
-file is absent. The shared runner's absolute numbers depend on which host the
-job landed on, so they are the check, not the headline.
+The CI benchmark job can still run the same comparison on demand — a
+`workflow_dispatch` of the Benchmarks workflow, or the `bench:compare` label
+on a pull request — and uploads it as an artifact. It no longer runs on every
+push to `main`: the shared runner's absolute numbers depend on which host the
+job landed on, so they are a check on this file, not the headline, and the
+site deploys straight from `main` without waiting for a benchmark run.
 
 ## The machine
 

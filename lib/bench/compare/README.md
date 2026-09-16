@@ -1,8 +1,10 @@
 # Cross-library comparison
 
-Produces the JSON behind the website's benchmark charts: twinkleplop against
+Produces the JSON the website's benchmark page renders: twinkleplop against
 Shiki (both engines), Prism and sugar-high, every language, three input sizes,
-plus the sample files Shiki benchmarks itself on.
+plus the sample files Shiki benchmarks itself on. The copy the site ships is
+committed at `lib/bench/published/comparison.json`, taken on a named machine;
+see the README there for how it is regenerated.
 
 ```bash
 node lib/bench/compare/bin/compare.mjs

@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // Reads the published comparison run committed at `lib/bench/published/`, or,
-// when that is absent, the artifact the CI benchmark job uploads (downloaded
-// into `lib/bench/results/` before the site build runs).
+// when that is absent, a `comparison.json` in `lib/bench/results/` — where
+// `compare.mjs` writes when run locally.
 //
 // A committed run can go stale silently, so the page prints the commit it
 // measured and how far the code has moved since, next to the numbers.

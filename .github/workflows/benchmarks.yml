@@ -129,11 +129,14 @@ jobs:
         run: node lib/bench/perf/bin/parity.mjs
 
       - name: Cross-library comparison
-        # ~6.5 min, and the source of the website's charts. main-only,
-        # because a PR cannot move competitor numbers — the A/B already
-        # catches "we got slower" more sensitively. opt in with the label.
+        # on demand only: a dispatch, or the `bench:compare` label on a PR.
+        # the site renders the committed run in lib/bench/published/, taken on
+        # a named machine with a pinned clock; this shared runner's absolute
+        # numbers depend on which host the job lands on, so a run here is a
+        # check on that file, not the headline, and not worth ~25 minutes on
+        # every push to main. a PR cannot move competitor numbers either — the
+        # A/B already catches "we got slower" more sensitively.
         if: >-
-          github.event_name == 'push' ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.comparison == 'true') ||
           contains(github.event.pull_request.labels.*.name, 'bench:compare')
         env:
