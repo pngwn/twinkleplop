@@ -56,6 +56,18 @@ snapshots record thermal penalties of 11% and machine-speed corrections of
 5-7% between runs. A number captured in a previous process is a number from a
 different machine. Both arms load into one process, always.
 
+**Forced GC, then re-warm.** Every round starts with a full `gc()` so no
+round inherits the previous one's garbage. A forced GC at a quiescent point
+also discards optimised code that only a per-call closure was keeping alive
+(V8 holds it weakly from the feedback vector) and invalidates code that
+embedded a map only dead objects had; the next window would then run baseline
+code while Turbofan recompiled, and a 20 ms window is about the length of one
+recompile. Each arm therefore runs untimed for 20 ms (`--rewarm-ms`) after the
+`gc()` and before its window. An A/A cancels this transient, which is how it
+went unnoticed; an A/B whose arms differ in closure structure — a hoisted
+function, a minifier that inlines differently — reported the transient as a
+speedup that a continuous run could not reproduce.
+
 **Machine lock.** `/tmp/twinkleplop-perf.lock` is a machine-wide mutex. Every
 measurement takes it and queues if another agent holds it. Two benchmark
 processes running at once do not give two noisy results, they give two wrong
