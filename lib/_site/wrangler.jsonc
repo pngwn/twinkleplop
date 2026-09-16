@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "twinkleplop-site",
+  // must match the deployed Worker. a mismatch does not fail: wrangler
+  // happily creates a second Worker under the new name, with no custom domain
+  // attached, and the live site simply never updates.
+  "name": "twinkleplop",
   "compatibility_date": "2026-04-24",
   "assets": {
     "directory": "build",

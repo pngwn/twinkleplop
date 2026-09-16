@@ -1,0 +1,60 @@
+@@ -1,5 +1,6 @@ function start(opts) {
+   import { start } from "./core";
+-  const port = 3000;
++  const port = 8080;
++  const host = "0.0.0.0";
+!  const retries = 3;
+   start({ port });
+
+@@ -10,7 +10,8 @@ function process(input) {
+   const result = [];
+-  for (let i = 0; i < input.length; i++) {
+-    result.push(input[i] * 2);
++  for (const item of input) {
++    result.push(item * 2);
++    console.log(item);
+   }
+   return result;
+
+! line two old
+! line two new
++added line
+-removed line
+\ No newline at end of file
+
+@@@ -1,3 -1,3 +1,4 @@@ merge context
+ unchanged
+-removed from parent 1
++added in result
+
+@@ -1,6 +1,6 @@
+ int main() {
+-    int x = 0;
+-    x--;
++    int x = 1;
++    x++;
++
+-
+ }
+
+++i;
+--i;
+++counter;
+--counter;
++valid inserted line
+-valid deleted line
+
+def hello():
+    print("world")
+    return 42
+
+class Foo:
+    pass
+
+@@ -1,5 +1,6 @@ function start(opts) {
+   import { start } from "./core";
+-  const port = 3000;
++  const port = 8080;
++  const host = "0.0.0.0";
+!  const retries = 3;
+   start({ port });

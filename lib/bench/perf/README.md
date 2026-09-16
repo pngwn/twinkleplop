@@ -129,8 +129,10 @@ six workloads that happened to move and averaging them is not a group.
 | ------- | --------: | ----------------------------------------------------- |
 | `quick` |        30 | iterating. six languages, real files. ~1 min.         |
 | `core`  |       147 | the default. all 18 languages, micro + real + fixtures. ~2.5 min. |
-| `full`  |       328 | everything, plus fidelity, annotation, compile, bind. |
+| `ci`    |       195 | what CI runs per pull request: `core` plus `upstream`. |
+| `full`  |       599 | everything, plus fidelity, annotation, compile, bind. |
 | `scale` |        52 | how cost grows with input length.                     |
+| `sized` |       156 | the published charts' own inputs, three sizes per language. |
 
 Use `quick` while exploring. Use `core --repeat 2` for anything you intend to
 claim. `full` before proposing a merge.
@@ -146,8 +148,23 @@ be aware that doing so invalidates comparisons against earlier reports.
 | `fixtures` | each language's own test fixtures, concatenated. grammar-feature dense: probe paths, escapes, edge cases. the cold paths a "make the common case fast" change tends to break. |
 | `real`     | production-shaped source. this repo's own code where the language is one we write here, hand-authored under `corpus/seed/` otherwise. **the headline numbers.** |
 | `scale`    | ~200KB per language, built by cycling that language's files. deliberately synthetic. it answers "how does cost grow with length", not "how fast is real code". **Do not quote scale numbers as user-facing wins.** |
+| `sized`    | the same language at ~1KB, ~10KB and ~100KB. the other families fix a shape and vary the language; this one fixes the language and varies the size. built by cycling whole units, so the two upper tiers carry the same synthetic caveat as `scale`. **this is what the published comparison charts measure.** |
+| `upstream` | sample files vendored from `shikijs/textmate-grammars-themes`, which is where shiki's own benchmark gets its inputs. pinned to a commit and hashed. **the one family we did not choose**, and therefore the only one that cannot have been selected to flatter us. |
 
-All 18 languages appear in all four families.
+All 18 languages appear in `micro`, `fixtures`, `real`, `scale` and `sized`.
+`upstream` covers 16: `diff-basic` and `whitespace` are twinkleplop constructs
+with no upstream counterpart, which `corpus/upstream/UPSTREAM.json` records
+explicitly rather than leaving as a silent gap.
+
+Re-pin the upstream corpus deliberately, never on a schedule:
+
+```bash
+node lib/bench/perf/bin/fetch-upstream-corpus.mjs --commit <sha>
+node lib/bench/perf/bin/build-corpus.mjs
+```
+
+Both invalidate comparisons against earlier reports, which is why the corpus
+hash is recorded in every one.
 
 ## Modes
 
@@ -199,3 +216,86 @@ figures for the frozen baseline are in `BASELINE.md`.
 - **Winning on the corpus.** The corpus is fixed and visible, so it can be
   overfitted. If a change's benefit depends on properties of these specific
   files, say so.
+
+## In CI
+
+`.github/workflows/benchmarks.yml` runs this harness on every pull request,
+against the branch's **merge base** rather than the tip of `main` — comparing
+against the tip would charge the branch for everything that landed since it
+forked.
+
+Three things about that workflow are not obvious and are load-bearing:
+
+**It calibrates on the runner, every time.** `calibration.json` in this
+directory was measured on a laptop. A CI runner is a different, shared,
+virtualised machine whose floor is several times higher, and applying the
+laptop's 3.4% there would turn every quiet pull request into a page of green
+"wins". The workflow runs `bin/calibrate.mjs --suite ci --rounds 15` before the A/B
+and overwrites the file on the runner. The round count is passed explicitly
+and must stay equal to the A/B's: the harness defaults differ (9 versus 15),
+and a floor measured at fewer rounds describes a noisier measurement than the
+one it is gating. `bin/pr-comment.mjs` checks the
+provenance of whatever floor it ends up reading and says so in the comment if
+it did not come from the same machine, corpus and node — and refuses to gate
+on a borrowed one.
+
+**Thresholds are corrected for how many groups are tested.** The gate looks
+at three mode geomeans and fires if any moves, so testing each at p95 puts the
+real error rate at 1 - 0.95^3 = 7.3%, and the seven rows the comment colours
+put it at 30%. Both were observed: a pull request that changed no library code
+reported `tokenize -2.2%` as a regression. Each group is therefore tested at
+1 - (1 - 0.05)^(1/k), which holds the family-wise rate at 5% and costs about
+20% on each threshold.
+
+**A regression must appear in the modes that contain it.** `tokenize` is the
+scanner, `pipeline` is that scanner plus the reclassifiers, `html` is pipeline
+plus rendering. A scanner regression has to show up in all three; one that
+appears in `tokenize` while `pipeline` moves the other way is not physically a
+scanner regression, and is reported as `uncorroborated` rather than gated. The
+containment is one-directional - a regression confined to `pipeline` or `html`
+is legitimate, because it can live in code `tokenize` never runs.
+
+**It gates on groups, not workloads.** The A/A calibration flags roughly one
+workload in eight as "significant" when both arms are the same commit. A
+per-workload gate on a shared runner would go red on pull requests that
+changed nothing, and a check that cries wolf is a check nobody reads. The
+gate is a mode geomean clearing the p95 of the null distribution for a group
+of that size.
+
+**Parity is reported, not gated.** A speedup that changes output is not a
+speedup — but this workflow also runs on feature branches whose entire
+purpose is to change output. Failing those would put a red benchmark check on
+every feature. The comment says plainly when the two arms are not the same
+library, and leaves the judgement to the reader.
+
+The frozen reference build lives at `$TWINKLEPLOP_PERF_DIR`, outside the
+workspace, because the checkout action wipes the workspace. It is deliberately
+**not** cached between runs: measured on `namespace-profile-basic`, exporting
+and building both reference arms costs 16 seconds, which is cheaper than the
+mount point was worth. (`rmdir` on a mounted cache volume is `EBUSY`, which is
+how that was discovered.) The pnpm store cache is what makes the installs
+fast.
+
+Measured on that runner, a pull request's whole job is about six minutes:
+
+| step | time |
+| ---- | ---: |
+| checkout, toolchains, install, build candidate | 16s |
+| build both reference arms | 16s |
+| calibrate (A/A, 195 workloads) | 132s at 9 rounds |
+| A/B (195 workloads, 15 rounds) | 178s |
+| parity (550 checks) | 6s |
+
+And the floor it measures there is **18.6%**, against 3.4% on an idle M1 Max.
+That number is per-workload and nothing gates on it; the group thresholds
+derived from the same distribution come out at 1.91% for a mode geomean and
+1.16% over the whole suite. A run against a commit that changed no library
+code reported +0.1% overall, every mode flat.
+
+The distribution is the interesting part: p50 2.90%, p95 14.84%, worst 48%.
+That is not a uniformly slow machine, it is a mostly-clean one with a heavy
+tail — a minority of rounds badly disturbed, most likely by co-tenants on the
+shared physical host. The lever for that shape is round count, because the
+statistic is a median of per-round ratios and a median's resistance to
+contaminated samples scales with how many it has. Raising `--target-ms`
+attacks per-sample variance instead, which is the wrong end of this problem.

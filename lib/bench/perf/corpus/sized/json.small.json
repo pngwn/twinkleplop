@@ -1,0 +1,41 @@
+{
+  "name": "@acme/edge-router",
+  "version": "0.14.3",
+  "private": false,
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "scripts": { "build": "tsc -p tsconfig.build.json", "test": "vitest run" },
+  "dependencies": { "hyperid": "^3.2.0", "undici": "^6.19.8" },
+  "engines": { "node": ">=20.11" },
+  "keywords": ["proxy", "edge", "http"]
+}
+
+{
+  "name": "twinkleplop",
+  "version": 1,
+  "active": true,
+  "config": null
+}
+{
+  "array": [1, "two", true, null, [3, 4]],
+  "object": {"a": {"b": {"c": 1}}},
+  "mixed": [{"x": [1, 2]}, {"y": [3, 4]}]
+}
+{
+  "integer": 42,
+  "negative": -17,
+  "zero": 0,
+  "decimal": 3.14,
+  "exponent": 1e10,
+  "negative_exponent": 2.5e-3,
+  "positive_exponent": 1E+5,
+  "large": 9999999999999
+}
+{
+  "simple": "hello world",
+  "escaped_quote": "she said \"hi\"",
+  "backslash": "path\\to\\file",
+  "unicode": "\u0041\u0042\u0043",
+  "controls": "line1\nline2\ttab\r\b\f",
+  "slash": "a\/b",
+  "empty": ""
+}

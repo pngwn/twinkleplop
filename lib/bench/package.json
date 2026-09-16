@@ -8,7 +8,12 @@
     "bench:internal": "vitest bench --run ",
     "bench": "vitest  bench --run src/library/comparison-suite.bench.js",
     "bench:annotation": "vitest bench --run src/annotation-overhead.bench.js",
-    "bench:ui": "vitest bench --ui"
+    "bench:ui": "vitest bench --ui",
+    "bench:compare": "node --expose-gc compare/bin/compare.mjs",
+    "bench:ab": "node --expose-gc perf/bin/ab.mjs",
+    "bench:parity": "node perf/bin/parity.mjs",
+    "bench:corpus": "node perf/bin/build-corpus.mjs",
+    "bench:corpus:upstream": "node perf/bin/fetch-upstream-corpus.mjs"
   },
   "dependencies": {
     "@twinkleplop/bash": "workspace:*",
@@ -44,5 +49,5 @@
     "email": "hello@pngwn.io",
     "url": "https://pngwn.at"
   },
-  "homepage": "https://twinkleplop.pngwn.dev"
+  "homepage": "https://twinkleplop.pngwn.at"
 }
