@@ -56,6 +56,29 @@ snapshots record thermal penalties of 11% and machine-speed corrections of
 5-7% between runs. A number captured in a previous process is a number from a
 different machine. Both arms load into one process, always.
 
+**Forced GC, re-warm, minor GC, ABBA within the round.** Every round starts
+with a full `gc()`, so no round inherits the previous one's garbage and no
+natural full GC lands inside a window (on the CI runner's few cores one put a
+single A/A row 102% off). A forced GC at a quiescent point also evicts
+optimised code that only a per-call closure was keeping alive (V8 holds it
+weakly from the feedback vector) and invalidates code that embedded a map only
+dead objects had; both arms would then re-tier inside their windows. An A/A
+cancels that, which is how it went unnoticed; an A/B whose arms differ in
+closure structure — a hoisted function, a minifier that inlines differently —
+reported the transient as a speedup that a continuous run could not
+reproduce. So after the `gc()` both arms run untimed for 20 ms
+(`--rewarm-ms`), a minor GC empties the nursery the re-warm filled, and the
+round then times A, B, B, A and sums per arm; a sample is one A-first round
+and one B-first round together, so the window that pays for the GC just
+before it falls on both arms of every sample. That last part matters on its
+own: alternating order only _between_ rounds and counting each round as a
+sample cancels nothing when the round count is odd, and 9 and 15 both are —
+the median then sits on the majority order's cluster, which the runner
+reported as a 2% bias. An odd count is rounded up. Each arm also re-warms
+before it is calibrated: after the other arm's warmup it is cold again, and an
+iteration count taken from that state gave the smallest workloads windows of
+a few milliseconds instead of 20, where one scavenge is the whole sample.
+
 **Machine lock.** `/tmp/twinkleplop-perf.lock` is a machine-wide mutex. Every
 measurement takes it and queues if another agent holds it. Two benchmark
 processes running at once do not give two noisy results, they give two wrong
