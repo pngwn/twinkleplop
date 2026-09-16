@@ -89,8 +89,8 @@
 		{#if bench}
 			<p class="page__meta">
 				{data.source === 'published' ? 'Published run' : 'Latest CI run'} ·
-				{nice_date(bench.meta.generated_at)} · {bench.meta.runner} · {bench.meta.cpu} · node {bench.meta
-					.node}
+				{nice_date(bench.meta.generated_at)} · {bench.meta.runner} · {bench.meta.cpu} · node {bench
+					.meta.node}
 				{#if bench.meta.commit}
 					· <code>{bench.meta.commit.slice(0, 8)}</code>
 				{/if}
@@ -246,9 +246,10 @@
 					what you get, not a handicap we imposed.
 				</p>
 				<p>
-					<strong>These numbers do not travel.</strong> They describe one machine on one day. Comparing
-					a bar here against a number from somewhere else — another run, another runner, another node
-					version — is not a comparison. Within a single chart, the interleaving makes them fair.
+					<strong>These numbers do not travel.</strong> They describe one machine on one day.
+					Comparing a bar here against a number from somewhere else — another run, another runner,
+					another node version — is not a comparison. Within a single chart, the interleaving makes
+					them fair.
 					{#if data.source === 'published'}
 						The machine is named above and the commands that produced this file are in
 						<code>lib/bench/published/README.md</code>; the same three commands on the same hardware
