@@ -172,7 +172,7 @@ export const DOCS: doc_group[] = [
         id: "benchmarks",
         title: "Benchmarks",
         path: "/docs/benchmarks",
-        crumb: "docs / technical / ",
+        crumb: "docs / technical / benchmarks",
         icon: "¶",
       }
     ],

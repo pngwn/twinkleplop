@@ -25,7 +25,7 @@
 	</a>
 	<nav class="nav-links">
 		<a href="/explore">lab</a><span class="sep">/</span>
-		<a href="/benchmarks">compare</a><span class="sep">/</span>
+		<a href="/docs/benchmarks">compare</a><span class="sep">/</span>
 		<a class="active" href="/docs">docs</a><span class="sep">/</span>
 		<a href="#changelog">changelog</a>
 	</nav>
