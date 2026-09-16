@@ -1,11 +1,13 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Reads the artifact the CI benchmark job uploads, downloaded into
-// `lib/bench/results/` before the site build runs.
+// Reads the published comparison run committed at `lib/bench/published/`, or,
+// when that is absent, a `comparison.json` in `lib/bench/results/` — where
+// `compare.mjs` writes when run locally.
 //
-// Deliberately not committed: a checked-in benchmark goes stale silently,
-// rendering confident charts long after they stopped being true.
+// A committed run can go stale silently, so the page prints the commit it
+// measured and how far the code has moved since, next to the numbers.
 
 interface RawLibrary {
 	id: string;
@@ -140,45 +142,82 @@ function build(raw: RawComparison) {
 //
 // Resolve from the working directory instead, accepting both shapes rather
 // than betting on where the build was invoked from.
-const CANDIDATES = [
+//
+// Two sources, in order of preference. The published run is committed: it was
+// taken on a named machine with a pinned clock, by the three commands in
+// lib/bench/published/README.md, and anyone can re-run them. The CI artifact
+// is what the shared runner produced most recently, downloaded at deploy time;
+// it is the fallback, not the headline, because its absolute numbers depend on
+// which host the job landed on.
+type Source = 'published' | 'ci-artifact';
+
+const CANDIDATES: Array<{ source: Source; parts: string[] }> = [
 	// `pnpm --filter=site build` — cwd is lib/_site
-	['..', 'bench', 'results', 'comparison.json'],
+	{ source: 'published', parts: ['..', 'bench', 'published', 'comparison.json'] },
 	// `vite build` from the repo root
-	['lib', 'bench', 'results', 'comparison.json']
+	{ source: 'published', parts: ['lib', 'bench', 'published', 'comparison.json'] },
+	{ source: 'ci-artifact', parts: ['..', 'bench', 'results', 'comparison.json'] },
+	{ source: 'ci-artifact', parts: ['lib', 'bench', 'results', 'comparison.json'] }
 ];
 
-function find_results(): string | null {
+function find_results(): { json_path: string; source: Source } | null {
 	const override = process.env.TWINKLEPLOP_BENCH_RESULTS;
-	if (override) return fs.existsSync(override) ? override : null;
-	for (const parts of CANDIDATES) {
+	if (override)
+		return fs.existsSync(override) ? { json_path: override, source: 'ci-artifact' } : null;
+	for (const { source, parts } of CANDIDATES) {
 		const candidate = path.resolve(process.cwd(), ...parts);
-		if (fs.existsSync(candidate)) return candidate;
+		if (fs.existsSync(candidate)) return { json_path: candidate, source };
 	}
 	return null;
 }
 
-export const load = async () => {
-	const json_path = find_results();
+// How far the site's own commit has moved past the commit the run measured.
+// A committed run goes stale silently otherwise; this puts the staleness on
+// the page next to the numbers. null when git cannot answer (a shallow
+// checkout, a tarball, a commit git has never seen).
+function commits_behind(measured_commit: string | null): number | null {
+	if (!measured_commit) return null;
+	try {
+		const out = execFileSync('git', ['rev-list', '--count', `${measured_commit}..HEAD`], {
+			encoding: 'utf-8',
+			stdio: ['ignore', 'pipe', 'ignore']
+		}).trim();
+		const n = Number(out);
+		return Number.isFinite(n) ? n : null;
+	} catch {
+		return null;
+	}
+}
 
-	if (json_path === null) {
+export const load = async () => {
+	const found = find_results();
+
+	if (found === null) {
 		// say so in the build log. a benchmark page that quietly renders an
 		// empty state is indistinguishable from one whose data went missing,
 		// and the whole point of running this in CI is that someone notices.
 		console.warn(
 			`[benchmarks] no comparison.json found (looked in ${CANDIDATES.map((c) =>
-				path.resolve(process.cwd(), ...c)
+				path.resolve(process.cwd(), ...c.parts)
 			).join(', ')}). The benchmarks page will render its empty state.`
 		);
-		return { benchmarks: null, missing: true as const };
+		return { benchmarks: null, missing: true as const, source: null, behind: null };
 	}
 
+	const { json_path, source } = found;
 	try {
 		const raw = JSON.parse(fs.readFileSync(json_path, 'utf-8')) as RawComparison;
-		return { benchmarks: build(raw), missing: false as const };
+		console.log(`[benchmarks] rendering the ${source} run from ${json_path}`);
+		return {
+			benchmarks: build(raw),
+			missing: false as const,
+			source,
+			behind: commits_behind(raw.meta.commit)
+		};
 	} catch (err) {
 		// a malformed file is a different problem from a missing one, and
 		// swallowing it into the same empty state hides a broken artifact.
 		console.error(`[benchmarks] ${json_path} could not be read: ${(err as Error).message}`);
-		return { benchmarks: null, missing: true as const };
+		return { benchmarks: null, missing: true as const, source: null, behind: null };
 	}
 };
