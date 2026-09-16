@@ -68,11 +68,13 @@ closure structure — a hoisted function, a minifier that inlines differently �
 reported the transient as a speedup that a continuous run could not
 reproduce. So after the `gc()` both arms run untimed for 20 ms
 (`--rewarm-ms`), a minor GC empties the nursery the re-warm filled, and the
-round then times A, B, B, A and takes the ratio of the sums. That last part
-matters on its own: alternating order only _between_ rounds cancels nothing
-when the round count is odd, and 9 and 15 both are — the median then sits on
-the majority order's cluster, which the runner reported as a 2% bias on long
-inputs.
+round then times A, B, B, A and sums per arm; a sample is one A-first round
+and one B-first round together, so the window that pays for the GC just
+before it falls on both arms of every sample. That last part matters on its
+own: alternating order only _between_ rounds and counting each round as a
+sample cancels nothing when the round count is odd, and 9 and 15 both are —
+the median then sits on the majority order's cluster, which the runner
+reported as a 2% bias. An odd count is rounded up.
 
 **Machine lock.** `/tmp/twinkleplop-perf.lock` is a machine-wide mutex. Every
 measurement takes it and queues if another agent holds it. Two benchmark
