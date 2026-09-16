@@ -54,6 +54,13 @@ export default defineConfig(({ mode }) => {
                 module: true,
                 passes: 5,
                 pure_getters: true,
+                // terser would otherwise inline every single-use module-level function as a
+                // function expression at its call site, so V8 allocates a fresh closure per
+                // call. optimised code for such closures is held only weakly once they die,
+                // and any full GC at a quiescent point (a benchmark harness gc(), an idle-time
+                // GC in a server) drops the hot rule loop's Turbofan code; the next call then
+                // runs baseline code through a ~13ms recompile. output is byte-identical.
+                reduce_funcs: false,
                 toplevel: true,
               },
               mangle: {
