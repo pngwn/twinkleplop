@@ -5,11 +5,13 @@ Shiki (both engines), Prism and sugar-high, every language, three input sizes,
 plus the sample files Shiki benchmarks itself on.
 
 ```bash
-node --expose-gc lib/bench/compare/bin/compare.mjs
+node lib/bench/compare/bin/compare.mjs
 ```
 
 Writes `lib/bench/results/comparison.json`. Build first — the twinkleplop arm
-loads `dist`, which is what consumers import.
+loads `dist`, which is what consumers import. Every cell runs in a child
+process of its own (`cell.mjs`, always with `--expose-gc`), so the flag is not
+needed on the command.
 
 ## The question this has to survive
 
@@ -59,6 +61,17 @@ measuring one library now and another in four minutes compares two machines.
 Interleaving makes the drift common-mode, which is the only reason a bar chart
 built from these numbers means anything.
 
+Each cell, though, gets a process of its own. Measured back to back in one
+process, the same build read 4141 ops/s on `typescript.small` tokenize after a
+hundred-odd cells and 5387 fresh, and Prism moved the other way: what an
+earlier cell had done to the heap, the inline caches and the compiler's view
+of each function followed into the next, so a published number depended on
+the run it sat in. `cell.mjs` loads the libraries, probes, warms, measures and
+exits; the cost is one library load per cell, a few seconds each with Shiki's
+grammars. Before each round the cell forces a full GC, re-warms every library
+for 20 ms and scavenges once, for the reasons `perf/README.md` gives under
+"Forced GC, re-warm, minor GC".
+
 Iteration counts are calibrated per library, unlike the A/B harness next door,
 because the spread between fastest and slowest here is often two orders of
 magnitude and a count calibrated off the slowest would give the fastest four
@@ -81,6 +94,8 @@ box.
 | `--languages`   | all                                              |
 | `--modes`       | `tokenize,html`                                  |
 | `--rounds`      | 7                                                |
+| `--warmup-ms`   | 100                                              |
+| `--rewarm-ms`   | 20                                               |
 | `--target-ms`   | 20                                               |
 | `--out`         | `lib/bench/results/comparison.json`              |
 
