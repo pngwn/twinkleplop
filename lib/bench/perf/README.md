@@ -56,19 +56,23 @@ snapshots record thermal penalties of 11% and machine-speed corrections of
 5-7% between runs. A number captured in a previous process is a number from a
 different machine. Both arms load into one process, always.
 
-**Minor GC, re-warm, minor GC.** No round forces a full GC. A full GC at a
-quiescent point evicts optimised code that only a per-call closure was keeping
-alive (V8 holds it weakly from the feedback vector) and invalidates code that
-embedded a map only dead objects had; both arms then re-tier inside their
-windows, racing on the concurrent compiler. An A/A cancels that, which is how
-it went unnoticed; an A/B whose arms differ in closure structure — a hoisted
-function, a minifier that inlines differently — reported the transient as a
-speedup that a continuous run could not reproduce. Each round instead starts
-with a minor GC, which keeps the nursery deterministic without touching code;
-both arms then run untimed for 20 ms (`--rewarm-ms`), idle work in most rounds
-and the repair in the one where a natural full GC landed between rounds; a
-second minor GC empties the nursery the re-warm filled; and the two timed
-windows follow back to back, as the paired ratio requires.
+**Forced GC, re-warm, minor GC, ABBA within the round.** Every round starts
+with a full `gc()`, so no round inherits the previous one's garbage and no
+natural full GC lands inside a window (on the CI runner's few cores one put a
+single A/A row 102% off). A forced GC at a quiescent point also evicts
+optimised code that only a per-call closure was keeping alive (V8 holds it
+weakly from the feedback vector) and invalidates code that embedded a map only
+dead objects had; both arms would then re-tier inside their windows. An A/A
+cancels that, which is how it went unnoticed; an A/B whose arms differ in
+closure structure — a hoisted function, a minifier that inlines differently —
+reported the transient as a speedup that a continuous run could not
+reproduce. So after the `gc()` both arms run untimed for 20 ms
+(`--rewarm-ms`), a minor GC empties the nursery the re-warm filled, and the
+round then times A, B, B, A and takes the ratio of the sums. That last part
+matters on its own: alternating order only _between_ rounds cancels nothing
+when the round count is odd, and 9 and 15 both are — the median then sits on
+the majority order's cluster, which the runner reported as a 2% bias on long
+inputs.
 
 **Machine lock.** `/tmp/twinkleplop-perf.lock` is a machine-wide mutex. Every
 measurement takes it and queues if another agent holds it. Two benchmark
