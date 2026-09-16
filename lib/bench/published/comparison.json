@@ -41,13 +41,13 @@
         "id": "shiki-wasm",
         "label": "Shiki (wasm)",
         "version": "3.23.0",
-        "note": "Oniguruma wasm engine, shiki's default. HTML output carries inline styles rather than classes, which is strictly more string work than a class-based emitter does."
+        "note": "Oniguruma wasm engine, shiki's default."
       },
       {
         "id": "shiki-js",
         "label": "Shiki (JS engine)",
         "version": "3.23.0",
-        "note": "same grammars, RegExp engine instead of wasm. Shiki's own benchmark treats these as separate arms; the wasm payload is a real deployment cost the JS engine avoids."
+        "note": "same grammars, RegExp engine instead of wasm. Shiki's own benchmark treats these as separate arms, the wasm payload is a real deployment cost the JS engine avoids."
       },
       {
         "id": "prism",

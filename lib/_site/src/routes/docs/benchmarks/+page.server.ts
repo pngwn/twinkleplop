@@ -90,13 +90,13 @@ const MODES: ModeOption[] = [
 	{
 		id: "tokenize",
 		label: "tokenise",
-		description: "Source in, structured token stream out. No HTML, no rendering, just the parse."
+		description: "Tokens only. No HTML rendering."
 	},
 	{
 		id: "html",
 		label: "tokenise + render",
 		description:
-			"End to end: parse the source and produce styled HTML ready to drop into a page."
+			"End to end: source to styled HTML."
 	}
 ];
 
@@ -106,26 +106,26 @@ const SIZES: SizeOption[] = [
 		label: "sm",
 		title: "small · ~1KB",
 		description:
-			"The docs snippet case. Fixed per call cost still dominates at this size, so this is the tier a highlighter on a documentation site actually lives in."
+			"The docs snippet case."
 	},
 	{
 		id: "medium",
 		label: "md",
 		title: "medium · ~10KB",
-		description: "A typical source file. Large enough for the tokenizer loop to matter more than the setup."
+		description: "A typical source file."
 	},
 	{
 		id: "large",
 		label: "lg",
 		title: "large · ~100KB",
-		description: "A big vendored file. Throughput, and not much else."
+		description: "A big vendored file. Throughput."
 	},
 	{
 		id: "upstream",
 		label: "shiki",
 		title: "shiki's sample",
 		description:
-			"The sample file for this language from shikijs/textmate-grammars-themes, vendored and pinned. Shiki's own engine benchmark runs on these. We did not choose them, which is the point."
+			"The sample file for this language from shikijs/textmate-grammars-themes."
 	}
 ];
 

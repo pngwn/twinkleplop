@@ -73,7 +73,7 @@
 <ArticleMain
 	pane_path="docs / technical / benchmarks"
 	title="benchmarks"
-	subtitle="How fast twinkleplop turns source into tokens, and into HTML, next to the other JavaScript highlighters."
+	subtitle="How fast twinkleplop highlights compared to  other JavaScript highlighters."
 >
 	{#if data.missing || !bench}
 		<Callout variant="warn" mark="!">
@@ -85,9 +85,8 @@
 	{:else}
 		<Section id="compare" title="compare" num="§ 01">
 			<p>
-				Every bar in a chart was measured in the same process, alternating between libraries, so the
-				machine drifting mid run moves all of them together instead of flattering whichever one
-				happened to go first. Pick a language, then what to measure and how much of it.
+				All benchmarks were measured in the same process, alternating between libraries, in the hope that the
+				machine drifting mid run moves all of them together.
 			</p>
 
 			<div class="controls">
@@ -125,16 +124,9 @@
 					<strong>Nothing measured here.</strong> This run has no {lang} chart for that combination.
 				</Callout>
 			{/if}
-
-			<p class="explain">
-				{#if mode_option}<strong>{mode_option.label}.</strong> {mode_option.description}{/if}
-				{#if size_option}<strong>{size_option.title}.</strong> {size_option.description}{/if}
-			</p>
-
 			<div class="provenance">
-				<span>{data.source === "published" ? "published run" : "latest ci run"}</span>
-				<span>{run_date(bench.meta.generated_at)}</span>
-				<span>{bench.meta.runner}</span>
+
+				<span><span class="hw">AMD EPYC</span> · <span class="hw">8C16T</span> · <span class="hw">64GM RAM</span></span>
 				<span>node {bench.meta.node}</span>
 				{#if bench.meta.commit}
 					<span
@@ -143,12 +135,12 @@
 						></span
 					>
 				{/if}
-				{#if data.behind}
-					<span class="behind"
-						>{data.behind} commit{data.behind === 1 ? "" : "s"} behind this build</span
-					>
-				{/if}
+
 			</div>
+
+
+
+
 
 			{#if bench.meta.anchor && !bench.meta.anchor.stable}
 				<Callout variant="warn" mark="!">
@@ -162,10 +154,8 @@
 
 		<Section id="inputs" title="the inputs" num="§ 02">
 			<p>
-				Three of the four inputs are ours: every language at roughly 1KB, 10KB and 100KB. The fourth
-				is not, and that is the point. A highlighter benchmark published by the people who wrote the
-				highlighter is worth exactly as much as its inputs, so Shiki's own sample files sit beside
-				ours as a fourth size rather than on a separate page.
+				Three inputs are twinkleplop samples: every language at roughly 1KB, 10KB and 100KB. The fourth
+				are Shiki's own sample files.
 			</p>
 			<table>
 				<thead>
@@ -186,34 +176,31 @@
 					<a href={bench.meta.upstream.repo}
 						>{bench.meta.upstream.repo.replace("https://github.com/", "")}</a
 					>
-					at <code>{bench.meta.upstream.commit.slice(0, 8)}</code>. Not every language has one, and
-					the toggle says so.
+					at <code>{bench.meta.upstream.commit.slice(0, 8)}</code>.
 				</p>
 			{/if}
 		</Section>
 
 		<Section id="reading" title="how to read this" num="§ 03">
+		<p>These numbers are intended as a rough ballpark. I've done my best to make them accurate but benchmarks are tricky.</p>
 			<p>
-				<strong>Token counts are the caveat on every bar.</strong> A library that emits half as many
-				tokens for the same file is doing less work per byte, not the same work faster. The counts are
-				printed under the chart so you can see which is which rather than taking the bar on trust.
+				<strong>Token counts are not consistent across libraries.</strong> Different libraries emit different numbers of tokens. Typically more tokens require more work but more tokens doesn't necessarily mean better output.
 			</p>
 			<p>
 				<strong>The HTML numbers are not measuring identical output.</strong> twinkleplop and Prism
-				emit classes and leave colour to a stylesheet; Shiki resolves a theme and writes inline styles.
-				That is strictly more string work, and it is a real difference in what you get, not a handicap
-				we imposed.
+				emit classes, Shiki resolves a theme and writes inline styles (in this configuration).
 			</p>
 			<p>
 				<strong>These numbers do not travel.</strong> They describe one machine on one day. Comparing a
-				bar here against a number from somewhere else, another run, another runner, another node
-				version, is not a comparison. Within a single chart, the interleaving makes them fair.
-				{#if data.source === "published"}
-					The machine is named above and the commands that produced this file are in
-					<code>lib/bench/published/README.md</code>; the same commands on the same hardware
-					reproduce it.
-				{/if}
+				bar here against a number from  another run, another runner, another node
+				version, will probably differ. Within a single chart, the interleaving makes them fair.
+
 			</p>
+			<p>{#if data.source === "published"}
+				The machine is named above and the commands that produced this file are in
+				<code>lib/bench/published/README.md</code>; the same commands on the same hardware
+				reproduce it.
+			{/if}</p>
 		</Section>
 
 		<Section id="libraries" title="the libraries" num="§ 04">
@@ -316,21 +303,20 @@
 
 	.provenance {
 		display: flex;
+
 		flex-wrap: wrap;
-		gap: 4px 0;
+		gap: 14px ;
 		margin: 6px 0 18px;
 		font-size: var(--docs-fs-xs);
 		color: var(--docs-fg-mute);
 		letter-spacing: 0.4px;
 	}
-	.provenance span + span::before {
-		content: "·";
-		padding: 0 8px;
-		color: var(--docs-fg-ghost);
+
+	.provenance .hw {
+	    color: #ccc;
 	}
-	.provenance .behind {
-		color: var(--t-yellow);
-	}
+
+
 
 	.lib {
 		white-space: nowrap;
