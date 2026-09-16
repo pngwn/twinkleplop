@@ -239,6 +239,22 @@ provenance of whatever floor it ends up reading and says so in the comment if
 it did not come from the same machine, corpus and node — and refuses to gate
 on a borrowed one.
 
+**Thresholds are corrected for how many groups are tested.** The gate looks
+at three mode geomeans and fires if any moves, so testing each at p95 puts the
+real error rate at 1 - 0.95^3 = 7.3%, and the seven rows the comment colours
+put it at 30%. Both were observed: a pull request that changed no library code
+reported `tokenize -2.2%` as a regression. Each group is therefore tested at
+1 - (1 - 0.05)^(1/k), which holds the family-wise rate at 5% and costs about
+20% on each threshold.
+
+**A regression must appear in the modes that contain it.** `tokenize` is the
+scanner, `pipeline` is that scanner plus the reclassifiers, `html` is pipeline
+plus rendering. A scanner regression has to show up in all three; one that
+appears in `tokenize` while `pipeline` moves the other way is not physically a
+scanner regression, and is reported as `uncorroborated` rather than gated. The
+containment is one-directional - a regression confined to `pipeline` or `html`
+is legitimate, because it can live in code `tokenize` never runs.
+
 **It gates on groups, not workloads.** The A/A calibration flags roughly one
 workload in eight as "significant" when both arms are the same commit. A
 per-workload gate on a shared runner would go red on pull requests that
