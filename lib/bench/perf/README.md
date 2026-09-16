@@ -74,7 +74,10 @@ before it falls on both arms of every sample. That last part matters on its
 own: alternating order only _between_ rounds and counting each round as a
 sample cancels nothing when the round count is odd, and 9 and 15 both are —
 the median then sits on the majority order's cluster, which the runner
-reported as a 2% bias. An odd count is rounded up.
+reported as a 2% bias. An odd count is rounded up. Each arm also re-warms
+before it is calibrated: after the other arm's warmup it is cold again, and an
+iteration count taken from that state gave the smallest workloads windows of
+a few milliseconds instead of 20, where one scavenge is the whole sample.
 
 **Machine lock.** `/tmp/twinkleplop-perf.lock` is a machine-wide mutex. Every
 measurement takes it and queues if another agent holds it. Two benchmark
