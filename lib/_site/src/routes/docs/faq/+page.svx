@@ -69,9 +69,9 @@ const tokens = html_tokenizer("hello world");`;
 {/snippet}
 
 {#snippet build_or_runtime()}
-    Twinkleplop is modest in size and very fast, you can use it at runtime without worrying if your usecase requires it.
+    You can highlight at runtime when the source is provided by a user or changes after the page loads.
 
-    That said, less code is always better, so build time generation is recommended for static content.
+    For static content, highlight at build time to avoid sending the highlighter to the browser.
 {/snippet}
 
 {#snippet a_runtimes()}
@@ -81,13 +81,13 @@ const tokens = html_tokenizer("hello world");`;
 {#snippet a_one_per_lang()}
 	It is a design choice rather than a requirement. Twinkleplop errs on the side of explicitness.
 
-	You install and import the languages you need. This makes it easier to stay on top of install sizes and bundle sizes.
+	You install and import the languages you need. This gives you control over which packages are installed and bundled.
 
-	Languages like HTML that embed other languages (CSS in `style` tags, JS in `script` tags) are simply dependencies of the parent language. You don't need to think about them.
+	Embedded languages, such as CSS in HTML `style` tags and JavaScript in `script` tags, are installed as dependencies of the parent language package.
 {/snippet}
 
 {#snippet a_lazy()}
-	Yes. Every language package is a plain ESM module, so dynamic `import()` works out of the box:
+	Yes. Language packages are ESM modules and support dynamic `import()`:
 
 	<CodeBlock fname="lazy.ts" html={lazy_html} />
 
@@ -119,7 +119,7 @@ const tokens = html_tokenizer("hello world");`;
 
 		Yes, and this is recommended for static sites.
 
-		The simplest way is to integrate it with your markdown render or static site generator.
+		Use a markdown plugin or call the highlighter from your static site generator.
 
 		[We have guides.](/docs/markdown)
 
@@ -136,17 +136,17 @@ const tokens = html_tokenizer("hello world");`;
 
 		If you are highlighting large files on every keystroke there are better options as Twinkleplop is optimised for single-pass highlighting. Tools like tree-sitter and lezer (codemirror) are better optimised for this case.
 
-		For simpler cases twinkleplop works well, and it is especially nice with the browser's Highlight API — use the [`tokenize` export](/docs/api#tokenize) and skip HTML generation entirely.
+		To use Twinkleplop with the browser's Highlight API, get the tokens from the [`tokenize` export](/docs/api#tokenize). This avoids generating HTML.
 	{/snippet}
 
 	{#snippet a_add_lang()}
-		Open an issue and I'll add it. If you want to do it yourself, [the grammar guide](/docs/grammar) walks through it — then send a PR.
+		Open an issue and I'll add it. [The grammar guide](/docs/grammar) explains how language grammars work.
 	{/snippet}
 
 	{#snippet a_bug()}
 		Open an issue with a description and a [playground link](/explore) demonstrating the bug.
 
-		If you want to go deeper or submit a PR, [the tokenization guide](/docs/tokenization#debugging) covers the debugging tools.
+		[The tokenization guide](/docs/tokenization#debugging) covers the debugging tools.
 	{/snippet}
 
 	{#snippet a_stuck()}
@@ -217,6 +217,6 @@ const tokens = html_tokenizer("hello world");`;
 		{ href: "#s-02", label: "§02 — loading languages" },
 		{ href: "#s-03", label: "§03 — rendering & output" },
 		{ href: "#s-04", label: "§04 — performance & bundling" },
-		{ href: "#s-05", label: "§05 — contributing" },
+		{ href: "#s-05", label: "§05 — issues" },
 	]}
 />

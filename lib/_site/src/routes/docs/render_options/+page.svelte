@@ -26,7 +26,7 @@ ts(code, {
     "data-title": "math.ts",  // data-title="math.ts"
     tabindex: 0,              // tabindex="0"
     hidden: true,             // hidden
-    draggable: false,         // omitted entirely
+    draggable: false,         // omitted
   },
 });`;
 
