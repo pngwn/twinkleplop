@@ -19,14 +19,6 @@ const FLIGHT = 0.45;
 const LAND_AT = 0.92;
 const GHOST_AT = 0.12;
 const MIN_TOKEN_WIDTH = 8;
-// scroll reaches the page in steps: a wheel notch is a hundred px at once,
-// close to a third of a pixel's flight, and even a smooth scroll is only
-// reported once a frame. so p is not pinned to the scroll position, it
-// follows it on a critically damped spring: it eases away from rest as
-// well as into it, and never overshoots. this is the spring's natural
-// frequency, per second. it trails a steady scroll by 2 / RESPONSE seconds
-// and is 90% of the way to a new position after about 4 / RESPONSE.
-const RESPONSE = 16;
 
 // a pixel part way through its flight hangs over whatever the page has
 // scrolled under it. while the scroll is moving that reads as the effect;
@@ -187,12 +179,8 @@ export function create_plop(opts: plop_options): plop {
 	let targets: target[] = [];
 	let lines = 1;
 	let size = 0;
+	// the p last written; negative until the first frame
 	let last_p = -1;
-	// where the flight is drawn, easing towards where the scroll says it
-	// should be. negative until the first frame, which snaps: a page loaded
-	// part-scrolled starts in place rather than flying there.
-	let shown = -1;
-	let velocity = 0;
 	let last_frame = 0;
 	let last_lit = -1;
 	// how far the flight has faded out under a still scroll, 0 → 1
@@ -339,7 +327,6 @@ export function create_plop(opts: plop_options): plop {
 				const rotate = l * (c.seed[1] - 0.5) * 360;
 				c.el.style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) rotate(${rotate.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
 				set_opacity(c, l);
-				c.el.style.setProperty("--land", clamp((l - 0.6) / 0.3).toFixed(2));
 			}
 
 			const on = l > LAND_AT;
@@ -381,29 +368,18 @@ export function create_plop(opts: plop_options): plop {
 
 	function frame(now: number) {
 		scheduled = false;
-		const target = reduced ? 1 : clamp(scroll_y / Math.max(200, viewport_h * RANGE));
-		// by elapsed time, so it feels the same at 60hz and 120hz. after an
-		// idle spell there is no previous frame to measure from.
+		// p is the scroll position, nothing more: a frame whose scroll has
+		// not moved writes no styles at all
+		const p = reduced ? 1 : clamp(scroll_y / Math.max(200, viewport_h * RANGE));
+		// the fade steps by elapsed time, so it takes the same wall time at
+		// 60hz and 120hz. after an idle spell there is no previous frame to
+		// measure from.
 		const dt = (now - last_frame > 100 ? 1000 / 60 : now - last_frame) / 1000;
 		last_frame = now;
-		if (shown < 0 || reduced) {
-			shown = target;
-		} else {
-			// exact solution over dt, so a long frame can't blow it up
-			const gap = shown - target;
-			const pull = (velocity + RESPONSE * gap) * dt;
-			const decay = Math.exp(-RESPONSE * dt);
-			shown = target + (gap + pull) * decay;
-			velocity = (velocity - RESPONSE * pull) * decay;
-		}
-		if (Math.abs(target - shown) < 0.0005 && Math.abs(velocity) < 0.005) {
-			shown = target;
-			velocity = 0;
-		}
 
 		// nothing is in the way at the very top, where every pixel is home, so
 		// the fade never has to run back in as a scroll starts
-		const want = !reduced && idle && shown > 0 ? 1 : 0;
+		const want = !reduced && idle && p > 0 ? 1 : 0;
 		if (dim !== want) {
 			const step = (dt * 1000) / (want ? FADE_OUT : FADE_IN);
 			dim = want ? Math.min(1, dim + step) : Math.max(0, dim - step);
@@ -411,11 +387,10 @@ export function create_plop(opts: plop_options): plop {
 			schedule();
 		}
 
-		if (shown !== last_p) {
-			update(shown);
-			last_p = shown;
+		if (p !== last_p) {
+			update(p);
+			last_p = p;
 		}
-		if (shown !== target) schedule();
 	}
 
 	function token_color(el: HTMLElement) {

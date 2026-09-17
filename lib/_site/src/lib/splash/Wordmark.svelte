@@ -93,7 +93,6 @@
 		width: 84%;
 		height: 84%;
 		background: var(--c);
-		box-shadow: 0 0 calc(var(--land, 0) * 10px) var(--c);
 	}
 
 	.ghosts {
