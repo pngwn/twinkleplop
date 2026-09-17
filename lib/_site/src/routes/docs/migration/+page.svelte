@@ -3,9 +3,10 @@
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { twoslash, css, ts } from "$lib/docs/snippets";
+	import { twoslash, css, ts_shiki_split } from "$lib/docs/snippets";
 
 	const before = twoslash`declare const code: string;
 // ---cut---
@@ -29,7 +30,7 @@ import { shiki_notation } from "@twinkleplop/annotation/shiki";
 
 const ts = language({ annotation: { plugins: [shiki_notation()] } });`;
 
-	const notation_source = ts`const a = 1 // [!code highlight]
+	const notation_source = ts_shiki_split`const a = 1 // [!code highlight]
 // [!code focus:2]
 const b = 2
 const c = 3 // [!code --]
@@ -117,7 +118,11 @@ shiki_notation({ classes: "shiki" });`;
 			<code>code</code> verb and reads every notation of shiki 4.4.3.
 		</p>
 		<CodeBlock fname="setup.ts" html={notation} />
-		<CodeBlock fname="source.ts" html={notation_source} />
+		<SplitCodeBlock
+			lang="typescript"
+			left_html={notation_source.input}
+			right_html={notation_source.output}
+		/>
 		<p>
 			<code>highlight</code>, <code>hl</code>, <code>focus</code>,
 			<code>++</code>, <code>--</code>, <code>error</code>,

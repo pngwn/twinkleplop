@@ -7,6 +7,7 @@
 // extractor early-outs on input with no `[!`, so the cost elsewhere is noise.
 
 import { add, del, dim, em, err, hl, info, mod, warn } from "@twinkleplop/annotation";
+import { shiki_notation } from "@twinkleplop/annotation/shiki";
 import { language as make_bash } from "@twinkleplop/bash";
 import type { RenderOptions } from "@twinkleplop/core";
 import { language as make_css } from "@twinkleplop/css";
@@ -21,6 +22,7 @@ const annotation = { plugins: [em, hl, dim, add, del, mod, err, warn, info] };
 export function create_highlighters(root: string) {
   const ts = make_ts({ annotation });
   const ts_raw = make_ts();
+  const ts_shiki = make_ts({ annotation: { plugins: [shiki_notation()] } });
   const twoslash = create_twoslash({
     class_name: "twinkleplop twoslash",
     // `import("@twinkleplop/core").LanguageOptions` reads as `LanguageOptions`
@@ -44,9 +46,11 @@ export function create_highlighters(root: string) {
   return {
     twoslash: (code: string) => twoslash(code),
     ts,
-    // the input pane shows the markers as authored comment text, the output
-    // pane the rendered result.
+    // source -> output pairs for SplitCodeBlock: the input pane shows the
+    // markup as authored comment text, the output pane what it renders to.
     ts_split: (code: string) => ({ input: ts_raw(code), output: ts(code) }),
+    ts_shiki_split: (code: string) => ({ input: ts_raw(code), output: ts_shiki(code) }),
+    twoslash_split: (code: string) => ({ input: ts_raw(code), output: twoslash(code) }),
     html: make_html({ annotation }),
     css: make_css({ annotation }),
     bash: make_bash({ annotation }),

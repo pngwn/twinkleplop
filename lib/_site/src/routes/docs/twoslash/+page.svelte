@@ -3,9 +3,10 @@
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { twoslash, bash } from "$lib/docs/snippets";
+	import { twoslash, twoslash_split, bash } from "$lib/docs/snippets";
 
 	const install = bash`pnpm add @twinkleplop/twoslash`;
 
@@ -27,9 +28,9 @@ const html = highlight(code, { lang: "ts" });`;
 // same options, minus \`lang\`
 const highlight = create_highlighter();`;
 
-	const tags = twoslash`// @log: rendered after the next line
+	const tags = twoslash_split`// @log: x is 1
 const x = 1;
-// @annotate: tags on adjacent lines merge, so keep code between them
+// @annotate: y follows x
 const y = x + 1;`;
 
 	const options = twoslash`import { marked } from "marked";
@@ -101,7 +102,15 @@ unified()
 			no configuration: <code>annotate</code>, <code>log</code>,
 			<code>warn</code> and <code>error</code>.
 		</p>
-		<CodeBlock fname="tags.ts" html={tags} />
+		<SplitCodeBlock
+			lang="typescript"
+			left_html={tags.input}
+			right_html={tags.output}
+		/>
+		<p>
+			A tag renders beneath the line that follows it. Tags on adjacent lines
+			merge into one, so keep a line of code between them.
+		</p>
 		<p>
 			Pass <code>custom_tags</code> to replace that list, or
 			<code>[]</code> to disable tags entirely.

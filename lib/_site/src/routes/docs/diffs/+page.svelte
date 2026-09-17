@@ -3,9 +3,10 @@
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { twoslash, bash, css, ts } from "$lib/docs/snippets";
+	import { twoslash, bash, css, ts_split } from "$lib/docs/snippets";
 
 	const install = bash`pnpm add @twinkleplop/diff`;
 
@@ -25,7 +26,7 @@ const ts = language({ annotation: { plugins: [add, del, mod] } });
 
 const html = ts(source);`;
 
-	const marker_source = ts`const NUM = 100 // [!del]
+	const marker_source = ts_split`const NUM = 100 // [!del]
 const NUM = 50 // [!add]
 
 // [!mod :4..7]
@@ -107,7 +108,11 @@ function changed_block() {
 		</p>
 		<CodeBlock fname="setup.ts" html={markers} />
 		<p>Then write the markers in comments:</p>
-		<CodeBlock fname="example.ts" html={marker_source} />
+		<SplitCodeBlock
+			lang="typescript"
+			left_html={marker_source.input}
+			right_html={marker_source.output}
+		/>
 		<ParamTable
 			headers={["verb", "class", "meaning"]}
 			rows={[

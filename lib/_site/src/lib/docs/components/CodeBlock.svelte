@@ -107,7 +107,8 @@
 	.code :global(pre .l.highlight) {
 		background: color-mix(in oklab, var(--t-purple) calc(22% * var(--docs-anno)), transparent);
 	}
-	.code :global(pre .l.subdued) {
+	.code :global(pre .l.subdued),
+	.code :global(pre.has-focus .l:not(.focus)) {
 		opacity: 0.45;
 	}
 	.code :global(pre .l.diff-add) {
