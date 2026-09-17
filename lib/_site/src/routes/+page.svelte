@@ -1,15 +1,13 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { create_plop, type plop, type plop_target } from "$lib/splash/plop";
-	import SplashHeader from "$lib/splash/SplashHeader.svelte";
+	import SiteHeader from "$lib/components/SiteHeader.svelte";
 	import Seo from "$lib/components/Seo.svelte";
 	import Wordmark from "$lib/splash/Wordmark.svelte";
 	import Rainbow from "$lib/splash/Rainbow.svelte";
 	import LiveCard from "$lib/splash/LiveCard.svelte";
 	import { theme_mode } from "$lib/theme_mode.svelte";
 
-	const INSTALL = "npm i @twinkleplop/typescript";
-	const GITHUB = "https://github.com/pngwn/twinkleplop";
 	// clearance for the sticky header when scrolling to the live section
 	const SCROLL_OFFSET = 72;
 
@@ -77,7 +75,7 @@
 />
 
 <div class="splash">
-	<SplashHeader install={INSTALL} github={GITHUB} />
+	<SiteHeader />
 
 	<main>
 		<div class="hero">
@@ -160,14 +158,15 @@
 		--header-bg: rgba(10, 10, 10, 0.88);
 		--selection-ink: #041a0c;
 
-		--mode-height: 34px;
-		--mode-font-size: 12px;
-		--mode-line: var(--line2);
-		--mode-bg: var(--bg);
-		--mode-fg: var(--ink2);
-		--mode-fg-on: var(--green);
-		--mode-bg-on: color-mix(in oklab, var(--green) 12%, transparent);
-		--mode-focus: var(--green);
+		--hdr-bg: var(--header-bg);
+		--hdr-bg-plain: var(--bg);
+		--hdr-bg-2: var(--bg2);
+		--hdr-line: var(--line);
+		--hdr-line-2: var(--line2);
+		--hdr-fg: var(--ink);
+		--hdr-fg-dim: var(--ink2);
+		--hdr-fg-ghost: var(--ink3);
+		--hdr-accent: var(--green);
 
 		flex: 1;
 		background: var(--bg);
@@ -201,7 +200,6 @@
 		--pink: #b8256b;
 		--header-bg: rgba(251, 251, 249, 0.88);
 		--selection-ink: #fff;
-		--mode-bg-on: color-mix(in oklab, var(--green) 8%, transparent);
 	}
 	/* grayscale antialiasing thins glyphs; keep it for light-on-dark only */
 	:global(:root:not([data-mode="light"])) .splash {

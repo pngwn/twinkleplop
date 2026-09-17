@@ -7,7 +7,7 @@
 	import { hydrate_mode } from '$lib/theme_mode.svelte';
 
 	import Seo from '$lib/components/Seo.svelte';
-	import TopBar from '$lib/docs/components/TopBar.svelte';
+	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import NavPane from '$lib/docs/components/NavPane.svelte';
 	import BottomBar from '$lib/docs/components/BottomBar.svelte';
 	import CrtOverlay from '$lib/docs/components/CrtOverlay.svelte';
@@ -41,7 +41,7 @@
 />
 
 <div class="docs-root" data-nav-open={chrome.nav_open ? '1' : undefined}>
-	<TopBar />
+	<SiteHeader hide_on_mobile />
 	<MobileScrim />
 
 	<div class="shell">
