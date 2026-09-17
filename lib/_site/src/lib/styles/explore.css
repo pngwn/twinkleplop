@@ -568,7 +568,10 @@
 	padding: 0 16px 0 0;
 }
 
-.explore-app .ln {
+/* the shiki pane draws the same gutter from a css counter, since shiki
+   emits no line number markup. */
+.explore-app .ln,
+.explore-app .pane__body.show-line-numbers pre.shiki .line::before {
 	display: inline-block;
 	width: 44px;
 	padding-right: 12px;
@@ -581,9 +584,19 @@
 	font-size: 11px;
 }
 
+/* horizontal padding lives on the line rather than the <pre>, so line
+   hover and line-mode overlays reach the pane edges. with line numbers on,
+   the gutter supplies the left inset instead. */
 .explore-app .l {
 	width: 100%;
 	display: inline-block;
+	padding: 0 16px;
+}
+.explore-app .pane__body.show-line-numbers .l {
+	padding-left: 0;
+}
+.explore-app .code--plain {
+	padding: 14px 16px;
 }
 
 .explore-app .l:hover {
@@ -825,7 +838,7 @@
 /* ---------- shiki override inside pane ---------- */
 .explore-app .pane__body pre.shiki {
 	margin: 0;
-	padding: 14px 16px;
+	padding: 14px 0;
 	background: transparent !important;
 	font-family: inherit;
 	font-size: 13px;
@@ -840,6 +853,17 @@
 .explore-app .pane__body pre.shiki .line {
 	display: inline-block;
 	width: 100%;
+	padding: 0 16px;
+}
+.explore-app .pane__body.show-line-numbers pre.shiki {
+	counter-reset: line;
+}
+.explore-app .pane__body.show-line-numbers pre.shiki .line {
+	padding-left: 0;
+}
+.explore-app .pane__body.show-line-numbers pre.shiki .line::before {
+	counter-increment: line;
+	content: counter(line);
 }
 
 /* token colors driven by css variables on the owning pane so swapping

@@ -52,7 +52,7 @@
 		font-weight: 1000;
 		font-variation-settings: "wght" 500;
 
-		font-size: 50px;
+		font-size: 40px;
 		font-weight: 600;
 		letter-spacing: 0;
 		margin: 0 0 10px;
@@ -61,6 +61,10 @@
 		white-space: normal;
 		word-break: normal;
 		overflow-wrap: normal;
+	}
+	/* fatter dots, smaller gaps: the dotted letterforms read better on paper */
+	:global(:root[data-mode="light"]) .pixel-title {
+		font-variation-settings: "wght" 850;
 	}
 	.pixel-title.size-xl {
 		/*font-size: 54px;*/

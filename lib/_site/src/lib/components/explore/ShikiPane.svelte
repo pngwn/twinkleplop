@@ -48,7 +48,7 @@
 				 own background so our pane chrome shows through. -->
 			{@html shiki_html}
 		{:else}
-			<pre class="code"><code>{source}</code></pre>
+			<pre class="code code--plain"><code>{source}</code></pre>
 		{/if}
 	</div>
 

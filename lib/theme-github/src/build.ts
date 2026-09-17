@@ -1,6 +1,7 @@
-// generates dist/{index,light,dark}.css from tokens.ts. each stylesheet
-// declares every palette key as a --twp-* custom property and binds each
-// non-ws / non-inherit key to a `.twinkleplop .<key>` selector.
+// generates dist/{index,light,dark}.css from tokens.ts, plus an empty .d.ts
+// beside each. each stylesheet declares every palette key as a --twp-* custom
+// property and binds each non-ws / non-inherit key to a `.twinkleplop .<key>`
+// selector.
 //
 // do not hand-edit the generated files.
 
@@ -57,4 +58,12 @@ writeFileSync(
   HEADER + var_block(":root", light) + "\n" + var_block(".dark", dark) + "\n" + bindings,
 );
 
-console.log("wrote dist/light.css dist/dark.css dist/index.css");
+// typescript 6 turns on noUncheckedSideEffectImports, which rejects a bare
+// `import "@twinkleplop/theme-<name>"` unless the specifier resolves to
+// something with types. package.json points each stylesheet's `types`
+// condition at an empty module here.
+for (const name of ["index", "light", "dark"]) {
+  writeFileSync(resolve(dist, `${name}.d.ts`), "export {};\n");
+}
+
+console.log("wrote dist/{index,light,dark}.css and their .d.ts stubs");
