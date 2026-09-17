@@ -80,7 +80,7 @@ function changed_block() {
 					{ kind: "name", value: "@twinkleplop/diff-basic" },
 					{
 						kind: "desc",
-						value: `Line-level only: inserted, deleted, changed and their markers. Smaller, with no header or metadata handling.`,
+						value: `A minimal overlay: <code>+</code>/<code>-</code> prefixes, <code>!</code> changed, <code>@@</code> hunk headers and the no-newline marker. Built to compose with another language's grammar without conflicting, so file headers, <code>diff --git</code> and index lines are deliberately omitted. Unrecognised lines pass through unhighlighted.`,
 					},
 				],
 			]}

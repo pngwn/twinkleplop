@@ -178,9 +178,32 @@ const grammar = compile(raw_grammar);`;
 			]}
 		/>
 		<p>
-			<code>seal</code> is set implicitly by the compiler for multi-char matches,
-			structural transitions and boundary-checked rules, so you only need it
-			explicitly for single-char matches that would otherwise coalesce.
+			Two separate things stop a token coalescing backward into a same-type run,
+			and it is worth knowing which is which.
+		</p>
+		<ul>
+			<li>
+				The compiler sets the seal flag for <code>boundary: true</code> rules and
+				for rules that opt in with <code>seal: true</code>. Nothing else.
+			</li>
+			<li>
+				A <strong>multi-char</strong> match never coalesces, enforced at runtime
+				per emission rather than at compile time. That distinction matters for a
+				rule that mixes lengths: <code>match: [...OP_4CHAR, "?"]</code> seals
+				only when one of the longer alternatives actually fires, not when the
+				bare <code>?</code> matches.
+			</li>
+		</ul>
+		<p>
+			Structural transitions do <strong>not</strong> seal. Most grammars use
+			single-char push rules whose emission is meant to coalesce with the body
+			that follows — an opening quote with its string body, an <code>E</code>
+			prefix with an <code>LSE</code> continuation. A push or pop that does need
+			to seal opts in with <code>seal: true</code>.
+		</p>
+		<p>
+			So reach for <code>seal: true</code> on a single-char match that would
+			otherwise merge into a following run of the same type.
 		</p>
 	</Section>
 

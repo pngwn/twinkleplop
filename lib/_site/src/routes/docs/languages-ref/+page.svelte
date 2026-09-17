@@ -21,7 +21,7 @@ const ts = language();`;
 		{ name: "bash", notes: "Variables, expansions, here-docs, builtins." },
 		{ name: "css", notes: "Selectors, at-rules, custom properties, units. Probe-based selector disambiguation." },
 		{ name: "diff", notes: "Unified, context and normal diff, plus git metadata. Combined diff at a basic level." },
-		{ name: "diff-basic", notes: "Line-level diff only. Smaller, no header handling." },
+		{ name: "diff-basic", notes: "Minimal line-level overlay: +/- prefixes, ! changed, @@ hunk headers. Built to compose with another grammar, so file and git headers are deliberately omitted." },
 		{ name: "go", notes: "Predeclared types and builtins at lex time; UPPER_SNAKE constants promoted after." },
 		{ name: "html", notes: "Embeds css and javascript in style and script elements." },
 		{ name: "javascript", notes: "Regex-vs-division disambiguation, template literals, tagged-template embedding of html and css." },
