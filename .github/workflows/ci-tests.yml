@@ -1,17 +1,28 @@
 name: CI Tests
 
 on:
+  # an unqualified `push` doubles up on every pr: pushing to a branch that has
+  # an open pr fires both events and runs the whole matrix twice. main is the
+  # only branch that needs a push trigger; branch work is covered by
+  # `pull_request`, which tests the merge result rather than the branch tip.
   push:
+    branches: [main]
   pull_request:
+
+# a newer push makes the older run worthless. main is never cancelled: those
+# runs are the record of what actually landed.
+concurrency:
+  group: ci-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: "24"
+  PNPM_VERSION: "10"
 
 jobs:
   test:
-    name: Test (Node ${{ matrix.node }})
+    name: Test (Node 24)
     runs-on: namespace-profile-basic
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [20, 22]
 
     steps:
       - name: Checkout
@@ -20,12 +31,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
       - name: Install dependencies
@@ -38,7 +49,7 @@ jobs:
         run: pnpm test
 
   build:
-    name: Build (Node 22)
+    name: Build (Node 24)
     runs-on: namespace-profile-basic
 
     steps:
@@ -48,12 +59,12 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
       - name: Install dependencies
