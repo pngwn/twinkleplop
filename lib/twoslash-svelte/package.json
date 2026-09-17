@@ -2,11 +2,21 @@
   "name": "@twinkleplop/twoslash-svelte",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.js",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "types": "./dist/types.d.ts",
   "exports": {
-    ".": "./src/index.js"
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   },
   "scripts": {
+    "build": "vite build --config ../../build/package.vite.config.ts && node ../../build/dts.mjs",
     "test": "vitest"
   },
   "dependencies": {
