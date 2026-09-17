@@ -4,11 +4,9 @@
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { bash, css } from "$lib/docs/highlighters";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash, bash, css } from "$lib/docs/snippets";
 
-	const install_code_src = `pnpm add @twinkleplop/theme-github`;
-	const install_code = bash(install_code_src);
+	const install_code = bash`pnpm add @twinkleplop/theme-github`;
 
 	const use_theme_code = twoslash`// @noUncheckedSideEffectImports: false
 import "@twinkleplop/theme-github";`;
@@ -21,7 +19,7 @@ import "@twinkleplop/theme-github";
 import "@twinkleplop/theme-github/light";
 import "@twinkleplop/theme-github/dark";`;
 
-	const generated_css_src = `:root {
+	const generated_css = css`:root {
   --twp-background: #ffffff;
   --twp-keyword: #cf222e;
   --twp-string: #0a3069;
@@ -35,9 +33,8 @@ import "@twinkleplop/theme-github/dark";`;
 
 .twinkleplop .keyword { color: var(--twp-keyword); }
 .twinkleplop .string  { color: var(--twp-string); }`;
-	const generated_css = css(generated_css_src);
 
-	const override_css_src = `/* override a single colour without forking a theme */
+	const override_css = css`/* override a single colour without forking a theme */
 .twinkleplop {
   --twp-keyword: rebeccapurple;
 }
@@ -47,7 +44,6 @@ import "@twinkleplop/theme-github/dark";`;
 .my-code-block {
   background: var(--twp-background);
 }`;
-	const override_css = css(override_css_src);
 
 	const use_theme_tokens = twoslash`import { light, dark } from "@twinkleplop/theme-github/tokens";`;
 

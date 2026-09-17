@@ -4,11 +4,9 @@
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { bash } from "$lib/docs/highlighters";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash, bash } from "$lib/docs/snippets";
 
-	const install_src = `pnpm add @twinkleplop/typescript @twinkleplop/theme-github`;
-	const install_code = bash(install_src);
+	const install_code = bash`pnpm add @twinkleplop/typescript @twinkleplop/theme-github`;
 
 	const first_highlight_code = twoslash`// @noUncheckedSideEffectImports: false
 // import the language you want to highlight

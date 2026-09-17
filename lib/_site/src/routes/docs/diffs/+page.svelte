@@ -5,11 +5,9 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { bash, css, ts } from "$lib/docs/highlighters";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash, bash, css, ts } from "$lib/docs/snippets";
 
-	const install_src = `pnpm add @twinkleplop/diff`;
-	const install = bash(install_src);
+	const install = bash`pnpm add @twinkleplop/diff`;
 
 	const usage = twoslash`declare const patch: string;
 // ---cut---
@@ -27,16 +25,15 @@ const ts = language({ annotation: { plugins: [add, del, mod] } });
 
 const html = ts(source);`;
 
-	const marker_source_src = `const NUM = 100 // [!del]
+	const marker_source = ts`const NUM = 100 // [!del]
 const NUM = 50 // [!add]
 
 // [!mod :4..7]
 function changed_block() {
   return NUM;
 }`;
-	const marker_source = ts(marker_source_src);
 
-	const diff_css_src = `.twinkleplop .inserted        { color: var(--twp-inserted); }
+	const diff_css = css`.twinkleplop .inserted        { color: var(--twp-inserted); }
 .twinkleplop .deleted         { color: var(--twp-deleted); }
 .twinkleplop .inserted_marker,
 .twinkleplop .deleted_marker  { opacity: 0.6; }
@@ -47,7 +44,6 @@ function changed_block() {
 
 /* the block knows what it contains */
 .twinkleplop.has-diff-add { border-left: 2px solid green; }`;
-	const diff_css = css(diff_css_src);
 </script>
 
 <ArticleMain

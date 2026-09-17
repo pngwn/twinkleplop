@@ -5,7 +5,7 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash } from "$lib/docs/snippets";
 
 	const tiers = twoslash`import { language } from "@twinkleplop/typescript";
 

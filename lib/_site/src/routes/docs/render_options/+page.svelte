@@ -4,8 +4,7 @@
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { css, html } from "$lib/docs/highlighters";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash, css, html } from "$lib/docs/snippets";
 
 	const basic = twoslash`import { language } from "@twinkleplop/typescript";
 declare const code: string;
@@ -84,20 +83,18 @@ ts(code, {
   indent_guides: { size: 4 }, // a tab is one level, 4 spaces is one level
 });`;
 
-	const whitespace_css_src = `.twinkleplop .space { white-space: pre; }
+	const whitespace_css = css`.twinkleplop .space { white-space: pre; }
 .twinkleplop .tab   { white-space: pre; }
 
 /* indent guides are nested spans, one per level */
 .twinkleplop .indent {
   box-shadow: inset 1px 0 0 var(--twp-comment);
 }`;
-	const whitespace_css = css(whitespace_css_src);
 
-	const output_src = `<pre class="twinkleplop"><code>
+	const output = html`<pre class="twinkleplop"><code>
 <span class="l"><span class="ln">1</span><span class="tok keyword">const</span> <span class="tok identifier">x</span></span>
 <span class="l diff-add">...</span>
 </code></pre>`;
-	const output = html(output_src);
 </script>
 
 <ArticleMain

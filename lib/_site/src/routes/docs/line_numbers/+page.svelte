@@ -7,10 +7,9 @@
 	import Card from "$lib/docs/components/Card.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { ts, html, css } from "$lib/docs/highlighters";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash, ts, html, css } from "$lib/docs/snippets";
 
-	const line_number_src = `import { language } from "@twinkleplop/typescript";
+	const line_number = ts({ line_numbers: true })`import { language } from "@twinkleplop/typescript";
 
 const ts = language();
 
@@ -22,11 +21,7 @@ const html = ts("1 + 2", {
 // no line numbers
 const html_no_line_numbers = ts("1 + 2");`;
 
-	const line_number = ts(line_number_src, {
-		line_numbers: true,
-	})
-
-	const html_output_src = `<pre class="twinkleplop">
+	const html_output = html`<pre class="twinkleplop">
   <code>
     <span class="l"><span class="ln">1</span> ...tokens </span>
     <span class="l"><span class="ln">2</span> ...tokens</span>
@@ -34,16 +29,12 @@ const html_no_line_numbers = ts("1 + 2");`;
   </code>
 </pre>`
 
-	const html_output = html(html_output_src);
-
-	const css_output_src = `.twinkleplop .ln {
+	const css_output = css`.twinkleplop .ln {
   display: inline-block;
   width: 40px;
   text-align: right;
   padding-right: 16px;
 }`
-
-	const css_output = css(css_output_src);
 
 	const start_code = twoslash`import { language } from "@twinkleplop/typescript";
 const ts = language();

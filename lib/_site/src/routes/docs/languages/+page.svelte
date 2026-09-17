@@ -4,7 +4,7 @@
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash } from "$lib/docs/snippets";
 
 	const html_usage = twoslash`import { language } from "@twinkleplop/html";
 

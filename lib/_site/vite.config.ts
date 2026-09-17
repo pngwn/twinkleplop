@@ -1,8 +1,8 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 import { mdsvex } from "mdsvex";
-import { twoslash_plugin } from "./twoslash_plugin";
+import { snippets_plugin } from "./snippets_plugin";
 
 export default defineConfig({
-  plugins: [twoslash_plugin(), sveltekit(), mdsvex()],
+  plugins: [snippets_plugin(), sveltekit(), mdsvex()],
 });

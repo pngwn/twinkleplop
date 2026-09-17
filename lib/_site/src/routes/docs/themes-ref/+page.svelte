@@ -8,11 +8,9 @@
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import ThemeSwatch from "$lib/docs/components/ThemeSwatch.svelte";
 	import { THEMES } from "$lib/docs/themes_data";
-	import { bash } from "$lib/docs/highlighters";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash, bash } from "$lib/docs/snippets";
 
-	const install_src = `pnpm add @twinkleplop/theme-github`;
-	const install = bash(install_src);
+	const install = bash`pnpm add @twinkleplop/theme-github`;
 
 	const use = twoslash`// @noUncheckedSideEffectImports: false
 import "@twinkleplop/theme-github";`;

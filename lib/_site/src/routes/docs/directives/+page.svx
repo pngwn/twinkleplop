@@ -8,19 +8,16 @@
 	import Card from "$lib/docs/components/Card.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { ts, ts_raw, html, css } from "$lib/docs/highlighters";
+	import { ts_split, html, css } from "$lib/docs/snippets";
 
-	const line_number_src = `import { add } from "math"
+	const line_number = ts_split`import { add } from "math"
 
 const NUM = 100 // [!del]
 const NUM = 50 // [!add]
 
 const v = add(NUM, "hi") // [!err add...*]`;
 
-	const line_number_input = ts_raw(line_number_src);
-	const line_number_output = ts(line_number_src);
-
-	const html_output_src = `<pre class="twinkleplop">
+	const html_output = html`<pre class="twinkleplop">
   <code>
     <span class="l"><span class="ln">1</span> ...tokens </span>
     <span class="l"><span class="ln">2</span> ...tokens</span>
@@ -28,16 +25,12 @@ const v = add(NUM, "hi") // [!err add...*]`;
   </code>
 </pre>`
 
-	const html_output = html(html_output_src);
-
-	const css_output_src = `.twinkleplop .ln {
+	const css_output = css`.twinkleplop .ln {
   display: inline-block;
   width: 40px;
   text-align: right;
   padding-right: 16px;
 }`
-
-	const css_output = css(css_output_src);
 </script>
 
 <ArticleMain
@@ -55,8 +48,8 @@ const v = add(NUM, "hi") // [!err add...*]`;
 
 		<SplitCodeBlock
 			lang="typescript"
-			left_html={line_number_input}
-			right_html={line_number_output}
+			left_html={line_number.input}
+			right_html={line_number.output}
 		/>
 	</Section>
 

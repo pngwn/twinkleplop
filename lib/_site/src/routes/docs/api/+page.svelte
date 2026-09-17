@@ -7,7 +7,7 @@
 	import Signature from "$lib/docs/components/Signature.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash } from "$lib/docs/snippets";
 
 	const language_sig = `<span class="kw">function</span> <span class="name">language</span><span class="punct">(</span><span class="param">options</span><span class="punct">?:</span> <span class="type">LanguageOptions</span><span class="punct">)</span><span class="punct">:</span> <span class="punct">(</span><span class="param">code</span><span class="punct">:</span> <span class="type">string</span><span class="punct">,</span> <span class="param">render</span><span class="punct">?:</span> <span class="type">RenderOptions</span><span class="punct">)</span> <span class="punct">=&gt;</span> <span class="type">string</span>`;
 

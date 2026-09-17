@@ -5,8 +5,7 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { css, ts } from "$lib/docs/highlighters";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash, css, ts } from "$lib/docs/snippets";
 
 	const before = twoslash`declare const code: string;
 // ---cut---
@@ -31,23 +30,21 @@ import { shiki_notation } from "@twinkleplop/annotation/shiki";
 
 const ts = language({ annotation: { plugins: [shiki_notation()] } });`;
 
-	const notation_source_src = `const a = 1 // [!code highlight]
+	const notation_source = ts`const a = 1 // [!code highlight]
 // [!code focus:2]
 const b = 2
 const c = 3 // [!code --]
 const d = 4 // [!code ++]`;
-	const notation_source = ts(notation_source_src);
 
 	const classes = twoslash`import { shiki_notation } from "@twinkleplop/annotation/shiki";
 // ---cut---
 // emit shiki's class names instead of twinkleplop's
 shiki_notation({ classes: "shiki" });`;
 
-	const theme_css_src = `/* shiki writes inline styles; twinkleplop writes classes.
+	const theme_css = css`/* shiki writes inline styles; twinkleplop writes classes.
    restyling is CSS, not a theme rebuild. */
 .twinkleplop { --twp-keyword: #ff7b72; }
 .twinkleplop .keyword { color: var(--twp-keyword); }`;
-	const theme_css = css(theme_css_src);
 </script>
 
 <ArticleMain

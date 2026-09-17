@@ -6,8 +6,7 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { html as html_hl } from "$lib/docs/highlighters";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash, html as html_hl } from "$lib/docs/snippets";
 
 	const markdown_it = twoslash`declare const source: string;
 // ---cut---
@@ -74,15 +73,13 @@ languages: {
 // ---cut-after---
 });`;
 
-	const output_src = `<pre class="twinkleplop language-ts has-highlight" data-language="ts"><code>...</code></pre>`;
-	const output = html_hl(output_src);
+	const output = html_hl`<pre class="twinkleplop language-ts has-highlight" data-language="ts"><code>...</code></pre>`;
 
-	const figure_src = `<figure class="twinkleplop-block" data-language="ts">
+	const figure = html_hl`<figure class="twinkleplop-block" data-language="ts">
   <figcaption class="twinkleplop-title">math.ts</figcaption>
   <pre class="twinkleplop language-ts" data-language="ts"><code>...</code></pre>
   <figcaption class="twinkleplop-caption">the running total</figcaption>
 </figure>`;
-	const figure = html_hl(figure_src);
 </script>
 
 <ArticleMain

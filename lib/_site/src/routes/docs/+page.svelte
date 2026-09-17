@@ -10,8 +10,7 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import MiniLab from "$lib/docs/components/MiniLab.svelte";
-	import { twoslash } from "$lib/docs/twoslash";
-
+	import { twoslash } from "$lib/docs/snippets";
 
 	const first_highlight_code = twoslash`// @noUncheckedSideEffectImports: false
 import { language } from "@twinkleplop/typescript";
@@ -26,8 +25,6 @@ const html = typescript("1 + 2");`
 		{ num: "03 ›", title: "render options", meta: "make it your own", href: "/docs/render_options" },
 		{ num: "04 ›", title: "faq", meta: "no-one actually asked", href: "/docs/faq" },
 	];
-
-
 </script>
 
 <ArticleMain

@@ -7,7 +7,7 @@
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Card from "$lib/docs/components/Card.svelte";
-	import { ts } from "$lib/docs/highlighters";
+	import { ts } from "$lib/docs/snippets";
 
 	const layers = `  ┌─────────────────────────────────────────────────────┐
   │  language package    grammar + reclassifiers        │
@@ -17,13 +17,12 @@
   └─────────────────────────────────────────────────────┘
        language-specific data          language-agnostic runtime`;
 
-	const packages_src = `lib/core          runtime, compiler, DSL, reclassifier, generator
+	const packages = ts`lib/core          runtime, compiler, DSL, reclassifier, generator
 lib/annotation    marker plugins, shiki-notation compatibility
 lib/markdown-*    rehype / remark / markdown-it over one core
 lib/theme-*       generated stylesheets
 lib/twoslash*     twoslash integrations
 languages/*       one package per grammar`;
-	const packages = ts(packages_src);
 </script>
 
 <ArticleMain

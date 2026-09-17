@@ -6,8 +6,7 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import AsciiArt from "$lib/docs/components/AsciiArt.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { bash } from "$lib/docs/highlighters";
-	import { twoslash } from "$lib/docs/twoslash";
+	import { twoslash, bash } from "$lib/docs/snippets";
 
 	const pipeline = `   ┌──────────────┐     ┌──────────────────┐     ┌──────────────┐
    │  tokenize    │ ──▶ │   reclassify     │ ──▶ │   to_html    │
@@ -82,8 +81,7 @@ mapper.get_state_name(0);    // "main" instead of state 0
 mapper.get_rule_name(0, 2);  // the rule description instead of rule 2
 mapper.generate_report(introspector);`;
 
-	const build_src = `pnpm --filter @twinkleplop/core build`;
-	const build = bash(build_src);
+	const build = bash`pnpm --filter @twinkleplop/core build`;
 </script>
 
 <ArticleMain
