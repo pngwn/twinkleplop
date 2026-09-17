@@ -3,7 +3,6 @@
 		label: string;
 		value: string;
 		options: string[];
-		hint?: string;
 		show_label?: boolean;
 		align?: "left" | "right";
 		on_change: (next: string) => void;
@@ -13,7 +12,6 @@
 		label,
 		value,
 		options,
-		hint,
 		show_label = false,
 		align = "left",
 		on_change,
@@ -80,7 +78,6 @@
 		<div class="chip__menu" class:chip__menu--right={align === "right"} role="listbox" aria-label={label}>
 			<div class="chip__menu-head">
 				<span>{label}</span>
-				{#if hint}<span class="chip__menu-hint">{hint}</span>{/if}
 			</div>
 			<div class="chip__menu-items">
 			{#each options as opt, i (opt)}
@@ -96,7 +93,6 @@
 				>
 					<span class="chip__item-marker" aria-hidden="true">{opt === value ? "●" : "○"}</span>
 					<span>{opt}</span>
-					{#if i === hi}<span class="chip__item-hint" aria-hidden="true">↵</span>{/if}
 				</button>
 			{/each}
 			</div>

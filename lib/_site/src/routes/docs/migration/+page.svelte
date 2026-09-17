@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
@@ -176,14 +175,3 @@ shiki_notation({ classes: "shiki" });`;
 		</ul>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="migrating from shiki"
-	sections={[
-		{ href: "#calls", label: "§01 — highlighting code", active: true },
-		{ href: "#themes", label: "§02 — themes" },
-		{ href: "#notation", label: "§03 — transformer notation" },
-		{ href: "#markdown", label: "§04 — markdown pipelines" },
-		{ href: "#gaps", label: "§05 — unsupported features" },
-	]}
-/>

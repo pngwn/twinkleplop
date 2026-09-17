@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import PillToggle from "$lib/docs/components/PillToggle.svelte";
@@ -228,15 +227,6 @@
 	{/if}
 </ArticleMain>
 
-<ArticleOtp
-	title="benchmarks"
-	sections={[
-		{ href: "#compare", label: "§01 — compare", active: true },
-		{ href: "#inputs", label: "§02 — input files" },
-		{ href: "#reading", label: "§03 — interpreting results" },
-		{ href: "#libraries", label: "§04 — libraries" },
-	]}
-/>
 
 <style>
 	.controls {

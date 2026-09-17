@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import MiniLab from "$lib/docs/components/MiniLab.svelte";
@@ -79,12 +78,3 @@ const html = ts(code, {
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="line numbers"
-	sections={[
-		{ href: "#s1", label: "§01 — line numbers", active: true },
-		{ href: "#s2", label: "§02 — styling" },
-		{ href: "#s3", label: "§03 — starting number" },
-	]}
-/>

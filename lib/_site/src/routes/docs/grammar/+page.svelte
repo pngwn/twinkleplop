@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import SubSection from "$lib/docs/components/SubSection.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
@@ -331,16 +330,3 @@ const grammar = compile(raw_grammar);`;
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="grammars"
-	sections={[
-		{ href: "#shape", label: "§01 — grammar structure", active: true },
-		{ href: "#factories", label: "§02 — rule factories" },
-		{ href: "#sharing", label: "§03 — sharing rules" },
-		{ href: "#classes", label: "§04 — character classes" },
-		{ href: "#probe", label: "§05 — probe states" },
-		{ href: "#ambiguity", label: "§06 — disambiguation" },
-		{ href: "#verify", label: "§07 — compiling and verifying" },
-	]}
-/>

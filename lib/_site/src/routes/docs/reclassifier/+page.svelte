@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import SubSection from "$lib/docs/components/SubSection.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
@@ -248,15 +247,3 @@ const tokenize = create_language(grammar, [
 		</ul>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="reclassifiers"
-	sections={[
-		{ href: "#primitives", label: "§01 — reclassifier helpers", active: true },
-		{ href: "#tagging", label: "§02 — tagging a pass" },
-		{ href: "#claims", label: "§03 — claims and precedence" },
-		{ href: "#scope", label: "§04 — scope-aware passes" },
-		{ href: "#compose", label: "§05 — composing a pipeline" },
-		{ href: "#guidance", label: "§06 — writing a pass" },
-	]}
-/>

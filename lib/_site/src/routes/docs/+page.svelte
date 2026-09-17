@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import HomeHero from "$lib/docs/components/HomeHero.svelte";
 	import QuickLinks from "$lib/docs/components/QuickLinks.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
@@ -72,14 +71,6 @@ const html = typescript("1 + 2");`
 	</Section>
 </ArticleMain>
 
-<ArticleOtp
-	title="welcome"
-	sections={[
-		{ href: "#quicklinks", label: "§01 — quick links", active: true },
-		{ href: "#try-it", label: "§02 — try it live" },
-		{ href: "#hello", label: "§03 — basic usage" },
-	]}
-/>
 
 <style>
 	/*.footnote {

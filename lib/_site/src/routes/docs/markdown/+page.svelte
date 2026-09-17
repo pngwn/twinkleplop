@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import SubSection from "$lib/docs/components/SubSection.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
@@ -315,14 +314,3 @@ languages: {
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="markdown"
-	sections={[
-		{ href: "#setup", label: "§01 — setup", active: true },
-		{ href: "#registry", label: "§02 — language registry" },
-		{ href: "#options", label: "§03 — options" },
-		{ href: "#meta", label: "§04 — fence metadata" },
-		{ href: "#output", label: "§05 — output" },
-	]}
-/>
