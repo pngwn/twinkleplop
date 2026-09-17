@@ -19,10 +19,8 @@ const fast = language({ fidelity: "low" });
 // pick exactly the distinctions you want
 const picked = language({ fidelity: ["function", "class_name"] });`;
 
-	const tagging = twoslash`import { embed_interleaved, type GroupScanFn } from "@twinkleplop/core";
-import { js_frame_track, promote_call_site_functions, scan_tagged_template as scan_js } from "@twinkleplop/javascript";
-// scan_tagged_template is untyped in @twinkleplop/javascript and fails GroupScanFn under strict
-const scan_tagged_template = scan_js as GroupScanFn;
+	const tagging = twoslash`import { embed_interleaved } from "@twinkleplop/core";
+import { js_frame_track, promote_call_site_functions, scan_tagged_template } from "@twinkleplop/javascript";
 // ---cut---
 import { tag, always } from "@twinkleplop/core";
 
