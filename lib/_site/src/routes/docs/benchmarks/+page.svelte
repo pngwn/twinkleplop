@@ -313,7 +313,7 @@
 	}
 
 	.provenance .hw {
-	    color: #ccc;
+		color: var(--docs-fg-dim);
 	}
 
 

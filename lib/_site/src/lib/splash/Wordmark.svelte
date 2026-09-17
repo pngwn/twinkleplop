@@ -6,7 +6,10 @@
 
 	const grid = $derived(layout(text));
 	const cells = $derived(
-		grid.cells.map((cell) => ({ ...cell, color: rainbow(cell.x / (grid.cols - 1)) }))
+		grid.cells.map((cell) => {
+			const f = cell.x / (grid.cols - 1);
+			return { ...cell, color: { dark: rainbow(f), light: rainbow(f, "light") } };
+		})
 	);
 
 	let mount: HTMLElement | undefined = $state();
@@ -39,7 +42,15 @@
 		{/each}
 	</div>
 	{#each cells as cell}
-		<div class="px" style:--x={cell.x} style:--y={cell.y} style:--c={cell.color}><b></b></div>
+		<div
+			class="px"
+			style:--x={cell.x}
+			style:--y={cell.y}
+			style:--c-dark={cell.color.dark}
+			style:--c-light={cell.color.light}
+		>
+			<b></b>
+		</div>
 	{/each}
 </div>
 
@@ -71,7 +82,11 @@
 	}
 
 	.px {
+		--c: var(--c-dark);
 		will-change: transform, opacity;
+	}
+	:global(:root[data-mode="light"]) .px {
+		--c: var(--c-light);
 	}
 	.px b {
 		display: block;
@@ -96,8 +111,11 @@
 		content: "";
 		position: absolute;
 		inset: 8%;
-		background: var(--ink3);
+		background: var(--ghost);
 		opacity: 0.35;
 		border-radius: 1px;
+	}
+	:global(:root[data-mode="light"]) .ghosts i::before {
+		opacity: 0.28;
 	}
 </style>

@@ -24,7 +24,7 @@ const INHERITED_TOKENS = new Set([
   // `raw_*` tokens are grammar placeholders that are replaced by sub-
   // language tokens via embed_grammars before rendering — they should
   // never reach to_html output, so the explore pane intentionally does
-  // not style them. see languages/TOKENS.md for the full list.
+  // not style them.
   "raw_code_block",
   "raw_front_matter",
   "raw_script",

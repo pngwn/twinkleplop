@@ -12,7 +12,7 @@
   },
   "scripts": {
     "test": "vitest",
-    "gen_test": "node gen_test.js"
+    "gen_test": "node generate-snapshots.js"
   },
   "dependencies": {
     "@twinkleplop/core": "workspace:*"

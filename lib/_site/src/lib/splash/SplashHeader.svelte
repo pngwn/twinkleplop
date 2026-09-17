@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Rainbow from "./Rainbow.svelte";
+	import ModeSwitch from "$lib/components/ModeSwitch.svelte";
 
 	let { install, github }: { install: string; github: string } = $props();
 
@@ -22,9 +23,9 @@
 	<div class="brand">
 		<a class="wordmark" href="/"><Rainbow text="twinkleplop" /></a>
 		<nav>
-			<a href="/explore/svelte">lab</a><i>/</i>
-			<a href="/docs/benchmarks">compare</a><i>/</i>
-			<a class="on" href="/docs">docs</a><i>/</i>
+			<a href="/explore/svelte">lab</a><i aria-hidden="true">/</i>
+			<a href="/docs/benchmarks">compare</a><i aria-hidden="true">/</i>
+			<a class="on" href="/docs">docs</a><i aria-hidden="true">/</i>
 			<a href="#changelog">changelog</a>
 		</nav>
 	</div>
@@ -35,6 +36,8 @@
 			<button type="button" onclick={copy}>{copied ? "copied" : "copy"}</button>
 		</div>
 		<a class="ghost" href={github}>github</a>
+		<span class="mode-full"><ModeSwitch /></span>
+		<span class="mode-compact"><ModeSwitch compact /></span>
 	</div>
 </header>
 
@@ -49,7 +52,7 @@
 		border-bottom: 1px solid var(--line);
 		position: sticky;
 		top: 0;
-		background: rgba(10, 10, 10, 0.88);
+		background: var(--header-bg);
 		backdrop-filter: blur(8px);
 		z-index: 20;
 	}
@@ -142,10 +145,22 @@
 		border-color: var(--ink3);
 	}
 
+	.mode-full,
+	.mode-compact {
+		display: contents;
+	}
+	.mode-compact {
+		display: none;
+	}
+
 	@media (max-width: 760px) {
 		nav,
-		.ghost {
+		.ghost,
+		.mode-full {
 			display: none;
+		}
+		.mode-compact {
+			display: contents;
 		}
 	}
 </style>

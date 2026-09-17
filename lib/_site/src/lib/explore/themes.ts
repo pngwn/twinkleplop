@@ -1,109 +1,3 @@
-// terminal flavors control the overall "chrome" of the explore view.
-// each flavor sets a full set of css variables that drive backgrounds,
-// borders, accents and the crt glow overlay.
-
-export interface flavor_def {
-	name: string;
-	bg: string;
-	bg_elev: string;
-	bg_pane: string;
-	fg: string;
-	fg_dim: string;
-	fg_muted: string;
-	border: string;
-	border_bright: string;
-	accent: string;
-	accent2: string;
-	warn: string;
-	glow: string;
-	scanline: string;
-}
-
-export type flavor_name = 'phosphor' | 'amber' | 'paperwhite' | 'synth' | 'ember';
-
-export const FLAVORS: Record<flavor_name, flavor_def> = {
-	phosphor: {
-		name: 'phosphor',
-		bg: '#030907',
-		bg_elev: '#0a1410',
-		bg_pane: '#05100b',
-		fg: '#a8ffc8',
-		fg_dim: '#4a8f6a',
-		fg_muted: '#2d5a43',
-		border: '#153a28',
-		border_bright: '#2a6447',
-		accent: '#5dff9b',
-		accent2: '#00ffaa',
-		warn: '#ffdc5d',
-		glow: '0 0 12px rgba(93,255,155,0.35)',
-		scanline: 'rgba(93,255,155,0.04)'
-	},
-	amber: {
-		name: 'amber',
-		bg: '#0c0703',
-		bg_elev: '#1a0f05',
-		bg_pane: '#130a03',
-		fg: '#ffb84d',
-		fg_dim: '#9c6826',
-		fg_muted: '#6b4417',
-		border: '#3a2409',
-		border_bright: '#5e3b12',
-		accent: '#ffcb6b',
-		accent2: '#ff8a3c',
-		warn: '#ff6b35',
-		glow: '0 0 14px rgba(255,184,77,0.3)',
-		scanline: 'rgba(255,184,77,0.04)'
-	},
-	paperwhite: {
-		name: 'paperwhite',
-		bg: '#0f0f10',
-		bg_elev: '#18181b',
-		bg_pane: '#121214',
-		fg: '#e8e4d9',
-		fg_dim: '#8a8578',
-		fg_muted: '#56524a',
-		border: '#2a2822',
-		border_bright: '#3f3c34',
-		accent: '#d4c896',
-		accent2: '#a8e0c8',
-		warn: '#e8b56a',
-		glow: '0 0 0 transparent',
-		scanline: 'rgba(255,255,255,0.015)'
-	},
-	synth: {
-		name: 'synth',
-		bg: '#0a0415',
-		bg_elev: '#150a28',
-		bg_pane: '#10061f',
-		fg: '#f0d4ff',
-		fg_dim: '#9470b8',
-		fg_muted: '#5c4080',
-		border: '#2a1555',
-		border_bright: '#4a2c80',
-		accent: '#ff4ad6',
-		accent2: '#4adaff',
-		warn: '#ffd84a',
-		glow: '0 0 18px rgba(255,74,214,0.4)',
-		scanline: 'rgba(255,74,214,0.03)'
-	},
-	ember: {
-		name: 'ember',
-		bg: '#060708',
-		bg_elev: '#0c0f14',
-		bg_pane: '#080a0e',
-		fg: '#ff8a3d',
-		fg_dim: '#a35a28',
-		fg_muted: '#6a3d1c',
-		border: '#16304d',
-		border_bright: '#234a78',
-		accent: '#ff7a1f',
-		accent2: '#4ea0ff',
-		warn: '#ffb84a',
-		glow: '0 0 14px rgba(255,122,31,0.55)',
-		scanline: 'rgba(255,122,31,0.035)'
-	}
-};
-
 export type token_palette = Record<string, string>;
 
 // A single theme selection drives both panes. For the plop pane we use
@@ -150,6 +44,8 @@ export const SHIKI_THEME_IDS = Object.values(THEMES).map((t) => t.shiki_id);
 export interface mono_font {
 	label: string;
 	value: string;
+	// google fonts `family=` spec, loaded on first use
+	google?: string;
 }
 
 export const FONTS: mono_font[] = [
@@ -163,33 +59,34 @@ export const FONTS: mono_font[] = [
 	},
 	{
 		label: 'Geist Mono',
-		value: "'Geist Mono', ui-monospace, monospace"
+		value: "'Geist Mono', ui-monospace, monospace",
+		google: 'Geist+Mono:wght@400;500;700'
 	},
 	{
 		label: 'IBM Plex Mono',
-		value: "'IBM Plex Mono', ui-monospace, monospace"
+		value: "'IBM Plex Mono', ui-monospace, monospace",
+		google: 'IBM+Plex+Mono:ital,wght@0,400;0,500;0,700;1,400'
 	},
-	{ label: 'Fira Code', value: "'Fira Code', ui-monospace, monospace" }
+	{
+		label: 'Fira Code',
+		value: "'Fira Code', ui-monospace, monospace",
+		google: 'Fira+Code:wght@400;500;700'
+	}
 ];
 
-export type density_mode = 'compact' | 'comfortable' | 'relaxed';
+export const THEME_NAMES: theme_name[] = ['github', 'atom-one'];
 
-export interface tweak_state {
+export interface lab_view {
 	theme: theme_name;
+	// a FONTS label
 	font: string;
-	density: density_mode;
 	inspect: boolean;
-	flavor: flavor_name;
 	show_line_numbers: boolean;
-	annotation: boolean;
 }
 
-export const DEFAULT_TWEAKS: tweak_state = {
+export const DEFAULT_VIEW: lab_view = {
 	theme: 'github',
-	font: FONTS[0].value,
-	density: 'comfortable',
+	font: FONTS[0].label,
 	inspect: false,
-	flavor: 'paperwhite',
-	show_line_numbers: true,
-	annotation: true
+	show_line_numbers: true
 };

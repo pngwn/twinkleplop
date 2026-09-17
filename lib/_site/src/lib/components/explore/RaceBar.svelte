@@ -30,7 +30,7 @@
 				<span class="racebar__delta racebar__delta--win">
 					<span class="racebar__delta-sign">−</span>
 					<span>{delta_ms.toFixed(4)}ms</span>
-					<span class="racebar__delta-sep">·</span>
+					<span class="racebar__delta-sep" aria-hidden="true">·</span>
 					<span>{ratio_txt} faster</span>
 				</span>
 			{/if}
@@ -48,7 +48,7 @@
 				<span class="racebar__delta racebar__delta--win">
 					<span class="racebar__delta-sign">−</span>
 					<span>{delta_ms.toFixed(4)}ms</span>
-					<span class="racebar__delta-sep">·</span>
+					<span class="racebar__delta-sep" aria-hidden="true">·</span>
 					<span>{ratio_txt} faster</span>
 				</span>
 			{/if}
