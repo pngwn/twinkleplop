@@ -9,6 +9,9 @@ dist/
 scripts/
 docs/
 
+# grammar research notes are working documents for the grammar skills
+languages/*/RESEARCH.md
+
 # frozen reference builds for the perf harness
 .perf/
 lib/bench/perf/reports/
