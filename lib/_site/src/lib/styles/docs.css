@@ -76,10 +76,11 @@
 	--docs-accent: #1c6c2f;
 	--docs-accent-dim: #5aa868;
 	/* theme palettes are tuned for their own editor background (white for
-	 * github-light); on the paper surface comments and functions drop under
-	 * 4.5:1, so highlighted code gets the theme's background instead */
-	--docs-code-bg: var(--twp-background, #ffffff);
-	--docs-anno: 0.55;
+	 * github-light), so highlighted code sits on it, pulled halfway to the
+	 * paper so it isn't stark. github-light comments dip to ~4.25:1 there;
+	 * every other token keeps 4.5:1 or more. */
+	--docs-code-bg: color-mix(in srgb, var(--twp-background, #ffffff) 50%, var(--docs-bg));
+	--docs-anno: 0.4;
 }
 
 /* root wrapper — owned by layout, kept global so cursor/tree animations can reach */

@@ -62,6 +62,10 @@
 		word-break: normal;
 		overflow-wrap: normal;
 	}
+	/* fatter dots, smaller gaps: the dotted letterforms read better on paper */
+	:global(:root[data-mode="light"]) .pixel-title {
+		font-variation-settings: "wght" 850;
+	}
 	.pixel-title.size-xl {
 		/*font-size: 54px;*/
 		line-height: 1;
