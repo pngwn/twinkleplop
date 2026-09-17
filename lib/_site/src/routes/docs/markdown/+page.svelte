@@ -164,6 +164,14 @@ import { language as typescript } from "@twinkleplop/typescript";
 			<code>default_language</code>, and with none set is left exactly as the
 			toolchain rendered it.
 		</p>
+		<Callout mark="▸" variant="warn">
+			One divergence between the toolchains. An mdast or hast tree gives a fence
+			with no language and an <em>indented</em> code block the same shape, so
+			<code>default_language</code> covers both in rehype and remark. markdown-it
+			parses indented code under a <code>code_block</code> rule of its own, which
+			the plugin leaves alone, so there
+			<code>default_language</code> reaches fences only.
+		</Callout>
 	</Section>
 
 	<Section id="options" title="options" num="§ 03">
