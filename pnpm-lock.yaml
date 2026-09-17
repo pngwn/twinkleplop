@@ -320,55 +320,22 @@ importers:
       '@twinkleplop/sql':
         specifier: workspace:*
         version: link:../../languages/sql
-      '@twinkleplop/svelte':
-        specifier: workspace:*
-        version: link:../../languages/svelte
-      '@twinkleplop/toml':
-        specifier: workspace:*
-        version: link:../../languages/toml
       '@twinkleplop/tsx':
         specifier: workspace:*
         version: link:../../languages/tsx
       '@twinkleplop/typescript':
         specifier: workspace:*
         version: link:../../languages/typescript
-      '@twinkleplop/yaml':
-        specifier: workspace:*
-        version: link:../../languages/yaml
-      '@wooorm/starry-night':
-        specifier: ^3.8.0
-        version: 3.9.0
-      highlight.js:
-        specifier: ^11.11.1
-        version: 11.11.1
-      kleur:
-        specifier: ^4.1.5
-        version: 4.1.5
       sugar-high:
         specifier: ^1.1.0
         version: 1.1.0
     devDependencies:
-      '@tanstack/highlight':
-        specifier: ^0.0.6
-        version: 0.0.6
       '@twinkleplop/annotation':
         specifier: workspace:*
         version: link:../annotation
       '@twinkleplop/core':
         specifier: workspace:*
         version: link:../core
-      '@twinkleplop/css':
-        specifier: workspace:*
-        version: link:../../languages/css
-      '@twinkleplop/html':
-        specifier: workspace:*
-        version: link:../../languages/html
-      '@twinkleplop/markdown':
-        specifier: workspace:*
-        version: link:../../languages/markdown
-      '@vitest/ui':
-        specifier: ^4.1.5
-        version: 4.1.5(vitest@4.1.5)
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0
@@ -1976,10 +1943,6 @@ packages:
       svelte: ^5.46.4
       vite: ^8.0.0-beta.7 || ^8.0.0
 
-  '@tanstack/highlight@0.0.6':
-    resolution: {integrity: sha512-thgHLjw2QWtV7ZBwce+3dL33hkgKKivpfqSMKOR5ILiAEV2lc90af8UpJVMY/hmeXVGseoxjbB134PRf85p8gQ==}
-    engines: {node: '>=18'}
-
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
 
@@ -2118,9 +2081,6 @@ packages:
 
   '@volar/source-map@2.4.28':
     resolution: {integrity: sha512-yX2BDBqJkRXfKw8my8VarTyjv48QwxdJtvRgUpNE5erCsgEUdI2DsLbpa+rOQVAJYshY99szEcRDmyHbF10ggQ==}
-
-  '@wooorm/starry-night@3.9.0':
-    resolution: {integrity: sha512-LXVGKfYhTuFhoRuPAHz2XolS/J45L4lI/lCSIBugDpklXYDUPrJyA8tk17u7G32fcFaGODJXH/YDwQDfUXdPRw==}
 
   acorn@8.15.0:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
@@ -2438,10 +2398,6 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
-  highlight.js@11.11.1:
-    resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
-    engines: {node: '>=12.0.0'}
-
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
 
@@ -2456,9 +2412,6 @@ packages:
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
     engines: {node: '>= 4'}
-
-  import-meta-resolve@4.2.0:
-    resolution: {integrity: sha512-Iqv2fzaTQN28s/FwZAoFq0ZSs/7hMAHJVX+w8PZl3cY19Pxk6jFFalxQoIfW2826i/fDLXv8IiEZRIT0lDuWcg==}
 
   is-extglob@2.1.1:
     resolution: {integrity: sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ==}
@@ -3350,12 +3303,6 @@ packages:
         optional: true
       jsdom:
         optional: true
-
-  vscode-oniguruma@2.0.1:
-    resolution: {integrity: sha512-poJU8iHIWnC3vgphJnrLZyI3YdqRlR27xzqDmpPXYzA93R4Gk8z7T6oqDzDoHjoikA2aS82crdXFkjELCdJsjQ==}
-
-  vscode-textmate@9.3.2:
-    resolution: {integrity: sha512-n2uGbUcrjhUEBH16uGA0TvUfhWwliFZ1e3+pTjrkim1Mt7ydB41lV08aUvsi70OlzDWp6X7Bx3w/x3fAXIsN0Q==}
 
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
@@ -4408,8 +4355,6 @@ snapshots:
       vite: 8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)
       vitefu: 1.1.3(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0))
 
-  '@tanstack/highlight@0.0.6': {}
-
   '@tybys/wasm-util@0.10.1':
     dependencies:
       tslib: 2.8.1
@@ -4572,6 +4517,7 @@ snapshots:
       tinyglobby: 0.2.16
       tinyrainbow: 3.1.0
       vitest: 4.1.5(@types/node@20.19.17)(@vitest/ui@4.1.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0))
+    optional: true
 
   '@vitest/utils@2.1.9':
     dependencies:
@@ -4590,13 +4536,6 @@ snapshots:
       '@volar/source-map': 2.4.28
 
   '@volar/source-map@2.4.28': {}
-
-  '@wooorm/starry-night@3.9.0':
-    dependencies:
-      '@types/hast': 3.0.4
-      import-meta-resolve: 4.2.0
-      vscode-oniguruma: 2.0.1
-      vscode-textmate: 9.3.2
 
   acorn@8.15.0: {}
 
@@ -4863,7 +4802,8 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.4
 
-  fflate@0.8.2: {}
+  fflate@0.8.2:
+    optional: true
 
   fill-range@7.1.1:
     dependencies:
@@ -4874,7 +4814,8 @@ snapshots:
       locate-path: 5.0.0
       path-exists: 4.0.0
 
-  flatted@3.4.2: {}
+  flatted@3.4.2:
+    optional: true
 
   fs-extra@7.0.1:
     dependencies:
@@ -4960,8 +4901,6 @@ snapshots:
       property-information: 7.0.0
       space-separated-tokens: 2.0.2
 
-  highlight.js@11.11.1: {}
-
   html-void-elements@3.0.0: {}
 
   human-id@4.1.3: {}
@@ -4971,8 +4910,6 @@ snapshots:
       safer-buffer: 2.1.2
 
   ignore@5.3.2: {}
-
-  import-meta-resolve@4.2.0: {}
 
   is-extglob@2.1.1: {}
 
@@ -6035,10 +5972,6 @@ snapshots:
       '@vitest/ui': 4.1.5(vitest@4.1.5)
     transitivePeerDependencies:
       - msw
-
-  vscode-oniguruma@2.0.1: {}
-
-  vscode-textmate@9.3.2: {}
 
   web-namespaces@2.0.1: {}
 
