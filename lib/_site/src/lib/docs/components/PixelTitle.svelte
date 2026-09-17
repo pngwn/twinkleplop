@@ -52,7 +52,7 @@
 		font-weight: 1000;
 		font-variation-settings: "wght" 500;
 
-		font-size: 50px;
+		font-size: 40px;
 		font-weight: 600;
 		letter-spacing: 0;
 		margin: 0 0 10px;
