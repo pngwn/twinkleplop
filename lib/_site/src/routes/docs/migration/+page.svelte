@@ -16,8 +16,7 @@ const html = await codeToHtml(code, {
   theme: "github-dark",
 });`;
 
-	const after = twoslash`// @noUncheckedSideEffectImports: false
-declare const code: string;
+	const after = twoslash`declare const code: string;
 // ---cut---
 import { language } from "@twinkleplop/typescript";
 import "@twinkleplop/theme-github";

@@ -12,8 +12,7 @@
 	import MiniLab from "$lib/docs/components/MiniLab.svelte";
 	import { twoslash } from "$lib/docs/snippets";
 
-	const first_highlight_code = twoslash`// @noUncheckedSideEffectImports: false
-import { language } from "@twinkleplop/typescript";
+	const first_highlight_code = twoslash`import { language } from "@twinkleplop/typescript";
 import "@twinkleplop/theme-github";
 
 const typescript = language();

@@ -98,11 +98,12 @@ lib/theme-<name>/
   src/
     tokens.ts           — light + dark palettes as named exports (Phase 4)
     tokens.test.ts      — palette completeness validation (Phase 5)
-    build.ts            — generates the three .css files from tokens.ts (Phase 6)
+    build.ts            — generates the three .css files and their .d.ts stubs from tokens.ts (Phase 6)
   dist/
     index.css           — both variants: light under :root, dark under .dark
     light.css           — light variant only, under :root
     dark.css            — dark variant only, under :root
+    {index,light,dark}.d.ts — `export {};`, so a bare side-effect import type checks
   tsconfig.json         — extends root config
 ```
 
@@ -115,9 +116,18 @@ lib/theme-<name>/
   "name": "@twinkleplop/theme-<name>",
   "type": "module",
   "exports": {
-    ".": "./dist/index.css",
-    "./light": "./dist/light.css",
-    "./dark": "./dist/dark.css",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.css"
+    },
+    "./light": {
+      "types": "./dist/light.d.ts",
+      "default": "./dist/light.css"
+    },
+    "./dark": {
+      "types": "./dist/dark.d.ts",
+      "default": "./dist/dark.css"
+    },
     "./tokens": {
       "source": "./src/tokens.ts",
       "import": "./src/tokens.ts",
@@ -131,6 +141,8 @@ lib/theme-<name>/
   }
 }
 ```
+
+The `types` condition on each stylesheet is required, and it must come before `default`. TypeScript 6 enables `noUncheckedSideEffectImports` by default, so `import "@twinkleplop/theme-<name>"` fails with error 2882 unless the specifier resolves to a declaration file. `declare module "*.css"` (e.g. from `vite/client`) does not cover it because a bare package name does not end in `.css`. Bundlers ignore `types` and fall through to the CSS.
 
 Do NOT add a JS default export — the default (`.`) is the combined stylesheet. Consumers who want just one variant import `@twinkleplop/theme-<name>/light` or `/dark`. Consumers who want the palette data (for an inline-style approach like `palette_to_vars`) import `@twinkleplop/theme-<name>/tokens`.
 
@@ -320,7 +332,7 @@ Rationale for the split: `light.css` and `dark.css` are for consumers who alread
 
 ### Writing the build script
 
-`build.ts` imports `light` and `dark` from `./tokens.ts`, iterates the keys, and writes the three files. Keep it tiny — no templating library, no minification. Roughly:
+`build.ts` imports `light` and `dark` from `./tokens.ts`, iterates the keys, and writes the three stylesheets plus an empty `.d.ts` beside each (the targets of the `types` conditions in Phase 3). Keep it tiny — no templating library, no minification. Roughly:
 
 ```ts
 import { light, dark } from "./tokens.ts";
@@ -363,6 +375,11 @@ writeFileSync(
   "dist/index.css",
   var_block(":root", light) + "\n" + var_block(".dark", dark) + "\n" + bindings,
 );
+
+// targets of the `types` export conditions, so bare side-effect imports type check
+for (const name of ["index", "light", "dark"]) {
+  writeFileSync(`dist/${name}.d.ts`, "export {};\n");
+}
 ```
 
 Key rule: `background_color` MUST appear in every `:root { ... }` and `.dark { ... }` block as `--twp-background`, but MUST NOT appear in any binding selector. The variable is the theme's offer; the consumer decides where (if anywhere) to apply it.
@@ -411,7 +428,7 @@ Run in order:
 
 1. `pnpm install` — picks up the new workspace package and export paths
 2. `pnpm --filter @twinkleplop/theme-<name> test` — the Phase 5 validation test must pass before anything else (a missing/extra palette key will silently break the stylesheet)
-3. `pnpm --filter @twinkleplop/theme-<name> build` — generates `dist/index.css`, `dist/light.css`, `dist/dark.css`
+3. `pnpm --filter @twinkleplop/theme-<name> build` — generates `dist/index.css`, `dist/light.css`, `dist/dark.css` and their `.d.ts` stubs
 4. Sanity-check the three generated files: `index.css` must contain BOTH a `:root { ... }` block and a `.dark { ... }` block, with the same set of `--twp-*` keys in each. Both must include `--twp-background` but NO binding rule referencing `--twp-background`. `light.css` and `dark.css` must each contain exactly one `:root { ... }` block.
 5. `pnpm --filter @twinkleplop/_site dev` — launch the explore route and cycle through both new chips (light AND dark)
 6. Visual check: for each variant, view at least three languages with very different token vocabularies (e.g. rust, css, markdown). Token colors you picked for `lifetime`, `macro`, `property`, `selector`, markdown-only tokens only light up under the right language — do not skip this step because javascript looks fine.
@@ -427,7 +444,7 @@ The skill is complete when:
 - `lib/theme-<name>/src/tokens.ts` exports both `light` and `dark`, each containing every name from `@twinkleplop/core/tokens` plus `background_color`, and the source-citation header points at URLs you actually opened for both variants.
 - `lib/theme-<name>/src/tokens.test.ts` exists and `pnpm --filter @twinkleplop/theme-<name> test` passes.
 - `lib/theme-<name>/dist/index.css`, `light.css`, and `dark.css` exist and were generated from `tokens.ts` by `build.ts` (not hand-written). Each stylesheet declares `--twp-background` in its variable block(s) and has no selector binding it.
-- `package.json` exports include `.`, `./light`, `./dark`, and `./tokens`; scripts include `build` and `test`.
+- `package.json` exports include `.`, `./light`, `./dark`, and `./tokens`, and each stylesheet export has a `types` condition (listed first) pointing at a generated `.d.ts`; scripts include `build` and `test`.
 - The Tweaks panel in the running dev site can toggle into BOTH variants and each token category renders with the color you recorded.
 
 Report back to the user with:
