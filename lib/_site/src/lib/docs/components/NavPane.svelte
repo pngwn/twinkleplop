@@ -1,11 +1,9 @@
 <script lang="ts">
 	import PaneHeader from "./PaneHeader.svelte";
 	import { DOCS } from "../nav";
-	import { chrome, set_tweak, close_nav } from "../chrome.svelte";
+	import { close_nav } from "../chrome.svelte";
 
 	let { active_id }: { active_id: string } = $props();
-
-	const NAV_OPTIONS = ["tree", "grouped", "manpage"] as const;
 
 	function slugify(s: string) {
 		return s.toLowerCase().replace(/\s+/g, "-");

@@ -3,6 +3,7 @@
 	// import "@twinkleplop/theme-github";
 	import { onMount } from "svelte";
 	import { measure } from "$lib/explore/measure";
+	import { theme_mode } from "$lib/theme_mode.svelte";
 
 
 	const tokenize = ts_tokenize({ fidelity: "high" });
@@ -14,7 +15,7 @@
 
 const msg = greet("world");
 console.log(msg);`,
-		theme_label = "github-dark · typescript",
+		theme_label,
 	}: {
 		initial?: string;
 		theme_label?: string;
@@ -156,7 +157,7 @@ console.log(msg);`,
 	<div class="head">
 		<span class="dot"></span>
 		<span class="lbl">mini-lab · editable</span>
-		<span class="theme">{theme_label}</span>
+		<span class="theme">{theme_label ?? `github-${theme_mode.resolved} · typescript`}</span>
 	</div>
 	<pre
 		bind:this={pad}
@@ -225,7 +226,7 @@ console.log(msg);`,
 		outline: none;
 		caret-color: var(--docs-accent);
 		color: var(--twp-identifier, var(--docs-fg));
-		background:  var(--docs-bg-1);
+		background: var(--docs-code-bg);
 		overflow-x: auto;
 	}
 	.pad:focus-visible {

@@ -3,21 +3,14 @@
 	import { page } from '$app/state';
 	import '$lib/styles/docs.css';
 	import { FLAT, find_by_id } from '$lib/docs/nav';
-	import {
-		chrome,
-		hydrate_from_storage,
-		open_palette,
-		close_nav,
-		close_tweaks
-	} from '$lib/docs/chrome.svelte';
-	import { theme_mode, hydrate_mode } from '$lib/theme_mode.svelte';
+	import { chrome, open_palette, close_nav } from '$lib/docs/chrome.svelte';
+	import { hydrate_mode } from '$lib/theme_mode.svelte';
 
 	import TopBar from '$lib/docs/components/TopBar.svelte';
 	import NavPane from '$lib/docs/components/NavPane.svelte';
 	import StatusLine from '$lib/docs/components/StatusLine.svelte';
 	import BottomBar from '$lib/docs/components/BottomBar.svelte';
 	import CommandPalette from '$lib/docs/components/CommandPalette.svelte';
-	import TweaksPanel from '$lib/docs/components/TweaksPanel.svelte';
 	import CrtOverlay from '$lib/docs/components/CrtOverlay.svelte';
 	import MobileScrim from '$lib/docs/components/MobileScrim.svelte';
 	import "@twinkleplop/theme-github";
@@ -39,11 +32,6 @@
 
 	function handle_keydown(e: KeyboardEvent) {
 		if (chrome.palette_open) return;
-		if (e.key === 'Escape' && chrome.tweaks_open) {
-			e.preventDefault();
-			close_tweaks();
-			return;
-		}
 		const is_mac = navigator.platform.includes('Mac');
 		const meta = is_mac ? e.metaKey : e.ctrlKey;
 		if (meta && e.key.toLowerCase() === 'k') {
@@ -59,7 +47,6 @@
 	}
 
 	onMount(() => {
-		hydrate_from_storage();
 		hydrate_mode();
 		window.addEventListener('keydown', handle_keydown);
 		return () => window.removeEventListener('keydown', handle_keydown);
@@ -70,14 +57,7 @@
 	<title>{active_entry ? `${active_entry.title} · twinkleplop docs` : 'twinkleplop · docs'}</title>
 </svelte:head>
 
-<div
-	class="docs-root {theme_mode.resolved}"
-	data-docs-mode={theme_mode.resolved}
-	data-docs-density={chrome.tweaks.density}
-	data-docs-nav={chrome.tweaks.nav}
-	data-docs-crt={chrome.tweaks.crt}
-	data-nav-open={chrome.nav_open ? '1' : undefined}
->
+<div class="docs-root" data-nav-open={chrome.nav_open ? '1' : undefined}>
 	<TopBar />
 	<MobileScrim />
 
@@ -89,7 +69,6 @@
 	<!-- <StatusLine path={status_path} /> -->
 	<CrtOverlay />
 	<CommandPalette />
-	<TweaksPanel />
 	<BottomBar />
 </div>
 

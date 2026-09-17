@@ -44,8 +44,60 @@ const MOTE_PAD = 6;
 const HUE_FROM = 25;
 const HUE_TO = 350;
 
-export function rainbow(f: number): string {
-	return `oklch(0.8 0.15 ${Math.round(HUE_FROM + f * (HUE_TO - HUE_FROM))})`;
+export type splash_mode = "light" | "dark";
+
+export function rainbow(f: number, mode: splash_mode = "dark"): string {
+	const hue = Math.round(HUE_FROM + f * (HUE_TO - HUE_FROM));
+	return mode === "dark" ? `oklch(0.8 0.15 ${hue})` : rainbow_light(hue);
+}
+
+// darker on paper, with a dip around yellow-green. teal to blue still
+// fall under 4.5:1 once in srgb, so each hue steps darker until the
+// in-gamut colour clears it: the header and footer wordmarks are small text.
+const PAPER_LUMINANCE = luminance([251 / 255, 251 / 255, 249 / 255]);
+const light_ramp = new Map<number, string>();
+
+function rainbow_light(hue: number): string {
+	let color = light_ramp.get(hue);
+	if (color) return color;
+	const dip = Math.exp(-(((hue - 120) / 45) ** 2));
+	for (let l = 0.58 - 0.1 * dip; ; l -= 0.005) {
+		let c = 0.17;
+		let rgb = oklch_to_srgb(l, c, hue);
+		// pull chroma in rather than clipping channels, so wide-gamut
+		// screens show the same colour that was measured here
+		while (c > 0 && rgb.some((v) => v < 0 || v > 1)) rgb = oklch_to_srgb(l, (c -= 0.005), hue);
+		if ((PAPER_LUMINANCE + 0.05) / (luminance(rgb) + 0.05) >= 4.6 || l < 0.3) {
+			color = `oklch(${l.toFixed(3)} ${Math.max(0, c).toFixed(3)} ${hue})`;
+			break;
+		}
+	}
+	light_ramp.set(hue, color);
+	return color;
+}
+
+function oklch_to_srgb(l: number, c: number, hue: number): number[] {
+	const a = c * Math.cos((hue * Math.PI) / 180);
+	const b = c * Math.sin((hue * Math.PI) / 180);
+	const lms = [
+		(l + 0.3963377774 * a + 0.2158037573 * b) ** 3,
+		(l - 0.1055613458 * a - 0.0638541728 * b) ** 3,
+		(l - 0.0894841775 * a - 1.291485548 * b) ** 3
+	];
+	return [
+		4.0767416621 * lms[0] - 3.3077115913 * lms[1] + 0.2309699292 * lms[2],
+		-1.2684380046 * lms[0] + 2.6097574011 * lms[1] - 0.3413193965 * lms[2],
+		-0.0041960863 * lms[0] - 0.7034186147 * lms[1] + 1.707614701 * lms[2]
+	].map((v) => (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
+}
+
+function luminance(rgb: number[]): number {
+	const [r, g, b] = rgb.map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function current_mode(): splash_mode {
+	return document.documentElement.dataset.mode === "light" ? "light" : "dark";
 }
 
 export interface plop_pixel {
@@ -54,7 +106,7 @@ export interface plop_pixel {
 	y: number;
 	el: HTMLElement;
 	ghost: HTMLElement;
-	color: string;
+	color: Record<splash_mode, string>;
 }
 
 export interface plop_target {
@@ -77,6 +129,9 @@ export interface plop {
 	// swap in a new token list. `changed` indexes re-flash if they are lit.
 	set_targets: (targets: plop_target[], changed?: Iterable<number>) => void;
 	scroll_to: (el: HTMLElement, offset: number) => void;
+	// follow a light/dark switch: sparks and the landing flash are drawn
+	// from resolved colours, not css vars
+	set_mode: (mode: splash_mode) => void;
 	destroy: () => void;
 }
 
@@ -91,7 +146,8 @@ interface cell extends plop_pixel {
 	hy: number;
 	dx: number;
 	dy: number;
-	sprite: number;
+	// x offset of this pixel's mote in the atlas, per mode
+	sprite: Record<splash_mode, number>;
 	// last local progress written, last page-space centre, landed flag
 	l: number;
 	px: number;
@@ -133,7 +189,12 @@ export function create_plop(opts: plop_options): plop {
 	const ctx = canvas.getContext("2d")!;
 	const dpr = Math.min(2, window.devicePixelRatio || 1);
 
-	const colors = ["#fff", ...new Set(opts.pixels.map((pixel) => pixel.color))];
+	let mode = current_mode();
+
+	const colors = [
+		"#fff",
+		...new Set(opts.pixels.flatMap((pixel) => [pixel.color.dark, pixel.color.light]))
+	];
 	const mote_cell = Math.ceil(MOTE * dpr) + MOTE_PAD * 2;
 	const atlas_canvas =
 		typeof OffscreenCanvas === "undefined"
@@ -153,7 +214,10 @@ export function create_plop(opts: plop_options): plop {
 
 	const cells: cell[] = opts.pixels.map((pixel) => ({
 		...pixel,
-		sprite: colors.indexOf(pixel.color) * mote_cell,
+		sprite: {
+			dark: colors.indexOf(pixel.color.dark) * mote_cell,
+			light: colors.indexOf(pixel.color.light) * mote_cell
+		},
 		seed: [Math.random(), Math.random(), Math.random(), Math.random()],
 		k: -1,
 		q: 0,
@@ -248,7 +312,9 @@ export function create_plop(opts: plop_options): plop {
 		for (const t of targets) if (!t.free) set_lit(t, t.hits > 0);
 	}
 
-	// the hit: white-hot, then cooling to the token's colour. run through
+	// the hit: white-hot, then cooling to the token's colour. white vanishes
+	// on a light page, so there the token keeps its colour and only the glow
+	// flares. run through
 	// the animations api because a css animation can only be re-triggered by
 	// forcing a reflow, and this fires in the middle of a frame's writes.
 	// easing sits on the keyframes so it applies per segment, as css does it.
@@ -264,14 +330,19 @@ export function create_plop(opts: plop_options): plop {
 		}
 		running?.animation.cancel();
 		const c = t.color;
-		const animation = t.el.animate(
-			[
-				{ color: "#fff", textShadow: `0 0 10px #fff, 0 0 22px ${c}, 0 0 40px ${c}`, easing: "ease-out" },
-				{ color: "#fff", textShadow: `0 0 6px #fff, 0 0 16px ${c}`, easing: "ease-out", offset: 0.4 },
-				{ color: c, textShadow: "0 0 0 transparent" }
-			],
-			500
-		);
+		const keyframes =
+			mode === "light"
+				? [
+						{ color: c, textShadow: `0 0 8px ${c}, 0 0 18px ${c}`, easing: "ease-out" },
+						{ color: c, textShadow: `0 0 5px ${c}, 0 0 12px ${c}`, easing: "ease-out", offset: 0.4 },
+						{ color: c, textShadow: "0 0 0 transparent" }
+					]
+				: [
+						{ color: "#fff", textShadow: `0 0 10px #fff, 0 0 22px ${c}, 0 0 40px ${c}`, easing: "ease-out" },
+						{ color: "#fff", textShadow: `0 0 6px #fff, 0 0 16px ${c}`, easing: "ease-out", offset: 0.4 },
+						{ color: c, textShadow: "0 0 0 transparent" }
+					];
+		const animation = t.el.animate(keyframes, 500);
 		flashes.set(t.el, { color: c, animation });
 	}
 
@@ -318,7 +389,7 @@ export function create_plop(opts: plop_options): plop {
 				phase: Math.random() * 6.3,
 				freq: 0.15 + Math.random() * 0.25,
 				// three in ten twinkle white
-				sprite: Math.random() < 0.3 ? 0 : c.sprite
+				sprite: Math.random() < 0.3 ? 0 : c.sprite[mode]
 			});
 		}
 	}
@@ -468,10 +539,20 @@ export function create_plop(opts: plop_options): plop {
 		}
 	}
 
+	function token_color(el: HTMLElement) {
+		return getComputedStyle(el).getPropertyValue("--tc").trim() || "currentColor";
+	}
+
+	function set_mode(next: splash_mode) {
+		if (next === mode) return;
+		mode = next;
+		for (const t of targets) t.color = token_color(t.el);
+	}
+
 	function set_targets(next: plop_target[], changed: Iterable<number> = []) {
 		targets = next.map((t) => ({
 			...t,
-			color: getComputedStyle(t.el).getPropertyValue("--tc").trim() || "currentColor",
+			color: token_color(t.el),
 			hits: 0,
 			free: false,
 			lit: t.el.hasAttribute("data-lit")
@@ -538,6 +619,7 @@ export function create_plop(opts: plop_options): plop {
 	return {
 		set_targets,
 		scroll_to,
+		set_mode,
 		destroy() {
 			cancelAnimationFrame(raf);
 			cancelAnimationFrame(scroll_raf);

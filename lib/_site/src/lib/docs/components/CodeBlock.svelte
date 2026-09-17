@@ -25,7 +25,7 @@
 
 <style>
 	.code {
-		background: var(--docs-bg-1);
+		background: var(--docs-code-bg);
 		border: 1px solid var(--docs-line);
 		border-radius: 3px;
 		font-family: var(--docs-mono);
@@ -90,7 +90,7 @@
 		width: 28px;
 		margin-right: 16px;
 		text-align: right;
-		color: var(--docs-fg-ghost);
+		color: var(--docs-fg-mute);
 		user-select: none;
 	}
 
@@ -99,61 +99,61 @@
 	   renderer. tuned to read across themes via color-mix into the docs
 	   palette. */
 	.code :global(pre .l.emphasis) {
-		background: color-mix(in oklab, var(--docs-accent) 18%, transparent);
+		background: color-mix(in oklab, var(--docs-accent) calc(18% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 var(--docs-accent);
 	}
 	.code :global(pre .l.highlight) {
-		background: color-mix(in oklab, var(--t-purple) 22%, transparent);
+		background: color-mix(in oklab, var(--t-purple) calc(22% * var(--docs-anno)), transparent);
 	}
 	.code :global(pre .l.subdued) {
 		opacity: 0.45;
 	}
 	.code :global(pre .l.diff-add) {
-		background: color-mix(in oklab, #46c66f 22%, transparent);
+		background: color-mix(in oklab, #46c66f calc(22% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #46c66f;
 	}
 	.code :global(pre .l.diff-del) {
-		background: color-mix(in oklab, #d8533c 22%, transparent);
+		background: color-mix(in oklab, #d8533c calc(22% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #d8533c;
 	}
 	.code :global(pre .l.diff-mod) {
-		background: color-mix(in oklab, #c8a64b 20%, transparent);
+		background: color-mix(in oklab, #c8a64b calc(20% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #c8a64b;
 	}
 	.code :global(pre .l.error) {
-		background: color-mix(in oklab, #d8533c 18%, transparent);
+		background: color-mix(in oklab, #d8533c calc(18% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #d8533c;
 	}
 	.code :global(pre .l.warning) {
-		background: color-mix(in oklab, #d4a13a 18%, transparent);
+		background: color-mix(in oklab, #d4a13a calc(18% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #d4a13a;
 	}
 	.code :global(pre .l.info) {
-		background: color-mix(in oklab, #4a90d9 18%, transparent);
+		background: color-mix(in oklab, #4a90d9 calc(18% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #4a90d9;
 	}
 
 	.code :global(pre .tok.emphasis) {
-		background: color-mix(in oklab, var(--docs-accent) 24%, transparent);
+		background: color-mix(in oklab, var(--docs-accent) calc(24% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.highlight) {
-		background: color-mix(in oklab, var(--t-purple) 28%, transparent);
+		background: color-mix(in oklab, var(--t-purple) calc(28% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.subdued) {
 		opacity: 0.55;
 	}
 	.code :global(pre .tok.diff-add) {
-		background: color-mix(in oklab, #46c66f 28%, transparent);
+		background: color-mix(in oklab, #46c66f calc(28% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.diff-del) {
-		background: color-mix(in oklab, #d8533c 28%, transparent);
+		background: color-mix(in oklab, #d8533c calc(28% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.diff-mod) {
-		background: color-mix(in oklab, #c8a64b 26%, transparent);
+		background: color-mix(in oklab, #c8a64b calc(26% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.error) {

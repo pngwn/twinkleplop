@@ -38,7 +38,7 @@
 		color: var(--t-green);
 	}
 	.num {
-		color: var(--docs-fg-ghost);
+		color: var(--docs-fg-mute);
 		font-size: 14px;
 		font-family: var(--docs-mono);
 		letter-spacing: 1px;

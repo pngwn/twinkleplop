@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Keycap from './Keycap.svelte';
-	import { chrome, open_palette, toggle_tweaks } from '../chrome.svelte';
+	import ModeSwitch from '$lib/components/ModeSwitch.svelte';
+	import { open_palette } from '../chrome.svelte';
 
 	const BRAND = 'twinkleplop';
 	const TWINKLE_COLORS = [
@@ -24,9 +25,9 @@
 		{/each}
 	</a>
 	<nav class="nav-links">
-		<a href="/explore">lab</a><span class="sep">/</span>
-		<a href="/docs/benchmarks">compare</a><span class="sep">/</span>
-		<a class="active" href="/docs">docs</a><span class="sep">/</span>
+		<a href="/explore">lab</a><span class="sep" aria-hidden="true">/</span>
+		<a href="/docs/benchmarks">compare</a><span class="sep" aria-hidden="true">/</span>
+		<a class="active" href="/docs">docs</a><span class="sep" aria-hidden="true">/</span>
 		<a href="#changelog">changelog</a>
 	</nav>
 	<div class="top-right">
@@ -38,13 +39,7 @@
 				<Keycap>K</Keycap>
 			</span>
 		</button>
-		<button
-			class="top-tweaks"
-			title="Tweaks"
-			aria-label="Toggle tweaks panel"
-			aria-expanded={chrome.tweaks_open}
-			onclick={toggle_tweaks}>tweaks</button
-		>
+		<ModeSwitch />
 	</div>
 </header>
 
@@ -137,28 +132,13 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 8px;
-	}
-
-	.top-tweaks {
-		height: 26px;
-		padding: 0 10px;
-		border: 1px solid var(--docs-line);
-		border-radius: 2px;
-		background: var(--docs-bg-1);
-		color: var(--docs-fg-dim);
-		font-family: var(--docs-mono);
-		font-size: var(--docs-fs-sm);
-		cursor: pointer;
-		letter-spacing: 0.3px;
-	}
-	.top-tweaks:hover {
-		border-color: var(--docs-accent-dim);
-		color: var(--docs-fg);
-	}
-	.top-tweaks[aria-expanded='true'] {
-		border-color: var(--docs-accent-dim);
-		color: var(--docs-accent);
-		background: color-mix(in oklch, var(--docs-accent) 10%, transparent);
+		--mode-height: 26px;
+		--mode-font-size: var(--docs-fs-sm);
+		--mode-line: var(--docs-line);
+		--mode-fg: var(--docs-fg-dim);
+		--mode-fg-on: var(--docs-accent);
+		--mode-bg-on: color-mix(in oklch, var(--docs-accent) 12%, transparent);
+		--mode-focus: var(--docs-accent);
 	}
 
 	@media (max-width: 760px) {

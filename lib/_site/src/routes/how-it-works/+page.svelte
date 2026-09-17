@@ -558,7 +558,7 @@
 	.story,
 	.afterword {
 		--ink: #303748;
-		--muted: #768091;
+		--muted: #636c7d;
 		--purple: #7559a9;
 		--paper: #f7f8fb;
 		font-family: 'Avenir Next', Avenir, 'Segoe UI', sans-serif;
