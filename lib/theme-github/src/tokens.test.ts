@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import * as TOKENS from "@twinkleplop/core/tokens";
 import { dark, light } from "./tokens.ts";
@@ -36,3 +37,22 @@ const describe_variant = (name: string, palette: Record<string, string>) => {
 
 describe_variant("light", light);
 describe_variant("dark", dark);
+
+// dist/tokens.js is what consumers actually import — `@twinkleplop/theme-<name>/tokens`
+// resolves there in plain Node, which cannot load the TypeScript source. It is
+// generated from this file by `src/build.ts`, so it must never drift from it.
+describe("dist/tokens.js", () => {
+  const dist = new URL("../dist/tokens.js", import.meta.url);
+
+  if (!fs.existsSync(dist.pathname)) {
+    it("exists (run `pnpm --filter=@twinkleplop/theme-github build`)", () => {
+      expect(fs.existsSync(dist.pathname)).toBe(true);
+    });
+  } else {
+    it("matches the palettes declared here", async () => {
+      const built = await import(dist.href);
+      expect(built.light).toEqual(light);
+      expect(built.dark).toEqual(dark);
+    });
+  }
+});

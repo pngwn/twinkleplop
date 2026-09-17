@@ -2,17 +2,21 @@
   "name": "@twinkleplop/sql",
   "version": "0.1.1",
   "type": "module",
-  "main": "src/index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/types.d.ts",
   "exports": {
     ".": {
       "source": "./src/index.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/types.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./test": "./test/index.js"
   },
   "scripts": {
     "test": "vitest",
-    "gen_test": "node generate-snapshots.js"
+    "gen_test": "node generate-snapshots.js",
+    "types": "node ../../build/dts.mjs"
   },
   "dependencies": {
     "@twinkleplop/core": "workspace:*"

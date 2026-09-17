@@ -85,7 +85,7 @@ ts(code, {
 	const whitespace_css = css`.twinkleplop .space { white-space: pre; }
 .twinkleplop .tab   { white-space: pre; }
 
-/* indent guides are nested spans, one per level */
+/* indent guides are adjacent spans, one per level */
 .twinkleplop .indent {
   box-shadow: inset 1px 0 0 var(--twp-comment);
 }`;
@@ -181,9 +181,9 @@ ts(code, {
 		<p>
 			<code>whitespace</code> wraps spaces and tabs between tokens, one span per character;
 			whitespace inside a token stays part of that token.
-			<code>indent_guides</code> splits leading indentation into nested
-			<code>span.indent</code> levels — a tab is always one level, and
-			<code>size</code> spaces is one level, defaulting to 2.
+			<code>indent_guides</code> splits leading indentation into adjacent
+			<code>span.indent</code> levels — one sibling span per level, not nested — where a tab is
+			always one level and <code>size</code> spaces is one level, defaulting to 2.
 		</p>
 		<CodeBlock fname="whitespace.css" html={whitespace_css} />
 	</Section>

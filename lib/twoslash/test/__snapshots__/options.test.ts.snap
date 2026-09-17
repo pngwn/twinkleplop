@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`defaults > pins the markup for a documented hover 1`] = `
-"<pre class="highlight twoslash"><code><span class="comment">/**
+"<pre class="twinkleplop twoslash"><code><span class="comment">/**
  * Adds two numbers. **Bold** &amp; &lt;b&gt;raw&lt;/b&gt;.
  * @param a the first operand
  * @param b the second operand

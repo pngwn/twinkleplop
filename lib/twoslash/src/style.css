@@ -1,0 +1,163 @@
+/* @twinkleplop/twoslash — structural styles for the twoslash-* spans.
+ *
+ *   import "@twinkleplop/theme-github";       — token colours
+ *   import "@twinkleplop/twoslash/style.css"; — this file
+ *
+ * A theme only colours tokens. Without the rules below every popover span
+ * renders inline, so hover type text appears in the middle of the code
+ * instead of on hover. This file carries layout and visibility only —
+ * colours come from `currentColor` and the two custom properties below, so
+ * it composes with any theme.
+ *
+ * Popovers are positioned absolutely against their hover target, which an
+ * ancestor with `overflow: hidden` or `overflow: auto` will clip. If your
+ * code blocks scroll, drive the popovers with the Popover API instead and
+ * promote them to the top layer: the markup nests `.twoslash-popover`
+ * directly inside `.twoslash-hover`, so setting `popover="manual"` and
+ * calling `showPopover()` on pointerover is all that is needed.
+ */
+
+.twoslash {
+	--twp-twoslash-surface: Canvas;
+	--twp-twoslash-line: color-mix(in oklab, currentColor 25%, transparent);
+	--twp-twoslash-error: #d8533c;
+}
+
+/* --- hover targets ------------------------------------------------------ */
+
+.twoslash-hover {
+	position: relative;
+}
+
+.twoslash-hover > .twoslash-target {
+	text-decoration: underline dotted color-mix(in oklab, currentColor 50%, transparent);
+	text-underline-offset: 3px;
+}
+
+/* --- hover popovers ----------------------------------------------------- */
+
+.twoslash-popover {
+	display: none;
+}
+
+.twoslash-hover:hover > .twoslash-popover,
+.twoslash-hover:focus-within > .twoslash-popover {
+	display: block;
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	z-index: 10;
+	width: max-content;
+	max-width: min(72ch, 100vw);
+	padding: 8px 10px;
+	border: 1px solid var(--twp-twoslash-line);
+	border-radius: 3px;
+	background: var(--twp-twoslash-surface);
+	box-shadow: 0 6px 20px rgb(0 0 0 / 0.35);
+	white-space: pre-wrap;
+	text-align: left;
+	text-decoration: none;
+}
+
+.twoslash-popover-type,
+.twoslash-query-type {
+	display: block;
+}
+
+.twoslash-popover-docs,
+.twoslash-query-docs {
+	display: block;
+	margin-top: 6px;
+	padding-top: 6px;
+	border-top: 1px solid var(--twp-twoslash-line);
+	opacity: 0.8;
+}
+
+.twoslash-popover-tags,
+.twoslash-query-tags {
+	display: block;
+	margin-top: 4px;
+	opacity: 0.8;
+}
+
+.twoslash-popover-tag,
+.twoslash-query-tag {
+	display: block;
+}
+
+.twoslash-popover-tag::before,
+.twoslash-query-tag::before {
+	content: "@" attr(data-tag) " ";
+	opacity: 0.7;
+}
+
+/* --- line annotations --------------------------------------------------- */
+
+/* queries, tags and error messages render as siblings after the line they
+   belong to, so they have to break out of the inline flow. */
+.twoslash-query,
+.twoslash-error-line,
+.twoslash-tag {
+	display: block;
+	width: max-content;
+	max-width: 100%;
+	margin: 2px 0 4px;
+	padding: 4px 10px;
+	border-left: 2px solid var(--twp-twoslash-line);
+	white-space: pre-wrap;
+}
+
+.twoslash-tag::before {
+	content: "@" attr(data-tag-name) " ";
+	opacity: 0.7;
+}
+
+.twoslash-error {
+	text-decoration: underline wavy var(--twp-twoslash-error);
+	text-underline-offset: 3px;
+}
+
+.twoslash-error-line {
+	border-left-color: var(--twp-twoslash-error);
+}
+
+/* --- completions -------------------------------------------------------- */
+
+.twoslash-completion {
+	position: relative;
+}
+
+.twoslash-completions {
+	display: block;
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	z-index: 10;
+	width: max-content;
+	max-width: min(48ch, 100vw);
+	padding: 4px 0;
+	border: 1px solid var(--twp-twoslash-line);
+	border-radius: 3px;
+	background: var(--twp-twoslash-surface);
+	box-shadow: 0 6px 20px rgb(0 0 0 / 0.35);
+	white-space: pre;
+}
+
+.twoslash-completion-entry {
+	display: block;
+	padding: 1px 10px;
+}
+
+.twoslash-completion-docs {
+	display: block;
+	padding: 0 10px 2px;
+	opacity: 0.8;
+	white-space: pre-wrap;
+}
+
+/* --- highlighted ranges ------------------------------------------------- */
+
+.twoslash-highlight {
+	border-radius: 2px;
+	background: color-mix(in oklab, currentColor 12%, transparent);
+}

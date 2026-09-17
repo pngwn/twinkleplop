@@ -13,9 +13,10 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:languages": "pnpm --filter='./languages/**' exec vite build --config ../../build/language.vite.config.ts",
+    "build:languages": "pnpm --filter='./languages/**' exec vite build --config ../../build/language.vite.config.ts && pnpm --filter='./languages/**' run types",
     "build:lib": "pnpm -r --filter='./lib/*' --filter='!site' build",
     "build": "pnpm build:lib && pnpm build:languages",
+    "check:packed": "node build/pack-check.mjs",
     "format:write": "oxfmt",
     "format:check": "oxfmt --check",
     "changeset": "changeset",

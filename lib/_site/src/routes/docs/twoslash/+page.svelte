@@ -5,7 +5,7 @@
 	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { twoslash, twoslash_split, bash } from "$lib/docs/snippets";
+	import { twoslash, twoslash_split, bash, ts } from "$lib/docs/snippets";
 
 	const install = bash`pnpm add @twinkleplop/twoslash`;
 
@@ -26,6 +26,10 @@ const html = highlight(code, { lang: "ts" });`;
 
 // same options, minus \`lang\`
 const highlight = create_highlighter();`;
+
+	const styles = ts`// token colours, then the twoslash layout/visibility rules
+import "@twinkleplop/theme-github";
+import "@twinkleplop/twoslash/style.css";`;
 
 	const tags = twoslash_split`// @log: x is 1
 const x = 1;
@@ -90,6 +94,20 @@ unified()
 			except <code>lang</code>.
 		</p>
 		<CodeBlock fname="svelte.ts" html={svelte_usage} />
+		<p>
+			The output needs two stylesheets. A theme colours the tokens; <code
+				>@twinkleplop/twoslash/style.css</code
+			> positions the twoslash spans. Without it every popover renders inline, so hover type text
+			appears in the middle of the code instead of on hover.
+		</p>
+		<CodeBlock fname="styles.ts" html={styles} />
+		<Callout>
+			The popovers are positioned against their hover target, which an ancestor with
+			<code>overflow: hidden</code> or <code>overflow: auto</code> clips. If your code blocks scroll,
+			drive them with the Popover API instead: <code>.twoslash-popover</code> sits directly inside
+			<code>.twoslash-hover</code>, so setting <code>popover="manual"</code> and calling
+			<code>showPopover()</code> on pointerover promotes them to the top layer.
+		</Callout>
 	</Section>
 
 	<Section id="tags" title="custom tags" num="§ 02">
@@ -123,7 +141,7 @@ unified()
 				[
 					{ kind: "name", value: "class_name" },
 					{ kind: "type", value: "string" },
-					{ kind: "def", value: `"twinkleplop"` },
+					{ kind: "def", value: `"twinkleplop twoslash"` },
 					{ kind: "desc", value: `Replaces the class on the block.` },
 				],
 				[

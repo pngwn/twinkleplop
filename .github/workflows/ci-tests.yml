@@ -72,3 +72,12 @@ jobs:
 
       - name: Run build
         run: pnpm build
+
+      # everything else in the repo resolves @twinkleplop/* through the `source`
+      # condition, straight to src/. a consumer installing from npm never does:
+      # they get dist/ and the generated declaration bundle. an unparseable
+      # .d.ts, a missing `types` condition or an export pointing at an
+      # unpublished file passes `pnpm test` and breaks every consumer, so the
+      # packed tarballs get type-checked and run on their own.
+      - name: Check packed artifacts
+        run: pnpm check:packed

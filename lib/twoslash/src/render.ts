@@ -17,10 +17,13 @@
 //      stack, emit queued line annotations for the line we just ended,
 //      then restore the stack for the next segment.
 //
-// Output is wrapped in <pre class="highlight twoslash"><code>…</code></pre>
-// (className configurable). No CSS is shipped — consumers style the
-// twoslash-* classes themselves to turn the popover spans into tooltips
-// and the query/error spans into block-level callouts.
+// Output is wrapped in <pre class="twinkleplop twoslash"><code>…</code></pre>.
+// `twinkleplop` is the class the themes bind token colours to (matching
+// core's `to_html` default); `twoslash` carries the popover/query styling.
+// (class_name configurable). `@twinkleplop/twoslash/style.css` carries the
+// layout and visibility rules that turn the popover spans into tooltips and
+// the query/error spans into block-level callouts; it is colour-free, so a
+// theme supplies the token colours.
 
 import { language } from "./language.js";
 import type { DocTag, Wrapper, LineAnnotation, HighlightOptions } from "./types.js";
@@ -289,7 +292,7 @@ export function render(
   twoslash_result: TwoslashReturn,
   options: HighlightOptions = {},
 ) {
-  const { class_name = "highlight twoslash" } = options;
+  const { class_name = "twinkleplop twoslash" } = options;
   const { tokens, token_types } = token_result;
   const nodes = twoslash_result.nodes ?? [];
   const ctx = resolve_render_context(options);

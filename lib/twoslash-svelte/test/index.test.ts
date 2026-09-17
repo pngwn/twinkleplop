@@ -49,7 +49,7 @@ describe("@twinkleplop/twoslash-svelte", () => {
 
   it("produces a well-formed <pre><code> wrapper", () => {
     const html = highlight(fixture("hover.svelte"));
-    expect(html.startsWith(`<pre class="highlight twoslash"><code>`)).toBe(true);
+    expect(html.startsWith(`<pre class="twinkleplop twoslash"><code>`)).toBe(true);
     expect(html.endsWith(`</code></pre>`)).toBe(true);
   });
 

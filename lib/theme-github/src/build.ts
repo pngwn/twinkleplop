@@ -66,4 +66,29 @@ for (const name of ["index", "light", "dark"]) {
   writeFileSync(resolve(dist, `${name}.d.ts`), "export {};\n");
 }
 
-console.log("wrote dist/{index,light,dark}.css and their .d.ts stubs");
+// `./tokens` is documented as a plain `import { light, dark }`, so it has to
+// resolve to real JavaScript — pointing the `import` condition at the
+// TypeScript source makes plain Node throw ERR_UNKNOWN_FILE_EXTENSION before
+// the example runs. Emit the palettes beside the stylesheets, from this same
+// source of truth, so the two can never drift.
+const palette_literal = (palette: Record<string, string>) => {
+  const body = Object.entries(palette)
+    .map(([k, v]) => `\t${JSON.stringify(k)}: ${JSON.stringify(v)},`)
+    .join("\n");
+  return `{\n${body}\n}`;
+};
+
+writeFileSync(
+  resolve(dist, "tokens.js"),
+  HEADER +
+    `export const light = ${palette_literal(light)};\n\nexport const dark = ${palette_literal(dark)};\n`,
+);
+
+writeFileSync(
+  resolve(dist, "tokens.d.ts"),
+  HEADER +
+    "export type theme_palette = Record<string, string> & { background_color: string };\n\n" +
+    "export declare const light: theme_palette;\nexport declare const dark: theme_palette;\n",
+);
+
+console.log("wrote dist/{index,light,dark}.css, their .d.ts stubs, and dist/tokens.{js,d.ts}");

@@ -13,10 +13,11 @@
       "types": "./dist/types.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./style.css": "./dist/style.css"
   },
   "scripts": {
-    "build": "vite build --config ../../build/package.vite.config.ts && node ../../build/dts.mjs",
+    "build": "vite build --config ../../build/package.vite.config.ts && node ../../build/dts.mjs && cp src/style.css dist/style.css",
     "test": "vitest"
   },
   "dependencies": {

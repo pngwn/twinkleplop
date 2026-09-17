@@ -706,7 +706,8 @@ export interface RenderOptions {
   // inside a token stays part of it.
   whitespace?: "all" | "boundary" | "leading" | "trailing";
   // splits leading indentation into <span class="indent"> levels: a tab is
-  // one level, `size` spaces are one level (default 2).
+  // one level, `size` spaces are one level (default 2). the level spans are
+  // adjacent siblings, not nested, so each one is exactly one level wide.
   indent_guides?: boolean | { size?: number };
 }
 

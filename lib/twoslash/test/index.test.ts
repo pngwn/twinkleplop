@@ -44,7 +44,7 @@ describe("@twinkleplop/twoslash", () => {
 
   it("produces a well-formed <pre><code> wrapper", () => {
     const html = highlight(`const x = 1\n`);
-    expect(html.startsWith(`<pre class="highlight twoslash"><code>`)).toBe(true);
+    expect(html.startsWith(`<pre class="twinkleplop twoslash"><code>`)).toBe(true);
     expect(html.endsWith(`</code></pre>`)).toBe(true);
   });
 
