@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
@@ -199,13 +198,3 @@ unified()
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="twoslash"
-	sections={[
-		{ href: "#install", label: "§01 — install and use", active: true },
-		{ href: "#tags", label: "§02 — custom tags" },
-		{ href: "#options", label: "§03 — options" },
-		{ href: "#markdown", label: "§04 — in markdown" },
-	]}
-/>

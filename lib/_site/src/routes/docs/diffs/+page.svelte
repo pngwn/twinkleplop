@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
@@ -152,13 +151,3 @@ function changed_block() {
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="diffs"
-	sections={[
-		{ href: "#grammars", label: "§01 — highlighting a patch", active: true },
-		{ href: "#directives", label: "§02 — marking up source" },
-		{ href: "#styling", label: "§03 — styling" },
-		{ href: "#shiki", label: "§04 — shiki notation" },
-	]}
-/>

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
@@ -136,14 +135,3 @@ import "@twinkleplop/theme-github/dark";`;
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="themes"
-	sections={[
-		{ href: "#install", label: "§01 — install a theme", active: true },
-		{ href: "#css_import", label: "§02 — direct import" },
-		{ href: "#css", label: "§03 — theme CSS" },
-		{ href: "#override", label: "§04 — overriding colours" },
-		{ href: "#tokens", label: "§05 — token colours" },
-	]}
-/>

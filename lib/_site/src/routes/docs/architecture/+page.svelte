@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import AsciiArt from "$lib/docs/components/AsciiArt.svelte";
@@ -127,14 +126,3 @@ languages/*       one package per grammar`;
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="architecture"
-	sections={[
-		{ href: "#principles", label: "§01 — design principles", active: true },
-		{ href: "#machine", label: "§02 — state machine" },
-		{ href: "#reclassifier", label: "§03 — reclassification" },
-		{ href: "#rendering", label: "§04 — HTML rendering" },
-		{ href: "#packages", label: "§05 — package layout" },
-	]}
-/>

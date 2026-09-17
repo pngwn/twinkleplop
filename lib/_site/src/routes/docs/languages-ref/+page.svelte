@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
@@ -113,12 +112,3 @@ const ts = language();`;
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="language reference"
-	sections={[
-		{ href: "#list", label: "§01 — packages", active: true },
-		{ href: "#embedding", label: "§02 — embedded languages" },
-		{ href: "#missing", label: "§03 — requesting a language" },
-	]}
-/>

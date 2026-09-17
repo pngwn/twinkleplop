@@ -53,16 +53,17 @@
 			</div>
 		</a>
 		<div class="divider"></div>
+		<nav class="site-links" aria-label="Site">
+			<a class="site-link" href="/explore">explore</a>
+			<span class="crumb__sep" aria-hidden="true">/</span>
+			<a class="site-link" href="/docs">docs</a>
+		</nav>
+		<div class="divider"></div>
 		<nav class="crumbs" aria-label="Breadcrumb">
-			<span class="crumb">lab</span>
-			<span class="crumb__sep" aria-hidden="true">/</span>
-			<span class="crumb">compare</span>
-			<span class="crumb__sep" aria-hidden="true">/</span>
 			<CommandChip
 				label="lang"
 				value={lang}
 				options={languages}
-				hint="↑↓ navigate · ↵ select"
 				on_change={on_lang_change}
 			/>
 			<span class="crumb__sep" aria-hidden="true">/</span>
@@ -70,7 +71,6 @@
 				label="sample"
 				value={sample}
 				options={samples}
-				hint="files in /samples"
 				on_change={on_sample_change}
 			/>
 		</nav>

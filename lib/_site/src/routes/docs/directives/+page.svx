@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
@@ -126,12 +125,3 @@ The built-in directives select line or token mode based on their arguments:
 </Section>
 
 </ArticleMain>
-
-<ArticleOtp
-	title="directives"
-	sections={[
-		{ href: "#s1", label: "§01 — intro", active: true },
-		{ href: "#syntax", label: "§02 — syntax" },
-		{ href: "#s2", label: "§03 — using directives" },
-	]}
-/>

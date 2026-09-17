@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
@@ -125,13 +124,3 @@ always(embed_interleaved({ scan: scan_tagged_template }), "embed");`;
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="fidelity"
-	sections={[
-		{ href: "#tiers", label: "§01 — fidelity options", active: true },
-		{ href: "#always", label: "§02 — required passes" },
-		{ href: "#names", label: "§03 — token types" },
-		{ href: "#ordering", label: "§04 — pass precedence" },
-	]}
-/>

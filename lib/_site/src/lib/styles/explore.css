@@ -216,6 +216,21 @@
 .explore-app .crumb.is-active {
 	color: var(--fg);
 }
+.explore-app .site-links {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	font-size: 12px;
+}
+.explore-app .site-link {
+	color: var(--fg-dim);
+	padding: 2px 4px;
+	text-decoration: none;
+}
+.explore-app .site-link:hover {
+	color: var(--accent);
+}
+
 .explore-app .crumb__sep {
 	color: var(--fg-muted);
 	opacity: 0.5;
@@ -312,11 +327,6 @@
 	letter-spacing: 0.1em;
 	margin-bottom: 4px;
 }
-.explore-app .chip__menu-hint {
-	color: var(--fg-dim);
-	text-transform: none;
-	letter-spacing: 0;
-}
 .explore-app .chip__item {
 	display: flex;
 	align-items: center;
@@ -341,11 +351,6 @@
 .explore-app .chip__item-marker {
 	color: var(--fg-muted);
 	width: 12px;
-}
-.explore-app .chip__item-hint {
-	margin-left: auto;
-	color: var(--fg-dim);
-	font-size: 10px;
 }
 
 /* ---------- inline toggles (ln/diff/edit) ---------- */
@@ -657,12 +662,6 @@
 .explore-app .inspect-tip__value {
 	color: var(--accent);
 	font-variant-numeric: tabular-nums;
-}
-.explore-app .inspect-tip__hint {
-	color: var(--fg-muted);
-	font-size: 9px;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
 }
 .explore-app .inspect-tip__themed {
 	display: inline-flex;
