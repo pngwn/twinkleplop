@@ -39,6 +39,11 @@ describe("custom tags", () => {
     expect(html).toContain(`<span class="twoslash-tag" data-tag-name="log">hello</span>`);
   });
 
+  it("renders a tag on a last line with no trailing newline", () => {
+    const html = build()(`// @log: hello\nconst a = 1`);
+    expect(html).toContain(`<span class="twoslash-tag" data-tag-name="log">hello</span>`);
+  });
+
   it("pre-registers annotate, log, warn and error", () => {
     expect(DEFAULT_CUSTOM_TAGS).toEqual(["annotate", "log", "warn", "error"]);
     // twoslash merges adjacent removals and drops the nodes inside one, so
