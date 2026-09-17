@@ -8,11 +8,9 @@
 
 	const install_code = bash`pnpm add @twinkleplop/theme-github`;
 
-	const use_theme_code = twoslash`// @noUncheckedSideEffectImports: false
-import "@twinkleplop/theme-github";`;
+	const use_theme_code = twoslash`import "@twinkleplop/theme-github";`;
 
-	const variants_code = twoslash`// @noUncheckedSideEffectImports: false
-// both variants, switched by a .dark class on any ancestor
+	const variants_code = twoslash`// both variants, switched by a .dark class on any ancestor
 import "@twinkleplop/theme-github";
 
 // or pick one explicitly

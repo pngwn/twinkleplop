@@ -7,6 +7,7 @@
 		html: string;
 		line_count: number;
 		font: string;
+		show_line_numbers: boolean;
 		perf_ms: number;
 		perf_token_count: number;
 		meta?: Snippet;
@@ -19,6 +20,7 @@
 		html,
 		line_count,
 		font,
+		show_line_numbers,
 		perf_ms,
 		perf_token_count,
 		meta,
@@ -34,7 +36,7 @@
 		<div class="pane__meta">{@render meta?.()}</div>
 	</header>
 
-	<div class="pane__body" style:font-family={font}>
+	<div class="pane__body" class:show-line-numbers={show_line_numbers} style:font-family={font}>
 		{@html html}
 	</div>
 

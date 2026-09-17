@@ -12,8 +12,7 @@
 
 	const install = bash`pnpm add @twinkleplop/theme-github`;
 
-	const use = twoslash`// @noUncheckedSideEffectImports: false
-import "@twinkleplop/theme-github";`;
+	const use = twoslash`import "@twinkleplop/theme-github";`;
 
 	const palette = twoslash`import type { theme_palette } from "@twinkleplop/core";
 
