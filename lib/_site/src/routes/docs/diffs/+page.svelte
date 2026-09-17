@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
@@ -50,20 +49,15 @@ function changed_block() {
 <ArticleMain
 	pane_path="docs / diffs"
 	title="diffs"
-	subtitle="Two ways to render a change: highlight a patch file, or mark up ordinary source."
+	subtitle="Highlight patch files or use directives to mark changes in source code."
 >
 	<p>
-		These solve different problems and do not overlap. If you have a
-		<code>.patch</code> or the output of <code>git diff</code>, you want a diff
-		<em>grammar</em>. If you have ordinary source and want to show what changed,
-		you want diff <em>directives</em>.
+		Use a diff grammar for <code>.patch</code> files or <code>git diff</code> output. Use diff directives
+		to mark added, removed or modified lines in a highlighted code snippet.
 	</p>
 
 	<Section id="grammars" title="highlighting a patch" num="§ 01">
-		<p>
-			Two packages parse diff output. Both are ordinary language packages and
-			behave like any other.
-		</p>
+		<p>Two language packages support diff output:</p>
 		<CodeBlock fname="terminal" html={install} />
 		<CodeBlock fname="diff.ts" html={usage} />
 		<ParamTable
@@ -87,25 +81,21 @@ function changed_block() {
 		/>
 		<p>
 			The tokens they emit are diff-specific:
-			<code>inserted</code>, <code>deleted</code>, <code>changed</code>, each
-			paired with a <code>*_marker</code> type for the leading
+			<code>inserted</code>, <code>deleted</code>, <code>changed</code>, each paired with a
+			<code>*_marker</code>
+			type for the leading
 			<code>+</code>/<code>-</code>/<code>!</code> column, plus
-			<code>heading</code>, <code>label</code> and <code>hash</code> for hunk
-			headers and git metadata in the full package.
+			<code>heading</code>, <code>label</code> and <code>hash</code> for hunk headers and git metadata
+			in the full package.
 		</p>
 		<Callout mark="▸" variant="warn">
-			A diff grammar highlights the patch <em>as a patch</em>. It does not
-			highlight the source language inside the patch — a diff of TypeScript is
-			tokenized as diff, not as TypeScript.
+			Diff grammars highlight patch syntax. They do not highlight the source language inside the
+			patch.
 		</Callout>
 	</Section>
 
 	<Section id="directives" title="marking up source" num="§ 02">
-		<p>
-			To show a change in ordinary, fully highlighted source, use the diff
-			directives. The source stays in its own language and the markers add
-			classes on top.
-		</p>
+		<p>Diff directives add classes to highlighted source code to show changes.</p>
 		<CodeBlock fname="setup.ts" html={markers} />
 		<p>Then write the markers in comments:</p>
 		<SplitCodeBlock
@@ -134,41 +124,30 @@ function changed_block() {
 			]}
 		/>
 		<p>
-			Each takes the full argument grammar — a bare marker covers its own line,
-			<code>+N</code> the lines below, <code>:N..M</code> a range. See
-			<a href="/docs/directives">directives</a> for the rest.
+			Each directive supports line and text ranges. A marker without arguments applies to its own
+			line. <code>+N</code> selects the next N lines, and <code>:N..M</code> selects the lines
+			between N and M. See <a href="/docs/directives">directives</a> for all supported arguments.
 		</p>
 	</Section>
 
 	<Section id="styling" title="styling" num="§ 03">
 		<p>
-			The two approaches land in different places in the output, so they are
-			styled differently. Grammar tokens are <code>span.tok</code> classes;
-			directive overlays are classes on the line span.
+			Diff grammar tokens use classes on <code>span.tok</code>. Line directives add classes to the
+			line span.
 		</p>
 		<CodeBlock fname="diff.css" html={diff_css} />
 		<p>
 			A block containing directive overlays also gains a
-			<code>has-</code> class per classification, so you can style the container
-			based on what it holds without inspecting its contents.
+			<code>has-</code> class per classification, so you can style the container based on the directives
+			it contains.
 		</p>
 	</Section>
 
 	<Section id="shiki" title="shiki notation" num="§ 04">
 		<p>
 			Content written for <code>@shikijs/transformers</code> works unchanged:
-			<code>// [!code ++]</code> and <code>// [!code --]</code> map onto the same
-			classes. See <a href="/docs/migration">migrating from shiki</a>.
+			<code>// [!code ++]</code> and <code>// [!code --]</code> map onto the same classes. See
+			<a href="/docs/migration">migrating from shiki</a>.
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="diffs"
-	sections={[
-		{ href: "#grammars", label: "§01 — highlighting a patch", active: true },
-		{ href: "#directives", label: "§02 — marking up source" },
-		{ href: "#styling", label: "§03 — styling" },
-		{ href: "#shiki", label: "§04 — shiki notation" },
-	]}
-/>

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
@@ -26,7 +25,7 @@ ts(code, {
     "data-title": "math.ts",  // data-title="math.ts"
     tabindex: 0,              // tabindex="0"
     hidden: true,             // hidden
-    draggable: false,         // omitted entirely
+    draggable: false,         // omitted
   },
 });`;
 
@@ -36,7 +35,7 @@ declare const code: string;
 // ---cut---
 ts(code, {
   overlays: [
-    // by byte offset
+    // by UTF-16 offset
     { start: 0, end: 12, class: "highlight" },
     // by line
     { line: 3, class: "diff-add" },
@@ -103,96 +102,85 @@ ts(code, {
 	subtitle="Per-call options on the renderer: classes, attributes, overlays, hooks and whitespace."
 >
 	<p>
-		Render options are passed per call, not per highlighter, so one reusable
-		highlighter can render the same source differently in different places. Pass
-		them as the second argument to a highlight function, or as the third to
-		<code>to_html</code>.
+		Render options control the output of each call. Pass them as the second argument to a highlight
+		function, or as the third argument to <code>to_html</code>.
 	</p>
 	<CodeBlock fname="render.ts" html={basic} />
-	<Callout mark="▸">
-		Omitting every option produces byte-identical output to the no-option path.
-		Options you do not use cost nothing.
-	</Callout>
 
-	<Section id="block" title="the block itself" num="§ 01">
+	<Section id="block" title="block attributes" num="§ 01">
 		<p>
 			<code>class_name</code> replaces <code>twinkleplop</code> on the
-			<code>&lt;pre&gt;</code>. <code>attributes</code> adds arbitrary attributes
-			after the class, in the order given.
+			<code>&lt;pre&gt;</code>. <code>attributes</code> adds arbitrary attributes after the class, in
+			the order given.
 		</p>
 		<CodeBlock fname="attributes.ts" html={attributes} />
 		<p>
-			A string or number becomes <code>name="value"</code>, <code>true</code> a
-			bare attribute name, and <code>false</code> emits nothing at all. Values
-			are HTML-escaped, so a value containing quotes cannot break out of the
-			attribute.
+			A string or number becomes <code>name="value"</code>, <code>true</code> a bare attribute name,
+			and <code>false</code> emits nothing at all. Values are HTML-escaped, so a value containing quotes
+			cannot break out of the attribute.
 		</p>
 		<Callout mark="▸" variant="warn">
-			<code>class</code> and <code>style</code> are reserved —
-			<code>class_name</code> owns the class attribute and themes own styling.
-			Passing either throws a <code>TypeError</code> naming the key, as does an
-			attribute name that is not a valid HTML attribute name.
+			<code>class</code> and <code>style</code> are reserved. Use <code>class_name</code> for the
+			class and CSS for styling. Passing a reserved or invalid attribute name throws a
+			<code>TypeError</code>.
 		</Callout>
 	</Section>
 
 	<Section id="overlays" title="overlays" num="§ 02">
 		<p>
-			An overlay is a CSS class over a range of the source. Overlays never change
-			token types and never move bytes — they only add classes. They come from
-			<a href="/docs/directives">directives</a> in the source, and from this
-			option.
+			Overlays add CSS classes to ranges of source code. You can add them through <a
+				href="/docs/directives">directives</a
+			>
+			or the <code>overlays</code> option.
 		</p>
 		<CodeBlock fname="overlays.ts" html={overlays} />
 		<p>
-			Offsets are UTF-16 code units, the same units as token positions. Lines are
-			1-based, characters 0-based, and <code>end</code> is exclusive in both
-			forms.
+			Offsets are UTF-16 code units, the same units as token positions. Lines are 1-based,
+			characters 0-based, and <code>end</code> is exclusive in both forms.
 		</p>
 		<p>
-			Line-mode overlays add their class to every <code>span.l</code> the range
-			touches. Token-mode overlays wrap the non-whitespace run on each line.
-			Overlapping overlays never nest or throw: each region gets the union of the
-			active classes. A hidden range renders as spaces of equal width, and a line
-			that becomes whitespace-only is dropped — visible line numbering continues
-			without a gap.
+			Line-mode overlays add their class to every <code>span.l</code> the range touches. Token-mode overlays
+			wrap the non-whitespace run on each line. When overlays overlap, each region gets all the classes
+			that apply to it. A hidden range renders as spaces of equal width, and a line that becomes whitespace-only
+			is dropped — visible line numbering continues without a gap.
 		</p>
 		<p>
 			Every classification present also adds a <code>has-</code> class to the
-			<code>&lt;pre&gt;</code>, so a theme can style the block as a whole. Turn
-			that off with <code>has_classes: false</code>.
+			<code>&lt;pre&gt;</code>, so a theme can style the block as a whole. Turn that off with
+			<code>has_classes: false</code>.
 		</p>
 	</Section>
 
 	<Section id="hooks" title="line and token hooks" num="§ 03">
 		<p>
-			The hooks are the extension point for per-line and per-token decoration.
-			Each returns a class, attributes, or nothing.
+			Use hooks to add classes or attributes to individual lines and tokens. Return nothing to leave
+			an element unchanged.
 		</p>
 		<CodeBlock fname="hooks.ts" html={hooks} />
 		<p>
-			Returned classes go after the element's own classes, and returned
-			attributes follow the same escaping rules as <code>attributes</code>. The
+			Returned classes go after the element's own classes, and returned attributes follow the same
+			escaping rules as <code>attributes</code>. The
 			<code>line</code> hook is not called in inline mode.
 		</p>
 	</Section>
 
 	<Section id="inline" title="inline structure" num="§ 04">
 		<p>
-			<code>structure: "inline"</code> drops the block and line elements
-			entirely, which is what you want for code inside a sentence.
+			Use <code>structure: "inline"</code> for code inside a sentence. It omits the block and line
+			elements and separates lines with <code>&lt;br&gt;</code>.
 		</p>
 		<CodeBlock fname="inline.ts" html={inline} />
 	</Section>
 
 	<Section id="whitespace" title="whitespace and indent guides" num="§ 05">
 		<p>
-			By default whitespace between tokens is bare text. Both options below wrap
-			it so you can style it.
+			By default whitespace between tokens is bare text. Both options below wrap it so you can style
+			it.
 		</p>
 		<CodeBlock fname="whitespace.ts" html={whitespace} />
 		<p>
-			<code>whitespace</code> wraps spaces and tabs between tokens, one span per
-			character; whitespace inside a token stays part of that token.
+			<code>whitespace</code> wraps spaces and tabs between tokens, one span per character;
+			whitespace inside a token stays part of that token.
 			<code>indent_guides</code> splits leading indentation into nested
 			<code>span.indent</code> levels — a tab is always one level, and
 			<code>size</code> spaces is one level, defaulting to 2.
@@ -200,31 +188,15 @@ ts(code, {
 		<CodeBlock fname="whitespace.css" html={whitespace_css} />
 	</Section>
 
-	<Section id="output" title="the output contract" num="§ 06">
-		<p>
-			Whatever combination of options you pass, the shape is the same, and themes
-			style it by class alone.
-		</p>
+	<Section id="output" title="HTML output" num="§ 06">
+		<p>Block output uses this HTML structure:</p>
 		<CodeBlock fname="output.html" html={output} />
 		<p>
-			One <code>pre.twinkleplop &gt; code</code> per call. One
-			<code>span.l</code> per visible line. Every classified region is a
-			<code>span.tok &lt;type&gt;</code>, and adjacent regions of the same type
-			render as one span unless a hook decorated them. Text between tokens is
-			bare, escaped text. HTML is produced in a single pass as a string — there
-			is no intermediate document model.
+			The block contains a <code>&lt;pre&gt;</code> and a <code>&lt;code&gt;</code> element, with a
+			<code>span.l</code>
+			for each visible line. Tokens use <code>span.tok</code> with a class for their type. Adjacent tokens
+			of the same type share a span unless a hook adds classes or attributes. Text between tokens is escaped
+			and rendered without a span.
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="render options"
-	sections={[
-		{ href: "#block", label: "§01 — the block itself", active: true },
-		{ href: "#overlays", label: "§02 — overlays" },
-		{ href: "#hooks", label: "§03 — line and token hooks" },
-		{ href: "#inline", label: "§04 — inline structure" },
-		{ href: "#whitespace", label: "§05 — whitespace" },
-		{ href: "#output", label: "§06 — the output contract" },
-	]}
-/>

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
@@ -63,12 +62,12 @@ export const light: theme_palette = {
 <ArticleMain
 	pane_path="docs / reference / themes"
 	title="theme reference"
-	subtitle="The themes that ship, and the token vocabulary they style."
+	subtitle="Available themes and supported token types."
 >
 	<Section id="builtin" title="built-in themes" num="§ 01">
 		<p>
-			Two theme packages ship today. Each carries a light and a dark variant in
-			one stylesheet, switched by a <code>.dark</code> class on any ancestor.
+			Two theme packages are available. Each includes light and dark variants in one stylesheet. Add
+			a <code>.dark</code> class to an ancestor to use dark colours.
 		</p>
 		<CardGrid cols={2}>
 			{#each THEMES as theme}
@@ -85,47 +84,35 @@ export const light: theme_palette = {
 		<CodeBlock fname="terminal" html={install} />
 		<CodeBlock fname="theme.ts" html={use} />
 		<p>
-			See <a href="/docs/themes">themes</a> for variants, overrides and the CSS
-			contract.
+			See <a href="/docs/themes">themes</a> for imports and CSS customisation.
 		</p>
 	</Section>
 
-	<Section id="vocabulary" title="token vocabulary" num="§ 02">
+	<Section id="vocabulary" title="token types" num="§ 02">
 		<p>
-			A theme is a map from token type to colour. These are the types any grammar
-			in the tree emits; the canonical list lives in
-			<code>@twinkleplop/core/tokens</code>.
+			Themes map token types to colours. The standard types are exported from <code
+				>@twinkleplop/core/tokens</code
+			>.
 		</p>
 		<ParamTable headers={["group", "tokens"]} rows={vocab_rows} />
 		<Callout mark="▸" variant="warn">
 			Markdown's <code>*_open</code> / <code>*_close</code> pairs and the
-			<code>raw_*</code> containers are intermediate types. They are consumed by
-			reclassifiers and never reach the output, so styling them has no effect.
+			<code>raw_*</code> containers are intermediate types. They are consumed by reclassifiers and never
+			reach the output, so styling them has no effect.
 		</Callout>
 	</Section>
 
 	<Section id="authoring" title="authoring a theme" num="§ 03">
 		<p>
-			Export a <code>light</code> and a <code>dark</code> palette keyed by token
-			name. The build step generates the three stylesheets —
+			Export a <code>light</code> and a <code>dark</code> palette keyed by token name. The build
+			step generates the three stylesheets —
 			<code>light.css</code>, <code>dark.css</code> and the combined
 			<code>index.css</code>.
 		</p>
 		<CodeBlock fname="tokens.ts" html={palette} />
 		<p>
-			Validate a palette against
-			<code>@twinkleplop/core/tokens</code>: a key that is not in that catalogue
-			will never match a span. Not every theme needs an entry for every type —
-			anything unstyled simply inherits.
+			Use the names from <code>@twinkleplop/core/tokens</code> as palette keys. Tokens without a theme
+			colour inherit their parent's colour.
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="theme reference"
-	sections={[
-		{ href: "#builtin", label: "§01 — built-in themes", active: true },
-		{ href: "#vocabulary", label: "§02 — token vocabulary" },
-		{ href: "#authoring", label: "§03 — authoring a theme" },
-	]}
-/>

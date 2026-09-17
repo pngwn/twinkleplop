@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import AsciiArt from "$lib/docs/components/AsciiArt.svelte";
@@ -28,12 +27,11 @@ languages/*       one package per grammar`;
 <ArticleMain
 	pane_path="docs / technical / architecture"
 	title="architecture"
-	subtitle="Why the library is shaped the way it is."
+	subtitle="The tokenizer, reclassifier pipeline, renderer and package structure."
 >
 	<p>
-		Twinkleplop is a language-agnostic runtime engine plus a set of declarative
-		grammars. The engine knows nothing about any particular language; a grammar
-		knows nothing about the machine that will run it.
+		Twinkleplop uses a shared tokenizer with a separate grammar for each language. Grammars define
+		the rules the tokenizer uses to recognise tokens.
 	</p>
 	<AsciiArt content={layers} />
 
@@ -42,93 +40,80 @@ languages/*       one package per grammar`;
 			<Card
 				icon="▲"
 				title="Performance first"
-				description="Character scanning over regex. Tight loops over abstractions. Typed arrays over objects in hot paths."
+				description="The tokenizer scans characters and stores tokens in typed arrays to reduce processing time and memory use."
 			/>
 			<Card
 				icon="◆"
 				title="Separation of concerns"
-				description="A language-agnostic runtime. Per-language grammars are external and declarative. Cross-language concerns live in a post-tokenization layer."
+				description="The runtime, language grammars and reclassifier pipeline are separate. Embedded languages are handled after tokenization."
 			/>
 			<Card
 				icon="●"
 				title="Declarative grammars"
-				description="Authored with a small DSL of pure factories, compiled into the runtime's optimized form."
+				description="Grammars use a small set of helper functions. The compiler converts them into lookup tables for the tokenizer."
 				more_href="/docs/grammar"
 			/>
 			<Card
 				icon="◐"
 				title="User-controlled fidelity"
-				description="Consumers opt into finer token distinctions. The cost of opt-in detail is the feature's cost, not overhead."
+				description="The fidelity option controls which passes run to identify functions, classes and other specific token types."
 				more_href="/docs/fidelity"
 			/>
 		</CardGrid>
 	</Section>
 
-	<Section id="machine" title="the state machine" num="§ 02">
+	<Section id="machine" title="state machine" num="§ 02">
 		<p>
-			The tokenizer is modelled as a finite state machine augmented with a state
-			stack — formally a pushdown automaton. The FSM gives linear-time
-			processing; the stack is what makes nested and recursive constructs
-			tractable, so a template literal containing an interpolation containing
-			another template literal is a matter of pushing and popping rather than
-			special-casing.
+			The tokenizer uses a state machine with a stack. The stack tracks nested constructs, such as a
+			template literal inside another template literal's interpolation.
 		</p>
 		<p>
-			Grammars describe states and rules. The compiler turns them into flat typed
-			arrays: a transition table indexed by computed integers, dense character
-			maps for ASCII classification, range lists for everything above 127, and a
-			keyword set checked after scanning an identifier span. Nothing is looked up
-			by string at runtime.
+			Grammars describe states and rules. The compiler turns them into flat typed arrays: a
+			transition table indexed by computed integers, dense character maps for ASCII classification,
+			range lists for everything above 127, and a keyword set checked after scanning an identifier
+			span. The tokenizer uses numeric indexes to look up transitions.
 		</p>
 		<Callout mark="▸">
-			Grammars are TypeScript modules, not JSON. They use symbols and tagged
-			objects the compiler understands, so they are not serializable — the
-			"declarative" part is the shape, not the format.
+			Grammars are JavaScript or TypeScript modules. Their rules can contain symbols and tagged
+			objects, so they cannot be serialised as JSON.
 		</Callout>
 	</Section>
 
-	<Section id="reclassifier" title="why a separate reclassifier" num="§ 03">
-		<p>Two problems the state machine cannot solve cheaply:</p>
+	<Section id="reclassifier" title="reclassification" num="§ 03">
+		<p>Reclassifiers handle two tasks after tokenization:</p>
 		<ul>
 			<li>
 				<strong>Multi-token lookahead.</strong> Recognising that
-				<code>foo</code> in <code>const foo = () =&gt; &#123;&#125;</code> is a
-				function would need chained probe states and balanced-paren matching at
-				every <code>=</code> in the file.
+				<code>foo</code> in <code>const foo = () =&gt; &#123;&#125;</code> is a function would need
+				chained probe states and balanced-paren matching at every <code>=</code> in the file.
 			</li>
 			<li>
 				<strong>Cross-language embedding.</strong> Handing
-				<code>&lt;script&gt;</code> content to a JavaScript tokenizer would
-				otherwise mean duplicating an entire sub-language into the host grammar.
+				<code>&lt;script&gt;</code> content to a JavaScript tokenizer would otherwise mean duplicating
+				an entire sub-language into the host grammar.
 			</li>
 		</ul>
 		<p>
-			Both are token-stream transformations, so they compose as a pipeline of
-			pure transforms sitting between the tokenizer and the renderer. The
-			tokenizer stays focused on one language at a time, and a consumer who wants
-			only raw tokens pays nothing for either.
+			These operations run in a pipeline between the tokenizer and renderer. You can use the
+			tokenizer directly if you only need the grammar's tokens.
 		</p>
 		<p>
-			The pipeline is also where fidelity is decided. Most passes are claim
-			producers that merge by precedence rather than order, which is what lets
-			passes be switched on and off independently. See
+			The fidelity option selects which reclassifier passes run. Most passes propose token types,
+			and the pipeline uses precedence to resolve competing proposals. See
 			<a href="/docs/reclassifier">reclassifiers</a>.
 		</p>
 	</Section>
 
-	<Section id="rendering" title="rendering without a tree" num="§ 04">
+	<Section id="rendering" title="HTML rendering" num="§ 04">
 		<p>
-			The generator builds HTML in a single pass as a string. There is no
-			intermediate document model, and that is a deliberate constraint rather
-			than an omission — a tree would dominate the cost of everything else in the
-			pipeline.
+			The renderer builds an HTML string in a single pass. This avoids the cost of creating an
+			intermediate tree.
 		</p>
 		<p>
-			The consequence is that decoration is expressed as classes and attributes
-			on the elements the generator already emits: overlays over byte ranges, and
-			per-line and per-token hooks. That covers the great majority of what
-			transformer systems are used for, and rules out arbitrary element surgery.
-			See <a href="/docs/render_options">render options</a>.
+			Use overlays and line or token hooks to add classes and attributes to the generated elements.
+			These options cannot change the element structure. See <a href="/docs/render_options"
+				>render options</a
+			>.
 		</p>
 	</Section>
 
@@ -136,20 +121,8 @@ languages/*       one package per grammar`;
 		<p>A pnpm workspace of <code>lib/*</code> and <code>languages/*</code>.</p>
 		<CodeBlock fname="workspace" html={packages} />
 		<p>
-			Every language is its own package so consumers install only what they use,
-			and grammars can be versioned independently of the runtime. Themes are
-			generated stylesheets with no runtime component at all.
+			Every language is its own package so consumers install only what they use, and grammars can be
+			versioned independently of the runtime. Themes are generated CSS stylesheets.
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="architecture"
-	sections={[
-		{ href: "#principles", label: "§01 — design principles", active: true },
-		{ href: "#machine", label: "§02 — the state machine" },
-		{ href: "#reclassifier", label: "§03 — why a separate reclassifier" },
-		{ href: "#rendering", label: "§04 — rendering without a tree" },
-		{ href: "#packages", label: "§05 — package layout" },
-	]}
-/>

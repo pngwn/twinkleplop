@@ -732,8 +732,6 @@
 						<li class="inspect-tip__scope">{scope}</li>
 					{/each}
 				</ul>
-			{:else if inspect_chain && inspect_chain.length > 1}
-				<span class="inspect-tip__hint">⇧ for chain</span>
 			{/if}
 		</div>
 	{/if}

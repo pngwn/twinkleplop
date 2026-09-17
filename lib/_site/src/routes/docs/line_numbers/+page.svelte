@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import MiniLab from "$lib/docs/components/MiniLab.svelte";
@@ -48,24 +47,19 @@ const html = ts(code, {
 
 <ArticleMain
 	pane_path="docs / line_numbers"
-
-
 	title="line numbers"
-	subtitle="A popular option for code highlighting is add line numbers to the output. Twinkleplop supports this out of the box."
-
+	subtitle="Add line numbers to highlighted code."
 >
 	<Section id="s1" title="line numbers" num="§ 01">
 		<p>
-		  Line numbers in twinkleplop are a <em>renderer</em> option.</p>
-		<p>This means you can create a single reusable highlighter and decide whether to render line numbers on a per-call basis.
+			Enable line numbers with the <code>line_numbers</code> render option.
 		</p>
+		<p>You can enable or disable them on each call to the highlighter.</p>
 		<CodeBlock fname="line-numbers.ts" html={line_number} />
 	</Section>
 
 	<Section id="s2" title="styling" num="§ 02">
-
-
-		<p>Line numbers are just an extra HTML element that gets output at the start of the line.</p>
+		<p>Each line number is a <code>span.ln</code> at the start of the line.</p>
 		<p>The HTML looks like this:</p>
 		<CodeBlock fname="line-numbers.html" html={html_output} />
 		<p>You can style them like this:</p>
@@ -74,24 +68,13 @@ const html = ts(code, {
 
 	<Section id="s3" title="starting number" num="§ 03">
 		<p>
-			<code>line_numbers</code> also takes an object, so a snippet excerpted from
-			a larger file can carry its real line numbers.
+			Set <code>line_numbers.start</code> to choose the first number. This is useful for excerpts from
+			a larger file.
 		</p>
 		<CodeBlock fname="start.ts" html={start_code} />
 		<p>
-			Numbering counts <em>visible</em> lines. A line dropped because it held only
-			<a href="/docs/directives">directive</a> markers does not consume a number,
-			so the sequence never shows a gap.
+			Only visible lines are numbered. Lines containing only <a href="/docs/directives">directive</a
+			> markers are removed and do not count towards the sequence.
 		</p>
 	</Section>
-
 </ArticleMain>
-
-<ArticleOtp
-	title="line numbers"
-	sections={[
-		{ href: "#s1", label: "§01 — line numbers", active: true },
-		{ href: "#s2", label: "§02 — styling" },
-		{ href: "#s3", label: "§03 — starting number" },
-	]}
-/>

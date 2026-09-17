@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
@@ -73,47 +72,40 @@ unified()
 	subtitle="TypeScript type information rendered into the highlighted output."
 >
 	<p>
-		Twoslash runs the TypeScript compiler over a snippet and reports what it
-		knows: hover types, query results, completions, and errors. Twinkleplop
-		renders that alongside its own tokens, so the output is one HTML string with
-		both.
+		Twoslash uses the TypeScript compiler to get hover types, query results, completions and errors
+		for a snippet. Twinkleplop includes this information in the highlighted HTML.
 	</p>
 
 	<Section id="install" title="install and use" num="§ 01">
 		<CodeBlock fname="terminal" html={install} />
 		<p>
-			<code>create_highlighter</code> builds a reusable highlight function, the
-			same shape as a language package's.
+			<code>create_highlighter</code> builds a reusable highlight function, the same shape as a language
+			package's.
 		</p>
 		<CodeBlock fname="twoslash.ts" html={usage} />
 		<p>Or highlight a single snippet directly:</p>
 		<CodeBlock fname="oneshot.ts" html={oneshot} />
 		<p>
-			Svelte snippets use the sibling package, which takes the same options minus
-			<code>lang</code>.
+			Use <code>@twinkleplop/twoslash-svelte</code> for Svelte snippets. It takes the same options
+			except <code>lang</code>.
 		</p>
 		<CodeBlock fname="svelte.ts" html={svelte_usage} />
 	</Section>
 
 	<Section id="tags" title="custom tags" num="§ 02">
 		<p>
-			An undeclared <code>// @foo</code> reads to twoslash as a mistyped compiler
-			flag and throws. Four tags are pre-registered so the common ones work with
-			no configuration: <code>annotate</code>, <code>log</code>,
+			Twoslash throws an error for unregistered tags such as <code>// @foo</code>. Four tags are
+			registered by default: <code>annotate</code>, <code>log</code>,
 			<code>warn</code> and <code>error</code>.
 		</p>
-		<SplitCodeBlock
-			lang="typescript"
-			left_html={tags.input}
-			right_html={tags.output}
-		/>
+		<SplitCodeBlock lang="typescript" left_html={tags.input} right_html={tags.output} />
 		<p>
-			A tag renders beneath the line that follows it. Tags on adjacent lines
-			merge into one, so keep a line of code between them.
+			A tag renders beneath the line that follows it. Tags on adjacent lines merge into one, so keep
+			a line of code between them.
 		</p>
 		<p>
 			Pass <code>custom_tags</code> to replace that list, or
-			<code>[]</code> to disable tags entirely.
+			<code>[]</code> to disable tags.
 		</p>
 	</Section>
 
@@ -182,38 +174,27 @@ unified()
 			]}
 		/>
 		<Callout mark="▸" variant="warn">
-			<code>render_docs</code> output is inserted as trusted HTML. Sanitise it
-			yourself if the jsdoc is untrusted. Without the option, docs are escaped
-			text.
+			<code>render_docs</code> output is inserted as trusted HTML. Sanitise it yourself if the jsdoc is
+			untrusted. Without the option, docs are escaped text.
 		</Callout>
 		<p>
-			<code>on_error</code> covers the twoslash call alone. A failure in
-			tokenizing or rendering is a bug in twinkleplop and surfaces as one rather
-			than being swallowed.
+			<code>on_error</code> handles errors from Twoslash. Tokenization and rendering errors are thrown
+			directly.
 		</p>
 	</Section>
 
 	<Section id="markdown" title="in markdown" num="§ 04">
 		<p>
-			A registry entry can carry a second highlighter used only for fences that
-			ask for twoslash, so <code>```ts twoslash</code> gets types and plain
-			<code>```ts</code> stays fast.
+			A language registry entry can include a separate Twoslash highlighter. Fences marked <code
+				>```ts twoslash</code
+			>
+			use it; <code>```ts</code> fences use the regular highlighter.
 		</p>
 		<CodeBlock fname="markdown.ts" html={markdown} />
 		<p>
-			Set <code>twoslash: "always"</code> in the plugin options to route every
-			fence through the twoslash highlighter instead. See
+			Set <code>twoslash: "always"</code> in the plugin options to route every fence through the
+			twoslash highlighter instead. See
 			<a href="/docs/markdown">markdown</a>.
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="twoslash"
-	sections={[
-		{ href: "#install", label: "§01 — install and use", active: true },
-		{ href: "#tags", label: "§02 — custom tags" },
-		{ href: "#options", label: "§03 — options" },
-		{ href: "#markdown", label: "§04 — in markdown" },
-	]}
-/>

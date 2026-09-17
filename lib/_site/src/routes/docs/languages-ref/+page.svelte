@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
@@ -45,11 +44,11 @@ const ts = language();`;
 <ArticleMain
 	pane_path="docs / reference / languages"
 	title="language reference"
-	subtitle="Every grammar that ships today."
+	subtitle="Supported languages and their packages."
 >
 	<p>
-		Eighteen packages. Each is installed and imported on its own, and each
-		exposes the same API — see <a href="/docs/languages">languages</a>.
+		Install and import each language package separately. See <a href="/docs/languages">languages</a> for
+		usage and exports.
 	</p>
 	<CodeBlock fname="terminal" html={install} />
 	<CodeBlock fname="usage.ts" html={usage} />
@@ -57,24 +56,22 @@ const ts = language();`;
 	<Section id="list" title="packages" num="§ 01">
 		<ParamTable headers={["package", "notes"]} {rows} />
 		<Callout mark="▸">
-			A grammar is a tokenizer, not a validator. Input that is invalid in the
-			source language still tokenizes — it simply tokenizes as what it looks
-			like.
+			Grammars highlight invalid source code too. They do not validate language syntax.
 		</Callout>
 	</Section>
 
 	<Section id="embedding" title="embedded languages" num="§ 02">
-		<p>
-			Some grammars host others. The sub-language arrives as a dependency of the
-			host package, so one install covers it.
-		</p>
+		<p>Embedded languages are installed as dependencies of the parent language package.</p>
 		<ParamTable
 			headers={["host", "embeds", "where"]}
 			rows={[
 				[
 					{ kind: "name", value: "html" },
 					{ kind: "type", value: "css, javascript" },
-					{ kind: "desc", value: `<code>&lt;style&gt;</code> and <code>&lt;script&gt;</code> elements` },
+					{
+						kind: "desc",
+						value: `<code>&lt;style&gt;</code> and <code>&lt;script&gt;</code> elements`,
+					},
 				],
 				[
 					{ kind: "name", value: "svelte" },
@@ -99,29 +96,19 @@ const ts = language();`;
 			]}
 		/>
 		<p>
-			Embedding is always on. It is a correctness concern rather than an
-			enrichment one, so it runs at every
+			Embedded languages are highlighted at every
 			<a href="/docs/fidelity">fidelity</a> setting.
 		</p>
 	</Section>
 
-	<Section id="missing" title="something missing?" num="§ 03">
+	<Section id="missing" title="requesting a language" num="§ 03">
 		<p>
 			Check the
-			<a href="https://github.com/pngwn/twinkleplop/issues">GitHub issues</a> for
-			planned languages, or
-			<a href="https://github.com/pngwn/twinkleplop/issues/new">open one</a> if
-			yours is not listed. Writing a grammar is a contained job — see
+			<a href="https://github.com/pngwn/twinkleplop/issues">GitHub issues</a> for planned languages,
+			or
+			<a href="https://github.com/pngwn/twinkleplop/issues/new">open one</a> if yours is not listed.
+			To write a grammar yourself, see
 			<a href="/docs/grammar">grammars</a>.
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="language reference"
-	sections={[
-		{ href: "#list", label: "§01 — packages", active: true },
-		{ href: "#embedding", label: "§02 — embedded languages" },
-		{ href: "#missing", label: "§03 — something missing?" },
-	]}
-/>

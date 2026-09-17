@@ -1,16 +1,13 @@
 # @twinkleplop/annotation
 
-In-source directives that decorate highlighted code without changing what
-the language tokenizer thinks the code is. Authors write markers inside
-ordinary source comments; twinkleplop strips the markers from the rendered
-output and adds CSS classes to the spans the markers point at.
+Use directives in source comments to add CSS classes to lines or text. Twinkleplop removes the markers from the output and adds the classes to the selected ranges.
 
 ```js
 const total = items.reduce((a, b) => a + b, 0); // [!em]
 ```
 
 The `// [!em]` comment is removed from the output and the line gets the
-`emphasis` class. Themes decide what that looks like.
+`emphasis` class. Style the class with CSS.
 
 ## Markers
 
@@ -129,7 +126,7 @@ ts(code, {
 });
 ```
 
-Positions are byte offsets in the same units as token positions, or
+Positions are UTF-16 offsets, in the same units as token positions, or
 `{ line, character }` with a 1-based line and a 0-based character; `end` is
 exclusive. `lines` takes line numbers and inclusive `[from, to]` pairs.
 Range items render token-mode, line items line-mode, and hidden ranges
@@ -257,20 +254,18 @@ const highlight = language({
 const html = highlight(source);
 ```
 
-When `annotation` is omitted the language fn is identical to today's — no
-extractor is built, no per-call check runs.
+Omit `annotation` to disable directive processing.
 
 ## How it works
 
 The extractor runs after tokenization. It walks comment tokens, parses
-markers, resolves anchor / line ranges to byte offsets, and dispatches to
+markers, resolves anchor and line ranges to UTF-16 offsets, and dispatches to
 plugins. Each plugin returns overlay contributions: `{ start, end,
 classification, line_mode }`. The framework collects them into a flat
 typed-array on `TokenizeResult.overlays`; the renderer applies the classes
 during string building.
 
-Overlays are independent of token types: they don't perturb the token
-stream and don't interfere with reclassifiers or fidelity tiers.
+Overlays add CSS classes without changing token types. They work with reclassifiers at any fidelity setting.
 
 ## Authoring a plugin
 
@@ -293,9 +288,7 @@ export const note: AnnotationPlugin = {
 ```
 
 Plugins are pure: they consume an `AnnotationInput` (verb, id, parsed args,
-resolved range, marker position) and return overlay contributions. The
-framework owns marker scanning, argument parsing, anchor resolution, and
-pair matching — plugins only decide the classification and the mode.
+resolved range, marker position) and return overlay contributions. The framework scans markers, parses arguments, resolves anchors and matches pairs. Plugins select the classification and mode.
 
 ### Raw arguments
 
@@ -308,7 +301,7 @@ drops marker-only comment lines, honours `\[!` escapes and reports
 `marker_spans_newline` and `malformed` shapes; it does not resolve anchors,
 line refs or pairs, and `#id` is passed through as `id` without pairing.
 
-The input carries what a raw plugin needs to do that itself:
+Raw plugins receive these fields:
 
 - `standalone` is true when the marker's line holds nothing but the
   comment and the comment nothing but markers, so a plugin can tell a
@@ -323,5 +316,4 @@ The input carries what a raw plugin needs to do that itself:
 - `consumed: false` on the output leaves the marker text in place, for
   the part of the verb's argument space the plugin does not recognise.
 
-An overlay outside the source throws a `RangeError` naming the verb, since
-that is a plugin bug rather than an authoring error.
+An overlay outside the source throws a `RangeError` identifying the verb.

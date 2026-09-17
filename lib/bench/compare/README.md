@@ -15,76 +15,52 @@ loads `dist`, which is what consumers import. Every cell runs in a child
 process of its own (`cell.mjs`, always with `--expose-gc`), so the flag is not
 needed on the command.
 
-## The question this has to survive
+## Input selection
 
-A benchmark published by a library's own authors is worth exactly as much as
-its inputs. Anyone reading one should assume the files were chosen to flatter
-the publisher, because that is usually what happened. So the run is built to
-make that assumption checkable rather than to argue against it:
+The benchmark records inputs and output counts so readers can assess the comparison.
 
-- The `upstream` family is vendored from
-  `shikijs/textmate-grammars-themes`, pinned to a commit and hashed. Those
-  are the sample files Shiki's own engine benchmark uses. We did not pick
-  them, cannot quietly re-pick them, and the charts show them next to ours.
-- **Token counts are recorded for every cell and printed under every chart.**
-  A library emitting half as many tokens for the same file is doing less work
-  per byte, not the same work faster. This is the single most common way a
-  highlighter benchmark misleads, and the only fix is to publish the counts.
-- Nothing is allowed to fall back. Several of these libraries return escaped
-  plaintext for a language they do not know instead of throwing, which
-  produces a spectacular, meaningless number. Every adapter declares its
-  languages explicitly, every cell is probed once before it is measured, and
-  a cell that produces no tokens is excluded and recorded in
-  `meta.excluded` rather than published.
+- The `upstream` family contains sample files from Shiki's own engine benchmarks,
+  copied from `shikijs/textmate-grammars-themes` at a recorded commit. File hashes
+  are included in the results. The charts show these alongside Twinkleplop's samples.
+- Token counts are recorded for each result and shown under each chart. Libraries
+  can produce different numbers of tokens for the same source, which affects the
+  amount of work measured.
+- Each adapter lists its supported languages. Before measurement, the harness
+  checks that it produces tokens. Unsupported combinations and results without
+  tokens are excluded and recorded in `meta.excluded`.
 
-## What it does not equalise
+## Differences between libraries
 
-Nothing can make these libraries do identical work, and pretending otherwise
-would be the dishonest option:
+- **HTML output.** Twinkleplop and Prism generate CSS classes. Shiki applies a theme
+  and generates inline styles, which requires additional string processing.
+- **Language support.** sugar-high has a JavaScript tokenizer without a language
+  argument, so it is included only in JS-family charts.
+- **Setup.** Highlighters are configured once before the timed loop. The comparison
+  measures repeated highlighting calls.
 
-- **HTML output differs in kind.** twinkleplop and Prism emit classes and
-  leave colour to a stylesheet. Shiki resolves a theme and writes inline
-  styles — strictly more string work, and a real difference in what you get
-  rather than a handicap imposed here.
-- **sugar-high has no grammar registry.** It is a JavaScript-shaped tokenizer
-  with no language argument, so it appears in the JS-family charts and
-  nowhere else. That absence is a property of the library.
-- **Bind cost is excluded.** Each library is bound once, outside the timed
-  loop. twinkleplop is the only one here with a per-configuration setup step,
-  and charging it on every iteration would measure something no consumer
-  pays.
+## Measurement method
 
-## How the numbers are taken
+A cell is one combination of language, input and mode. All libraries in a cell
+are measured in the same process, alternating within a round. The starting
+library rotates each round to reduce the effect of changes in CPU frequency,
+temperature and background load.
 
-Every library in a cell is measured in the same process, alternating within a
-round, with the starting position rotated each round. A run takes minutes and
-CPU frequency, thermal state and background load all drift over that;
-measuring one library now and another in four minutes compares two machines.
-Interleaving makes the drift common-mode, which is the only reason a bar chart
-built from these numbers means anything.
+Each cell uses a separate process to avoid carrying heap and JIT compiler state
+between cells. In an earlier run, the same Twinkleplop build measured 4141 ops/s
+for `typescript.small` tokenization after more than a hundred cells, compared
+with 5387 ops/s in a fresh process. Prism changed in the opposite direction.
 
-Each cell, though, gets a process of its own. Measured back to back in one
-process, the same build read 4141 ops/s on `typescript.small` tokenize after a
-hundred-odd cells and 5387 fresh, and Prism moved the other way: what an
-earlier cell had done to the heap, the inline caches and the compiler's view
-of each function followed into the next, so a published number depended on
-the run it sat in. `cell.mjs` loads the libraries, probes, warms, measures and
-exits; the cost is one library load per cell, a few seconds each with Shiki's
-grammars. Before each round the cell forces a full GC, re-warms every library
-for 20 ms and scavenges once, for the reasons `perf/README.md` gives under
-"Forced GC, re-warm, minor GC".
+`cell.mjs` loads the libraries, checks their output, warms them, measures them and
+exits. Before each round it forces a full garbage collection, warms each library
+for 20 ms and runs a minor garbage collection. See the measurement method in
+`perf/README.md` for details.
 
-Iteration counts are calibrated per library, unlike the A/B harness next door,
-because the spread between fastest and slowest here is often two orders of
-magnitude and a count calibrated off the slowest would give the fastest four
-iterations per measurement.
+Iteration counts are calibrated separately for each library because their speeds
+can differ by two orders of magnitude.
 
-The consequence: **numbers are comparable within a cell and nowhere else.**
-Comparing a figure here against one from a different run, machine or node
-version is the exact mistake `perf/` exists to prevent, and it is no more
-valid here. `meta.anchor` records whether the machine held still; `spread`
-per library records whether that cell in particular was measured on a quiet
-box.
+Compare results within a cell. For comparisons between commits, use `perf/`.
+`meta.anchor` records changes in machine performance during the run, and `spread`
+records variation between rounds for each library.
 
 ## Options
 
@@ -101,6 +77,5 @@ box.
 | `--target-ms`   | 20                                               |
 | `--out`         | `lib/bench/results/comparison.json`              |
 
-Adding a library means adding an adapter in `libraries.mjs`. Read the rules
-at the top of that file first; both of them exist because the suite got them
-wrong once.
+To add a library, implement an adapter in `libraries.mjs` following the rules
+at the top of the file.

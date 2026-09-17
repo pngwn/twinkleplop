@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
@@ -60,13 +59,10 @@ const html = await get_lang("html");`;
 	<Section id="s1" title="language support" num="§ 01">
 		<p>
 			Every grammar is its own package. See
-			<a href="/docs/languages-ref">the language reference</a> for the full list
-			of what ships today.
+			<a href="/docs/languages-ref">the language reference</a> for the full list of supported languages.
 		</p>
 		<p>
-			Check the <a href="https://github.com/pngwn/twinkleplop/issues">
-				GitHub issues
-			</a>
+			Check the <a href="https://github.com/pngwn/twinkleplop/issues"> GitHub issues </a>
 			for planned languages, and
 			<a href="https://github.com/pngwn/twinkleplop/issues/new">
 				file an issue if yours isn't listed
@@ -75,61 +71,43 @@ const html = await get_lang("html");`;
 	</Section>
 
 	<Section id="s2" title="loading languages" num="§ 02">
-		<p>
-			Languages are self-contained packages. Install and import the ones you
-			need — nothing is bundled that you did not ask for.
-		</p>
+		<p>Install and import a package for each language you need.</p>
 		<CodeBlock fname="html.ts" html={html_usage} />
 		<p>
-			Some grammars embed others. HTML hosts CSS and JavaScript, Svelte hosts
-			both, and JavaScript hosts HTML and CSS through tagged templates. Those
-			sub-languages come along as dependencies of the host package, so a single
-			install is enough.
+			Some languages embed others. HTML and Svelte include CSS and JavaScript, and JavaScript
+			includes HTML and CSS in tagged templates. Embedded languages are dependencies of the parent
+			package and are installed automatically.
 		</p>
 	</Section>
 
-	<Section id="s3" title="using several at once" num="§ 03">
+	<Section id="s3" title="using multiple languages" num="§ 03">
 		<p>
-			Each package exports its factory under the same name, so alias them on
-			import and bind each highlighter to its own variable.
+			Each package exports a function called <code>language</code>. Use import aliases when loading
+			multiple languages.
 		</p>
 		<CodeBlock fname="multiple.ts" html={multiple_languages_usage} />
 	</Section>
 
 	<Section id="s4" title="lazy loading" num="§ 04">
-		<p>
-			Nothing about a language package needs to be loaded eagerly. Keep the
-			imports behind a dynamic <code>import()</code> when you only know the
-			language at runtime.
-		</p>
+		<p>Languages can be lazily imported using dynamic imports.</p>
 		<CodeBlock fname="lazy.ts" html={lazy_loading_usage} />
 	</Section>
 
-	<Section id="s5" title="what a package exports" num="§ 05">
-		<p>Every language package exposes the same five things.</p>
+	<Section id="s5" title="package exports" num="§ 05">
+		<p>Language packages provide these exports:</p>
 		<CodeBlock fname="exports.ts" html={exports_usage} />
 		<p>
-			<code>language</code> is the common path. <code>tokenize</code> is for
-			custom renderers. <code>grammar</code> and <code>reclassifiers</code> are
-			for composing a pipeline by hand — see
+			Use <code>language</code> to generate HTML and <code>tokenize</code> to get tokens for a
+			custom renderer. Use <code>grammar</code> and <code>reclassifiers</code> to configure your own
+			pipeline. See
 			<a href="/docs/reclassifier">reclassifiers</a>.
 		</p>
 		<CodeBlock fname="tokenize.ts" html={tokenize_usage} />
 		<Callout mark="▸" variant="warn">
 			<code>@twinkleplop/whitespace</code> is the one exception: it exports only
-			<code>grammar</code> and <code>raw_grammar</code>. It has no reclassifier
-			pipeline and no <code>language</code> or <code>tokenize</code> factory.
+			<code>grammar</code> and <code>raw_grammar</code>. It has no reclassifier pipeline and no
+			<code>language</code>
+			or <code>tokenize</code> factory.
 		</Callout>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="languages"
-	sections={[
-		{ href: "#s1", label: "§01 — language support", active: true },
-		{ href: "#s2", label: "§02 — loading languages" },
-		{ href: "#s3", label: "§03 — using several at once" },
-		{ href: "#s4", label: "§04 — lazy loading" },
-		{ href: "#s5", label: "§05 — what a package exports" },
-	]}
-/>

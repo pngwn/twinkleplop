@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import SubSection from "$lib/docs/components/SubSection.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
@@ -85,64 +84,50 @@ languages: {
 <ArticleMain
 	pane_path="docs / markdown"
 	title="markdown"
-	subtitle="Three plugins over one core: rehype, remark and markdown-it."
+	subtitle="Highlight code in rehype, remark and markdown-it."
 >
-	<p>
-		The same options produce the same HTML for the same fence through any of the
-		three. Pick the one that matches your toolchain; everything below applies
-		identically to all of them.
-	</p>
+	<p>Use the plugin for your markdown processor. All three share the options described below.</p>
 
 	<Section id="setup" title="setup" num="§ 01">
 		<SubSection id="markdown-it" title="markdown-it">
 			<CodeBlock fname="markdown-it.ts" html={markdown_it} />
 			<p>
 				The plugin replaces the <code>fence</code> renderer rule, and the
-				<code>code_inline</code> rule when inline code is enabled. A fence it
-				leaves alone falls through to whatever rule was in place before, so
-				markdown-it's defaults and other plugins still apply.
+				<code>code_inline</code> rule when inline code is enabled. Code blocks that the plugin does not
+				highlight use the previous renderer rule.
 			</p>
 		</SubSection>
 
 		<SubSection id="remark" title="remark">
 			<CodeBlock fname="remark.ts" html={remark} />
 			<Callout mark="▸" variant="warn">
-				The remark plugin always emits mdast <code>html</code> nodes — it has no
-				hast mode — so a pipeline continuing into rehype needs
-				<code>allowDangerousHtml</code> on both <code>remark-rehype</code> and
-				<code>rehype-stringify</code>. Without it the code blocks disappear.
-				The rehype plugin is different: see below.
+				The remark plugin emits mdast <code>html</code> nodes. If your pipeline continues into
+				rehype, enable <code>allowDangerousHtml</code> on both <code>remark-rehype</code> and
+				<code>rehype-stringify</code> to preserve the code blocks.
 			</Callout>
 		</SubSection>
 
 		<SubSection id="rehype" title="rehype">
 			<CodeBlock fname="rehype.ts" html={rehype} />
 			<p>
-				The plugin replaces each <code>pre &gt; code</code> element with the
-				highlighted block. By default that block is parsed back into hast, so it
-				asks nothing of the rest of the pipeline — no
-				<code>allowDangerousHtml</code> anywhere.
+				The plugin replaces each <code>pre &gt; code</code> element with the highlighted block. By
+				default, it parses the highlighted HTML into hast nodes. This works without
+				<code>allowDangerousHtml</code>.
 			</p>
 			<p>
-				Parsing it back costs about as much again as rendering it did: roughly
-				0.13&nbsp;ms on a 2&nbsp;KB block, or 26&nbsp;ms across a 200-fence
-				document. A build that would rather keep that time can take the string
-				as a raw node instead.
+				Parsing the HTML adds processing time. Set <code>output: "raw"</code> to return the highlighted
+				string as a raw node.
 			</p>
 			<CodeBlock fname="raw.ts" html={raw_output} />
 			<p>
 				<code>"raw"</code> needs <code>allowDangerousHtml</code> on
-				<code>rehype-stringify</code> (or <code>rehype-raw</code> before it), as
-				any plugin emitting markup of its own does; without it the stringifier
-				escapes the block and the page shows the markup as text.
+				<code>rehype-stringify</code> (or <code>rehype-raw</code> before it), otherwise the stringifier
+				escapes the block and displays the HTML as text.
 			</p>
 			<p>
-				The two modes mean the same markup, but not the same bytes. The default
-				path is re-serialised by the pipeline's stringifier, which spells
-				entities its own way — <code>&amp;#x3C;</code> where twinkleplop wrote
-				<code>&amp;lt;</code>, a bare <code>'</code> where it wrote
-				<code>&amp;#39;</code>. <code>"raw"</code> reproduces twinkleplop's own
-				bytes, which is what the markdown-it and remark plugins emit.
+				Both modes render the same code. In the default mode, the pipeline's stringifier may use
+				different HTML entities, such as <code>&amp;#x3C;</code> for <code>&amp;lt;</code>. Raw mode
+				preserves Twinkleplop's HTML string, as the markdown-it and remark plugins do.
 			</p>
 			<p>
 				The language comes from the <code>code</code> element's
@@ -153,38 +138,29 @@ languages: {
 		</SubSection>
 	</Section>
 
-	<Section id="registry" title="the registry" num="§ 02">
+	<Section id="registry" title="language registry" num="§ 02">
 		<p>
-			<code>languages</code> maps a fence name to a highlighter. A value is a
-			highlight function, an entry with a second highlighter for twoslash fences,
-			or the name of another entry.
+			<code>languages</code> maps a fence name to a highlighter. A value is a highlight function, an entry
+			with a second highlighter for twoslash fences, or the name of another entry.
 		</p>
 		<CodeBlock fname="registry.ts" html={registry} />
 		<p>
-			Aliases resolve transitively and once, at plugin setup, so a fence costs one
-			map lookup. A cycle, a name that resolves to nothing, or a
-			<code>default_language</code> outside the registry fails before any
-			document is read.
+			Aliases can refer to other aliases and are resolved during setup. Circular aliases, missing
+			entries and an unregistered <code>default_language</code> cause setup errors.
 		</p>
 		<p>
-			A registry value is whatever <code>language(...)</code> returned, so
-			<a href="/docs/fidelity">fidelity</a> tiers and
-			<a href="/docs/directives">directives</a> are configured where the entry is
-			created — not in the markdown plugin.
+			Configure <a href="/docs/fidelity">fidelity</a> and <a href="/docs/directives">directives</a>
+			when calling <code>language(...)</code> to create each highlighter.
 		</p>
 		<p>
 			Matching is exact and case sensitive: <code>TS</code> is not
 			<code>ts</code>. A fence with no language uses
-			<code>default_language</code>, and with none set is left exactly as the
-			toolchain rendered it.
+			<code>default_language</code>, and with none set is left exactly as the toolchain rendered it.
 		</p>
 		<Callout mark="▸" variant="warn">
-			One divergence between the toolchains. An mdast or hast tree gives a fence
-			with no language and an <em>indented</em> code block the same shape, so
-			<code>default_language</code> covers both in rehype and remark. markdown-it
-			parses indented code under a <code>code_block</code> rule of its own, which
-			the plugin leaves alone, so there
-			<code>default_language</code> reaches fences only.
+			In rehype and remark, <code>default_language</code> applies to both indented code blocks and
+			fences without a language. In markdown-it, it applies only to fences. Indented blocks use
+			markdown-it's existing <code>code_block</code> rule.
 		</Callout>
 	</Section>
 
@@ -210,12 +186,15 @@ languages: {
 				[
 					{ kind: "name", value: "on_unknown_language" },
 					{ kind: "def", value: `"throw"` },
-					{ kind: "desc", value: `<code>"plain"</code> renders the fence as escaped text instead.` },
+					{
+						kind: "desc",
+						value: `<code>"plain"</code> renders the fence as escaped text instead.`,
+					},
 				],
 				[
 					{ kind: "name", value: "line_numbers" },
 					{ kind: "def", value: "false" },
-					{ kind: "desc", value: `Site default; the fence meta overrides it.` },
+					{ kind: "desc", value: `Site default; the fence metadata overrides it.` },
 				],
 				[
 					{ kind: "name", value: "inline" },
@@ -236,22 +215,22 @@ languages: {
 				[
 					{ kind: "name", value: "parse_meta" },
 					{ kind: "def", value: "none" },
-					{ kind: "desc", value: `<code>(raw, parsed) =&gt; render</code>, for house conventions.` },
+					{ kind: "desc", value: `<code>(raw, parsed) =&gt; render</code>, for custom metadata.` },
 				],
 				[
 					{ kind: "name", value: "render" },
 					{ kind: "def", value: "{}" },
-					{ kind: "desc", value: `Site-wide render options, under the per-fence ones.` },
+					{ kind: "desc", value: `Default render options. Individual fences can override them.` },
 				],
 			]}
 		/>
 	</Section>
 
-	<Section id="meta" title="fence meta" num="§ 04">
+	<Section id="meta" title="fence metadata" num="§ 04">
 		<p>
-			Both the shiki/VitePress and rehype-pretty-code families are recognised, so
-			content written for either ports unchanged. Anything no convention claims
-			is left for <code>parse_meta</code>.
+			The plugins support Shiki, VitePress and rehype-pretty-code metadata. Use <code
+				>parse_meta</code
+			> for custom metadata.
 		</p>
 		<ParamTable
 			headers={["convention", "source", "effect"]}
@@ -309,42 +288,29 @@ languages: {
 			]}
 		/>
 		<p>
-			A pattern may hold spaces (<code>/two words/</code>) and escape a slash
-			(<code>/a\/b/</code>). <code>[!code …]</code> inside the fence body is not a
-			meta convention — it belongs to the registered language's
+			A pattern may hold spaces (<code>/two words/</code>) and escape a slash (<code>/a\/b/</code>).
+			<code>[!code …]</code>
+			inside the fence body is not a meta convention — it belongs to the registered language's
 			<a href="/docs/directives">directives</a>.
 		</p>
 	</Section>
 
 	<Section id="output" title="output" num="§ 05">
-		<p>A fence with no title and no caption is the block alone:</p>
+		<p>A fence without a title or caption renders as a code block:</p>
 		<CodeBlock fname="output.html" html={output} />
 		<p>A title or caption wraps it in a figure:</p>
 		<CodeBlock fname="figure.html" html={figure} />
 		<p>
 			Inline code renders as
-			<code>&lt;code class="twinkleplop-inline language-ts"&gt;</code> around the
-			inline structure — no block, no line elements,
+			<code>&lt;code class="twinkleplop-inline language-ts"&gt;</code> around the inline structure —
+			no block, no line elements,
 			<code>&lt;br&gt;</code> between lines.
 		</p>
 		<p>
-			The block itself is whatever the registered highlighter renders, so
-			<code>has-*</code> classes, line classes and hidden marker bytes all apply
-			as on a direct call. <code>class_name</code> replaces
+			The registered highlighter renders the block. Its <code>has-*</code> classes, line classes and
+			hidden ranges work as they do when calling it directly. <code>class_name</code> replaces
 			<code>twinkleplop</code>; <code>language-&lt;name&gt;</code> and
-			<code>data-language</code> always carry the name the author wrote, alias
-			and all.
+			<code>data-language</code> use the language name written in the fence, including aliases.
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="markdown"
-	sections={[
-		{ href: "#setup", label: "§01 — setup", active: true },
-		{ href: "#registry", label: "§02 — the registry" },
-		{ href: "#options", label: "§03 — options" },
-		{ href: "#meta", label: "§04 — fence meta" },
-		{ href: "#output", label: "§05 — output" },
-	]}
-/>

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
@@ -43,15 +42,15 @@ log(total, total); // [!err =total]`;
 <ArticleMain
 	pane_path="docs / directives"
 	title="directives"
-	subtitle="Twinkleplop supports a variety of source directives in comments that can be used to annotate certain parts of the source."
+	subtitle="Use comments to highlight lines and text in a code snippet."
 
 >
 	<Section id="s1" title="intro" num="§ 01">
-		Source directives are an expansion of [Shiki's notation transformers](/docs/migration#notation), allowing you to mark certain parts of a snippet for significance without needing to write a complex grammar. Directives live in the source you are highlighting and are generally local to a line or lines.
+		Source directives add CSS classes to selected lines or text. They extend [Shiki's notation transformers](/docs/migration#notation) with more ways to select parts of a snippet.
 
-		They are a way to 'mark' certain lines or spans of characters with a 'tag' that is rendered as a wrapping class or classes.
+		Write directives in comments in the source you want to highlight.
 
-		Directives have a specific syntax, an accompanying 'verb' (or any word), and are always contained with a language specific comment.
+		Each directive has a verb, such as `hl` for highlighting, and optional arguments that select the lines or text it applies to.
 
 		<SplitCodeBlock
 			lang="typescript"
@@ -80,7 +79,7 @@ A directive is `[!verb]` or `[!verb arguments]`, written inside a comment and cl
 | `[!verb a...]` `[!verb ...b]` | token | a pair, from `a` on the opening marker's line to `b` on the closing marker's line; `..` excludes the anchors |
 | `[!verb#id a...]` | token | names a pair, so pairs of the same verb can overlap |
 
-Anchors come in three kinds:
+There are three anchor formats:
 
 | anchor | matches |
 | ------ | ------- |
@@ -90,10 +89,10 @@ Anchors come in three kinds:
 
 - Anchors never match inside a comment, so a marker cannot match its own text.
 - A line holding nothing but a marker comment is removed from the output, so a bare `[!verb]` has to follow code on the same line. `:N` line numbers still count removed lines.
-- A verb no configured plugin claims is ordinary comment text.
+- Unconfigured verbs are treated as ordinary comment text.
 - A marker with arguments the parser cannot read stays in the output; one whose anchor is not found is removed and applies nothing. Both are reported to the `on_error` option of the annotation config, or with `console.warn` when it is not set.
 
-Several forms at once:
+Example using several directive formats:
 
 <SplitCodeBlock
 	lang="typescript"
@@ -105,9 +104,9 @@ Several forms at once:
 
 <Section id="s2" title="using directives" num="§ 03">
 
-Directives only take affect if you configure them. By default, comments are just comments. When you configure directives, only the specific directives you configure will take effect.
+Directives are disabled by default. Enable the ones you need in the highlighter configuration.
 
-There are several pre-made directives available, each with their own verbs. All of them auto-select line mode or token mode from the argument form:
+The built-in directives select line or token mode based on their arguments:
 
 | plugin   | verb   | classification | typical use                          |
 | -------- | ------ | -------------- | ------------------------------------ |
@@ -126,12 +125,3 @@ There are several pre-made directives available, each with their own verbs. All 
 </Section>
 
 </ArticleMain>
-
-<ArticleOtp
-	title="directives"
-	sections={[
-		{ href: "#s1", label: "§01 — intro", active: true },
-		{ href: "#syntax", label: "§02 — syntax" },
-		{ href: "#s2", label: "§03 — using directives" },
-	]}
-/>

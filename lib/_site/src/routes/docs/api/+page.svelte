@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import SubSection from "$lib/docs/components/SubSection.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
@@ -182,25 +181,22 @@ const result = overlays(source, [
 <ArticleMain
 	pane_path="docs / reference / api"
 	title="api reference"
-	subtitle="The public surface of a language package and of @twinkleplop/core."
+	subtitle="Functions and options exported by language packages and @twinkleplop/core."
 >
 	<Section id="language" title="language()" num="§ 01">
-		<p>
-			The common path. A factory: give it configuration, get back a highlight
-			function that turns source into an HTML string.
-		</p>
+		<p>Creates a highlight function that takes source code and returns an HTML string.</p>
 		<Signature html={language_sig} />
 		<CodeBlock fname="language.ts" html={language_example} />
 		<p>
-			Create the highlighter once and reuse it. Compiling the grammar happens at
-			import; the factory only selects the pipeline.
+			Create the highlighter once and reuse it. The grammar is compiled when the package is
+			imported. The factory configures the reclassifier pipeline.
 		</p>
 	</Section>
 
 	<Section id="tokenize" title="tokenize()" num="§ 02">
 		<p>
-			The same configuration, but the returned function gives you the token
-			stream instead of HTML. Use it when you are rendering yourself.
+			Takes the same options as <code>language()</code> and returns a function that produces tokens. Use
+			it for a custom renderer.
 		</p>
 		<Signature html={tokenize_sig} />
 		<CodeBlock fname="tokenize.ts" html={tokenize_example} />
@@ -240,44 +236,41 @@ const result = overlays(source, [
 
 	<Section id="to_html" title="to_html()" num="§ 03">
 		<p>
-			Renders a token stream. It takes the original source because token
-			positions are offsets into it.
+			Renders a token stream. It takes the original source because token positions are offsets into
+			it.
 		</p>
 		<Signature html={to_html_sig} />
 		<CodeBlock fname="to-html.ts" html={to_html_example} />
 	</Section>
 
 	<Section id="language_options" title="LanguageOptions" num="§ 04">
-		<p>Passed to the factory. Configures the highlighter once.</p>
-		<ParamTable
-			headers={["option", "type", "default", "meaning"]}
-			rows={language_options_rows}
-		/>
+		<p>
+			Pass these options to <code>language()</code> or <code>tokenize()</code> when creating a highlighter.
+		</p>
+		<ParamTable headers={["option", "type", "default", "meaning"]} rows={language_options_rows} />
 	</Section>
 
 	<Section id="render_options" title="RenderOptions" num="§ 05">
 		<p>
-			Per-call. Pass as the second argument to a highlight function, or the third
-			to <code>to_html</code>. Omitting every option produces byte-identical
-			output to the no-option path.
+			Pass these options as the second argument to a highlight function, or the third argument to <code
+				>to_html</code
+			>.
 		</p>
-		<ParamTable
-			headers={["option", "type", "default", "meaning"]}
-			rows={render_options_rows}
-		/>
+		<ParamTable headers={["option", "type", "default", "meaning"]} rows={render_options_rows} />
 		<Callout mark="▸" variant="warn">
 			<code>class</code> and <code>style</code> are reserved keys in
-			<code>attributes</code> and throw a <code>TypeError</code>, as does an
-			invalid attribute name. A non-integer <code>line_numbers.start</code> or a
-			non-positive <code>indent_guides.size</code> throws a
+			<code>attributes</code> and throw a <code>TypeError</code>, as does an invalid attribute name.
+			A non-integer <code>line_numbers.start</code> or a non-positive
+			<code>indent_guides.size</code>
+			throws a
 			<code>RangeError</code>.
 		</Callout>
 	</Section>
 
 	<Section id="core" title="@twinkleplop/core" num="§ 06">
 		<p>
-			Most consumers never import core directly — language packages re-export
-			what you need. These are the entry points that matter when you do.
+			Language packages provide the functions needed for highlighting. Import from core when
+			building a custom pipeline or working with tokens directly.
 		</p>
 
 		<SubSection id="create_language" title="create_language()">
@@ -288,8 +281,7 @@ const result = overlays(source, [
 
 		<SubSection id="overlays_fn" title="overlays()">
 			<p>
-				Builds an <code>OverlayResult</code> from items, optionally merging with
-				an existing one.
+				Builds an <code>OverlayResult</code> from items, optionally merging with an existing one.
 			</p>
 			<CodeBlock fname="overlays.ts" html={overlays_example} />
 		</SubSection>
@@ -307,7 +299,7 @@ const result = overlays(source, [
 					],
 					[
 						{ kind: "name", value: "@twinkleplop/core/debug" },
-						{ kind: "desc", value: `The same surface, built with introspection compiled in.` },
+						{ kind: "desc", value: `The same exports, with debugging support enabled.` },
 					],
 					[
 						{ kind: "name", value: "@twinkleplop/core/compile" },
@@ -318,7 +310,7 @@ const result = overlays(source, [
 					],
 					[
 						{ kind: "name", value: "@twinkleplop/core/tokens" },
-						{ kind: "desc", value: `The canonical token-name catalogue.` },
+						{ kind: "desc", value: `The standard token names.` },
 					],
 					[
 						{ kind: "name", value: "@twinkleplop/core/introspector" },
@@ -326,7 +318,10 @@ const result = overlays(source, [
 					],
 					[
 						{ kind: "name", value: "@twinkleplop/core/grammar-mapper" },
-						{ kind: "desc", value: `<code>GrammarMapper</code>, <code>create_grammar_mapper</code>.` },
+						{
+							kind: "desc",
+							value: `<code>GrammarMapper</code>, <code>create_grammar_mapper</code>.`,
+						},
 					],
 					[
 						{ kind: "name", value: "@twinkleplop/core/types" },
@@ -337,15 +332,3 @@ const result = overlays(source, [
 		</SubSection>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="api reference"
-	sections={[
-		{ href: "#language", label: "§01 — language()", active: true },
-		{ href: "#tokenize", label: "§02 — tokenize()" },
-		{ href: "#to_html", label: "§03 — to_html()" },
-		{ href: "#language_options", label: "§04 — LanguageOptions" },
-		{ href: "#render_options", label: "§05 — RenderOptions" },
-		{ href: "#core", label: "§06 — @twinkleplop/core" },
-	]}
-/>

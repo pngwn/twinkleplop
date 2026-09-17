@@ -3,14 +3,12 @@
 	import { page } from '$app/state';
 	import '$lib/styles/docs.css';
 	import { FLAT, find_by_id } from '$lib/docs/nav';
-	import { chrome, open_palette, close_nav } from '$lib/docs/chrome.svelte';
+	import { chrome, close_nav } from '$lib/docs/chrome.svelte';
 	import { hydrate_mode } from '$lib/theme_mode.svelte';
 
 	import TopBar from '$lib/docs/components/TopBar.svelte';
 	import NavPane from '$lib/docs/components/NavPane.svelte';
-	import StatusLine from '$lib/docs/components/StatusLine.svelte';
 	import BottomBar from '$lib/docs/components/BottomBar.svelte';
-	import CommandPalette from '$lib/docs/components/CommandPalette.svelte';
 	import CrtOverlay from '$lib/docs/components/CrtOverlay.svelte';
 	import MobileScrim from '$lib/docs/components/MobileScrim.svelte';
 	import "@twinkleplop/theme-github";
@@ -23,33 +21,14 @@
 	});
 
 	const active_entry = $derived(find_by_id(active_id));
-	const status_path = $derived(active_entry ? `${active_entry.crumb}.md` : 'docs / welcome.md');
 
 	$effect(() => {
 		active_id;
 		close_nav();
 	});
 
-	function handle_keydown(e: KeyboardEvent) {
-		if (chrome.palette_open) return;
-		const is_mac = navigator.platform.includes('Mac');
-		const meta = is_mac ? e.metaKey : e.ctrlKey;
-		if (meta && e.key.toLowerCase() === 'k') {
-			e.preventDefault();
-			open_palette();
-			return;
-		}
-		const tag = (document.activeElement?.tagName ?? '').toUpperCase();
-		if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
-			e.preventDefault();
-			open_palette();
-		}
-	}
-
 	onMount(() => {
 		hydrate_mode();
-		window.addEventListener('keydown', handle_keydown);
-		return () => window.removeEventListener('keydown', handle_keydown);
 	});
 </script>
 
@@ -66,16 +45,14 @@
 		{@render children()}
 	</div>
 
-	<!-- <StatusLine path={status_path} /> -->
 	<CrtOverlay />
-	<CommandPalette />
 	<BottomBar />
 </div>
 
 <style>
 	.shell {
 		display: grid;
-		grid-template-columns: 240px 1fr 220px;
+		grid-template-columns: 240px 1fr;
 		flex: 1;
 		min-height: 0;
 		border-bottom: 1px solid var(--docs-line);
@@ -84,14 +61,6 @@
 		border-left: 1px dashed var(--docs-line);
 	}
 
-	@media (max-width: 1100px) {
-		.shell {
-			grid-template-columns: 220px 1fr;
-		}
-		.shell :global(> .pane:nth-child(3)) {
-			display: none;
-		}
-	}
 
 	@media (max-width: 760px) {
 		.shell {
@@ -102,9 +71,6 @@
 		}
 		.shell :global(> .pane + .pane) {
 			border-left: 0;
-		}
-		.shell :global(> .pane:nth-child(3)) {
-			display: none;
 		}
 		.shell :global(> .pane:nth-child(1)) {
 			position: fixed;

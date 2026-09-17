@@ -1,17 +1,10 @@
 # @twinkleplop/markdown-core
 
-The shared core of [`@twinkleplop/rehype`](../rehype),
-[`@twinkleplop/markdown-it`](../markdown-it) and
-[`@twinkleplop/remark`](../remark): the language registry, the fence meta
-conventions, and the markup around a highlighted block. The three plugins
-take the same options and produce the same HTML for the same fence; they
-differ only in how they reach a fence and what they hand the result back to.
-The markdown-it and remark plugins hand back the string itself; the rehype
-plugin parses it into hast by default, so its bytes come from the pipeline's
-own stringifier.
+Shared language configuration, fence metadata and HTML rendering for [`@twinkleplop/rehype`](../rehype), [`@twinkleplop/markdown-it`](../markdown-it) and [`@twinkleplop/remark`](../remark).
 
-Install the plugin for your toolchain, not this package. Everything below
-describes all three.
+All three plugins use the options below. markdown-it and remark return HTML strings. rehype parses the HTML into hast nodes by default, which are then serialised by the pipeline's stringifier.
+
+Install the plugin for your markdown processor. It includes this package as a dependency.
 
 ## Setup
 
@@ -46,20 +39,17 @@ Inline `const x = 1{:ts}` in prose.
 | `line_numbers` | `false` | site default; the meta overrides it |
 | `inline` | `false` | `"tailing-curly-colon"` highlights `` `code{:lang}` `` |
 | `twoslash` | `"meta"` | `"always"` routes every fence through the entry's twoslash highlighter |
-| `parse_meta` | none | `(raw, parsed) => render`, for house conventions |
+| `parse_meta` | none | `(raw, parsed) => render`, for custom metadata |
 | `render` | `{}` | render options under the per-fence ones |
 
 A highlight function is what a language package's `language(...)` returns, so
 fidelity tiers, annotation plugins and every other per-language option are
 configured where the entry is created.
 
-### The registry
+### Language registry
 
 Values are a highlight function, an entry with a second highlighter for
-twoslash fences, or the name of another entry. Aliases resolve transitively
-and once, at plugin setup: a fence costs one map lookup, and a cycle, a name
-that resolves to nothing, or a `default_language` outside the registry fails
-before any document is read.
+twoslash fences, or the name of another entry. Aliases can refer to other aliases and are resolved during setup. Circular aliases, missing entries and an unregistered `default_language` cause setup errors.
 
 ```ts
 languages: {
@@ -74,16 +64,11 @@ it is the meta string. Matching is exact and case sensitive: `TS` is not
 `ts`. A fence with no language uses `default_language`, and with none set it
 is left exactly as the toolchain rendered it.
 
-One divergence between the toolchains: an mdast or hast tree gives a fence
-with no language and an indented code block the same shape, so
-`default_language` covers both in rehype and remark, while markdown-it
-parses indented code under a rule of its own that the plugin leaves alone.
+In rehype and remark, `default_language` applies to both indented code blocks and fences without a language. In markdown-it, it applies only to fences. Indented blocks use markdown-it's existing renderer.
 
 ## Meta conventions
 
-Both families are recognised, so content written for shiki, VitePress or
-rehype-pretty-code ports unchanged. Parts no convention claims are ignored
-and left for `parse_meta`.
+The plugins support the Shiki, VitePress and rehype-pretty-code conventions below. Use `parse_meta` for custom metadata.
 
 | convention | source | effect |
 | --- | --- | --- |
@@ -105,12 +90,11 @@ body is not a meta convention: it belongs to the registered language's
 annotation plugins, and `shiki_notation` from
 [`@twinkleplop/annotation`](../annotation) reads it unchanged.
 
-Word ids land on the token spans the wrapper holds rather than on the
-wrapper itself, because overlays carry classes and not attributes.
+Word IDs are added to the token spans inside the overlay wrapper. The wrapper supports classes only.
 
 ## Output
 
-A fence with no title and no caption is the block alone:
+A fence without a title or caption renders as a code block:
 
 ```html
 <pre class="twinkleplop language-ts has-highlight" data-language="ts"><code>…</code></pre>
@@ -129,11 +113,8 @@ A title or a caption wraps it in a figure:
 Inline code is `<code class="twinkleplop-inline language-ts">` around the
 inline structure (no block, no line elements, `<br>` between lines).
 
-The block itself is whatever the registered highlighter renders, so the
-`has-*` classes, line classes, hidden marker bytes and everything else in
-[`@twinkleplop/annotation`](../annotation) apply as they do on a direct
-call. `class_name` from `render` replaces `twinkleplop`; `language-<name>`
-and `data-language` always carry the name the author wrote, alias and all.
+The registered highlighter renders the block. Classes and hidden ranges from [`@twinkleplop/annotation`](../annotation) work as they do when calling it directly. `class_name` from `render` replaces `twinkleplop`; `language-<name>`
+and `data-language` use the language name written in the fence, including aliases.
 
 The fence body reaches the highlighter as written: entities decoded, tabs
 preserved, the fence's trailing newline removed.
@@ -147,17 +128,11 @@ parse_meta: (raw, parsed) => ({
 });
 ```
 
-`raw` is the whole meta string, conventions included, and `parsed` is the
-render options the recognised conventions produced — the overlays for
-`{1,3-4}` and `/word/` among them. The return value is what the fence
-renders with, so a site adds house conventions without forking the plugin.
+`raw` contains the complete metadata string. `parsed` contains render options from recognised conventions, including overlays for `{1,3-4}` and `/word/`. Return the render options to use for the fence.
 
 ## Twoslash
 
-A fence carrying the `twoslash` meta word uses the entry's `twoslash`
-highlighter; every other fence uses `highlight`. `twoslash: "always"` flips
-the default for entries that have one. Asking for twoslash on an entry
-without one names the fence.
+A fence marked `twoslash` uses the entry's Twoslash highlighter. Other fences use `highlight`. Set `twoslash: "always"` to use Twoslash by default where available. Requesting Twoslash for an entry without a Twoslash highlighter throws an error identifying the fence.
 
 Twoslash fences render through
 [`@twinkleplop/twoslash`](../twoslash), which owns its own block markup:
@@ -167,11 +142,7 @@ inside that block. Set `class_name` on the twoslash highlighter to style it.
 
 ## Diagnostics
 
-Annotation issues surface however the registered highlighter was configured:
-an `on_error` sink still receives them, and an error the highlighter throws
-keeps its class and stack and only gains the position the toolchain knew
-about. Everything the plugin owns names the fence, and the file and line when
-the toolchain provides them:
+Annotation issues use the highlighter's configured `on_error` handler. Errors thrown by the highlighter keep their class and stack. Plugin errors identify the fence and include the file and line when available:
 
 ```
 unknown fence language "rust" at docs/guide.md:41
@@ -179,6 +150,4 @@ line 3 is beyond the fence's 2 lines (`ts` fence at docs/guide.md:41)
 two title conventions (`ts` fence at docs/guide.md:41)
 ```
 
-A line reference beyond the fence is an error rather than silently ignored,
-so a typo in a docs range fails the build instead of quietly highlighting
-nothing. A `/word/` with no occurrence is not an error: it renders normally.
+A line reference beyond the end of a fence throws an error. A `/word/` pattern with no matches renders normally.

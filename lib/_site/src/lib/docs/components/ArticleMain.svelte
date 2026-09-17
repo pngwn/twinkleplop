@@ -180,23 +180,6 @@
 		font-size: 0.92em;
 		font-family: var(--docs-mono);
 	}
-	.subtitle :global(.kbd) {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 16px;
-		height: 16px;
-		padding: 0 4px;
-		font-family: var(--docs-mono);
-		font-size: 10px;
-		color: var(--docs-fg-dim);
-		background: var(--docs-bg-2);
-		border: 1px solid var(--docs-line);
-		border-bottom-width: 2px;
-		border-radius: 2px;
-		line-height: 1;
-		letter-spacing: 0.5px;
-	}
 
 	.cursor-block {
 		display: inline-block;

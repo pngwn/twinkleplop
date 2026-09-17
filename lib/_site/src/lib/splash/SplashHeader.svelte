@@ -23,10 +23,8 @@
 	<div class="brand">
 		<a class="wordmark" href="/"><Rainbow text="twinkleplop" /></a>
 		<nav>
-			<a href="/explore/svelte">lab</a><i aria-hidden="true">/</i>
-			<a href="/docs/benchmarks">compare</a><i aria-hidden="true">/</i>
-			<a class="on" href="/docs">docs</a><i aria-hidden="true">/</i>
-			<a href="#changelog">changelog</a>
+			<a href="/explore">explore</a><i aria-hidden="true">/</i>
+			<a class="on" href="/docs">docs</a>
 		</nav>
 	</div>
 	<div class="tools">
