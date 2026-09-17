@@ -684,6 +684,7 @@
 			html={plop_html}
 			line_count={plop_line_count}
 			font={font.value}
+			show_line_numbers={view.show_line_numbers}
 			perf_ms={plop_ms}
 			perf_token_count={plop_token_count}
 			meta={fidelity_meta}
