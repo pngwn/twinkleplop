@@ -171,3 +171,17 @@
 .tok-prop {
 	color: var(--t-teal);
 }
+
+/* markdown tables in the docs spell out literal syntax, so ligatures would
+   draw `...` as one glyph and hide the `..` / `...` distinction, and a chip
+   wrapped mid-expression reads as two. the rules live here rather than in a
+   page <style> because mdsvex currently runs svx style blocks through
+   markdown, which produces css no browser (and no minifier) accepts. */
+.docs-root table:not(.param-table) code {
+	font-feature-settings:
+		'calt' 0,
+		'liga' 0;
+}
+.docs-root table:not(.param-table) td:first-child code {
+	white-space: nowrap;
+}

@@ -135,14 +135,3 @@ There are several pre-made directives available, each with their own verbs. All 
 		{ href: "#s2", label: "§03 — using directives" },
 	]}
 />
-
-<style>
-	/* ligatures draw `...` as one glyph, which hides the difference between
-	   `..` and `...` that these tables are about. */
-	table :global(code) {
-		font-feature-settings:
-			'calt' 0,
-			'liga' 0;
-		white-space: nowrap;
-	}
-</style>
