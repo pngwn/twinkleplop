@@ -7,7 +7,9 @@ CLAUDE.md
 AGENTS.md
 dist/
 scripts/
-docs/
+# anchored: an unanchored `docs/` also matched lib/_site/src/routes/docs,
+# silently ignoring every new page added to the docs site.
+/docs/
 
 # frozen reference builds for the perf harness
 .perf/

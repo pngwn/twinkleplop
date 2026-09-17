@@ -1,108 +1,129 @@
-<!-- <script lang="ts">
+<script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import ParamTable from "$lib/docs/components/ParamTable.svelte";
+	import Callout from "$lib/docs/components/Callout.svelte";
+	import { bash, ts } from "$lib/docs/highlighters";
 
+	const install_src = `pnpm add @twinkleplop/typescript`;
+	const install = bash(install_src);
 
-	import { language } from '@twinkleplop/typescript';
-	const ts = language();
+	const usage_src = `import { language } from "@twinkleplop/typescript";
 
-  	const html_usage_src = `import { language } from '@twinkleplop/html';
+const ts = language();`;
+	const usage = ts(usage_src);
 
-const html_highlighter = language();
+	type row = { name: string; notes: string };
 
-// highlight some code, CSS and JS work
-const html = html_highlighter("<script>1 + 2<\/script>");`;
-	const html_usage = ts(html_usage_src);
+	const languages: row[] = [
+		{ name: "bash", notes: "Variables, expansions, here-docs, builtins." },
+		{ name: "css", notes: "Selectors, at-rules, custom properties, units. Probe-based selector disambiguation." },
+		{ name: "diff", notes: "Unified, context and normal diff, plus git metadata. Combined diff at a basic level." },
+		{ name: "diff-basic", notes: "Line-level diff only. Smaller, no header handling." },
+		{ name: "go", notes: "Predeclared types and builtins at lex time; UPPER_SNAKE constants promoted after." },
+		{ name: "html", notes: "Embeds css and javascript in style and script elements." },
+		{ name: "javascript", notes: "Regex-vs-division disambiguation, template literals, tagged-template embedding of html and css." },
+		{ name: "json", notes: "RFC 8259. No JSON5 extensions — no comments, trailing commas or single quotes." },
+		{ name: "markdown", notes: "CommonMark constructs, front matter, fenced code containers." },
+		{ name: "python", notes: "F-strings, soft keywords, decorators." },
+		{ name: "rust", notes: "Lifetimes, attributes, generics disambiguation, macros." },
+		{ name: "sql", notes: "Case-insensitive keywords resolved in the reclassifier." },
+		{ name: "svelte", notes: "Blocks, directives and expressions. Embeds css and javascript." },
+		{ name: "toml", notes: "Tables, array tables, datetimes." },
+		{ name: "tsx", notes: "TypeScript plus JSX. Reuses the typescript pipeline." },
+		{ name: "typescript", notes: "JavaScript plus types, interfaces, enums and generics." },
+		{ name: "whitespace", notes: "Grammar only — exports no language or tokenize factory." },
+		{ name: "yaml", notes: "Block and flow collections, anchors, aliases, scalars." },
+	];
 
-	const tokenizer_src = `import { tokenizer } from '@twinkleplop/html';
-
-const html_tokenizer = tokenizer();
-
-// get some tokens
-const tokens = html_tokenizer("<p>hello world</p>");`;
-const tokenizer_usage = ts(tokenizer_src);
-
-const multiple_languages_src = `import { language as make_html } from '@twinkleplop/html';
-import { language as make_ts } from '@twinkleplop/typescript';
-
-const html = make_html();
-const ts = make_ts();
-
-// highlight some code, CSS and JS work
-const html = html("<script>1 + 2<\/script>");
-const ts = ts("1 + 2");
-`;
-const multiple_languages_usage = ts(multiple_languages_src);
-
-const lazy_loading_src = `const langs = {
-  ts: () => import('@twinkleplop/typescript'),
-  html: () => import('@twinkleplop/html'),
-}
-
-async function get_lang(lang) {
-  return (await langs[lang]()).language();
-}
-
-// later
-const ts = await get_lang("ts");
-const html = await get_lang("html");
-`;
-
-const lazy_loading_usage = ts(lazy_loading_src);
-
+	const rows = languages.map((l) => [
+		{ kind: "name" as const, value: `@twinkleplop/${l.name}` },
+		{ kind: "desc" as const, value: l.notes },
+	]);
 </script>
 
 <ArticleMain
-	pane_path="docs / languages"
-	title="api reference"
-	subtitle="Working with languages."
+	pane_path="docs / reference / languages"
+	title="language reference"
+	subtitle="Every grammar that ships today."
 >
-	<Section id="lang-support" title="language support" num="§ 01">
+	<p>
+		Eighteen packages. Each is installed and imported on its own, and each
+		exposes the same API — see <a href="/docs/languages">languages</a>.
+	</p>
+	<CodeBlock fname="terminal" html={install} />
+	<CodeBlock fname="usage.ts" html={usage} />
+
+	<Section id="list" title="packages" num="§ 01">
+		<ParamTable headers={["package", "notes"]} {rows} />
+		<Callout mark="▸">
+			A grammar is a tokenizer, not a validator. Input that is invalid in the
+			source language still tokenizes — it simply tokenizes as what it looks
+			like.
+		</Callout>
+	</Section>
+
+	<Section id="embedding" title="embedded languages" num="§ 02">
 		<p>
-		Currently twinkleplop only supports <a href="/docs/languages-ref">a handful of languages</a>.
+			Some grammars host others. The sub-language arrives as a dependency of the
+			host package, so one install covers it.
 		</p>
-		<p>Check the <a href="https://github.com/pngwn/twinkleplop/issues">GitHub issues</a> for planned languages. <a href="https://github.com/pngwn/twinkleplop/issues/new">File an issue if yours isn't listed.</a></p>
+		<ParamTable
+			headers={["host", "embeds", "where"]}
+			rows={[
+				[
+					{ kind: "name", value: "html" },
+					{ kind: "type", value: "css, javascript" },
+					{ kind: "desc", value: `<code>&lt;style&gt;</code> and <code>&lt;script&gt;</code> elements` },
+				],
+				[
+					{ kind: "name", value: "svelte" },
+					{ kind: "type", value: "css, javascript" },
+					{ kind: "desc", value: `style and script blocks, and expressions` },
+				],
+				[
+					{ kind: "name", value: "javascript" },
+					{ kind: "type", value: "html, css" },
+					{ kind: "desc", value: `tagged templates, with interpolation holes preserved` },
+				],
+				[
+					{ kind: "name", value: "typescript" },
+					{ kind: "type", value: "javascript" },
+					{ kind: "desc", value: `inherits the pipeline and adds type-position passes` },
+				],
+				[
+					{ kind: "name", value: "tsx" },
+					{ kind: "type", value: "typescript" },
+					{ kind: "desc", value: `reuses the typescript pipeline verbatim` },
+				],
+			]}
+		/>
+		<p>
+			Embedding is always on. It is a correctness concern rather than an
+			enrichment one, so it runs at every
+			<a href="/docs/fidelity">fidelity</a> setting.
+		</p>
 	</Section>
 
-	<Section id="loading" title="loading languages" num="§ 02">
-		<p>Languages are self contained packages. You can simply install and import the ones you need.</p>
-		<p>Embedded languages are an implementation detail of the language, you don't need to think about them.</p>
-
-		<CodeBlock fname="highlight.ts" html={html_usage} />
-		<p>If you want raw tokens, you can use the tokenizer export:</p>
-		<CodeBlock fname="tokenize.ts" html={tokenizer_usage} />
+	<Section id="missing" title="something missing?" num="§ 03">
+		<p>
+			Check the
+			<a href="https://github.com/pngwn/twinkleplop/issues">GitHub issues</a> for
+			planned languages, or
+			<a href="https://github.com/pngwn/twinkleplop/issues/new">open one</a> if
+			yours is not listed. Writing a grammar is a contained job — see
+			<a href="/docs/grammar">grammars</a>.
+		</p>
 	</Section>
-
-
-	<Section id="multiple-languages" title="multiple languages" num="§ 03">
-		<p>Using two languages is a little bit like using one, except you do it twice:</p>
-		<CodeBlock fname="multiple-languages.ts" html={multiple_languages_usage} />
-		<p>In this example we import the <code>typescript</code> and <code>html</code> languages. html uses typescript internally, but we don't pay for it twice, any modern bundler will deduplicate internal imports as they point to the same thing.</p>
-		<p>Twinkleplop has modern ESM output with granular imports and exports at all sensible boundaries. This works very nicely with bundlers like Vite. No additional gymnastics required.</p>
-	</Section>
-
-	<Section id="lazy-loading" title="lazy loading" num="§ 04">
-		<p>Twinkleplop does not have a custom module loading API, you can simply use your bundler's native dynamic import capabilities.</p>
-		<CodeBlock fname="lazy-loading.ts" html={lazy_loading_usage} />
-		<p>This will create chunks for each language so they can be loaded and initialised on demand.</p>
-	</Section>
-
 </ArticleMain>
 
 <ArticleOtp
-	title="api reference"
+	title="language reference"
 	sections={[
-		{ href: "#twinkle", label: "§01 — twinkle()", active: true },
-		{ href: "#createInstance", label: "§02 — createInstance()" },
-		{ href: "#registerTheme", label: "§03 — registerTheme()" },
-		{ href: "#languages", label: "§04 — languages" },
+		{ href: "#list", label: "§01 — packages", active: true },
+		{ href: "#embedding", label: "§02 — embedded languages" },
+		{ href: "#missing", label: "§03 — something missing?" },
 	]}
-	meta={[
-		{ label: "version", value: "0.4.2" },
-		{ label: "updated", value: "2d ago" },
-		{ label: "authors", value: "pngwn, al" },
-		{ label: "read", value: "~5 min" },
-	]}
-/> -->
+/>

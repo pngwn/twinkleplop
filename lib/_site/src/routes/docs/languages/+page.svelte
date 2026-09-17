@@ -3,106 +3,138 @@
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import Callout from "$lib/docs/components/Callout.svelte";
+	import { ts } from "$lib/docs/highlighters";
 
+	const html_usage_src = `import { language } from "@twinkleplop/html";
 
-	import { language } from '@twinkleplop/typescript';
-	const ts = language();
+const html = language();
 
-  	const html_usage_src = `import { language } from '@twinkleplop/html';
-
-const html_highlighter = language();
-
-// highlight some code, CSS and JS work
-const html = html_highlighter("<script>1 + 2<\/script>");`;
+// css and javascript inside the document are highlighted too
+const out = html("<script>1 + 2<\/script>");`;
 	const html_usage = ts(html_usage_src);
 
-	const tokenizer_src = `import { tokenizer } from '@twinkleplop/html';
+	const tokenize_src = `import { tokenize } from "@twinkleplop/html";
 
-const html_tokenizer = tokenizer();
+const html_tokenizer = tokenize();
 
-// get some tokens
-const tokens = html_tokenizer("<p>hello world</p>");`;
-const tokenizer_usage = ts(tokenizer_src);
+// get a TokenizeResult instead of an HTML string
+const result = html_tokenizer("<p>hello world</p>");`;
+	const tokenize_usage = ts(tokenize_src);
 
-const multiple_languages_src = `import { language as make_html } from '@twinkleplop/html';
-import { language as make_ts } from '@twinkleplop/typescript';
+	const multiple_languages_src = `import { language as make_html } from "@twinkleplop/html";
+import { language as make_ts } from "@twinkleplop/typescript";
 
 const html = make_html();
 const ts = make_ts();
 
-// highlight some code, CSS and JS work
-const html = html("<script>1 + 2<\/script>");
-const ts = ts("1 + 2");
-`;
-const multiple_languages_usage = ts(multiple_languages_src);
+const html_out = html("<script>1 + 2<\/script>");
+const ts_out = ts("1 + 2");`;
+	const multiple_languages_usage = ts(multiple_languages_src);
 
-const lazy_loading_src = `const langs = {
-  ts: () => import('@twinkleplop/typescript'),
-  html: () => import('@twinkleplop/html'),
-}
+	const lazy_loading_src = `const langs = {
+  ts: () => import("@twinkleplop/typescript"),
+  html: () => import("@twinkleplop/html"),
+};
 
-async function get_lang(lang) {
-  return (await langs[lang]()).language();
+async function get_lang(name) {
+  const { language } = await langs[name]();
+  return language();
 }
 
 // later
 const ts = await get_lang("ts");
-const html = await get_lang("html");
-`;
+const html = await get_lang("html");`;
+	const lazy_loading_usage = ts(lazy_loading_src);
 
-const lazy_loading_usage = ts(lazy_loading_src);
-
+	const exports_src = `import {
+  language,      // (options?) => (code, render?) => html string
+  tokenize,      // (options?) => (code) => TokenizeResult
+  grammar,       // the compiled grammar
+  raw_grammar,   // the uncompiled definition
+  reclassifiers, // the default reclassifier pipeline
+} from "@twinkleplop/javascript";`;
+	const exports_usage = ts(exports_src);
 </script>
 
 <ArticleMain
 	pane_path="docs / languages"
-	title="api reference"
-	subtitle="Working with languages."
+	title="languages"
+	subtitle="Working with language packages."
 >
-	<Section id="lang-support" title="language support" num="§ 01">
+	<Section id="s1" title="language support" num="§ 01">
 		<p>
-		Currently twinkleplop only supports <a href="/docs/languages-ref">a handful of languages</a>.
+			Every grammar is its own package. See
+			<a href="/docs/languages-ref">the language reference</a> for the full list
+			of what ships today.
 		</p>
-		<p>Check the <a href="https://github.com/pngwn/twinkleplop/issues">GitHub issues</a> for planned languages. <a href="https://github.com/pngwn/twinkleplop/issues/new">File an issue if yours isn't listed.</a></p>
+		<p>
+			Check the <a href="https://github.com/pngwn/twinkleplop/issues">
+				GitHub issues
+			</a>
+			for planned languages, and
+			<a href="https://github.com/pngwn/twinkleplop/issues/new">
+				file an issue if yours isn't listed
+			</a>.
+		</p>
 	</Section>
 
-	<Section id="loading" title="loading languages" num="§ 02">
-		<p>Languages are self contained packages. You can simply install and import the ones you need.</p>
-		<p>Embedded languages are an implementation detail of the language, you don't need to think about them.</p>
-
-		<CodeBlock fname="highlight.ts" html={html_usage} />
-		<p>If you want raw tokens, you can use the tokenizer export:</p>
-		<CodeBlock fname="tokenize.ts" html={tokenizer_usage} />
+	<Section id="s2" title="loading languages" num="§ 02">
+		<p>
+			Languages are self-contained packages. Install and import the ones you
+			need — nothing is bundled that you did not ask for.
+		</p>
+		<CodeBlock fname="html.ts" html={html_usage} />
+		<p>
+			Some grammars embed others. HTML hosts CSS and JavaScript, Svelte hosts
+			both, and JavaScript hosts HTML and CSS through tagged templates. Those
+			sub-languages come along as dependencies of the host package, so a single
+			install is enough.
+		</p>
 	</Section>
 
-
-	<Section id="multiple-languages" title="multiple languages" num="§ 03">
-		<p>Using two languages is a little bit like using one, except you do it twice:</p>
-		<CodeBlock fname="multiple-languages.ts" html={multiple_languages_usage} />
-		<p>In this example we import the <code>typescript</code> and <code>html</code> languages. html uses typescript internally, but we don't pay for it twice, any modern bundler will deduplicate internal imports as they point to the same thing.</p>
-		<p>Twinkleplop has modern ESM output with granular imports and exports at all sensible boundaries. This works very nicely with bundlers like Vite. No additional gymnastics required.</p>
+	<Section id="s3" title="using several at once" num="§ 03">
+		<p>
+			Each package exports its factory under the same name, so alias them on
+			import and bind each highlighter to its own variable.
+		</p>
+		<CodeBlock fname="multiple.ts" html={multiple_languages_usage} />
 	</Section>
 
-	<Section id="lazy-loading" title="lazy loading" num="§ 04">
-		<p>Twinkleplop does not have a custom module loading API, you can simply use your bundler's native dynamic import capabilities.</p>
-		<CodeBlock fname="lazy-loading.ts" html={lazy_loading_usage} />
-		<p>This will create chunks for each language so they can be loaded and initialised on demand.</p>
+	<Section id="s4" title="lazy loading" num="§ 04">
+		<p>
+			Nothing about a language package needs to be loaded eagerly. Keep the
+			imports behind a dynamic <code>import()</code> when you only know the
+			language at runtime.
+		</p>
+		<CodeBlock fname="lazy.ts" html={lazy_loading_usage} />
 	</Section>
 
+	<Section id="s5" title="what a package exports" num="§ 05">
+		<p>Every language package exposes the same five things.</p>
+		<CodeBlock fname="exports.ts" html={exports_usage} />
+		<p>
+			<code>language</code> is the common path. <code>tokenize</code> is for
+			custom renderers. <code>grammar</code> and <code>reclassifiers</code> are
+			for composing a pipeline by hand — see
+			<a href="/docs/reclassifier">reclassifiers</a>.
+		</p>
+		<CodeBlock fname="tokenize.ts" html={tokenize_usage} />
+		<Callout mark="▸" variant="warn">
+			<code>@twinkleplop/whitespace</code> is the one exception: it exports only
+			<code>grammar</code> and <code>raw_grammar</code>. It has no reclassifier
+			pipeline and no <code>language</code> or <code>tokenize</code> factory.
+		</Callout>
+	</Section>
 </ArticleMain>
 
 <ArticleOtp
-	title="api reference"
+	title="languages"
 	sections={[
-		{ href: "#twinkle", label: "§01 — twinkle()", active: true },
-		{ href: "#createInstance", label: "§02 — createInstance()" },
-		{ href: "#registerTheme", label: "§03 — registerTheme()" },
-		{ href: "#languages", label: "§04 — languages" },
-	]}
-	meta={[
-		{ label: "version", value: "0.4.2" },
-		{ label: "updated", value: "2d ago" },
-		{ label: "authors", value: "pngwn, al" },
-		{ label: "read", value: "~5 min" },
+		{ href: "#s1", label: "§01 — language support", active: true },
+		{ href: "#s2", label: "§02 — loading languages" },
+		{ href: "#s3", label: "§03 — using several at once" },
+		{ href: "#s4", label: "§04 — lazy loading" },
+		{ href: "#s5", label: "§05 — what a package exports" },
 	]}
 />

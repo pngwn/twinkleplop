@@ -1,105 +1,170 @@
-<!-- <script lang="ts">
+<script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
-	import MiniLab from "$lib/docs/components/MiniLab.svelte";
-	import Card from "$lib/docs/components/Card.svelte";
-	import CardGrid from "$lib/docs/components/CardGrid.svelte";
+	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
+	import { bash, css, ts } from "$lib/docs/highlighters";
 
-	const install_code = `<span class="ln">1</span><span class="tok-com"># the core package — everything, lazy-loaded</span>
-<span class="ln">2</span><span class="tok-var">npm</span> <span class="tok-var">i</span> <span class="tok-str">'twinkleplop'</span>
-<span class="ln">3</span>
-<span class="ln">4</span><span class="tok-com"># or, just what you need (tree-shakeable)</span>
-<span class="ln">5</span><span class="tok-var">npm</span> <span class="tok-var">i</span> <span class="tok-str">'@twinkleplop/core'</span> <span class="tok-str">'@twinkleplop/themes'</span>`;
+	const install_src = `pnpm add @twinkleplop/diff`;
+	const install = bash(install_src);
 
-	const first_highlight_code = `<span class="ln">1</span><span class="tok-kw">import</span> <span class="tok-punct">&#123;</span> <span class="tok-var">twinkle</span> <span class="tok-punct">&#125;</span> <span class="tok-kw">from</span> <span class="tok-str">'twinkleplop'</span><span class="tok-punct">;</span>
-<span class="ln">2</span>
-<span class="ln">3</span><span class="tok-kw">const</span> <span class="tok-var">html</span> <span class="tok-punct">=</span> <span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-str">\`const greet = (name: string) =&gt; \\\`hi, \$&#123;name&#125;\\\`;\`</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span>
-<span class="ln">4</span>  <span class="tok-var">lang</span><span class="tok-punct">:</span> <span class="tok-str">'typescript'</span><span class="tok-punct">,</span>
-<span class="ln">5</span>  <span class="tok-var">theme</span><span class="tok-punct">:</span> <span class="tok-str">'github-dark'</span><span class="tok-punct">,</span>
-<span class="ln">6</span><span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>
-<span class="ln">7</span>
-<span class="ln">8</span><span class="tok-var">document</span><span class="tok-punct">.</span><span class="tok-var">body</span><span class="tok-punct">.</span><span class="tok-var">innerHTML</span> <span class="tok-punct">=</span> <span class="tok-var">html</span><span class="tok-punct">;</span>`;
+	const usage_src = `import { language } from "@twinkleplop/diff";
+
+const diff = language();
+const html = diff(patch);`;
+	const usage = ts(usage_src);
+
+	const markers_src = `import { language } from "@twinkleplop/typescript";
+import { add, del, mod } from "@twinkleplop/annotation";
+
+const ts = language({ annotation: { plugins: [add, del, mod] } });
+
+const html = ts(source);`;
+	const markers = ts(markers_src);
+
+	const marker_source_src = `const NUM = 100 // [!del]
+const NUM = 50 // [!add]
+
+// [!mod :4..7]
+function changed_block() {
+  return NUM;
+}`;
+	const marker_source = ts(marker_source_src);
+
+	const diff_css_src = `.twinkleplop .inserted        { color: var(--twp-inserted); }
+.twinkleplop .deleted         { color: var(--twp-deleted); }
+.twinkleplop .inserted_marker,
+.twinkleplop .deleted_marker  { opacity: 0.6; }
+
+/* annotation overlays are line classes, not token types */
+.twinkleplop .l.diff-add { background: rgb(46 160 67 / 0.15); }
+.twinkleplop .l.diff-del { background: rgb(248 81 73 / 0.15); }
+
+/* the block knows what it contains */
+.twinkleplop.has-diff-add { border-left: 2px solid green; }`;
+	const diff_css = css(diff_css_src);
 </script>
 
 <ArticleMain
-	pane_path="docs / getting-started.md"
-	last_edit="last edit: 5d ago · v0.4.2"
-	breadcrumb={[
-		{ label: "docs", href: "/docs" },
-		{ label: "getting-started" },
-	]}
-	tagline="▸ 01 · start here · ~4 min"
-	title="getting started"
-	subtitle="Install twinkleplop, highlight your first snippet, and ship it to production before lunch."
-	prev={{ dir: "← prev", label: "00. welcome", href: "/docs" }}
-	next={{ dir: "next →", label: "02. themes", href: "/docs/themes" }}
+	pane_path="docs / diffs"
+	title="diffs"
+	subtitle="Two ways to render a change: highlight a patch file, or mark up ordinary source."
 >
-	<Section id="s1" title="install" num="§ 01">
-		<p>
-			Pick your flavour. All three packages ship the same core; the wrappers differ only in what
-			they import by default.
-		</p>
-		<CodeBlock fname="terminal" html={install_code} />
-	</Section>
+	<p>
+		These solve different problems and do not overlap. If you have a
+		<code>.patch</code> or the output of <code>git diff</code>, you want a diff
+		<em>grammar</em>. If you have ordinary source and want to show what changed,
+		you want diff <em>directives</em>.
+	</p>
 
-	<Section id="s2" title="first highlight" num="§ 02">
-		<p>One call. One await. One HTML string. That is the whole library from the outside:</p>
-		<CodeBlock fname="first-twinkle.ts" html={first_highlight_code} />
-	</Section>
-
-	<Section id="s3" title="try it live" num="§ 03">
+	<Section id="grammars" title="highlighting a patch" num="§ 01">
 		<p>
-			Edit the source on the left. The output on the right re-twinkles on every keystroke. This
-			is a scaled-down embed of <a href="/explore">the lab</a>.
+			Two packages parse diff output. Both are ordinary language packages and
+			behave like any other.
 		</p>
-		<MiniLab />
-	</Section>
-
-	<Section id="s4" title="framework adapters" num="§ 04">
+		<CodeBlock fname="terminal" html={install} />
+		<CodeBlock fname="diff.ts" html={usage} />
+		<ParamTable
+			headers={["package", "covers"]}
+			rows={[
+				[
+					{ kind: "name", value: "@twinkleplop/diff" },
+					{
+						kind: "desc",
+						value: `Unified diff, context diff, normal diff, and git metadata (<code>index</code>, similarity, rename, mode, binary). Combined diff (<code>@@@</code>) at a basic level.`,
+					},
+				],
+				[
+					{ kind: "name", value: "@twinkleplop/diff-basic" },
+					{
+						kind: "desc",
+						value: `Line-level only: inserted, deleted, changed and their markers. Smaller, with no header or metadata handling.`,
+					},
+				],
+			]}
+		/>
 		<p>
-			Pre-built adapters for the usual suspects. All of them share the same rendering pipeline —
-			nothing forked, nothing special.
+			The tokens they emit are diff-specific:
+			<code>inserted</code>, <code>deleted</code>, <code>changed</code>, each
+			paired with a <code>*_marker</code> type for the leading
+			<code>+</code>/<code>-</code>/<code>!</code> column, plus
+			<code>heading</code>, <code>label</code> and <code>hash</code> for hunk
+			headers and git metadata in the full package.
 		</p>
-		<CardGrid cols={3}>
-			<Card
-				icon="⚛"
-				title="react"
-				description={`<code>&lt;Twinkle code=&#123;code&#125; lang="ts" /&gt;</code>`}
-			/>
-			<Card
-				icon="△"
-				title="svelte"
-				description={`<code>&lt;Twinkle &#123;code&#125; lang="ts" /&gt;</code>`}
-			/>
-			<Card
-				icon="♢"
-				title="vue"
-				description={`<code>&lt;Twinkle :code lang="ts" /&gt;</code>`}
-			/>
-		</CardGrid>
-		<Callout mark="✦">
-			<strong>What next?</strong> Pick a <a href="/docs/themes">theme</a>, skim the
-			<a href="/docs/api">API reference</a>, or learn
-			<a href="/docs/tokenization">how tokenization works</a> under the hood.
+		<Callout mark="▸" variant="warn">
+			A diff grammar highlights the patch <em>as a patch</em>. It does not
+			highlight the source language inside the patch — a diff of TypeScript is
+			tokenized as diff, not as TypeScript.
 		</Callout>
+	</Section>
+
+	<Section id="directives" title="marking up source" num="§ 02">
+		<p>
+			To show a change in ordinary, fully highlighted source, use the diff
+			directives. The source stays in its own language and the markers add
+			classes on top.
+		</p>
+		<CodeBlock fname="setup.ts" html={markers} />
+		<p>Then write the markers in comments:</p>
+		<CodeBlock fname="example.ts" html={marker_source} />
+		<ParamTable
+			headers={["verb", "class", "meaning"]}
+			rows={[
+				[
+					{ kind: "name", value: "[!add]" },
+					{ kind: "type", value: "diff-add" },
+					{ kind: "desc", value: "added" },
+				],
+				[
+					{ kind: "name", value: "[!del]" },
+					{ kind: "type", value: "diff-del" },
+					{ kind: "desc", value: "removed" },
+				],
+				[
+					{ kind: "name", value: "[!mod]" },
+					{ kind: "type", value: "diff-mod" },
+					{ kind: "desc", value: "modified" },
+				],
+			]}
+		/>
+		<p>
+			Each takes the full argument grammar — a bare marker covers its own line,
+			<code>+N</code> the lines below, <code>:N..M</code> a range. See
+			<a href="/docs/directives">directives</a> for the rest.
+		</p>
+	</Section>
+
+	<Section id="styling" title="styling" num="§ 03">
+		<p>
+			The two approaches land in different places in the output, so they are
+			styled differently. Grammar tokens are <code>span.tok</code> classes;
+			directive overlays are classes on the line span.
+		</p>
+		<CodeBlock fname="diff.css" html={diff_css} />
+		<p>
+			A block containing directive overlays also gains a
+			<code>has-</code> class per classification, so you can style the container
+			based on what it holds without inspecting its contents.
+		</p>
+	</Section>
+
+	<Section id="shiki" title="shiki notation" num="§ 04">
+		<p>
+			Content written for <code>@shikijs/transformers</code> works unchanged:
+			<code>// [!code ++]</code> and <code>// [!code --]</code> map onto the same
+			classes. See <a href="/docs/migration">migrating from shiki</a>.
+		</p>
 	</Section>
 </ArticleMain>
 
 <ArticleOtp
-	title="getting started"
+	title="diffs"
 	sections={[
-		{ href: "#s1", label: "§01 — install", active: true },
-		{ href: "#s2", label: "§02 — first highlight" },
-		{ href: "#s3", label: "§03 — try it live" },
-		{ href: "#s4", label: "§04 — framework adapters" },
+		{ href: "#grammars", label: "§01 — highlighting a patch", active: true },
+		{ href: "#directives", label: "§02 — marking up source" },
+		{ href: "#styling", label: "§03 — styling" },
+		{ href: "#shiki", label: "§04 — shiki notation" },
 	]}
-	meta={[
-		{ label: "version", value: "0.4.2" },
-		{ label: "updated", value: "5d ago" },
-		{ label: "authors", value: "pngwn" },
-		{ label: "read", value: "~4 min" },
-	]}
-/> -->
+/>
