@@ -1,9 +1,18 @@
 <script lang="ts">
 	import "../../app.css";
 	import "../../highlight-styles.css";
+	import Seo from "$lib/components/Seo.svelte";
+	import { page } from "$app/state";
 
 	let { children } = $props();
+
+	const lang = $derived(page.params.lang);
 </script>
+
+<Seo
+	title={lang ? `${lang} · twinkleplop explore` : "twinkleplop · explore"}
+	description="Try twinkleplop in the browser: pick a language, theme and font, edit the source and inspect the tokens."
+/>
 
 {@render children?.()}
 

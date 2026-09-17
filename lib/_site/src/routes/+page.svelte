@@ -2,6 +2,7 @@
 	import { onMount } from "svelte";
 	import { create_plop, type plop, type plop_target } from "$lib/splash/plop";
 	import SplashHeader from "$lib/splash/SplashHeader.svelte";
+	import Seo from "$lib/components/Seo.svelte";
 	import Wordmark from "$lib/splash/Wordmark.svelte";
 	import Rainbow from "$lib/splash/Rainbow.svelte";
 	import LiveCard from "$lib/splash/LiveCard.svelte";
@@ -70,13 +71,10 @@
 	});
 </script>
 
-<svelte:head>
-	<title>twinkleplop — plop some twinkle in your code</title>
-	<meta
-		name="description"
-		content="A syntax highlighter and code authoring toolkit. Small, fast, customisable."
-	/>
-</svelte:head>
+<Seo
+	title="twinkleplop — plop some twinkle in your code"
+	description="A syntax highlighter and code authoring toolkit. Small, fast, customisable."
+/>
 
 <div class="splash">
 	<SplashHeader install={INSTALL} github={GITHUB} />
@@ -165,6 +163,7 @@
 		--mode-height: 34px;
 		--mode-font-size: 12px;
 		--mode-line: var(--line2);
+		--mode-bg: var(--bg);
 		--mode-fg: var(--ink2);
 		--mode-fg-on: var(--green);
 		--mode-bg-on: color-mix(in oklab, var(--green) 12%, transparent);

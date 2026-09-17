@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -197,13 +198,11 @@
 	});
 </script>
 
-<svelte:head>
-	<title>How tokenization works — twinkleplop</title>
-	<meta
-		name="description"
-		content="How a string rule is compiled and used to tokenize source code."
-	/>
-</svelte:head>
+<Seo
+	title="How tokenization works — twinkleplop"
+	description="How a string rule is compiled and used to tokenize source code."
+	type="article"
+/>
 
 <main bind:this={story} class="story">
 	<div class="screen">

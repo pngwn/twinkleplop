@@ -7,3 +7,6 @@ bun.lockb
 
 # Miscellaneous
 /static/
+
+# generated (source for static/og.png)
+/scripts/og-card.html
