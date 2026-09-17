@@ -55,7 +55,7 @@ export const load = async ({ params }) => {
 };
 
 // enumerate every (lang, test) pair so the static prerender captures all
-// combinations. TestHeader navigates between them via goto(), so the
+// combinations. the page navigates between them via goto(), so the
 // crawler on its own only reaches /explore/<lang>/demo.
 export const entries = () => {
   const demo_langs = fs.existsSync(DEMOS_DIR)
