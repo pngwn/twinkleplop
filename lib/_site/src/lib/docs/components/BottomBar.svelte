@@ -7,7 +7,7 @@
 	<a class="brand" href="/">t</a>
 	<nav class="links" aria-label="Site">
 		<a href="/explore">explore</a>
-		<a href="/docs">docs</a>
+		<a aria-current="page" href="/docs">docs</a>
 	</nav>
 	<ModeSwitch compact />
 	<button
@@ -35,6 +35,7 @@
 		padding: 0 10px;
 		--mode-height: 32px;
 		--mode-line: var(--docs-line);
+		--mode-bg: var(--docs-bg);
 		--mode-fg: var(--docs-fg-dim);
 		--mode-fg-on: var(--docs-accent);
 		--mode-bg-on: color-mix(in oklch, var(--docs-accent) 12%, transparent);
@@ -50,6 +51,18 @@
 		color: var(--docs-fg-dim);
 		text-decoration: none;
 		padding: 4px 2px;
+	}
+	.links a:hover {
+		color: var(--docs-fg);
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 5px;
+	}
+	.links a[aria-current='page'] {
+		color: var(--docs-accent);
+		text-decoration: underline;
+		text-decoration-thickness: 2px;
+		text-underline-offset: 5px;
 	}
 	.brand {
 		text-decoration: none;

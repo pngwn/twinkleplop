@@ -54,7 +54,7 @@
 		</a>
 		<div class="divider"></div>
 		<nav class="site-links" aria-label="Site">
-			<a class="site-link" href="/explore">explore</a>
+			<a class="site-link" aria-current="page" href="/explore">explore</a>
 			<span class="crumb__sep" aria-hidden="true">/</span>
 			<a class="site-link" href="/docs">docs</a>
 		</nav>

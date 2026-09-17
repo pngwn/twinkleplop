@@ -20,6 +20,7 @@
 				<a
 					class="mp-entry"
 					class:active={item.id === active_id}
+					aria-current={item.id === active_id ? "page" : undefined}
 					href={item.path}
 					onclick={close_nav}
 				>
@@ -73,9 +74,15 @@
 
 	.mp-entry:hover {
 		color: var(--docs-fg);
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 4px;
 	}
 	.mp-entry.active {
 		color: var(--docs-accent);
+		text-decoration: underline;
+		text-decoration-thickness: 2px;
+		text-underline-offset: 4px;
 	}
 
 	.mp-group-label {

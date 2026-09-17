@@ -1,8 +1,12 @@
 <script lang="ts">
+	import { page } from "$app/state";
 	import Rainbow from "./Rainbow.svelte";
 	import ModeSwitch from "$lib/components/ModeSwitch.svelte";
 
 	let { install, github }: { install: string; github: string } = $props();
+
+	const current = (href: string) =>
+		page.url.pathname.startsWith(href) ? "page" : undefined;
 
 	let copied = $state(false);
 	let reset: ReturnType<typeof setTimeout> | undefined;
@@ -23,8 +27,8 @@
 	<div class="brand">
 		<a class="wordmark" href="/"><Rainbow text="twinkleplop" /></a>
 		<nav>
-			<a href="/explore">explore</a><i aria-hidden="true">/</i>
-			<a class="on" href="/docs">docs</a>
+			<a href="/explore" aria-current={current("/explore")}>explore</a><i aria-hidden="true">/</i>
+			<a href="/docs" aria-current={current("/docs")}>docs</a>
 		</nav>
 	</div>
 	<div class="tools">
@@ -81,9 +85,15 @@
 	}
 	nav a:hover {
 		color: var(--ink);
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 5px;
 	}
-	nav a.on {
+	nav a[aria-current="page"] {
 		color: var(--green);
+		text-decoration: underline;
+		text-decoration-thickness: 2px;
+		text-underline-offset: 5px;
 	}
 	nav i {
 		color: var(--ink3);

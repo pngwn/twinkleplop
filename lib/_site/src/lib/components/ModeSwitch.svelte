@@ -85,15 +85,22 @@
 	}
 	.opt:hover {
 		color: var(--mode-fg-on, inherit);
-	}
-	.opt:has(input:checked) {
-		color: var(--mode-fg-on, inherit);
 		background: var(--mode-bg-on, transparent);
+	}
+	/* the selected mode is inverted, not just tinted: colour alone is not a
+	   strong enough cue for which mode is on. */
+	.opt:has(input:checked) {
+		color: var(--mode-bg, Canvas);
+		background: var(--mode-fg-on, currentColor);
 	}
 	.opt:has(input:focus-visible) {
 		outline: 2px solid var(--mode-focus, currentColor);
 		outline-offset: -2px;
 		z-index: 1;
+	}
+	/* an accent ring would vanish on the inverted plate */
+	.opt:has(input:checked):has(input:focus-visible) {
+		outline-color: currentColor;
 	}
 	input {
 		position: absolute;

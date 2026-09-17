@@ -24,7 +24,7 @@
 	</a>
 	<nav class="nav-links">
 		<a href="/explore">explore</a><span class="sep" aria-hidden="true">/</span>
-		<a class="active" href="/docs">docs</a>
+		<a aria-current="page" href="/docs">docs</a>
 	</nav>
 	<div class="top-right">
 		<ModeSwitch />
@@ -78,9 +78,15 @@
 	.nav-links a:hover {
 		color: var(--docs-fg);
 		background: var(--docs-bg-2);
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 5px;
 	}
-	.nav-links a.active {
+	.nav-links a[aria-current='page'] {
 		color: var(--docs-accent);
+		text-decoration: underline;
+		text-decoration-thickness: 2px;
+		text-underline-offset: 5px;
 	}
 
 	.top-right {
@@ -90,6 +96,7 @@
 		--mode-height: 26px;
 		--mode-font-size: var(--docs-fs-sm);
 		--mode-line: var(--docs-line);
+		--mode-bg: var(--docs-bg);
 		--mode-fg: var(--docs-fg-dim);
 		--mode-fg-on: var(--docs-accent);
 		--mode-bg-on: color-mix(in oklch, var(--docs-accent) 12%, transparent);
