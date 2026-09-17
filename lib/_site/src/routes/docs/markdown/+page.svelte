@@ -42,6 +42,10 @@ import { language as typescript } from "@twinkleplop/typescript";
 });`;
 	const rehype = ts(rehype_src);
 
+	const raw_output_src = `// skip the hast re-parse and emit a raw node
+.use(rehype_twinkleplop, { languages, output: "raw" });`;
+	const raw_output = ts(raw_output_src);
+
 	const registry_src = `languages: {
   // a highlight function
   ts: typescript(),
@@ -89,15 +93,49 @@ import { language as typescript } from "@twinkleplop/typescript";
 		<SubSection id="remark" title="remark">
 			<CodeBlock fname="remark.ts" html={remark} />
 			<Callout mark="▸" variant="warn">
-				The plugin replaces each node with an mdast <code>html</code> node, so a
-				pipeline continuing into rehype needs
+				The remark plugin always emits mdast <code>html</code> nodes — it has no
+				hast mode — so a pipeline continuing into rehype needs
 				<code>allowDangerousHtml</code> on both <code>remark-rehype</code> and
 				<code>rehype-stringify</code>. Without it the code blocks disappear.
+				The rehype plugin is different: see below.
 			</Callout>
 		</SubSection>
 
 		<SubSection id="rehype" title="rehype">
 			<CodeBlock fname="rehype.ts" html={rehype} />
+			<p>
+				The plugin replaces each <code>pre &gt; code</code> element with the
+				highlighted block. By default that block is parsed back into hast, so it
+				asks nothing of the rest of the pipeline — no
+				<code>allowDangerousHtml</code> anywhere.
+			</p>
+			<p>
+				Parsing it back costs about as much again as rendering it did: roughly
+				0.13&nbsp;ms on a 2&nbsp;KB block, or 26&nbsp;ms across a 200-fence
+				document. A build that would rather keep that time can take the string
+				as a raw node instead.
+			</p>
+			<CodeBlock fname="raw.ts" html={raw_output} />
+			<p>
+				<code>"raw"</code> needs <code>allowDangerousHtml</code> on
+				<code>rehype-stringify</code> (or <code>rehype-raw</code> before it), as
+				any plugin emitting markup of its own does; without it the stringifier
+				escapes the block and the page shows the markup as text.
+			</p>
+			<p>
+				The two modes mean the same markup, but not the same bytes. The default
+				path is re-serialised by the pipeline's stringifier, which spells
+				entities its own way — <code>&amp;#x3C;</code> where twinkleplop wrote
+				<code>&amp;lt;</code>, a bare <code>'</code> where it wrote
+				<code>&amp;#39;</code>. <code>"raw"</code> reproduces twinkleplop's own
+				bytes, which is what the markdown-it and remark plugins emit.
+			</p>
+			<p>
+				The language comes from the <code>code</code> element's
+				<code>language-&lt;name&gt;</code> class, and the meta string from
+				<code>data.meta</code> (which <code>remark-rehype</code> sets) or a
+				<code>metastring</code> attribute for a tree parsed from HTML.
+			</p>
 		</SubSection>
 	</Section>
 
@@ -129,6 +167,11 @@ import { language as typescript } from "@twinkleplop/typescript";
 	</Section>
 
 	<Section id="options" title="options" num="§ 03">
+		<p>
+			These are shared by all three plugins.
+			<code>@twinkleplop/rehype</code> extends them with one more,
+			<code>output</code>, covered <a href="#rehype">above</a>.
+		</p>
 		<ParamTable
 			headers={["option", "default", "meaning"]}
 			rows={[
