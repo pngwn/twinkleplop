@@ -1,14 +1,12 @@
 # Performance harness
 
-Paired A/B measurement against a frozen reference build, plus an output
-parity gate. Built for the case where several agents share one machine and
-their numbers have to mean the same thing.
+Compare a candidate build against a fixed reference build and check that their
+output matches. The harness supports measurements from multiple worktrees on
+the same machine.
 
-Everything here is read-only for experiments. **Do not edit the harness or
-the corpus while running experiments against them** — the corpus hash and a
-hash of the harness source go into every report precisely so that a report
-produced by a modified harness is identifiable. If the harness needs a fix,
-say so and change it deliberately, then re-run calibration.
+Keep the harness and corpus unchanged while running experiments. Reports record
+hashes of both. If either needs to change, make the change separately and rerun
+calibration.
 
 ## Setup (once per machine)
 
@@ -17,8 +15,7 @@ node lib/bench/perf/bin/setup-baseline.mjs
 ```
 
 Exports the reference commit twice with `git archive` into
-`<main checkout>/.perf/` and builds both. It lives beside the main checkout,
-not inside any worktree, so every agent measures against the same bytes.
+`<main checkout>/.perf/` and builds both. All worktrees use these shared reference builds.
 
 ```bash
 node --expose-gc lib/bench/perf/bin/calibrate.mjs --rounds 15
@@ -27,7 +24,7 @@ node --expose-gc lib/bench/perf/bin/calibrate.mjs --rounds 15
 Measures the harness against itself and writes `calibration.json`. Takes
 about two minutes. Re-run it if the machine changes.
 
-## The two commands you will actually use
+## Running a comparison
 
 ```bash
 node --expose-gc lib/bench/perf/bin/ab.mjs --suite quick --label my-idea
@@ -37,68 +34,53 @@ node --expose-gc lib/bench/perf/bin/ab.mjs --suite quick --label my-idea
 node lib/bench/perf/bin/parity.mjs
 ```
 
-`ab.mjs` compares your worktree against the reference. `parity.mjs` proves
+`ab.mjs` compares your worktree against the reference. `parity.mjs` checks that
 the two produce identical output. Build first — both arms load `dist`, which
 is what consumers import; measuring the TypeScript sources through a
 transform would measure the transform.
 
-## Why it is built this way
+## Measurement method
 
-**Paired and interleaved.** For each workload the two arms are measured
-alternately, ABBA, within a few hundred milliseconds of each other, and the
-statistic is the median of the per-round *ratios*. Anything that moves the
-machine more slowly than one round — thermal throttling, another agent's
-build waking up, frequency scaling — moves both arms together and cancels.
-This is the only reason numbers survive a shared machine.
+**Paired measurements.** Each workload alternates between the reference and
+candidate builds in ABBA order. Results use the median of per-round ratios.
+Measuring both builds close together reduces the effect of temperature,
+background load and CPU frequency changes.
 
-**Never compare across processes.** Snapshots taken in separate runs on the
-same machine have shown thermal penalties of 11% and machine-speed corrections
-of 5-7%. A number captured in a previous process is a number from a different
-machine. Both arms load into one process, always.
+**One process.** Both builds run in the same process. Separate runs on the same
+machine have shown thermal penalties of 11% and machine-speed corrections of
+5–7%, so results from separate processes are not used for comparison.
 
-**Forced GC, re-warm, minor GC, ABBA within the round.** Every round starts
-with a full `gc()`, so no round inherits the previous one's garbage and no
-natural full GC lands inside a window (on the CI runner's few cores one put a
-single A/A row 102% off). A forced GC at a quiescent point also evicts
-optimised code that only a per-call closure was keeping alive (V8 holds it
-weakly from the feedback vector) and invalidates code that embedded a map only
-dead objects had; both arms would then re-tier inside their windows. An A/A
-cancels that, which is how it went unnoticed; an A/B whose arms differ in
-closure structure — a hoisted function, a minifier that inlines differently —
-reported the transient as a speedup that a continuous run could not
-reproduce. So after the `gc()` both arms run untimed for 20 ms
-(`--rewarm-ms`), a minor GC empties the nursery the re-warm filled, and the
-round then times A, B, B, A and sums per arm; a sample is one A-first round
-and one B-first round together, so the window that pays for the GC just
-before it falls on both arms of every sample. That last part matters on its
-own: alternating order only _between_ rounds and counting each round as a
-sample cancels nothing when the round count is odd, and 9 and 15 both are —
-the median then sits on the majority order's cluster, which the runner
-reported as a 2% bias. An odd count is rounded up. Each arm also re-warms
-before it is calibrated: after the other arm's warmup it is cold again, and an
-iteration count taken from that state gave the smallest workloads windows of
-a few milliseconds instead of 20, where one scavenge is the whole sample.
+**Garbage collection and warmup.** Each round starts with a full garbage
+collection, followed by 20 ms of untimed warmup for both builds (`--rewarm-ms`)
+and a minor collection. The full collection clears allocations from the previous
+round. Warmup lets V8 re-optimise any code affected by collection. The minor
+collection clears allocations from warmup before timing begins.
 
-**Machine lock.** `/tmp/twinkleplop-perf.lock` is a machine-wide mutex. Every
-measurement takes it and queues if another agent holds it. Two benchmark
-processes running at once do not give two noisy results, they give two wrong
-ones, and the distortion is not symmetric between arms. Do not pass
-`--no-lock` on a shared machine.
+A round measures A, B, B, A and sums the time for each build. Each sample combines
+an A-first and a B-first round, so both builds are measured in both positions.
+Odd round counts are rounded up. Each build also warms up before iteration-count
+calibration to avoid calibrating against cold code.
 
-**Machine anchor.** A fixed workload defined inside the harness — nothing
-under test can change it — measured at the start and end of every run. If it
-drifts more than 3% the machine changed state mid-run and the absolute
-microsecond columns are not comparable to anything else. The paired ratios
-still are.
+Earlier versions exposed several measurement problems: a full collection during
+a timed window produced a 102% A/A deviation, missing warmup produced temporary
+speedups that continuous runs could not reproduce, and an odd number of
+alternating samples produced a 2% order bias.
 
-**Calibrated noise floor.** `calibrate.mjs` runs the full protocol with two
-independent builds of the *same commit*. The true answer is 1.00 everywhere.
-The spread it comes back with is the smallest effect this harness can see.
+**Machine lock.** `/tmp/twinkleplop-perf.lock` allows one measurement process at a
+time. Other processes wait for the lock. Concurrent benchmarks can affect the
+two builds differently. Keep the lock enabled on shared machines.
 
-As measured on this machine: geomean +0.0% (unbiased), median deviation 0.4%,
-p95 2.7%, **noise floor 3.4%**. Notably, the bootstrap CI excluded 1.0 on
-**18 of 147 workloads where nothing had changed**. That is why significance
-alone is not the gate.
+**Reference workload.** The harness measures a fixed workload at the start and
+end of each run. Drift above 3% indicates a change in machine performance.
+Treat absolute timings from these runs as approximate.
+
+**Noise floor.** `calibrate.mjs` compares two independent builds of the same
+commit. Their expected ratio is 1.00. Variation in this A/A run estimates the
+smallest measurable change.
+
+One calibration measured a +0.0% geometric mean, 0.4% median deviation, 2.7% p95
+and a 3.4% noise floor. The bootstrap confidence interval excluded 1.0 on 18 of
+147 unchanged workloads, so statistical significance alone is insufficient.
 
 ## What counts as a result
 
@@ -108,27 +90,23 @@ A workload has moved only if **all** of these hold:
 2. the 95% CI excludes 1.0,
 3. it replicated — run with `--repeat 2` and both passes agree on direction.
 
-For a headline claim, none of the above is as convincing as **a whole group
-moving together**. Random noise scatters; a real change to the scanner moves
-every `tokenize` row across every language. Read the geomean-by-mode and
-geomean-by-language sections first and the individual rows second.
+Read the geometric means by mode and language before interpreting individual
+rows. A change that affects a shared component should usually appear across
+several relevant workloads.
 
-Report the conservative number. `--repeat 2` already does this: the headline
-speedup becomes the weaker of the two passes.
+With `--repeat 2`, the reported speedup uses the smaller result from the two runs.
 
-### The group floor is not the per-workload floor
+### Group thresholds
 
-3.4% is how far **one** workload can move when nothing changed. A geomean over
-many workloads averages that noise away and resolves far smaller effects.
-Judging a mode geomean against 3.4% throws away real signal — and a broad,
-small, uniform gain is exactly the shape a language-agnostic change produces.
+The per-workload noise floor applies to individual results. Geometric means
+across groups can detect smaller changes. Calculate their thresholds from the
+A/A calibration:
 
 ```bash
 node lib/bench/perf/bin/group-floor.mjs
 ```
 
-Resampled from the A/A calibration, where every deviation is noise by
-construction:
+Example thresholds from resampling an A/A calibration:
 
 | group size | p50   | p95   | p99   |
 | ---------: | ----- | ----- | ----- |
@@ -137,14 +115,13 @@ construction:
 |         54 | 0.19% | 0.49% | 0.62% |
 |        147 | 0.19% | 0.37% | 0.45% |
 
-The A/A run's own mode geomeans came out at 0.11% (`tokenize`), 0.14%
-(`pipeline`) and 0.38% (`html`), which is the same story from the other side.
+The same A/A run measured mode geometric means of 0.11% for `tokenize`, 0.14% for
+`pipeline` and 0.38% for `html`.
 
-So a `pipeline` geomean of +1.3% over 54 workloads is past the p99 of 0.62%
-and is a real effect, even with no single row clearing 3.4%. This does **not**
-license reading an individual row below the per-workload floor, and it only
-holds for a group you did not choose after seeing the numbers — picking the
-six workloads that happened to move and averaging them is not a group.
+For example, a 1.3% change across a predefined group of 54 workloads exceeds that
+group's p99 threshold of 0.62%, even when individual results fall below 3.4%.
+Choose groups before looking at the results. Selecting only workloads that
+improved would bias the comparison.
 
 ## Suites
 
@@ -162,22 +139,22 @@ claim. `full` before proposing a merge.
 
 ## Corpus
 
-Frozen, hashed, checked in. Regenerate only with `bin/build-corpus.mjs`, and
-be aware that doing so invalidates comparisons against earlier reports.
+The corpus is committed with recorded hashes. Regenerate it with
+`bin/build-corpus.mjs`. Regeneration invalidates comparisons with earlier reports.
 
 | family     | what it is                                                       |
 | ---------- | ---------------------------------------------------------------- |
 | `micro`    | one short snippet per language. the docs-site case, where fixed per-call cost dominates and the scanning loop barely runs. |
-| `fixtures` | each language's own test fixtures, concatenated. grammar-feature dense: probe paths, escapes, edge cases. the cold paths a "make the common case fast" change tends to break. |
-| `real`     | production-shaped source. this repo's own code where the language is one we write here, hand-authored under `corpus/seed/` otherwise. **the headline numbers.** |
-| `scale`    | ~200KB per language, built by cycling that language's files. deliberately synthetic. it answers "how does cost grow with length", not "how fast is real code". **Do not quote scale numbers as user-facing wins.** |
+| `fixtures` | each language's own test fixtures, concatenated. grammar-feature dense: probe paths, escapes, edge cases. covers less common grammar rules. |
+| `real`     | production-shaped source. this repo's own code where the language is one we write here, hand-authored under `corpus/seed/` otherwise. Use these for performance summaries. |
+| `scale`    | ~200KB per language, built by cycling that language's files. synthetic inputs for measuring how cost grows with length. Use real inputs for user-facing performance claims. |
 | `sized`    | the same language at ~1KB, ~10KB and ~100KB. the other families fix a shape and vary the language; this one fixes the language and varies the size. built by cycling whole units, so the two upper tiers carry the same synthetic caveat as `scale`. **this is what the published comparison charts measure.** |
-| `upstream` | sample files vendored from `shikijs/textmate-grammars-themes`, which is where shiki's own benchmark gets its inputs. pinned to a commit and hashed. **the one family we did not choose**, and therefore the only one that cannot have been selected to flatter us. |
+| `upstream` | sample files vendored from `shikijs/textmate-grammars-themes`, which is where shiki's own benchmark gets its inputs. pinned to a commit and hashed. provides an independent set of inputs. |
 
 All 18 languages appear in `micro`, `fixtures`, `real`, `scale` and `sized`.
 `upstream` covers 16: `diff-basic` and `whitespace` are twinkleplop constructs
 with no upstream counterpart, which `corpus/upstream/UPSTREAM.json` records
-explicitly rather than leaving as a silent gap.
+explicitly.
 
 Re-pin the upstream corpus deliberately, never on a schedule:
 
@@ -191,8 +168,7 @@ hash is recorded in every one.
 
 ## Modes
 
-Every consumer-visible path, because a change that speeds one up by slowing
-another is not a win and you cannot see that from a single column.
+The modes measure each stage separately, including import and setup costs.
 
 | mode         | entry point                            |
 | ------------ | -------------------------------------- |
@@ -214,11 +190,10 @@ node lib/bench/perf/bin/parity.mjs
 and `html` on both arms, comparing token type *names* and spans (internal
 type ids are free to renumber) and the rendered HTML byte for byte.
 
-Experiments may break output while exploring. A **result** requires this to
-come back clean. A speedup that changes output is not a speedup, it is a
-different library.
+Check output parity before reporting a performance improvement. If the output
+changes intentionally, describe that difference when interpreting the timings.
 
-## Where the time goes
+## Profiling
 
 ```bash
 node --expose-gc lib/bench/perf/bin/profile.mjs --family real
@@ -226,77 +201,47 @@ node --expose-gc lib/bench/perf/bin/profile.mjs --family real
 
 Absolute breakdown of one arm into scan / reclassify / render.
 
-## Failure modes this harness does not protect you from
+## Interpreting changes
 
-- **A narrow fast path.** Special-casing one language, or one input shape,
-  and reporting the corpus average. The by-language and by-family sections
-  exist to make that visible — check that a win is broad before believing it.
-- **Moving work rather than removing it.** Out of `pipeline` and into `bind`,
-  or out of runtime and into module import. The `compile` and `bind` modes in
-  the `full` suite are there for this; a win in `pipeline` with a matching
-  loss in `bind` is a wash for anyone who rebinds per block.
-- **Winning on the corpus.** The corpus is fixed and visible, so it can be
-  overfitted. If a change's benefit depends on properties of these specific
-  files, say so.
+- **Limited improvements.** Check results by language and input family. An
+  improvement for one language may have little effect on the others.
+- **Setup costs.** Check `compile` and `bind` as well as runtime modes. Moving work
+  into setup affects applications that create highlighters frequently.
+- **Input dependence.** State when an improvement depends on properties of the
+  benchmark inputs that may not apply to other code.
 
 ## In CI
 
 `.github/workflows/benchmarks.yml` runs this harness on every pull request,
-against the branch's **merge base** rather than the tip of `main` — comparing
-against the tip would charge the branch for everything that landed since it
-forked.
+against the branch's merge base. This isolates the changes on the branch.
 
-Three things about that workflow are not obvious and are load-bearing:
+The workflow uses these checks:
 
-**It calibrates on the runner, every time.** `calibration.json` in this
-directory was measured on a laptop. A CI runner is a different, shared,
-virtualised machine whose floor is several times higher, and applying the
-laptop's 3.4% there would turn every quiet pull request into a page of green
-"wins". The workflow runs `bin/calibrate.mjs --suite ci --rounds 15` before the A/B
-and overwrites the file on the runner. The round count is passed explicitly
-and must stay equal to the A/B's: the harness defaults differ (9 versus 15),
-and a floor measured at fewer rounds describes a noisier measurement than the
-one it is gating. `bin/pr-comment.mjs` checks the
-provenance of whatever floor it ends up reading and says so in the comment if
-it did not come from the same machine, corpus and node — and refuses to gate
-on a borrowed one.
+**Calibration.** Each run calibrates on the CI runner with
+`bin/calibrate.mjs --suite ci --rounds 15`. Calibration and A/B measurements must
+use the same round count. `bin/pr-comment.mjs` checks that the calibration came
+from the same machine, corpus and Node version before using it for a gate.
 
-**Thresholds are corrected for how many groups are tested.** The gate looks
-at three mode geomeans and fires if any moves, so testing each at p95 puts the
-real error rate at 1 - 0.95^3 = 7.3%, and the seven rows the comment colours
-put it at 30%. Both were observed: a pull request that changed no library code
-reported `tokenize -2.2%` as a regression. Each group is therefore tested at
-1 - (1 - 0.05)^(1/k), which holds the family-wise rate at 5% and costs about
-20% on each threshold.
+**Multiple comparisons.** Group thresholds account for the number of groups
+tested, with a target family-wise false-positive rate of 5%.
 
-**A regression must appear in the modes that contain it.** `tokenize` is the
-scanner, `pipeline` is that scanner plus the reclassifiers, `html` is pipeline
-plus rendering. A scanner regression has to show up in all three; one that
-appears in `tokenize` while `pipeline` moves the other way is not physically a
-scanner regression, and is reported as `uncorroborated` rather than gated. The
-containment is one-directional - a regression confined to `pipeline` or `html`
-is legitimate, because it can live in code `tokenize` never runs.
+**Related modes.** The gate checks whether a regression appears in the modes that
+include the affected work. `pipeline` includes tokenization, and `html` includes
+the pipeline. An isolated `tokenize` regression that is not supported by the
+other modes is reported as `uncorroborated`. Regressions limited to `pipeline`
+or `html` can come from work specific to those stages.
 
-**It gates on groups, not workloads.** The A/A calibration flags roughly one
-workload in eight as "significant" when both arms are the same commit. A
-per-workload gate on a shared runner would go red on pull requests that
-changed nothing, and a check that cries wolf is a check nobody reads. The
-gate is a mode geomean clearing the p95 of the null distribution for a group
-of that size.
+**Group results.** The gate uses mode geometric means and calibrated group
+thresholds. Individual workload results are too noisy for reliable CI gating.
 
-**Parity is reported, not gated.** A speedup that changes output is not a
-speedup — but this workflow also runs on feature branches whose entire
-purpose is to change output. Failing those would put a red benchmark check on
-every feature. The comment says plainly when the two arms are not the same
-library, and leaves the judgement to the reader.
+**Output parity.** Parity is reported but does not fail the benchmark job, because
+feature changes can intentionally change output. The comment identifies output
+differences so reviewers can account for them.
 
-The frozen reference build lives at `$TWINKLEPLOP_PERF_DIR`, outside the
-workspace, because the checkout action wipes the workspace. It is deliberately
-**not** cached between runs: measured on `namespace-profile-basic`, exporting
-and building both reference arms costs 16 seconds, which is cheaper than the
-mount point was worth. (`rmdir` on a mounted cache volume is `EBUSY`, which is
-how that was discovered.) The pnpm store cache is what makes the installs
-fast.
+The reference builds are stored at `$TWINKLEPLOP_PERF_DIR`, outside the workspace,
+so checkout cleanup does not remove them. They are rebuilt for each run. On
+`namespace-profile-basic`, exporting and building both references took 16 seconds.
+The pnpm store is cached to reduce installation time.
 
 Measured on that runner, a pull request's whole job is about six minutes:
 
@@ -314,10 +259,6 @@ derived from the same distribution come out at 1.91% for a mode geomean and
 1.16% over the whole suite. A run against a commit that changed no library
 code reported +0.1% overall, every mode flat.
 
-The distribution is the interesting part: p50 2.90%, p95 14.84%, worst 48%.
-That is not a uniformly slow machine, it is a mostly-clean one with a heavy
-tail — a minority of rounds badly disturbed, most likely by co-tenants on the
-shared physical host. The lever for that shape is round count, because the
-statistic is a median of per-round ratios and a median's resistance to
-contaminated samples scales with how many it has. Raising `--target-ms`
-attacks per-sample variance instead, which is the wrong end of this problem.
+The measured deviation distribution was p50 2.90%, p95 14.84% and a maximum of
+48%. Most rounds had low variation, with a smaller number affected by substantial
+interference. Additional rounds help the median resist these outliers.

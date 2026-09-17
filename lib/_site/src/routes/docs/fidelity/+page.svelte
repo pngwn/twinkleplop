@@ -35,21 +35,24 @@ always(embed_interleaved({ scan: scan_tagged_template }), "embed");`;
 <ArticleMain
 	pane_path="docs / fidelity"
 	title="fidelity"
-	subtitle="How much work the reclassifier does, and how to pick a point on that curve."
+	subtitle="Choose which token types the reclassifier identifies."
 >
 	<p>
-		The grammar emits a lexically correct token stream. The reclassifier pipeline
-		then enriches it: turning an <code>identifier</code> into a
-		<code>function</code> at a call site, a <code>class_name</code> in a type
-		position, a <code>constant</code> for an <code>UPPER_SNAKE_CASE</code>
+		The grammar produces tokens. The reclassifier pipeline assigns more specific types, turning an <code
+			>identifier</code
+		>
+		into a
+		<code>function</code> at a call site, a <code>class_name</code> in a type position, a
+		<code>constant</code>
+		for an <code>UPPER_SNAKE_CASE</code>
 		binding, and so on.
 	</p>
 	<p>
-		Every one of those distinctions costs something. <code>fidelity</code> is the
-		dial that decides which ones you pay for.
+		Use <code>fidelity</code> to choose which reclassifier passes run. Running fewer passes reduces highlighting
+		time.
 	</p>
 
-	<Section id="tiers" title="the three settings" num="§ 01">
+	<Section id="tiers" title="fidelity options" num="§ 01">
 		<CodeBlock fname="fidelity.ts" html={tiers} />
 		<ParamTable
 			headers={["value", "behaviour"]}
@@ -65,71 +68,60 @@ always(embed_interleaved({ scan: scan_tagged_template }), "embed");`;
 					{ kind: "name", value: `"low"` },
 					{
 						kind: "desc",
-						value: `Runs only always-on passes. Output is lexically valid but carries bare grammar-level tokens — most identifiers stay <code>identifier</code>.`,
+						value: `Runs only required passes. Most identifiers keep the <code>identifier</code> type.`,
 					},
 				],
 				[
 					{ kind: "name", value: "string[]" },
 					{
 						kind: "desc",
-						value: `Runs always-on passes, plus any pass that produces one of the named token types. Unknown names are ignored rather than throwing.`,
+						value: `Runs always-on passes, plus any pass that produces one of the named token types. Unknown names are ignored.`,
 					},
 				],
 			]}
 		/>
 	</Section>
 
-	<Section id="always" title="what always runs" num="§ 02">
+	<Section id="always" title="required passes" num="§ 02">
 		<p>
-			Some passes are not enrichment. A pass that fixes something the grammar
-			cannot express — case-insensitive SQL keywords, Rust generic angle
-			brackets, TypeScript type-position tracking, Bash variable extension — is
-			always on, because disabling it would produce output a knowledgeable reader
-			would call a bug. So is cross-language embedding: the CSS inside a
-			<code>&lt;style&gt;</code> tag is highlighted at every fidelity setting.
+			Some passes are required for correct highlighting and run at every fidelity setting. These
+			handle case-insensitive SQL keywords, Rust generic angle brackets, TypeScript type positions
+			and Bash variables. Embedded languages also run at every setting, so CSS inside a <code
+				>&lt;style&gt;</code
+			> tag is always highlighted.
 		</p>
 		<p>
-			A pass declares which category it is in by whether it advertises any output
-			types.
+			Declare optional passes with <code>produces</code> and required passes with
+			<code>always</code>.
 		</p>
 		<CodeBlock fname="pipeline.ts" html={tagging} />
 		<p>
-			A pass tagged with <code>produces</code> is fidelity-gated. A pass declared
-			with <code>always</code> has no outputs to gate on and runs regardless.
-			That is the whole mechanism — <code>fidelity</code> filters the pipeline by
-			intersecting your request with each pass's <code>produces</code> list.
+			A pass tagged with <code>produces</code> runs when its output types match the requested
+			fidelity. A pass declared with <code>always</code> runs regardless of fidelity.
 		</p>
 	</Section>
 
-	<Section id="names" title="choosing names" num="§ 03">
+	<Section id="names" title="token types" num="§ 03">
 		<p>
-			The names in the array are token types, the same vocabulary themes style.
-			In the JavaScript pipeline the gated outputs are
+			The array contains token type names. In JavaScript, the optional types are
 			<code>constant</code>, <code>function</code>, <code>property</code>,
 			<code>class_name</code>, <code>parameter</code> and
-			<code>namespace</code>; other languages gate on the types their grammars
-			leave plain.
+			<code>namespace</code>; other languages have their own optional types.
 		</p>
 		<Callout mark="▸">
-			A theme that styles a token type you have gated off simply never matches —
-			the spans carry the un-enriched type instead. Nothing breaks, the
-			highlighting is just coarser.
+			When a pass is disabled, tokens keep their earlier types and use those types' theme colours.
 		</Callout>
 	</Section>
 
-	<Section id="ordering" title="why order does not matter" num="§ 04">
+	<Section id="ordering" title="pass precedence" num="§ 04">
 		<p>
-			Most enrichment passes are claim producers: rather than writing token slots
-			directly, they read a frozen stream and emit
-			<em>claims</em> — a token index, a proposed type, and a precedence. The
-			runner batches consecutive producers against the same base stream, merges
-			the claims by precedence, and applies the winners in one pass.
+			Most optional passes read the same token stream and produce <em>claims</em>. A claim contains
+			a token index, a proposed type and a precedence. The runner groups consecutive claim producers
+			into a batch and applies the highest-precedence claim for each token.
 		</p>
 		<p>
-			The consequence is that within a batch, pipeline order does not decide
-			conflicts; precedence does. Switching fidelity on or off for one pass
-			cannot reorder the outcome of the others. See
-			<a href="/docs/reclassifier">reclassifiers</a> for the detail.
+			Precedence resolves competing claims within a batch. If precedence is equal, the earlier pass
+			wins. See <a href="/docs/reclassifier">reclassifiers</a> for details.
 		</p>
 	</Section>
 </ArticleMain>
@@ -137,9 +129,9 @@ always(embed_interleaved({ scan: scan_tagged_template }), "embed");`;
 <ArticleOtp
 	title="fidelity"
 	sections={[
-		{ href: "#tiers", label: "§01 — the three settings", active: true },
-		{ href: "#always", label: "§02 — what always runs" },
-		{ href: "#names", label: "§03 — choosing names" },
-		{ href: "#ordering", label: "§04 — why order does not matter" },
+		{ href: "#tiers", label: "§01 — fidelity options", active: true },
+		{ href: "#always", label: "§02 — required passes" },
+		{ href: "#names", label: "§03 — token types" },
+		{ href: "#ordering", label: "§04 — pass precedence" },
 	]}
 />

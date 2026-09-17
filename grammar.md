@@ -1,6 +1,6 @@
 # Language Definition Guide
 
-Grammars are plain JavaScript modules built with a small set of helpers from `@twinkleplop/core`. Each helper is a pure factory that returns a rule (or partial rule) object — the compiler doesn't care whether you hand-write those objects or call a helper. The helpers just remove boilerplate and let you compose rules with ordinary JS (spread, `map`, function calls).
+Grammars are JavaScript modules that define states and rules. Use helpers from `@twinkleplop/core` to create rule objects, or write the objects directly. Share rules using arrays, spread and functions.
 
 ```js
 import {
@@ -44,7 +44,7 @@ The first state declared in `states` is the initial state for tokenization.
 
 ## Token names
 
-Token types are just strings. Any string is valid. `@twinkleplop/core/tokens` exports a set of conventional names to avoid typos, to show at a glance which tokens are recognised by default themes, and to play well with minification:
+Token types are strings. `@twinkleplop/core/tokens` exports the standard names used by the default themes:
 
 ```js
 import * as TOKENS from "@twinkleplop/core/tokens";
@@ -55,7 +55,7 @@ TOKENS.string; // "string"
 TOKENS.function; // "function"   (dot access is fine — see note below)
 ```
 
-Standard names include: `boolean`, `comment`, `function`, `identifier`, `keyword`, `number`, `operator`, `property`, `punctuation`, `regex`, `selector`, `string`, `template`, plus CSS-ish extras (`attribute`, `class_name`, `css_var`, `id`, `pseudo`, `unit`).
+Standard names include: `boolean`, `comment`, `function`, `identifier`, `keyword`, `number`, `operator`, `property`, `punctuation`, `regex`, `selector`, `string`, `template`, plus CSS types (`attribute`, `class_name`, `css_var`, `id`, `pseudo`, `unit`).
 
 Custom token types can still be passed as plain strings to any helper:
 
@@ -92,7 +92,7 @@ match("/", TOKENS.regex, enter("regex_pattern"));
 // → { match: "/", token: "regex", state: "regex_pattern" }
 ```
 
-A single `match(...)` call can emit a rule with **both** `match` and `range` set — the compiler handles that natively and it lets you collapse what would otherwise be two rules (one for literal starts like `_`/`$`, one for letter ranges) into one.
+A `match(...)` rule can contain both literal patterns and character ranges. This lets one rule match `_`, `$` and letters, for example.
 
 ### `on(patterns, transition?)`
 
@@ -172,7 +172,7 @@ fallback(leave()); // pop the state
 fallback(goto("division")); // sideways transition (doesn't consume the char)
 ```
 
-`any: true` combined with a sideways transition (`state + exit: true`) does **not** consume the character — it re-processes it in the destination state. This is how you "hand back" a character when you realise you're in the wrong context.
+`any: true` combined with a sideways transition (`state + exit: true`) does **not** consume the character — it re-processes it in the destination state. Use this to retry the current character in a different state.
 
 ---
 
@@ -208,7 +208,7 @@ operators(null); // stay — e.g. inside regex_allow where an operator keeps us 
 
 ---
 
-## State shape
+## State structure
 
 A state is an object with a `rules` array. Rules are tried top-to-bottom in order; the **first matching rule wins**. Multi-char patterns within any rule are compared longest-first inside each first-character bucket, so `/=` always beats `/` regardless of source order.
 
@@ -229,8 +229,6 @@ Optional fields on a state:
 | ---------------------------------- | ------------------------------------------------------------------------- |
 | `mode: "probe"`                    | Enter probe mode when this state is reached — see "Probe states" below.   |
 | `fallback: "state_name"`           | Target state if probing hits EOF without matching (probe states only).    |
-| `extend: "group_name"` or `[…]`    | Inherit rules from one or more groups declared at the top of the grammar. |
-| `include: "ruleset_name"` or `[…]` | Prepend rules from a named ruleset (see below).                           |
 
 ### Sharing rules with arrays
 
@@ -262,7 +260,7 @@ states: {
 }
 ```
 
-This replaces most uses of the older `rulesets` / `include` machinery — a spread is simpler than a declared ruleset, and you can parameterise it with a plain function when the destination state varies:
+Use a function when a shared rule needs a different destination state:
 
 ```js
 const operators = (after) => match(OP_ALL, TOKENS.operator, to(after));
@@ -273,39 +271,14 @@ states: {
 }
 ```
 
-### `include` and `extend` (still supported)
-
-The compiler still accepts `include` on states and `extend` on groups when you want a declarative reusable block. `include` takes a ruleset name (or array of names) from the top-level `rulesets` field, and those rules are prepended to the state's own rules:
-
-```js
-export default {
-  name: "javascript",
-  rulesets: {
-    js_strings: {
-      rules: [
-        within('"', '"', TOKENS.string, { escape: "\\", multiline: true }),
-        within("'", "'", TOKENS.string, { escape: "\\", multiline: true }),
-      ],
-    },
-  },
-  states: {
-    main: {
-      include: "js_strings",
-      rules: [
-        /* own rules, tried AFTER included rules */
-      ],
-    },
-  },
-};
-```
-
-For most grammars, plain arrays + spread are simpler than rulesets; reach for `include`/`extend` only if you want a declarative reusable block.
+The compiler does not support `rulesets`, `include` or `extend`. Use arrays and
+spread to share rules.
 
 ---
 
-## Probe states — resolving contextual ambiguity
+## Probe states
 
-Some grammars have tokens whose type depends on what comes next. CSS is the canonical case: after entering a block, you can't tell whether `a:hover one two three` is a chain of selectors or a property + value until you hit a `{`, `;`, `}`, or EOF.
+Some grammars have tokens whose type depends on what comes next. For example, in CSS, after entering a block, you can't tell whether `a:hover one two three` is a chain of selectors or a property + value until you hit a `{`, `;`, `}`, or EOF.
 
 A **probe state** scans ahead without committing. When it transitions to a non-probe state, the tokenizer rewinds its pointer to the position it was at when the probe started — but now with the correct target state. If the probe reaches EOF without matching, it transitions to `fallback`.
 
@@ -360,4 +333,4 @@ const keywords = (regexDest, divDest) => [
 ];
 ```
 
-Custom helpers compose with the built-in ones and can be parameterised however you like — since it's just JavaScript, there are no artificial limits.
+Custom helpers can take arguments and return rules built from the standard helpers.

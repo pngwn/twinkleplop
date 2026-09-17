@@ -32,13 +32,12 @@ import "@twinkleplop/theme-github/dark";`;
 .twinkleplop .keyword { color: var(--twp-keyword); }
 .twinkleplop .string  { color: var(--twp-string); }`;
 
-	const override_css = css`/* override a single colour without forking a theme */
+	const override_css = css`/* customise a token colour */
 .twinkleplop {
   --twp-keyword: rebeccapurple;
 }
 
-/* the background is exposed as a variable but never bound,
-   so you opt into it on whatever container you like */
+/* apply the background colour to your container */
 .my-code-block {
   background: var(--twp-background);
 }`;
@@ -64,49 +63,42 @@ import "@twinkleplop/theme-github/dark";`;
 <ArticleMain
 	pane_path="docs / themes"
 	title="themes"
-	subtitle="Two themes ship today, each with a light and a dark variant. Everything is plain CSS custom properties, so overriding one colour never means forking a theme."
+	subtitle="Two themes ship today, each with a light and a dark variant. Themes are CSS custom properties and can be customised with plain CSS."
 >
 	<p>
-		A theme is a stylesheet. It declares every palette entry as a
-		<code>--twp-*</code> custom property and binds each one to a
-		<code>.twinkleplop .&lt;token&gt;</code> selector. There is no theme registry,
-		no runtime colour lookup, and no JavaScript involved in applying one.
+		A theme is a stylesheet. Colours are defined as <code>--twp-*</code> custom properties and
+		applied to <code>.twinkleplop .&lt;token&gt;</code> selectors.
 	</p>
 
 	<Section id="install" title="install a theme" num="§ 01">
 		<p>
-			Pick one from <a href="/docs/themes-ref">the theme reference</a> and
-			install it with your package manager.
+			Pick one from <a href="/docs/themes-ref">the theme reference</a> and install it with your package
+			manager.
 		</p>
 		<CodeBlock fname="terminal" html={install_code} />
 	</Section>
 
 	<Section id="css_import" title="direct import" num="§ 02">
 		<p>
-			With a bundler that handles CSS imports — Vite, Webpack, Parcel — import
-			the package directly.
+			With a bundler that handles CSS imports — Vite, Webpack, Parcel — import the package directly.
 		</p>
 		<CodeBlock fname="theme.ts" html={use_theme_code} />
 		<p>
-			The main export carries both variants. Light lives on
-			<code>:root</code> and dark on <code>.dark</code>, so putting a
-			<code>.dark</code> class on any ancestor of the snippet gives you both
-			modes for free. Import a single variant instead when you control the mode
-			yourself.
+			The main export includes both variants. Light colours are defined on <code>:root</code> and
+			dark colours on <code>.dark</code>. Add a <code>.dark</code> class to an ancestor of the snippet
+			to use the dark theme. You can also import either variant separately.
 		</p>
 		<CodeBlock fname="variants.ts" html={variants_code} />
 	</Section>
 
-	<Section id="css" title="the css contract" num="§ 03">
-		<p>The generated stylesheet is small and entirely predictable.</p>
+	<Section id="css" title="theme CSS" num="§ 03">
+		<p>The generated stylesheet defines the colours and token selectors:</p>
 		<CodeBlock fname="theme-github/dist/index.css" html={generated_css} />
-		<p>Two details worth knowing:</p>
+		<p>The background and whitespace tokens have separate rules:</p>
 		<ul>
 			<li>
-				<code>background_color</code> is the one palette key whose variable name
-				differs — it is exposed as <code>--twp-background</code>, and it gets no
-				binding selector, so you apply it where you want it. Every other key
-				maps 1:1.
+				<code>background_color</code> is exported as <code>--twp-background</code>. Apply it to your
+				code container yourself. All other variables use the palette key as their name.
 			</li>
 			<li>
 				<code>space</code>, <code>tab</code>, <code>newline</code> and
@@ -118,33 +110,29 @@ import "@twinkleplop/theme-github/dark";`;
 
 	<Section id="override" title="overriding colours" num="§ 04">
 		<p>
-			Because everything is a custom property, changing one colour is one
-			declaration. Scope it as narrowly or as broadly as you like.
+			Override a custom property to change a colour. The selector determines which code blocks are
+			affected.
 		</p>
 		<CodeBlock fname="overrides.css" html={override_css} />
 		<Callout mark="▸">
 			If you are not using a bundler, copy the generated stylesheet out of
-			<code>node_modules/@twinkleplop/theme-github/dist/</code> and vendor it into
-			your project. It is a normal CSS file with no imports of its own.
+			<code>node_modules/@twinkleplop/theme-github/dist/</code> into your project. It has no CSS imports.
 		</Callout>
 	</Section>
 
 	<Section id="tokens" title="token colours" num="§ 05">
 		<p>
-			To build the CSS yourself, or to work with the colours directly, every
-			theme exports its palettes from a <code>/tokens</code> subpath.
+			To build the CSS yourself, or to work with the colours directly, every theme exports its
+			palettes from a <code>/tokens</code> subpath.
 		</p>
 		<CodeBlock fname="tokens.ts" html={use_theme_tokens} />
 		<p>
-			Two named exports, <code>light</code> and <code>dark</code>, each an object
-			mapping token name to colour.
+			The <code>light</code> and <code>dark</code> exports map token names to colours.
 		</p>
 		<CodeBlock fname="tokens.ts" html={sample_tokens} />
 		<p>
-			The keys correspond exactly to the token types the highlighter emits. The
-			canonical list lives in <code>@twinkleplop/core/tokens</code>; a key that
-			is not in that catalogue will never match a span. See
-			<a href="/docs/themes-ref">the theme reference</a> for the full vocabulary.
+			The keys match the token types exported by <code>@twinkleplop/core/tokens</code>. See
+			<a href="/docs/themes-ref">the theme reference</a> for the full list.
 		</p>
 	</Section>
 </ArticleMain>
@@ -154,7 +142,7 @@ import "@twinkleplop/theme-github/dark";`;
 	sections={[
 		{ href: "#install", label: "§01 — install a theme", active: true },
 		{ href: "#css_import", label: "§02 — direct import" },
-		{ href: "#css", label: "§03 — the css contract" },
+		{ href: "#css", label: "§03 — theme CSS" },
 		{ href: "#override", label: "§04 — overriding colours" },
 		{ href: "#tokens", label: "§05 — token colours" },
 	]}

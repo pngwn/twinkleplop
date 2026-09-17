@@ -73,7 +73,7 @@
 <ArticleMain
 	pane_path="docs / technical / benchmarks"
 	title="benchmarks"
-	subtitle="How fast twinkleplop highlights compared to  other JavaScript highlighters."
+	subtitle="How fast twinkleplop highlights compared to other JavaScript highlighters."
 >
 	{#if data.missing || !bench}
 		<Callout variant="warn" mark="!">
@@ -85,8 +85,8 @@
 	{:else}
 		<Section id="compare" title="compare" num="§ 01">
 			<p>
-				All benchmarks were measured in the same process, alternating between libraries, in the hope that the
-				machine drifting mid run moves all of them together.
+				Each chart compares libraries measured in the same process. The benchmark alternates between
+				libraries to reduce the effect of changes in machine performance during the run.
 			</p>
 
 			<div class="controls">
@@ -104,7 +104,12 @@
 						</select>
 					</span>
 				</label>
-				<PillToggle label="measure" options={mode_options} value={mode} onchange={(m) => (mode = m)} />
+				<PillToggle
+					label="measure"
+					options={mode_options}
+					value={mode}
+					onchange={(m) => (mode = m)}
+				/>
 				<PillToggle
 					label="input"
 					options={size_options}
@@ -121,12 +126,14 @@
 				/>
 			{:else}
 				<Callout variant="warn" mark="!">
-					<strong>Nothing measured here.</strong> This run has no {lang} chart for that combination.
+					<strong>No results available.</strong> This run has no {lang} chart for that combination.
 				</Callout>
 			{/if}
 			<div class="provenance">
-
-				<span><span class="hw">AMD EPYC</span> · <span class="hw">8C16T</span> · <span class="hw">64GM RAM</span></span>
+				<span
+					><span class="hw">AMD EPYC</span> · <span class="hw">8C16T</span> ·
+					<span class="hw">64GM RAM</span></span
+				>
 				<span>node {bench.meta.node}</span>
 				{#if bench.meta.commit}
 					<span
@@ -135,12 +142,7 @@
 						></span
 					>
 				{/if}
-
 			</div>
-
-
-
-
 
 			{#if bench.meta.anchor && !bench.meta.anchor.stable}
 				<Callout variant="warn" mark="!">
@@ -152,10 +154,10 @@
 			{/if}
 		</Section>
 
-		<Section id="inputs" title="the inputs" num="§ 02">
+		<Section id="inputs" title="input files" num="§ 02">
 			<p>
-				Three inputs are twinkleplop samples: every language at roughly 1KB, 10KB and 100KB. The fourth
-				are Shiki's own sample files.
+				Each language has Twinkleplop samples of roughly 1KB, 10KB and 100KB, plus sample files from
+				Shiki's benchmarks.
 			</p>
 			<table>
 				<thead>
@@ -181,29 +183,33 @@
 			{/if}
 		</Section>
 
-		<Section id="reading" title="how to read this" num="§ 03">
-		<p>These numbers are intended as a rough ballpark. I've done my best to make them accurate but benchmarks are tricky.</p>
+		<Section id="reading" title="interpreting results" num="§ 03">
 			<p>
-				<strong>Token counts are not consistent across libraries.</strong> Different libraries emit different numbers of tokens. Typically more tokens require more work but more tokens doesn't necessarily mean better output.
+				These numbers are intended as a rough ballpark. I've done my best to make them accurate but
+				benchmarks are tricky.
 			</p>
 			<p>
-				<strong>The HTML numbers are not measuring identical output.</strong> twinkleplop and Prism
-				emit classes, Shiki resolves a theme and writes inline styles (in this configuration).
+				<strong>Token counts are not consistent across libraries.</strong> Different libraries emit different
+				numbers of tokens. Typically more tokens require more work but more tokens doesn't necessarily
+				mean better output.
 			</p>
 			<p>
-				<strong>These numbers do not travel.</strong> They describe one machine on one day. Comparing a
-				bar here against a number from  another run, another runner, another node
-				version, will probably differ. Within a single chart, the interleaving makes them fair.
-
+				<strong>The HTML numbers are not measuring identical output.</strong> twinkleplop and Prism emit
+				classes, Shiki resolves a theme and writes inline styles (in this configuration).
 			</p>
-			<p>{#if data.source === "published"}
-				The machine is named above and the commands that produced this file are in
-				<code>lib/bench/published/README.md</code>; the same commands on the same hardware
-				reproduce it.
-			{/if}</p>
+			<p>
+				<strong>Compare results within the same chart.</strong> Results from different runs, machines
+				or Node versions may differ.
+			</p>
+			<p>
+				{#if data.source === "published"}
+					The machine is named above and the commands that produced this file are in
+					<code>lib/bench/published/README.md</code>; you can use them to repeat the measurements.
+				{/if}
+			</p>
 		</Section>
 
-		<Section id="libraries" title="the libraries" num="§ 04">
+		<Section id="libraries" title="libraries" num="§ 04">
 			<table>
 				<thead>
 					<tr><th>library</th><th>version</th><th>note</th></tr>
@@ -226,9 +232,9 @@
 	title="benchmarks"
 	sections={[
 		{ href: "#compare", label: "§01 — compare", active: true },
-		{ href: "#inputs", label: "§02 — the inputs" },
-		{ href: "#reading", label: "§03 — how to read this" },
-		{ href: "#libraries", label: "§04 — the libraries" },
+		{ href: "#inputs", label: "§02 — input files" },
+		{ href: "#reading", label: "§03 — interpreting results" },
+		{ href: "#libraries", label: "§04 — libraries" },
 	]}
 />
 

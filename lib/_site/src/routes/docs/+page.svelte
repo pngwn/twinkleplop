@@ -21,7 +21,7 @@ const html = typescript("1 + 2");`
 	const quick_links = [
 		{ num: "01 ›", title: "quick start", meta: "install and twinkle", href: "/docs/getting_started" },
 		{ num: "02 ›", title: "themes", meta: "light and dark", href: "/docs/themes" },
-		{ num: "03 ›", title: "render options", meta: "make it your own", href: "/docs/render_options" },
+		{ num: "03 ›", title: "render options", meta: "customise the output", href: "/docs/render_options" },
 		{ num: "04 ›", title: "faq", meta: "no-one actually asked", href: "/docs/faq" },
 	];
 </script>
@@ -54,21 +54,21 @@ const html = typescript("1 + 2");`
 		</CardGrid>
 	</Section> -->
 
-	<!-- <Section id="pitch" title="the one-frame pitch" num="§ 03">
+	<!-- <Section id="pitch" title="highlighting pipeline" num="§ 03">
 		<AsciiArt content={pipeline_diagram} />
 
 	</Section> -->
 	<Section id="try-it" title="try it live" num="§ 02">
 		<p>
-			Edit the source and watch it re-twinkle in real-time. This
-			is a scaled-down embed of <a href="/explore">the lab</a> where you can every language and theme in the browser.
+			Edit the source to see the highlighting update. Try more languages and themes in the <a
+				href="/explore">playground</a
+			>.
 		</p>
 		<MiniLab />
 	</Section>
-	<Section id="hello" title="hello, twinkle" num="§ 03">
-		<p>Get started in a few lines. Drop this in a browser or Node:</p>
+	<Section id="hello" title="basic usage" num="§ 03">
+		<p>Import a language and theme, then call the highlighter:</p>
 		<CodeBlock fname="first-twinkle.ts" html={first_highlight_code} />
-
 	</Section>
 </ArticleMain>
 
@@ -77,9 +77,8 @@ const html = typescript("1 + 2");`
 	sections={[
 		{ href: "#quicklinks", label: "§01 — quick links", active: true },
 		{ href: "#try-it", label: "§02 — try it live" },
-		{ href: "#hello", label: "§03 — hello, twinkle" },
+		{ href: "#hello", label: "§03 — basic usage" },
 	]}
-
 />
 
 <style>
