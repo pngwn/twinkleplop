@@ -8,8 +8,7 @@
 
 	const install_code = bash`pnpm add @twinkleplop/typescript @twinkleplop/theme-github`;
 
-	const first_highlight_code = twoslash`// @noUncheckedSideEffectImports: false
-// import the language you want to highlight
+	const first_highlight_code = twoslash`// import the language you want to highlight
 import { language } from "@twinkleplop/typescript";
 
 // import a theme once, anywhere in your app
