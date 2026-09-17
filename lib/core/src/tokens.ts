@@ -12,8 +12,6 @@
 //
 // Reserved-word exports (`function`, `null`) go through the string-literal
 // export syntax so `TOKENS.function` / `TOKENS["null"]` both work.
-//
-// See /languages/TOKENS.md for how these are distributed across grammars.
 
 // ---------------------------------------------------------------------------
 // universal primitives — appear in most languages
