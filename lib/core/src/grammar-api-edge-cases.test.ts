@@ -1,9 +1,9 @@
 /**
  * Grammar API Edge Case Tests
  *
- * These tests document the CURRENT behavior of the grammar API for edge cases
- * identified in grammar-api-analysis.md. Each test cites its issue ID (C1–C5,
- * M1–M4, m1–m5, Q6–Q7) and notes the DESIRED behavior after a fix.
+ * These tests document the CURRENT behavior of the grammar API for known edge
+ * cases. Each test carries a short issue ID (C1–C5, M1–M4, m1–m5, Q6–Q7) and
+ * notes the DESIRED behavior after a fix.
  *
  * Tests pass against the current implementation. They are diagnostic, not
  * prescriptive — the assertions describe what actually happens today.
