@@ -2,9 +2,8 @@
 //
 // every wordmark pixel is assigned a token in the live code sample. scroll
 // progress `p` drives each pixel along an arc from its home cell to a point
-// on that token; landing lights the token up. pixels shed sparks in flight
-// and puff on impact. everything is a pure function of `p`, so scrolling
-// back up runs it in reverse.
+// on that token; landing lights the token up. everything is a pure
+// function of `p`, so scrolling back up runs it in reverse.
 //
 // the dom is rendered by svelte; this module only animates it. per-frame
 // work never reads layout: pixel centres are derived from the measured home
@@ -40,18 +39,6 @@ const FADE_IN = 140;
 // out. the ones still sitting in the letters keep the wordmark whole
 // rather than punching holes in it.
 const CLEAR_AT = 0.3;
-
-// a spark is a tiny square with a soft glow of its own colour. drawn
-// directly that means parsing two colour strings and running a blur pass
-// for every spark on every frame, so each colour's mote is rendered once
-// into an atlas and stamped from there.
-//
-// side of the atlas mote in css px: about the size a typical spark is drawn
-// at, so scaling the stamp keeps the glow close to a real shadowBlur
-const MOTE = 1.2;
-// device px, like shadowBlur itself: neither is affected by the transform
-const MOTE_BLUR = 3;
-const MOTE_PAD = 6;
 
 const HUE_FROM = 25;
 const HUE_TO = 350;
@@ -118,7 +105,6 @@ export interface plop_pixel {
 	y: number;
 	el: HTMLElement;
 	ghost: HTMLElement;
-	color: Record<splash_mode, string>;
 }
 
 export interface plop_target {
@@ -131,7 +117,6 @@ export interface plop_options {
 	mount: HTMLElement;
 	// the block the targets live in
 	code: HTMLElement;
-	canvas: HTMLCanvasElement;
 	pixels: plop_pixel[];
 	cols: number;
 	on_progress: (lit: number, total: number) => void;
@@ -141,8 +126,8 @@ export interface plop {
 	// swap in a new token list. `changed` indexes re-flash if they are lit.
 	set_targets: (targets: plop_target[], changed?: Iterable<number>) => void;
 	scroll_to: (el: HTMLElement, offset: number) => void;
-	// follow a light/dark switch: sparks and the landing flash are drawn
-	// from resolved colours, not css vars
+	// follow a light/dark switch: the landing flash is drawn from resolved
+	// colours, not css vars
 	set_mode: (mode: splash_mode) => void;
 	destroy: () => void;
 }
@@ -158,12 +143,8 @@ interface cell extends plop_pixel {
 	hy: number;
 	dx: number;
 	dy: number;
-	// x offset of this pixel's mote in the atlas, per mode
-	sprite: Record<splash_mode, number>;
-	// last local progress written, last page-space centre, landed flag
+	// last local progress written, and whether it has landed
 	l: number;
-	px: number;
-	py: number;
 	on: boolean;
 }
 
@@ -177,59 +158,18 @@ interface target extends plop_target {
 	lit: boolean;
 }
 
-interface spark {
-	x: number;
-	y: number;
-	vx: number;
-	vy: number;
-	life: number;
-	decay: number;
-	size: number;
-	phase: number;
-	freq: number;
-	// x offset of this spark's mote in the atlas
-	sprite: number;
-}
-
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
 const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 const ease_cubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 export function create_plop(opts: plop_options): plop {
-	const { mount, canvas, cols, on_progress } = opts;
+	const { mount, cols, on_progress } = opts;
 	const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-	const ctx = canvas.getContext("2d")!;
-	const dpr = Math.min(2, window.devicePixelRatio || 1);
 
 	let mode = current_mode();
 
-	const colors = [
-		"#fff",
-		...new Set(opts.pixels.flatMap((pixel) => [pixel.color.dark, pixel.color.light]))
-	];
-	const mote_cell = Math.ceil(MOTE * dpr) + MOTE_PAD * 2;
-	const atlas_canvas =
-		typeof OffscreenCanvas === "undefined"
-			? Object.assign(document.createElement("canvas"), { width: mote_cell * colors.length, height: mote_cell })
-			: new OffscreenCanvas(mote_cell * colors.length, mote_cell);
-	const atlas_ctx = atlas_canvas.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-	atlas_ctx.shadowBlur = MOTE_BLUR;
-	colors.forEach((color, i) => {
-		atlas_ctx.fillStyle = atlas_ctx.shadowColor = color;
-		atlas_ctx.fillRect(i * mote_cell + MOTE_PAD, MOTE_PAD, MOTE * dpr, MOTE * dpr);
-	});
-	// an immutable bitmap where there is one: drawing from a live canvas
-	// snapshots it per call
-	const atlas = "transferToImageBitmap" in atlas_canvas ? atlas_canvas.transferToImageBitmap() : atlas_canvas;
-	// css px the whole atlas cell covers per css px of spark
-	const mote_scale = mote_cell / dpr / MOTE;
-
 	const cells: cell[] = opts.pixels.map((pixel) => ({
 		...pixel,
-		sprite: {
-			dark: colors.indexOf(pixel.color.dark) * mote_cell,
-			light: colors.indexOf(pixel.color.light) * mote_cell
-		},
 		seed: [Math.random(), Math.random(), Math.random(), Math.random()],
 		k: -1,
 		q: 0,
@@ -239,8 +179,6 @@ export function create_plop(opts: plop_options): plop {
 		dx: 0,
 		dy: 0,
 		l: -1,
-		px: NaN,
-		py: NaN,
 		on: false
 	}));
 	// the order pixels are dealt out to tokens in; fixed for the page's life
@@ -257,12 +195,10 @@ export function create_plop(opts: plop_options): plop {
 	let velocity = 0;
 	let last_frame = 0;
 	let last_lit = -1;
-	let sparks: spark[] = [];
 	// how far the flight has faded out under a still scroll, 0 → 1
 	let dim = 0;
 	let idle = false;
 	let idle_timer: ReturnType<typeof setTimeout> | undefined;
-	let canvas_dirty = false;
 	let raf = 0;
 	let scheduled = false;
 	let scroll_raf = 0;
@@ -369,47 +305,6 @@ export function create_plop(opts: plop_options): plop {
 		if (!lit) flashes.get(t.el)?.animation.cancel();
 	}
 
-	function emit(c: cell, x: number, y: number, width: number, burst: boolean) {
-		const vx = x - c.px;
-		const vy = y - c.py;
-		const speed = Math.hypot(vx, vy);
-		// NaN on the first frame, before there is a previous centre
-		if (!burst && !(speed >= 0.5)) return;
-		const bx = speed ? -vx / speed : 0;
-		const by = speed ? -vy / speed : 0;
-
-		for (let i = 0; i < (burst ? 6 : 2); i++) {
-			let angle: number, velocity: number, ox: number, oy: number;
-			if (burst) {
-				angle = Math.random() * Math.PI * 2;
-				velocity = 0.4 + Math.random() * 0.9;
-				ox = (Math.random() - 0.5) * width;
-				oy = (Math.random() - 0.5) * width;
-			} else {
-				// shed from the trailing edge, roughly back along the path
-				angle = Math.atan2(by, bx) + (Math.random() - 0.5) * 0.8;
-				velocity = 0.1 + Math.random() * 0.35;
-				const back = width * 0.45;
-				const jitter = (Math.random() - 0.5) * width * 0.5;
-				ox = bx * back - by * jitter;
-				oy = by * back + bx * jitter;
-			}
-			sparks.push({
-				x: x + ox,
-				y: y + oy,
-				vx: Math.cos(angle) * velocity,
-				vy: Math.sin(angle) * velocity,
-				life: 1,
-				decay: burst ? 0.014 + Math.random() * 0.012 : 0.01 + Math.random() * 0.01,
-				size: (burst ? 1.4 : 1.3) * (0.6 + Math.random()),
-				phase: Math.random() * 6.3,
-				freq: 0.15 + Math.random() * 0.25,
-				// three in ten twinkle white
-				sprite: Math.random() < 0.3 ? 0 : c.sprite[mode]
-			});
-		}
-	}
-
 	// a pixel's own fade as it lands, times the flight-wide idle fade, which
 	// only takes hold once it is clear of the wordmark
 	function set_opacity(c: cell, l: number) {
@@ -423,7 +318,7 @@ export function create_plop(opts: plop_options): plop {
 	}
 
 	function update(p: number) {
-		// no burst for pixels that are already down when the page loads
+		// the first pass reports progress even if nothing has changed
 		const first = last_p < 0;
 
 		for (const c of cells) {
@@ -445,14 +340,6 @@ export function create_plop(opts: plop_options): plop {
 				c.el.style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) rotate(${rotate.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
 				set_opacity(c, l);
 				c.el.style.setProperty("--land", clamp((l - 0.6) / 0.3).toFixed(2));
-
-				const x = c.hx + tx;
-				const y = c.hy + ty;
-				const width = size * 0.84 * scale;
-				if (l > 0.05 && l < 0.9 && Math.random() < 0.55) emit(c, x, y, width, false);
-				if (l > LAND_AT && !c.on && !first) emit(c, x, y, width, true);
-				c.px = x;
-				c.py = y;
 			}
 
 			const on = l > LAND_AT;
@@ -484,45 +371,8 @@ export function create_plop(opts: plop_options): plop {
 		}
 	}
 
-	function size_canvas() {
-		viewport_h = window.innerHeight;
-		canvas.width = window.innerWidth * dpr;
-		canvas.height = viewport_h * dpr;
-	}
-
-	function draw_sparks() {
-		const sx = scroll_x;
-		const sy = scroll_y;
-		ctx.setTransform(1, 0, 0, 1, 0, 0);
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
-		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-		const bottom = viewport_h + 8;
-
-		let kept = 0;
-		for (const s of sparks) {
-			s.x += s.vx;
-			s.y += s.vy;
-			s.vx *= 0.98;
-			s.vy = s.vy * 0.98 + 0.012;
-			s.life -= s.decay;
-			s.phase += s.freq;
-			if (s.life <= 0) continue;
-			sparks[kept++] = s;
-
-			// sparks live in page space, so they stay put as the page scrolls
-			const y = s.y - sy;
-			if (y < -8 || y > bottom) continue;
-			const side = s.size * (0.5 + s.life * 0.5) * mote_scale;
-			ctx.globalAlpha =
-				Math.min(1, s.life * 0.9) * (0.45 + 0.55 * Math.abs(Math.sin(s.phase))) * (1 - dim);
-			ctx.drawImage(atlas, s.sprite, 0, mote_cell, mote_cell, s.x - sx - side / 2, y - side / 2, side, side);
-		}
-		sparks.length = kept;
-		ctx.globalAlpha = 1;
-	}
-
 	// frames run only while something is moving: a scroll, a re-measure, or
-	// sparks still in the air
+	// the idle fade
 	function schedule() {
 		if (scheduled) return;
 		scheduled = true;
@@ -566,16 +416,6 @@ export function create_plop(opts: plop_options): plop {
 			last_p = shown;
 		}
 		if (shown !== target) schedule();
-
-		if (sparks.length) {
-			draw_sparks();
-			canvas_dirty = true;
-			schedule();
-		} else if (canvas_dirty) {
-			ctx.setTransform(1, 0, 0, 1, 0, 0);
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
-			canvas_dirty = false;
-		}
 	}
 
 	function token_color(el: HTMLElement) {
@@ -631,7 +471,7 @@ export function create_plop(opts: plop_options): plop {
 	}
 
 	function handle_resize() {
-		size_canvas();
+		viewport_h = window.innerHeight;
 		measure();
 	}
 
@@ -664,7 +504,6 @@ export function create_plop(opts: plop_options): plop {
 	document.fonts?.ready.then(measure);
 	const settle = setTimeout(measure, 600);
 
-	size_canvas();
 	measure();
 	watch_idle();
 

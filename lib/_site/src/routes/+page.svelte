@@ -20,7 +20,6 @@
 	];
 
 	let wordmark: Wordmark | undefined = $state();
-	let canvas: HTMLCanvasElement | undefined = $state();
 	let live: HTMLElement | undefined = $state();
 
 	let lit = $state(0);
@@ -44,11 +43,10 @@
 
 	let mounted = false;
 	function start() {
-		if (engine || !mounted || !wordmark || !canvas || !targets.length) return;
+		if (engine || !mounted || !wordmark || !targets.length) return;
 		engine = create_plop({
 			mount: wordmark.element(),
 			code: targets[0].el.closest("pre") ?? targets[0].el,
-			canvas,
 			pixels: wordmark.pixels(),
 			cols: wordmark.cols(),
 			on_progress: (n, of) => {
@@ -85,7 +83,6 @@
 		<div class="hero">
 			<h1 class="sr-only">twinkleplop</h1>
 			<Wordmark bind:this={wordmark} text="twinkleplop" />
-			<canvas class="sparks" bind:this={canvas} aria-hidden="true"></canvas>
 			<p class="tagline">plop some <Rainbow text="twinkle" /> in your code</p>
 			<p class="lede">
 				A syntax highlighter and code authoring toolkit. <b>Small, fast, customisable.</b> plop it in
@@ -245,14 +242,6 @@
 		gap: 28px;
 		min-height: calc(100vh - 56px);
 		padding: calc(30vh - 28px) 24px 10vh;
-	}
-	.sparks {
-		position: fixed;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		pointer-events: none;
-		z-index: 30;
 	}
 	.tagline {
 		font-size: clamp(26px, 4.2vw, 44px);
