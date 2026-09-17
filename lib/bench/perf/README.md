@@ -51,10 +51,10 @@ machine more slowly than one round — thermal throttling, another agent's
 build waking up, frequency scaling — moves both arms together and cancels.
 This is the only reason numbers survive a shared machine.
 
-**Never compare across processes.** The existing `lib/bench/baselines/`
-snapshots record thermal penalties of 11% and machine-speed corrections of
-5-7% between runs. A number captured in a previous process is a number from a
-different machine. Both arms load into one process, always.
+**Never compare across processes.** Snapshots taken in separate runs on the
+same machine have shown thermal penalties of 11% and machine-speed corrections
+of 5-7%. A number captured in a previous process is a number from a different
+machine. Both arms load into one process, always.
 
 **Forced GC, re-warm, minor GC, ABBA within the round.** Every round starts
 with a full `gc()`, so no round inherits the previous one's garbage and no
@@ -224,8 +224,7 @@ different library.
 node --expose-gc lib/bench/perf/bin/profile.mjs --family real
 ```
 
-Absolute breakdown of one arm into scan / reclassify / render. Reference
-figures for the frozen baseline are in `BASELINE.md`.
+Absolute breakdown of one arm into scan / reclassify / render.
 
 ## Failure modes this harness does not protect you from
 

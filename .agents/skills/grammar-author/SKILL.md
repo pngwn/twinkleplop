@@ -7,11 +7,13 @@ You are writing a twinkleplop syntax highlighting grammar for a language that ha
 
 ## Precondition: research report
 
-Before starting, verify `languages/{name}/RESEARCH.md` exists and contains all five sections (primary sources, token inventory, edge cases, nesting/context constructs, manual traces).
+When writing a new grammar, verify `languages/{name}/RESEARCH.md` exists and contains all five sections (primary sources, token inventory, edge cases, nesting/context constructs, manual traces).
 
 If it does not exist, STOP. Tell the user to run the grammar-researcher skill first, passing the language name. Do not attempt the research yourself from this skill — the split exists so research gets its own dedicated pass.
 
-Read `RESEARCH.md` end-to-end before writing any rules. Your state design and rule ordering decisions should cite it. If you discover mid-implementation that the research missed something, update RESEARCH.md as you go — keep it the canonical reference.
+Read `RESEARCH.md` end-to-end before writing any rules. Your state design and rule ordering decisions should cite it. If you discover mid-implementation that the research missed something, update RESEARCH.md as you go — keep it current until the grammar lands.
+
+`RESEARCH.md` is a working document and is gitignored, so existing grammars do not have one. When debugging an existing grammar, work from the grammar, its test fixtures and the primary sources instead, and only ask for a grammar-researcher pass if the fix needs new research.
 
 Follow the phases below in order. Do not skip or combine phases.
 
