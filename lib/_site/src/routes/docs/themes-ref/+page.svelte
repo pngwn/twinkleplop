@@ -1,93 +1,131 @@
-<!-- <script lang="ts">
+<script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
+	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import ThemeSwatch from "$lib/docs/components/ThemeSwatch.svelte";
 	import { THEMES } from "$lib/docs/themes_data";
+	import { twoslash, bash } from "$lib/docs/snippets";
 
-	const use_theme_code = `<span class="ln">1</span><span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-var">code</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span> <span class="tok-var">lang</span><span class="tok-punct">:</span> <span class="tok-str">'tsx'</span><span class="tok-punct">,</span> <span class="tok-var">theme</span><span class="tok-punct">:</span> <span class="tok-str">'tokyo-night'</span> <span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>
-<span class="ln">2</span>
-<span class="ln">3</span><span class="tok-com">// dual themes (light + dark, swapped via CSS variables)</span>
-<span class="ln">4</span><span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-var">code</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span>
-<span class="ln">5</span>  <span class="tok-var">lang</span><span class="tok-punct">:</span> <span class="tok-str">'tsx'</span><span class="tok-punct">,</span>
-<span class="ln">6</span>  <span class="tok-var">themes</span><span class="tok-punct">:</span> <span class="tok-punct">&#123;</span> <span class="tok-var">light</span><span class="tok-punct">:</span> <span class="tok-str">'github-light'</span><span class="tok-punct">,</span> <span class="tok-var">dark</span><span class="tok-punct">:</span> <span class="tok-str">'github-dark'</span> <span class="tok-punct">&#125;</span>
-<span class="ln">7</span><span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>`;
+	const install = bash`pnpm add @twinkleplop/theme-github`;
 
-	const byo_code = `<span class="ln">1</span><span class="tok-kw">import</span> <span class="tok-var">myTheme</span> <span class="tok-kw">from</span> <span class="tok-str">'./my-theme.json'</span><span class="tok-punct">;</span>
-<span class="ln">2</span><span class="tok-kw">import</span> <span class="tok-punct">&#123;</span> <span class="tok-var">registerTheme</span> <span class="tok-punct">&#125;</span> <span class="tok-kw">from</span> <span class="tok-str">'twinkleplop'</span><span class="tok-punct">;</span>
-<span class="ln">3</span>
-<span class="ln">4</span><span class="tok-fn">registerTheme</span><span class="tok-punct">(</span><span class="tok-str">'my-theme'</span><span class="tok-punct">,</span> <span class="tok-var">myTheme</span><span class="tok-punct">)</span><span class="tok-punct">;</span>
-<span class="ln">5</span><span class="tok-kw">await</span> <span class="tok-fn">twinkle</span><span class="tok-punct">(</span><span class="tok-var">code</span><span class="tok-punct">,</span> <span class="tok-punct">&#123;</span> <span class="tok-var">theme</span><span class="tok-punct">:</span> <span class="tok-str">'my-theme'</span> <span class="tok-punct">&#125;</span><span class="tok-punct">)</span><span class="tok-punct">;</span>`;
+	const use = twoslash`import "@twinkleplop/theme-github";`;
+
+	const palette = twoslash`import type { theme_palette } from "@twinkleplop/core";
+
+export const light: theme_palette = {
+  background_color: "#ffffff",
+  keyword: "#cf222e",
+  string: "#0a3069",
+  comment: "#6e7781",
+  // ...one entry per token type you want to style
+};`;
+
+	const vocab: { group: string; tokens: string }[] = [
+		{
+			group: "universal",
+			tokens: "boolean, comment, identifier, keyword, number, operator, punctuation, regex, string, template",
+		},
+		{
+			group: "named entities",
+			tokens: "attribute, builtin, class_name, constant, decorator, function, lifetime, namespace, parameter, property, type, variable, variant",
+		},
+		{ group: "markup", tokens: "attr_name, doctype, entity, tag_name" },
+		{
+			group: "css",
+			tokens: "css_variable, selector, selector_class, selector_id, selector_pseudo, unit",
+		},
+		{
+			group: "diff",
+			tokens: "changed, changed_marker, deleted, deleted_marker, inserted, inserted_marker, hash, heading, label",
+		},
+		{
+			group: "markdown",
+			tokens: "autolink, bold, code, code_block, code_language, italic, link_text, strike, url, url_link, url_title, blockquote_marker, code_fence, front_matter_marker, heading_marker, hr, list_marker, task_marker, escape, hard_break",
+		},
+		{ group: "svelte", tokens: "expression, svelte_block, svelte_directive" },
+		{ group: "whitespace", tokens: "space, tab, newline, carriage_return" },
+		{
+			group: "language-unique",
+			tokens: "string_escape (bash), format (python), attr_sigil (rust), bit (sql), array_table_header, datetime (toml), null",
+		},
+	];
+
+	const vocab_rows = vocab.map((v) => [
+		{ kind: "name" as const, value: v.group },
+		{ kind: "desc" as const, value: `<code>${v.tokens.split(", ").join("</code>, <code>")}</code>` },
+	]);
 </script>
 
 <ArticleMain
-	pane_path="docs / guides / themes.md"
-	last_edit="last edit: 1w ago · v0.4.2"
-	breadcrumb={[
-		{ label: "docs", href: "/docs" },
-		{ label: "guides", href: "/docs" },
-		{ label: "themes" },
-	]}
-	tagline="◐ 02 · guides · ~3 min"
-	title="themes"
-	subtitle={`Every shiki theme works, unchanged. Plus four pixel-native themes designed for this library. Click a swatch to preview, or hit <span class="kbd">⌘</span><span class="kbd">K</span> and type "theme".`}
-	prev={{ dir: "← prev", label: "01. getting started", href: "/docs/getting_started" }}
-	next={{ dir: "next →", label: "03. how tokenization works", href: "/docs/tokenization" }}
+	pane_path="docs / reference / themes"
+	title="theme reference"
+	subtitle="The themes that ship, and the token vocabulary they style."
 >
 	<Section id="builtin" title="built-in themes" num="§ 01">
 		<p>
-			Each theme ships as a <strong>light + dark pair</strong>. Pass either variant name, or use
-			<code>themes: &#123; light, dark &#125;</code> to let the browser pick. All 12 pairs are in
-			the default bundle.
+			Two theme packages ship today. Each carries a light and a dark variant in
+			one stylesheet, switched by a <code>.dark</code> class on any ancestor.
 		</p>
 		<CardGrid cols={2}>
 			{#each THEMES as theme}
 				<ThemeSwatch {theme} />
 			{/each}
 		</CardGrid>
-	</Section>
-
-	<Section id="using" title="using a theme" num="§ 02">
+		<ParamTable
+			headers={["theme", "package"]}
+			rows={THEMES.map((t) => [
+				{ kind: "name" as const, value: t.name },
+				{ kind: "desc" as const, value: `<code>${t.package_name}</code>` },
+			])}
+		/>
+		<CodeBlock fname="terminal" html={install} />
+		<CodeBlock fname="theme.ts" html={use} />
 		<p>
-			Pass the name as a string. Themes are lazy-loaded on first use and cached — you pay the cost
-			exactly once.
+			See <a href="/docs/themes">themes</a> for variants, overrides and the CSS
+			contract.
 		</p>
-		<CodeBlock fname="use-theme.ts" html={use_theme_code} />
 	</Section>
 
-	<Section id="byo" title="bring your own" num="§ 03">
+	<Section id="vocabulary" title="token vocabulary" num="§ 02">
 		<p>
-			Feed it any vs-code-compatible theme JSON. TextMate scopes are translated into the internal
-			token tree at load time, then cached on disk.
+			A theme is a map from token type to colour. These are the types any grammar
+			in the tree emits; the canonical list lives in
+			<code>@twinkleplop/core/tokens</code>.
 		</p>
-		<CodeBlock fname="byo.ts" html={byo_code} />
-	</Section>
-
-	<Section id="parity" title="shiki parity" num="§ 04">
-		<Callout variant="tip">
-			We ran 11,204 snippets through both libraries across 47 shiki themes.
-			<strong>98.7% of outputs are pixel-identical.</strong> The remainder differ by ≤ 2 sub-hues
-			in grammar-ambiguous regions. See the <a href="#parity-report">parity report</a> for the
-			full table.
+		<ParamTable headers={["group", "tokens"]} rows={vocab_rows} />
+		<Callout mark="▸" variant="warn">
+			Markdown's <code>*_open</code> / <code>*_close</code> pairs and the
+			<code>raw_*</code> containers are intermediate types. They are consumed by
+			reclassifiers and never reach the output, so styling them has no effect.
 		</Callout>
+	</Section>
+
+	<Section id="authoring" title="authoring a theme" num="§ 03">
+		<p>
+			Export a <code>light</code> and a <code>dark</code> palette keyed by token
+			name. The build step generates the three stylesheets —
+			<code>light.css</code>, <code>dark.css</code> and the combined
+			<code>index.css</code>.
+		</p>
+		<CodeBlock fname="tokens.ts" html={palette} />
+		<p>
+			Validate a palette against
+			<code>@twinkleplop/core/tokens</code>: a key that is not in that catalogue
+			will never match a span. Not every theme needs an entry for every type —
+			anything unstyled simply inherits.
+		</p>
 	</Section>
 </ArticleMain>
 
 <ArticleOtp
-	title="themes"
+	title="theme reference"
 	sections={[
 		{ href: "#builtin", label: "§01 — built-in themes", active: true },
-		{ href: "#using", label: "§02 — using a theme" },
-		{ href: "#byo", label: "§03 — bring your own" },
-		{ href: "#parity", label: "§04 — shiki parity" },
+		{ href: "#vocabulary", label: "§02 — token vocabulary" },
+		{ href: "#authoring", label: "§03 — authoring a theme" },
 	]}
-	meta={[
-		{ label: "version", value: "0.4.2" },
-		{ label: "updated", value: "1w ago" },
-		{ label: "authors", value: "al" },
-		{ label: "read", value: "~3 min" },
-	]}
-/> -->
+/>

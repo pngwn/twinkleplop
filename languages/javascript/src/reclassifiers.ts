@@ -39,8 +39,10 @@ import type {
   ClaimFn,
   ClaimingReclassifier,
   FrameSpec,
+  GroupDescriptor,
   LanguagePipeline,
   Reclassifier,
+  Region,
   RewriteRule,
 } from "@twinkleplop/core";
 
@@ -303,9 +305,15 @@ export const js_frame_track = frame_track(js_frame_spec);
 // lookup). We memoize on the token_types array reference — a WeakMap lets
 // different compiled grammars share one scanner without holding onto their
 // token_types arrays once they go out of scope.
-const type_id_cache = new WeakMap();
+interface TypeIds {
+  identifier_id: number;
+  template_id: number;
+  punctuation_id: number;
+}
 
-function get_type_ids(token_types) {
+const type_id_cache = new WeakMap<string[], TypeIds>();
+
+function get_type_ids(token_types: string[]): TypeIds {
   let ids = type_id_cache.get(token_types);
   if (ids === undefined) {
     ids = {
@@ -320,15 +328,14 @@ function get_type_ids(token_types) {
 
 /**
  * Scanner called at each host token position. Returns a GroupDescriptor if
- * a tagged template starts here, or null otherwise.
- *
- * @param {Uint32Array} tokens
- * @param {string} input
- * @param {number} i
- * @param {string[]} token_types
- * @returns {import("@twinkleplop/core").GroupDescriptor | null}
+ * a tagged template starts here, or null otherwise. Matches `GroupScanFn`.
  */
-export function scan_tagged_template(tokens, input, i, token_types) {
+export function scan_tagged_template(
+  tokens: Uint32Array,
+  input: string,
+  i: number,
+  token_types: string[],
+): GroupDescriptor | null {
   const { identifier_id, template_id, punctuation_id } = get_type_ids(token_types);
   if (identifier_id < 0 || template_id < 0 || punctuation_id < 0) return null;
   const count = tokens.length / 3;
@@ -351,7 +358,7 @@ export function scan_tagged_template(tokens, input, i, token_types) {
   const first_start = tokens[first_chunk * 3 + 1];
   if (input[first_start] !== "`") return null;
 
-  const regions = [];
+  const regions: Region[] = [];
   // opening backtick as a synthetic template token (one char).
   regions.push({
     kind: "synthetic",
