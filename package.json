@@ -37,6 +37,7 @@
     ]
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^1.0.1",
     "@changesets/cli": "^2.31.0"
   },
   "homepage": "https://twinkleplop.pngwn.at"
