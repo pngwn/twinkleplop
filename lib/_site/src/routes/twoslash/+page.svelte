@@ -1,12 +1,14 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let { data }: { data: PageData } = $props();
 </script>
 
-<svelte:head>
-	<title>twinkleplop · twoslash demo</title>
-</svelte:head>
+<Seo
+	title="twinkleplop · twoslash demo"
+	description="A live demo of twoslash: TypeScript type information rendered into the highlighted output."
+/>
 
 <div class="page">
 	<header class="hero">

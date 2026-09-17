@@ -1,0 +1,283 @@
+<!doctype html>
+<!--
+  source for static/og.png — the 1200x630 social card.
+  regenerate: open this file in a browser at 1200x630 and screenshot it,
+  or re-run with any headless browser. the code sample is real twinkleplop
+  output (@twinkleplop/typescript + theme-github dark).
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>twinkleplop — social card</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+			rel="stylesheet"
+		/>
+		<style>
+			/* @twinkleplop/theme-github — generated from src/tokens.ts, do not edit */
+			
+			:root {
+				--twp-background: #0d1117;
+				--twp-boolean: #79c0ff;
+				--twp-comment: #8b949e;
+				--twp-identifier: #e6edf3;
+				--twp-keyword: #ff7b72;
+				--twp-number: #79c0ff;
+				--twp-operator: #ff7b72;
+				--twp-punctuation: #e6edf3;
+				--twp-regex: #a5d6ff;
+				--twp-string: #a5d6ff;
+				--twp-template: #a5d6ff;
+				--twp-attribute: #79c0ff;
+				--twp-builtin: #79c0ff;
+				--twp-class_name: #ffa657;
+				--twp-constant: #79c0ff;
+				--twp-decorator: #d2a8ff;
+				--twp-lifetime: #ffa657;
+				--twp-namespace: #ffa657;
+				--twp-parameter: #ffa657;
+				--twp-property: #79c0ff;
+				--twp-type: #79c0ff;
+				--twp-variable: #e6edf3;
+				--twp-variant: #79c0ff;
+				--twp-function: #d2a8ff;
+				--twp-attr_name: #79c0ff;
+				--twp-doctype: #8b949e;
+				--twp-entity: #79c0ff;
+				--twp-tag_name: #7ee787;
+				--twp-css_variable: #ffa657;
+				--twp-selector: #7ee787;
+				--twp-selector_class: #79c0ff;
+				--twp-selector_id: #79c0ff;
+				--twp-selector_pseudo: #79c0ff;
+				--twp-unit: #ff7b72;
+				--twp-changed: #ffa657;
+				--twp-changed_marker: #ffa657;
+				--twp-deleted: #ffa198;
+				--twp-deleted_marker: #ffa198;
+				--twp-hash: #8b949e;
+				--twp-heading: #79c0ff;
+				--twp-inserted: #7ee787;
+				--twp-inserted_marker: #7ee787;
+				--twp-label: #8b949e;
+				--twp-autolink: #a5d6ff;
+				--twp-bold: #e6edf3;
+				--twp-code: #79c0ff;
+				--twp-code_block: #79c0ff;
+				--twp-code_language: #79c0ff;
+				--twp-italic: #e6edf3;
+				--twp-link_text: #a5d6ff;
+				--twp-strike: #e6edf3;
+				--twp-url: #a5d6ff;
+				--twp-url_link: #a5d6ff;
+				--twp-url_title: #a5d6ff;
+				--twp-autolink_open: #a5d6ff;
+				--twp-autolink_close: #a5d6ff;
+				--twp-bold_open: #e6edf3;
+				--twp-bold_close: #e6edf3;
+				--twp-code_open: #79c0ff;
+				--twp-code_close: #79c0ff;
+				--twp-italic_open: #e6edf3;
+				--twp-italic_close: #e6edf3;
+				--twp-link_text_open: #a5d6ff;
+				--twp-link_text_close: #a5d6ff;
+				--twp-strike_open: #e6edf3;
+				--twp-strike_close: #e6edf3;
+				--twp-blockquote_marker: #8b949e;
+				--twp-code_fence: #8b949e;
+				--twp-front_matter_marker: #8b949e;
+				--twp-heading_marker: #79c0ff;
+				--twp-hr: #8b949e;
+				--twp-list_marker: #ffa657;
+				--twp-task_marker: #3fb950;
+				--twp-escape: #7ee787;
+				--twp-hard_break: #8b949e;
+				--twp-expression: #ff7b72;
+				--twp-svelte_block: #ff7b72;
+				--twp-svelte_directive: #79c0ff;
+				--twp-carriage_return: inherit;
+				--twp-newline: inherit;
+				--twp-space: inherit;
+				--twp-tab: inherit;
+				--twp-raw_code_block: #e6edf3;
+				--twp-raw_front_matter: #e6edf3;
+				--twp-raw_script: #e6edf3;
+				--twp-raw_style: #e6edf3;
+				--twp-raw_svelte_expression: #e6edf3;
+				--twp-string_escape: #7ee787;
+				--twp-format: #ff7b72;
+				--twp-attr_sigil: #ff7b72;
+				--twp-bit: #79c0ff;
+				--twp-array_table_header: #7ee787;
+				--twp-datetime: #79c0ff;
+				--twp-block_scalar_header: #8b949e;
+				--twp-directive: #ff7b72;
+				--twp-doc_marker: #8b949e;
+				--twp-plain_scalar: #e6edf3;
+				--twp-tag: #ff7b72;
+				--twp-null: #79c0ff;
+			}
+			
+			.twinkleplop .boolean { color: var(--twp-boolean); }
+			.twinkleplop .comment { color: var(--twp-comment); }
+			.twinkleplop .identifier { color: var(--twp-identifier); }
+			.twinkleplop .keyword { color: var(--twp-keyword); }
+			.twinkleplop .number { color: var(--twp-number); }
+			.twinkleplop .operator { color: var(--twp-operator); }
+			.twinkleplop .punctuation { color: var(--twp-punctuation); }
+			.twinkleplop .regex { color: var(--twp-regex); }
+			.twinkleplop .string { color: var(--twp-string); }
+			.twinkleplop .template { color: var(--twp-template); }
+			.twinkleplop .attribute { color: var(--twp-attribute); }
+			.twinkleplop .builtin { color: var(--twp-builtin); }
+			.twinkleplop .class_name { color: var(--twp-class_name); }
+			.twinkleplop .constant { color: var(--twp-constant); }
+			.twinkleplop .decorator { color: var(--twp-decorator); }
+			.twinkleplop .lifetime { color: var(--twp-lifetime); }
+			.twinkleplop .namespace { color: var(--twp-namespace); }
+			.twinkleplop .parameter { color: var(--twp-parameter); }
+			.twinkleplop .property { color: var(--twp-property); }
+			.twinkleplop .type { color: var(--twp-type); }
+			.twinkleplop .variable { color: var(--twp-variable); }
+			.twinkleplop .variant { color: var(--twp-variant); }
+			.twinkleplop .function { color: var(--twp-function); }
+			.twinkleplop .attr_name { color: var(--twp-attr_name); }
+			.twinkleplop .doctype { color: var(--twp-doctype); }
+			.twinkleplop .entity { color: var(--twp-entity); }
+			.twinkleplop .tag_name { color: var(--twp-tag_name); }
+			.twinkleplop .css_variable { color: var(--twp-css_variable); }
+			.twinkleplop .selector { color: var(--twp-selector); }
+			.twinkleplop .selector_class { color: var(--twp-selector_class); }
+			.twinkleplop .selector_id { color: var(--twp-selector_id); }
+			.twinkleplop .selector_pseudo { color: var(--twp-selector_pseudo); }
+			.twinkleplop .unit { color: var(--twp-unit); }
+			.twinkleplop .changed { color: var(--twp-changed); }
+			.twinkleplop .changed_marker { color: var(--twp-changed_marker); }
+			.twinkleplop .deleted { color: var(--twp-deleted); }
+			.twinkleplop .deleted_marker { color: var(--twp-deleted_marker); }
+			.twinkleplop .hash { color: var(--twp-hash); }
+			.twinkleplop .heading { color: var(--twp-heading); }
+			.twinkleplop .inserted { color: var(--twp-inserted); }
+			.twinkleplop .inserted_marker { color: var(--twp-inserted_marker); }
+			.twinkleplop .label { color: var(--twp-label); }
+			.twinkleplop .autolink { color: var(--twp-autolink); }
+			.twinkleplop .bold { color: var(--twp-bold); }
+			.twinkleplop .code { color: var(--twp-code); }
+			.twinkleplop .code_block { color: var(--twp-code_block); }
+			.twinkleplop .code_language { color: var(--twp-code_language); }
+			.twinkleplop .italic { color: var(--twp-italic); }
+			.twinkleplop .link_text { color: var(--twp-link_text); }
+			.twinkleplop .strike { color: var(--twp-strike); }
+			.twinkleplop .url { color: var(--twp-url); }
+			.twinkleplop .url_link { color: var(--twp-url_link); }
+			.twinkleplop .url_title { color: var(--twp-url_title); }
+			.twinkleplop .autolink_open { color: var(--twp-autolink_open); }
+			.twinkleplop .autolink_close { color: var(--twp-autolink_close); }
+			.twinkleplop .bold_open { color: var(--twp-bold_open); }
+			.twinkleplop .bold_close { color: var(--twp-bold_close); }
+			.twinkleplop .code_open { color: var(--twp-code_open); }
+			.twinkleplop .code_close { color: var(--twp-code_close); }
+			.twinkleplop .italic_open { color: var(--twp-italic_open); }
+			.twinkleplop .italic_close { color: var(--twp-italic_close); }
+			.twinkleplop .link_text_open { color: var(--twp-link_text_open); }
+			.twinkleplop .link_text_close { color: var(--twp-link_text_close); }
+			.twinkleplop .strike_open { color: var(--twp-strike_open); }
+			.twinkleplop .strike_close { color: var(--twp-strike_close); }
+			.twinkleplop .blockquote_marker { color: var(--twp-blockquote_marker); }
+			.twinkleplop .code_fence { color: var(--twp-code_fence); }
+			.twinkleplop .front_matter_marker { color: var(--twp-front_matter_marker); }
+			.twinkleplop .heading_marker { color: var(--twp-heading_marker); }
+			.twinkleplop .hr { color: var(--twp-hr); }
+			.twinkleplop .list_marker { color: var(--twp-list_marker); }
+			.twinkleplop .task_marker { color: var(--twp-task_marker); }
+			.twinkleplop .escape { color: var(--twp-escape); }
+			.twinkleplop .hard_break { color: var(--twp-hard_break); }
+			.twinkleplop .expression { color: var(--twp-expression); }
+			.twinkleplop .svelte_block { color: var(--twp-svelte_block); }
+			.twinkleplop .svelte_directive { color: var(--twp-svelte_directive); }
+			.twinkleplop .raw_code_block { color: var(--twp-raw_code_block); }
+			.twinkleplop .raw_front_matter { color: var(--twp-raw_front_matter); }
+			.twinkleplop .raw_script { color: var(--twp-raw_script); }
+			.twinkleplop .raw_style { color: var(--twp-raw_style); }
+			.twinkleplop .raw_svelte_expression { color: var(--twp-raw_svelte_expression); }
+			.twinkleplop .string_escape { color: var(--twp-string_escape); }
+			.twinkleplop .format { color: var(--twp-format); }
+			.twinkleplop .attr_sigil { color: var(--twp-attr_sigil); }
+			.twinkleplop .bit { color: var(--twp-bit); }
+			.twinkleplop .array_table_header { color: var(--twp-array_table_header); }
+			.twinkleplop .datetime { color: var(--twp-datetime); }
+			.twinkleplop .block_scalar_header { color: var(--twp-block_scalar_header); }
+			.twinkleplop .directive { color: var(--twp-directive); }
+			.twinkleplop .doc_marker { color: var(--twp-doc_marker); }
+			.twinkleplop .plain_scalar { color: var(--twp-plain_scalar); }
+			.twinkleplop .tag { color: var(--twp-tag); }
+			.twinkleplop .null { color: var(--twp-null); }
+			.twinkleplop .space { white-space: pre; }
+			.twinkleplop .tab { white-space: pre; }
+			.twinkleplop .newline { white-space: pre; }
+			
+		</style>
+		<style>
+			:root {
+				--bg: #0a0a0a;
+				--bg2: #0f0f0f;
+				--line: #222;
+				--ink: #ededed;
+				--ink2: #c5c5c5;
+				--ink3: #a1a1a1;
+				--green: #5be08c;
+				--mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+			}
+			* { box-sizing: border-box; margin: 0; padding: 0; }
+			body {
+				width: 1200px;
+				height: 630px;
+				background: var(--bg);
+				color: var(--ink);
+				font-family: var(--mono);
+				-webkit-font-smoothing: antialiased;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				gap: 30px;
+				padding: 0 72px;
+				overflow: hidden;
+			}
+			.wordmark { font-size: 84px; font-weight: 700; letter-spacing: 1px; line-height: 1; }
+			.tagline { font-size: 27px; color: var(--ink2); }
+			.card {
+				background: var(--bg2);
+				border: 1px solid var(--line);
+				padding: 26px 30px;
+				font-size: 21px;
+				line-height: 1.5;
+				overflow: hidden;
+			}
+			.card pre { margin: 0; background: none; white-space: pre; }
+			.card code { font-family: var(--mono); }
+			.foot {
+				display: flex;
+				justify-content: space-between;
+				align-items: baseline;
+				font-size: 21px;
+				color: var(--ink3);
+			}
+			.foot b { font-weight: 400; color: var(--green); }
+		</style>
+	</head>
+	<body>
+		<div class="wordmark"><span style="color:oklch(0.8 0.15 25)">t</span><span style="color:oklch(0.8 0.15 58)">w</span><span style="color:oklch(0.8 0.15 90)">i</span><span style="color:oklch(0.8 0.15 123)">n</span><span style="color:oklch(0.8 0.15 155)">k</span><span style="color:oklch(0.8 0.15 188)">l</span><span style="color:oklch(0.8 0.15 220)">e</span><span style="color:oklch(0.8 0.15 252)">p</span><span style="color:oklch(0.8 0.15 285)">l</span><span style="color:oklch(0.8 0.15 318)">o</span><span style="color:oklch(0.8 0.15 350)">p</span></div>
+		<div class="tagline">plop some twinkle in your code</div>
+		<div class="card"><pre class="twinkleplop"><code><span class="l"><span class="tok keyword">import</span> <span class="tok punctuation">{</span> <span class="tok identifier">language</span> <span class="tok punctuation">}</span> <span class="tok keyword">from</span> <span class="tok string">&quot;@twinkleplop/typescript&quot;</span><span class="tok punctuation">;</span></span>
+<span class="l"><span class="tok keyword">import</span> <span class="tok string">&quot;@twinkleplop/theme-github&quot;</span><span class="tok punctuation">;</span></span>
+<span class="l"></span>
+<span class="l"><span class="tok keyword">const</span> <span class="tok constant">ts</span> <span class="tok operator">=</span> <span class="tok function">language</span><span class="tok punctuation">();</span></span>
+<span class="l"><span class="tok keyword">const</span> <span class="tok constant">html</span> <span class="tok operator">=</span> <span class="tok function">ts</span><span class="tok punctuation">(</span><span class="tok string">&quot;const twinkle = plop(code);&quot;</span><span class="tok punctuation">);</span></span></code></pre></div>
+		<div class="foot">
+			<span><b>$</b> npm i @twinkleplop/typescript</span>
+			<span>twinkleplop.pngwn.at</span>
+		</div>
+	</body>
+</html>

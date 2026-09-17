@@ -85,6 +85,17 @@
 
 /* root wrapper — owned by layout, kept global so cursor/tree animations can reach */
 .docs-root {
+	/* site chrome is shared with the splash; see SiteHeader.svelte */
+	--hdr-bg: var(--docs-bg);
+	--hdr-bg-plain: var(--docs-bg);
+	--hdr-bg-2: var(--docs-bg-2);
+	--hdr-line: var(--docs-line);
+	--hdr-line-2: var(--docs-line);
+	--hdr-fg: var(--docs-fg);
+	--hdr-fg-dim: var(--docs-fg-dim);
+	--hdr-fg-ghost: var(--docs-fg-ghost);
+	--hdr-accent: var(--docs-accent);
+
 	background: var(--docs-bg);
 	color: var(--docs-fg);
 	font-family: var(--docs-mono);

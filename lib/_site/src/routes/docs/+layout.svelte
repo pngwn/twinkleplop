@@ -6,7 +6,8 @@
 	import { chrome, close_nav } from '$lib/docs/chrome.svelte';
 	import { hydrate_mode } from '$lib/theme_mode.svelte';
 
-	import TopBar from '$lib/docs/components/TopBar.svelte';
+	import Seo from '$lib/components/Seo.svelte';
+	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import NavPane from '$lib/docs/components/NavPane.svelte';
 	import BottomBar from '$lib/docs/components/BottomBar.svelte';
 	import CrtOverlay from '$lib/docs/components/CrtOverlay.svelte';
@@ -32,12 +33,15 @@
 	});
 </script>
 
-<svelte:head>
-	<title>{active_entry ? `${active_entry.title} · twinkleplop docs` : 'twinkleplop · docs'}</title>
-</svelte:head>
+<Seo
+	title={active_entry ? `${active_entry.title} · twinkleplop docs` : 'twinkleplop · docs'}
+	description={active_entry?.blurb ??
+		'Documentation for twinkleplop, a syntax highlighter and code authoring toolkit.'}
+	type="article"
+/>
 
 <div class="docs-root" data-nav-open={chrome.nav_open ? '1' : undefined}>
-	<TopBar />
+	<SiteHeader hide_on_mobile />
 	<MobileScrim />
 
 	<div class="shell">

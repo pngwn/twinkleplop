@@ -28,6 +28,7 @@
 	--mode-height: 24px;
 	--mode-font-size: 11px;
 	--mode-line: var(--border-bright);
+	--mode-bg: var(--bg);
 	--mode-fg: var(--fg-dim);
 	--mode-fg-on: var(--accent);
 	--mode-bg-on: color-mix(in oklab, var(--accent) 16%, transparent);
@@ -228,7 +229,17 @@
 	text-decoration: none;
 }
 .explore-app .site-link:hover {
+	/* neutral, so the accent stays the current-page colour */
+	color: var(--fg);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 5px;
+}
+.explore-app .site-link[aria-current='page'] {
 	color: var(--accent);
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-underline-offset: 5px;
 }
 
 .explore-app .crumb__sep {

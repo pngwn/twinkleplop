@@ -3,6 +3,8 @@ export type doc_entry = {
   title: string;
   path: string;
   crumb: string;
+  /** one line describing the page; also used as its meta description */
+  blurb: string;
   icon: string;
 };
 
@@ -20,6 +22,7 @@ export const DOCS: doc_group[] = [
         title: "Getting started",
         path: "/docs/getting_started",
         crumb: "docs / getting-started",
+        blurb: "Install and highlight your first snippet.",
         icon: "◐",
       },
       {
@@ -27,6 +30,7 @@ export const DOCS: doc_group[] = [
         title: "Languages",
         path: "/docs/languages",
         crumb: "docs / languages",
+        blurb: "Working with language packages.",
         icon: "⇢",
       },
       {
@@ -34,6 +38,7 @@ export const DOCS: doc_group[] = [
         title: "Themes",
         path: "/docs/themes",
         crumb: "docs / themes",
+        blurb: "Two themes ship today, each with a light and a dark variant. Themes are CSS custom properties and can be customised with plain CSS.",
         icon: "↔",
       },
       {
@@ -41,6 +46,7 @@ export const DOCS: doc_group[] = [
         title: "Render options",
         path: "/docs/render_options",
         crumb: "docs / render-options",
+        blurb: "Per-call options on the renderer: classes, attributes, overlays, hooks and whitespace.",
         icon: "↔",
       },
       {
@@ -48,6 +54,7 @@ export const DOCS: doc_group[] = [
         title: "Line numbers",
         path: "/docs/line_numbers",
         crumb: "docs / line-numbers",
+        blurb: "Add line numbers to highlighted code.",
         icon: "↔",
       },
       {
@@ -55,6 +62,7 @@ export const DOCS: doc_group[] = [
         title: "Directives",
         path: "/docs/directives",
         crumb: "docs / directives",
+        blurb: "Comment directives for marking regions of source code.",
         icon: "↔",
       },
       {
@@ -62,6 +70,7 @@ export const DOCS: doc_group[] = [
         title: "Diffs",
         path: "/docs/diffs",
         crumb: "docs / diffs",
+        blurb: "Highlight patch files or use directives to mark changes in source code.",
         icon: "↔",
       },
       {
@@ -69,6 +78,7 @@ export const DOCS: doc_group[] = [
         title: "Fidelity",
         path: "/docs/fidelity",
         crumb: "docs / fidelity",
+        blurb: "Choose which token types the reclassifier identifies.",
         icon: "↔",
       },
       {
@@ -76,6 +86,7 @@ export const DOCS: doc_group[] = [
         title: "Twoslash",
         path: "/docs/twoslash",
         crumb: "docs / twoslash",
+        blurb: "TypeScript type information rendered into the highlighted output.",
         icon: "↔",
       },
     ],
@@ -88,6 +99,7 @@ export const DOCS: doc_group[] = [
         title: "Markdown",
         path: "/docs/markdown",
         crumb: "docs / markdown",
+        blurb: "Highlight code in rehype, remark and markdown-it.",
         icon: "¶",
       },
     ],
@@ -100,6 +112,7 @@ export const DOCS: doc_group[] = [
         title: "From shiki",
         path: "/docs/migration",
         crumb: "docs / migration",
+        blurb: "Move a Shiki setup to Twinkleplop.",
         icon: "¶",
       },
     ],
@@ -112,6 +125,7 @@ export const DOCS: doc_group[] = [
         title: "Core API",
         path: "/docs/api",
         crumb: "docs / reference / api",
+        blurb: "Functions and options exported by language packages and @twinkleplop/core.",
         icon: "¶",
       },
       {
@@ -119,6 +133,7 @@ export const DOCS: doc_group[] = [
         title: "Languages",
         path: "/docs/languages-ref",
         crumb: "docs / reference / languages",
+        blurb: "Supported languages and their packages.",
         icon: "◐",
       },
       {
@@ -126,6 +141,7 @@ export const DOCS: doc_group[] = [
         title: "Themes",
         path: "/docs/themes-ref",
         crumb: "docs / reference / themes",
+        blurb: "Available themes and supported token types.",
         icon: "◐",
       },
       {
@@ -133,6 +149,7 @@ export const DOCS: doc_group[] = [
         title: "Grammars",
         path: "/docs/grammar",
         crumb: "docs / reference / grammar",
+        blurb: "Define a language grammar using rule helpers.",
         icon: "¶",
       },
       {
@@ -140,6 +157,7 @@ export const DOCS: doc_group[] = [
         title: "Reclassifiers",
         path: "/docs/reclassifier",
         crumb: "docs / reference / reclassifier",
+        blurb: "Assign more specific token types and highlight embedded languages.",
         icon: "¶",
       },
     ],
@@ -152,6 +170,7 @@ export const DOCS: doc_group[] = [
         title: "Architecture",
         path: "/docs/architecture",
         crumb: "docs / technical / architecture",
+        blurb: "The tokenizer, reclassifier pipeline, renderer and package structure.",
         icon: "¶",
       },
       {
@@ -159,6 +178,7 @@ export const DOCS: doc_group[] = [
         title: "Tokenization",
         path: "/docs/tokenization",
         crumb: "docs / technical / tokenization",
+        blurb: "How source code is tokenized, reclassified and rendered.",
         icon: "¶",
       },
       {
@@ -166,6 +186,7 @@ export const DOCS: doc_group[] = [
         title: "Benchmarks",
         path: "/docs/benchmarks",
         crumb: "docs / technical / benchmarks",
+        blurb: "How fast twinkleplop highlights compared to other JavaScript highlighters.",
         icon: "¶",
       },
     ],
@@ -178,6 +199,7 @@ export const DOCS: doc_group[] = [
         title: "FAQ",
         path: "/docs/faq",
         crumb: "docs / faq",
+        blurb: "Answers to the questions no-one actually asked.",
         icon: "?",
       },
     ],
