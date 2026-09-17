@@ -34,10 +34,7 @@ const rules = [
 
 const pass = rewrite_types(rules, { trivia: ["comment"] });`;
 
-	const embed = twoslash`import type { GroupScanFn } from "@twinkleplop/core";
-import { tokenize as js_tokenize, scan_tagged_template as scan_js } from "@twinkleplop/javascript";
-// scan_tagged_template is untyped in @twinkleplop/javascript and fails GroupScanFn under strict
-const scan_tagged_template = scan_js as GroupScanFn;
+	const embed = twoslash`import { tokenize as js_tokenize, scan_tagged_template } from "@twinkleplop/javascript";
 import { tokenize as css_tokenize } from "@twinkleplop/css";
 const js_language = js_tokenize();
 const css_language = css_tokenize();
