@@ -6,9 +6,9 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { ts } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
-	const skeleton_src = `import {
+	const skeleton = twoslash`import {
   match, on, keyword, within, fallback,
   enter, goto, leave, to, range, LETTER, DIGIT,
 } from "@twinkleplop/core";
@@ -33,9 +33,10 @@ export default define_grammar({
     },
   },
 });`;
-	const skeleton = ts(skeleton_src);
 
-	const shape_src = `interface GrammarState {
+	const shape = twoslash`import type { CharacterClassSymbol } from "@twinkleplop/core";
+// ---cut---
+interface GrammarState {
   rules?: GrammarRule[];
   mode?: "probe" | "tokenise";
   fallback?: string;   // probe states only: target if probing hits EOF
@@ -44,7 +45,7 @@ export default define_grammar({
 interface GrammarRule {
   // matchers — at most one
   match?: string | string[] | CharacterClassSymbol;
-  range?: [string, string] | [string, string][];
+  range?: [string, string] | [number, number] | [string, string][] | [number, number][];
   match_within?: { start: string; end: string; escape?: string; multiline?: boolean };
   any?: boolean;
   // modifiers and actions
@@ -54,9 +55,11 @@ interface GrammarRule {
   exit?: boolean;
   seal?: boolean;
 }`;
-	const shape = ts(shape_src);
 
-	const factories_src = `match("const", TOKENS.keyword);
+	const factories = twoslash`import { match, on, keyword, within, fallback, enter, goto, leave, LETTER } from "@twinkleplop/core";
+import * as TOKENS from "@twinkleplop/core/tokens";
+// ---cut---
+match("const", TOKENS.keyword);
 // { token: "keyword", match: "const" }
 
 match(["_", "$", LETTER], TOKENS.identifier);
@@ -75,34 +78,47 @@ within('"', '"', TOKENS.string, { escape: "\\\\" });
 fallback();                     // consume and stay
 fallback(leave());              // pop the state
 fallback(goto("division"));     // sideways — does NOT consume`;
-	const factories = ts(factories_src);
 
-	const sharing_src = `const common = [
+	const sharing = twoslash`import { match, on, within, to } from "@twinkleplop/core";
+import { define_grammar } from "@twinkleplop/core/compile";
+import * as TOKENS from "@twinkleplop/core/tokens";
+import { OP_ALL } from "@twinkleplop/javascript";
+// ---cut---
+const common = [
   within("//", "\\n", TOKENS.comment),
   within("/*", "*/", TOKENS.comment),
   on([" ", "\\t", "\\n", "\\r"]),
 ];
 
 // parameterise with a plain function when the destination varies
-const operators = (after) => match(OP_ALL, TOKENS.operator, to(after));
+const operators = (after: string | null) => match(OP_ALL, TOKENS.operator, to(after));
 
+// ---cut-start---
+define_grammar({
+// ---cut-end---
 states: {
   main:        { rules: [...common, operators("regex_allow")] },
   regex_allow: { rules: [...common, operators(null)] },
-}`;
-	const sharing = ts(sharing_src);
+}
+// ---cut-start---
+});
+// ---cut-end---`;
 
-	const probe_src = `identifier_probe: {
+	const probe = twoslash`import { on, goto, type GrammarState } from "@twinkleplop/core";
+const states: Record<string, GrammarState> = {
+// ---cut---
+identifier_probe: {
   mode: "probe",
   fallback: "identifier",
   rules: [
     on("(", goto("function_name")),
     on([".", " ", ")", ";", "}", "{", "[", ","], goto("identifier")),
   ],
-}`;
-	const probe = ts(probe_src);
+}
+// ---cut-after---
+};`;
 
-	const classes_src = `// range tags — plain data, mixable inside match(...) / on(...)
+	const classes = twoslash`// range tags — plain data, mixable inside match(...) / on(...)
 import { LOWER, UPPER, LETTER, DIGIT, ALNUM, HEX, range } from "@twinkleplop/core";
 
 // symbol constants — passed as a bare \`match\` value
@@ -110,13 +126,13 @@ import { ASCII, SPACE, WORD, PUNCT, PRINT, CONTROL } from "@twinkleplop/core/com
 
 range([["0", "7"]]);              // octal digits
 range([["a", "z"], ["A", "Z"]]);  // letters`;
-	const classes = ts(classes_src);
 
-	const verify_src = `import { compile, verify } from "@twinkleplop/core/compile";
+	const verify = twoslash`import { raw_grammar } from "@twinkleplop/javascript";
+// ---cut---
+import { compile, verify } from "@twinkleplop/core/compile";
 
 const issues = verify(raw_grammar);
 const grammar = compile(raw_grammar);`;
-	const verify = ts(verify_src);
 </script>
 
 <ArticleMain

@@ -8,6 +8,7 @@
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import { ts, html, css } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 	const line_number_src = `import { language } from "@twinkleplop/typescript";
 
@@ -44,11 +45,14 @@ const html_no_line_numbers = ts("1 + 2");`;
 
 	const css_output = css(css_output_src);
 
-	const start_src = `// the first visible line is numbered 10
+	const start_code = twoslash`import { language } from "@twinkleplop/typescript";
+const ts = language();
+declare const code: string;
+// ---cut---
+// the first visible line is numbered 10
 const html = ts(code, {
   line_numbers: { start: 10 },
 });`;
-	const start_code = ts(start_src);
 </script>
 
 <ArticleMain

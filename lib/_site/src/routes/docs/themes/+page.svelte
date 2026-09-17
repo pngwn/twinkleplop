@@ -4,21 +4,22 @@
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { bash, css, ts } from "$lib/docs/highlighters";
+	import { bash, css } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 	const install_code_src = `pnpm add @twinkleplop/theme-github`;
 	const install_code = bash(install_code_src);
 
-	const use_theme_code_src = `import "@twinkleplop/theme-github";`;
-	const use_theme_code = ts(use_theme_code_src);
+	const use_theme_code = twoslash`// @noUncheckedSideEffectImports: false
+import "@twinkleplop/theme-github";`;
 
-	const variants_code_src = `// both variants, switched by a .dark class on any ancestor
+	const variants_code = twoslash`// @noUncheckedSideEffectImports: false
+// both variants, switched by a .dark class on any ancestor
 import "@twinkleplop/theme-github";
 
 // or pick one explicitly
 import "@twinkleplop/theme-github/light";
 import "@twinkleplop/theme-github/dark";`;
-	const variants_code = ts(variants_code_src);
 
 	const generated_css_src = `:root {
   --twp-background: #ffffff;
@@ -48,10 +49,9 @@ import "@twinkleplop/theme-github/dark";`;
 }`;
 	const override_css = css(override_css_src);
 
-	const use_theme_tokens_src = `import { light, dark } from "@twinkleplop/theme-github/tokens";`;
-	const use_theme_tokens = ts(use_theme_tokens_src);
+	const use_theme_tokens = twoslash`import { light, dark } from "@twinkleplop/theme-github/tokens";`;
 
-	const sample_tokens_src = `const light = {
+	const sample_tokens = twoslash`const light = {
   background_color: "#ffffff",
   boolean: "#0550ae",
   comment: "#6e7781",
@@ -65,7 +65,6 @@ import "@twinkleplop/theme-github/dark";`;
   template: "#0a3069",
   // ...one entry per token type
 };`;
-	const sample_tokens = ts(sample_tokens_src);
 </script>
 
 <ArticleMain

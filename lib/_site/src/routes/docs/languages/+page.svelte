@@ -4,25 +4,23 @@
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { ts } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
-	const html_usage_src = `import { language } from "@twinkleplop/html";
+	const html_usage = twoslash`import { language } from "@twinkleplop/html";
 
 const html = language();
 
 // css and javascript inside the document are highlighted too
 const out = html("<script>1 + 2<\/script>");`;
-	const html_usage = ts(html_usage_src);
 
-	const tokenize_src = `import { tokenize } from "@twinkleplop/html";
+	const tokenize_usage = twoslash`import { tokenize } from "@twinkleplop/html";
 
 const html_tokenizer = tokenize();
 
 // get a TokenizeResult instead of an HTML string
 const result = html_tokenizer("<p>hello world</p>");`;
-	const tokenize_usage = ts(tokenize_src);
 
-	const multiple_languages_src = `import { language as make_html } from "@twinkleplop/html";
+	const multiple_languages_usage = twoslash`import { language as make_html } from "@twinkleplop/html";
 import { language as make_ts } from "@twinkleplop/typescript";
 
 const html = make_html();
@@ -30,14 +28,13 @@ const ts = make_ts();
 
 const html_out = html("<script>1 + 2<\/script>");
 const ts_out = ts("1 + 2");`;
-	const multiple_languages_usage = ts(multiple_languages_src);
 
-	const lazy_loading_src = `const langs = {
+	const lazy_loading_usage = twoslash`const langs = {
   ts: () => import("@twinkleplop/typescript"),
   html: () => import("@twinkleplop/html"),
 };
 
-async function get_lang(name) {
+async function get_lang(name: keyof typeof langs) {
   const { language } = await langs[name]();
   return language();
 }
@@ -45,16 +42,14 @@ async function get_lang(name) {
 // later
 const ts = await get_lang("ts");
 const html = await get_lang("html");`;
-	const lazy_loading_usage = ts(lazy_loading_src);
 
-	const exports_src = `import {
+	const exports_usage = twoslash`import {
   language,      // (options?) => (code, render?) => html string
   tokenize,      // (options?) => (code) => TokenizeResult
   grammar,       // the compiled grammar
   raw_grammar,   // the uncompiled definition
   reclassifiers, // the default reclassifier pipeline
 } from "@twinkleplop/javascript";`;
-	const exports_usage = ts(exports_src);
 </script>
 
 <ArticleMain

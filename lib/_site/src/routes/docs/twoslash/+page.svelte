@@ -5,34 +5,36 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { bash, ts } from "$lib/docs/highlighters";
+	import { bash } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 	const install_src = `pnpm add @twinkleplop/twoslash`;
 	const install = bash(install_src);
 
-	const usage_src = `import { create_highlighter } from "@twinkleplop/twoslash";
+	const usage = twoslash`declare const code: string;
+// ---cut---
+import { create_highlighter } from "@twinkleplop/twoslash";
 
 const highlight = create_highlighter({ lang: "ts" });
 const html = highlight(code);`;
-	const usage = ts(usage_src);
 
-	const oneshot_src = `import { highlight } from "@twinkleplop/twoslash";
+	const oneshot = twoslash`declare const code: string;
+// ---cut---
+import { highlight } from "@twinkleplop/twoslash";
 
 const html = highlight(code, { lang: "ts" });`;
-	const oneshot = ts(oneshot_src);
 
-	const svelte_src = `import { create_highlighter } from "@twinkleplop/twoslash-svelte";
+	const svelte_usage = twoslash`import { create_highlighter } from "@twinkleplop/twoslash-svelte";
 
 // same options, minus \`lang\`
 const highlight = create_highlighter();`;
-	const svelte_usage = ts(svelte_src);
 
-	const tags_src = `// @log: this is a log message
-// @annotate: pointing at the line below
-const x = 1;`;
-	const tags = ts(tags_src);
+	const tags = twoslash`// @log: rendered after the next line
+const x = 1;
+// @annotate: tags on adjacent lines merge, so keep code between them
+const y = x + 1;`;
 
-	const options_src = `import { marked } from "marked";
+	const options = twoslash`import { marked } from "marked";
 import { create_highlighter } from "@twinkleplop/twoslash";
 import { language as plain_ts } from "@twinkleplop/typescript";
 
@@ -43,15 +45,18 @@ const highlight = create_highlighter({
   // a snippet twoslash rejects falls back to plain highlighting
   on_error: (_error, code) => fallback(code),
   // jsdoc becomes rendered markdown instead of escaped text
-  render_docs: (md) => marked.parseInline(md),
+  render_docs: (md) => marked.parseInline(md, { async: false }),
   // massage the type string before it is highlighted
   process_type: (type) => type.replace(/import\\(".*?"\\)\\./g, ""),
 });`;
-	const options = ts(options_src);
 
-	const markdown_src = `import rehype_twinkleplop from "@twinkleplop/rehype";
+	const markdown = twoslash`import rehype_twinkleplop from "@twinkleplop/rehype";
 import { create_highlighter } from "@twinkleplop/twoslash";
 import { language as typescript } from "@twinkleplop/typescript";
+// ---cut-start---
+import { unified } from "unified";
+unified()
+// ---cut-end---
 
 .use(rehype_twinkleplop, {
   languages: {
@@ -61,7 +66,6 @@ import { language as typescript } from "@twinkleplop/typescript";
     },
   },
 });`;
-	const markdown = ts(markdown_src);
 </script>
 
 <ArticleMain

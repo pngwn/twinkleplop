@@ -6,27 +6,30 @@
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import { css, ts } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
-	const before_src = `import { codeToHtml } from "shiki";
+	const before = twoslash`declare const code: string;
+// ---cut---
+import { codeToHtml } from "shiki";
 
 const html = await codeToHtml(code, {
   lang: "ts",
   theme: "github-dark",
 });`;
-	const before = ts(before_src);
 
-	const after_src = `import { language } from "@twinkleplop/typescript";
+	const after = twoslash`// @noUncheckedSideEffectImports: false
+declare const code: string;
+// ---cut---
+import { language } from "@twinkleplop/typescript";
 import "@twinkleplop/theme-github";
 
 const ts = language();
 const html = ts(code);`;
-	const after = ts(after_src);
 
-	const notation_src = `import { language } from "@twinkleplop/typescript";
+	const notation = twoslash`import { language } from "@twinkleplop/typescript";
 import { shiki_notation } from "@twinkleplop/annotation/shiki";
 
 const ts = language({ annotation: { plugins: [shiki_notation()] } });`;
-	const notation = ts(notation_src);
 
 	const notation_source_src = `const a = 1 // [!code highlight]
 // [!code focus:2]
@@ -35,9 +38,10 @@ const c = 3 // [!code --]
 const d = 4 // [!code ++]`;
 	const notation_source = ts(notation_source_src);
 
-	const classes_src = `// emit shiki's class names instead of twinkleplop's
+	const classes = twoslash`import { shiki_notation } from "@twinkleplop/annotation/shiki";
+// ---cut---
+// emit shiki's class names instead of twinkleplop's
 shiki_notation({ classes: "shiki" });`;
-	const classes = ts(classes_src);
 
 	const theme_css_src = `/* shiki writes inline styles; twinkleplop writes classes.
    restyling is CSS, not a theme rebuild. */

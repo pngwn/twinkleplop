@@ -6,23 +6,26 @@
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import { bash, css, ts } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 	const install_src = `pnpm add @twinkleplop/diff`;
 	const install = bash(install_src);
 
-	const usage_src = `import { language } from "@twinkleplop/diff";
+	const usage = twoslash`declare const patch: string;
+// ---cut---
+import { language } from "@twinkleplop/diff";
 
 const diff = language();
 const html = diff(patch);`;
-	const usage = ts(usage_src);
 
-	const markers_src = `import { language } from "@twinkleplop/typescript";
+	const markers = twoslash`declare const source: string;
+// ---cut---
+import { language } from "@twinkleplop/typescript";
 import { add, del, mod } from "@twinkleplop/annotation";
 
 const ts = language({ annotation: { plugins: [add, del, mod] } });
 
 const html = ts(source);`;
-	const markers = ts(markers_src);
 
 	const marker_source_src = `const NUM = 100 // [!del]
 const NUM = 50 // [!add]

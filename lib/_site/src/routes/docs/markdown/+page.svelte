@@ -6,9 +6,12 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { html as html_hl, ts } from "$lib/docs/highlighters";
+	import { html as html_hl } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
-	const markdown_it_src = `import markdown_it from "markdown-it";
+	const markdown_it = twoslash`declare const source: string;
+// ---cut---
+import markdown_it from "markdown-it";
 import markdown_it_twinkleplop from "@twinkleplop/markdown-it";
 import { language as typescript } from "@twinkleplop/typescript";
 import { language as css } from "@twinkleplop/css";
@@ -18,9 +21,8 @@ const md = markdown_it().use(markdown_it_twinkleplop, {
 });
 
 md.render(source);`;
-	const markdown_it = ts(markdown_it_src);
 
-	const remark_src = `import { unified } from "unified";
+	const remark = twoslash`import { unified } from "unified";
 import remark_parse from "remark-parse";
 import remark_rehype from "remark-rehype";
 import rehype_stringify from "rehype-stringify";
@@ -32,21 +34,35 @@ const pipeline = unified()
   .use(remark_twinkleplop, { languages: { ts: typescript(), js: "ts" } })
   .use(remark_rehype, { allowDangerousHtml: true })
   .use(rehype_stringify, { allowDangerousHtml: true });`;
-	const remark = ts(remark_src);
 
-	const rehype_src = `import rehype_twinkleplop from "@twinkleplop/rehype";
+	const rehype = twoslash`import rehype_twinkleplop from "@twinkleplop/rehype";
 import { language as typescript } from "@twinkleplop/typescript";
+// ---cut-start---
+import { unified } from "unified";
+unified()
+// ---cut-end---
 
 .use(rehype_twinkleplop, {
   languages: { ts: typescript(), js: "ts" },
 });`;
-	const rehype = ts(rehype_src);
 
-	const raw_output_src = `// skip the hast re-parse and emit a raw node
+	const raw_output = twoslash`import { unified } from "unified";
+import rehype_twinkleplop from "@twinkleplop/rehype";
+import { language as typescript } from "@twinkleplop/typescript";
+const languages = { ts: typescript() };
+unified()
+// ---cut---
+// skip the hast re-parse and emit a raw node
 .use(rehype_twinkleplop, { languages, output: "raw" });`;
-	const raw_output = ts(raw_output_src);
 
-	const registry_src = `languages: {
+	const registry = twoslash`import { unified } from "unified";
+import rehype_twinkleplop from "@twinkleplop/rehype";
+import { language as typescript } from "@twinkleplop/typescript";
+import { language as tsx_lang } from "@twinkleplop/tsx";
+import { create_highlighter } from "@twinkleplop/twoslash";
+unified().use(rehype_twinkleplop, {
+// ---cut---
+languages: {
   // a highlight function
   ts: typescript(),
   // an entry with a second highlighter for twoslash fences
@@ -54,8 +70,9 @@ import { language as typescript } from "@twinkleplop/typescript";
   // an alias — resolves transitively, once, at setup
   js: "ts",
   mjs: "js",
-}`;
-	const registry = ts(registry_src);
+}
+// ---cut-after---
+});`;
 
 	const output_src = `<pre class="twinkleplop language-ts has-highlight" data-language="ts"><code>...</code></pre>`;
 	const output = html_hl(output_src);

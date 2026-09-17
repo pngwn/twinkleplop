@@ -8,15 +8,16 @@
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import ThemeSwatch from "$lib/docs/components/ThemeSwatch.svelte";
 	import { THEMES } from "$lib/docs/themes_data";
-	import { bash, ts } from "$lib/docs/highlighters";
+	import { bash } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 	const install_src = `pnpm add @twinkleplop/theme-github`;
 	const install = bash(install_src);
 
-	const use_src = `import "@twinkleplop/theme-github";`;
-	const use = ts(use_src);
+	const use = twoslash`// @noUncheckedSideEffectImports: false
+import "@twinkleplop/theme-github";`;
 
-	const palette_src = `import type { theme_palette } from "@twinkleplop/core";
+	const palette = twoslash`import type { theme_palette } from "@twinkleplop/core";
 
 export const light: theme_palette = {
   background_color: "#ffffff",
@@ -25,7 +26,6 @@ export const light: theme_palette = {
   comment: "#6e7781",
   // ...one entry per token type you want to style
 };`;
-	const palette = ts(palette_src);
 
 	const vocab: { group: string; tokens: string }[] = [
 		{

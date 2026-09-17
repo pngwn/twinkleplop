@@ -7,7 +7,7 @@
 	import Signature from "$lib/docs/components/Signature.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { ts } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 	const language_sig = `<span class="kw">function</span> <span class="name">language</span><span class="punct">(</span><span class="param">options</span><span class="punct">?:</span> <span class="type">LanguageOptions</span><span class="punct">)</span><span class="punct">:</span> <span class="punct">(</span><span class="param">code</span><span class="punct">:</span> <span class="type">string</span><span class="punct">,</span> <span class="param">render</span><span class="punct">?:</span> <span class="type">RenderOptions</span><span class="punct">)</span> <span class="punct">=&gt;</span> <span class="type">string</span>`;
 
@@ -24,7 +24,7 @@
   <span class="param">pipeline</span><span class="punct">?:</span> <span class="type">LanguagePipeline</span>
 <span class="punct">)</span><span class="punct">:</span> <span class="type">LanguageFactory</span>`;
 
-	const language_code = `import { language } from "@twinkleplop/typescript";
+	const language_example = twoslash`import { language } from "@twinkleplop/typescript";
 
 const ts = language();
 const html = ts("const x = 1;");
@@ -32,9 +32,8 @@ const html = ts("const x = 1;");
 // with configuration and per-call render options
 const low = language({ fidelity: "low" });
 const numbered = low("const x = 1;", { line_numbers: true });`;
-	const language_example = ts(language_code);
 
-	const tokenize_code = `import { tokenize } from "@twinkleplop/typescript";
+	const tokenize_example = twoslash`import { tokenize } from "@twinkleplop/typescript";
 
 const code = "const x = 1;";
 const result = tokenize()(code);
@@ -43,17 +42,19 @@ result.tokens;       // Uint32Array of [type, start, end] triplets
 result.token_types;  // string[] — index by the type integer
 result.overlays;     // present only when annotation extraction ran
 result.frames;       // present only when a frame_track stage ran`;
-	const tokenize_example = ts(tokenize_code);
 
-	const to_html_code = `import { to_html } from "@twinkleplop/core";
+	const to_html_example = twoslash`import { to_html } from "@twinkleplop/core";
 import { tokenize } from "@twinkleplop/typescript";
 
 const code = "const x = 1;";
 const result = tokenize()(code);
 const html = to_html(code, result, { line_numbers: true });`;
-	const to_html_example = ts(to_html_code);
 
-	const create_language_code = `import { create_language, tag } from "@twinkleplop/core";
+	const create_language_example = twoslash`import type { Reclassifier } from "@twinkleplop/core";
+declare const my_pass: Reclassifier;
+declare const code: string;
+// ---cut---
+import { create_language, tag } from "@twinkleplop/core";
 import { grammar, reclassifiers } from "@twinkleplop/javascript";
 
 const my_tokenize = create_language(grammar, [
@@ -62,15 +63,15 @@ const my_tokenize = create_language(grammar, [
 ]);
 
 const result = my_tokenize()(code);`;
-	const create_language_example = ts(create_language_code);
 
-	const overlays_code = `import { overlays } from "@twinkleplop/core";
+	const overlays_example = twoslash`declare const source: string;
+// ---cut---
+import { overlays } from "@twinkleplop/core";
 
 const result = overlays(source, [
   { start: 0, end: 12, class: "highlight" },
   { line: 3, class: "diff-add" },
 ]);`;
-	const overlays_example = ts(overlays_code);
 
 	const language_options_rows = [
 		[

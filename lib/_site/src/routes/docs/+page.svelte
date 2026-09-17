@@ -10,15 +10,15 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import MiniLab from "$lib/docs/components/MiniLab.svelte";
-	import { ts } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 
-	const first_highlght_src = `import { language } from "@twinkleplop/typescript";
+	const first_highlight_code = twoslash`// @noUncheckedSideEffectImports: false
+import { language } from "@twinkleplop/typescript";
 import "@twinkleplop/theme-github";
 
 const typescript = language();
 const html = typescript("1 + 2");`
-	const first_highlight_code = ts(first_highlght_src);
 
 	const quick_links = [
 		{ num: "01 ›", title: "quick start", meta: "install and twinkle", href: "/docs/getting_started" },

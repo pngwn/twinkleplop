@@ -4,12 +4,14 @@
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { bash, ts } from "$lib/docs/highlighters";
+	import { bash } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 	const install_src = `pnpm add @twinkleplop/typescript @twinkleplop/theme-github`;
 	const install_code = bash(install_src);
 
-	const first_highlight_src = `// import the language you want to highlight
+	const first_highlight_code = twoslash`// @noUncheckedSideEffectImports: false
+// import the language you want to highlight
 import { language } from "@twinkleplop/typescript";
 
 // import a theme once, anywhere in your app
@@ -22,18 +24,19 @@ const ts = language();
 const html = ts("const total = 1 + 2;");
 
 document.body.innerHTML = html;`;
-	const first_highlight_code = ts(first_highlight_src);
 
-	const render_src = `const ts = language();
+	const render_code = twoslash`import { language } from "@twinkleplop/typescript";
+declare const code: string;
+// ---cut---
+const ts = language();
 
 // the highlighter takes per-call render options
 const html = ts(code, {
   line_numbers: true,
   attributes: { "data-title": "math.ts" },
 });`;
-	const render_code = ts(render_src);
 
-	const tokens_src = `import { tokenize } from "@twinkleplop/typescript";
+	const tokens_code = twoslash`import { tokenize } from "@twinkleplop/typescript";
 
 const code = "const total = 1 + 2;";
 const tokenizer = tokenize();
@@ -45,7 +48,6 @@ for (let i = 0; i < result.tokens.length; i += 3) {
   const text = code.slice(result.tokens[i + 1], result.tokens[i + 2]);
   console.log(name, text);
 }`;
-	const tokens_code = ts(tokens_src);
 </script>
 
 <ArticleMain

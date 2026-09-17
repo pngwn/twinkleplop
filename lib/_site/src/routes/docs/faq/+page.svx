@@ -3,20 +3,21 @@
 	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import FaqList from "$lib/docs/components/FaqList.svelte";
-	import { ts, bash } from "$lib/docs/highlighters";
+	import { bash } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 	const install_html = bash(`# core + one language
 npm install @twinkleplop/core @twinkleplop/html`);
 
-	const lazy_html = ts(`const { language } = await import('@twinkleplop/rust');
-const rust = language();`);
+	const lazy_html = twoslash`const { language } = await import('@twinkleplop/rust');
+const rust = language();`;
 
-	const tokens_html = ts(`import { tokenize } from '@twinkleplop/html';
+	const tokens_html = twoslash`import { tokenize } from '@twinkleplop/html';
 
 const html_tokenizer = tokenize();
 
 // get some tokens
-const tokens = html_tokenizer("hello world");`);
+const tokens = html_tokenizer("hello world");`;
 </script>
 
 <ArticleMain

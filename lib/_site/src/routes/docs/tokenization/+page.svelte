@@ -6,7 +6,8 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import AsciiArt from "$lib/docs/components/AsciiArt.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { bash, ts } from "$lib/docs/highlighters";
+	import { bash } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
 	const pipeline = `   ┌──────────────┐     ┌──────────────────┐     ┌──────────────┐
    │  tokenize    │ ──▶ │   reclassify     │ ──▶ │   to_html    │
@@ -26,7 +27,9 @@
            number      10  12
            punctuation 12  13`;
 
-	const result_src = `const code = "const x = 42;";
+	const result_code = twoslash`import { tokenize } from "@twinkleplop/typescript";
+// ---cut---
+const code = "const x = 42;";
 const result = tokenize()(code);
 
 result.tokens;       // Uint32Array — [type, start, end] triplets
@@ -36,12 +39,14 @@ for (let i = 0; i < result.tokens.length; i += 3) {
   const name = result.token_types[result.tokens[i]];
   const text = code.slice(result.tokens[i + 1], result.tokens[i + 2]);
 }`;
-	const result_code = ts(result_src);
 
-	const debug_src = `import { tokenize } from "@twinkleplop/core/debug";`;
-	const debug = ts(debug_src);
+	const debug = twoslash`import { tokenize } from "@twinkleplop/core/debug";`;
 
-	const introspect_src = `import { TokenizerIntrospector } from "@twinkleplop/core/introspector";
+	const introspect = twoslash`import { tokenize } from "@twinkleplop/core";
+import { grammar as compiled_grammar } from "@twinkleplop/javascript";
+declare const input: string;
+// ---cut---
+import { TokenizerIntrospector } from "@twinkleplop/core/introspector";
 
 const introspector = new TokenizerIntrospector({
   log: null,               // or console.log, or your own (type, data) => void
@@ -61,9 +66,10 @@ introspector.get_state_at_position(30);
 introspector.get_probe_events();
 introspector.generate_report();
 introspector.generate_token_trace(5);`;
-	const introspect = ts(introspect_src);
 
-	const mapper_src = `import { GrammarMapper } from "@twinkleplop/core/grammar-mapper";
+	const mapper = twoslash`import { raw_grammar, grammar as compiled } from "@twinkleplop/javascript";
+// ---cut---
+import { GrammarMapper } from "@twinkleplop/core/grammar-mapper";
 import { TokenizerIntrospector } from "@twinkleplop/core/introspector";
 
 const mapper = new GrammarMapper(raw_grammar, compiled);
@@ -75,7 +81,6 @@ const introspector = mapper.create_enhanced_introspector(TokenizerIntrospector, 
 mapper.get_state_name(0);    // "main" instead of state 0
 mapper.get_rule_name(0, 2);  // the rule description instead of rule 2
 mapper.generate_report(introspector);`;
-	const mapper = ts(mapper_src);
 
 	const build_src = `pnpm --filter @twinkleplop/core build`;
 	const build = bash(build_src);

@@ -5,9 +5,9 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { ts } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
-	const tiers_src = `import { language } from "@twinkleplop/typescript";
+	const tiers = twoslash`import { language } from "@twinkleplop/typescript";
 
 // every pass — the default
 const full = language();
@@ -18,17 +18,20 @@ const fast = language({ fidelity: "low" });
 
 // pick exactly the distinctions you want
 const picked = language({ fidelity: ["function", "class_name"] });`;
-	const tiers = ts(tiers_src);
 
-	const tagging_src = `import { tag, always } from "@twinkleplop/core";
+	const tagging = twoslash`import { embed_interleaved, type GroupScanFn } from "@twinkleplop/core";
+import { js_frame_track, promote_call_site_functions, scan_tagged_template as scan_js } from "@twinkleplop/javascript";
+// scan_tagged_template is untyped in @twinkleplop/javascript and fails GroupScanFn under strict
+const scan_tagged_template = scan_js as GroupScanFn;
+// ---cut---
+import { tag, always } from "@twinkleplop/core";
 
 // a fidelity-gated pass declares what it produces
 tag(promote_call_site_functions, ["function"]);
 
 // an always-on pass declares no outputs and runs at every setting
 always(js_frame_track, "type_claim");
-always(embed_css_in_style_tags, "embed");`;
-	const tagging = ts(tagging_src);
+always(embed_interleaved({ scan: scan_tagged_template }), "embed");`;
 </script>
 
 <ArticleMain

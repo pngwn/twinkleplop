@@ -4,18 +4,25 @@
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { css, html, ts } from "$lib/docs/highlighters";
+	import { css, html } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
-	const basic_src = `const ts = language();
+	const basic = twoslash`import { language } from "@twinkleplop/typescript";
+declare const code: string;
+// ---cut---
+const ts = language();
 
 const out = ts(code, {
   class_name: "my-code",
   line_numbers: { start: 10 },
   attributes: { "data-title": "math.ts", tabindex: 0 },
 });`;
-	const basic = ts(basic_src);
 
-	const attributes_src = `ts(code, {
+	const attributes = twoslash`import { language } from "@twinkleplop/typescript";
+const ts = language();
+declare const code: string;
+// ---cut---
+ts(code, {
   attributes: {
     "data-title": "math.ts",  // data-title="math.ts"
     tabindex: 0,              // tabindex="0"
@@ -23,9 +30,12 @@ const out = ts(code, {
     draggable: false,         // omitted entirely
   },
 });`;
-	const attributes = ts(attributes_src);
 
-	const overlays_src = `ts(code, {
+	const overlays = twoslash`import { language } from "@twinkleplop/typescript";
+const ts = language();
+declare const code: string;
+// ---cut---
+ts(code, {
   overlays: [
     // by byte offset
     { start: 0, end: 12, class: "highlight" },
@@ -39,9 +49,12 @@ const out = ts(code, {
     { start: 40, end: 60, hide: true },
   ],
 });`;
-	const overlays = ts(overlays_src);
 
-	const hooks_src = `ts(code, {
+	const hooks = twoslash`import { language } from "@twinkleplop/typescript";
+const ts = language();
+declare const code: string;
+// ---cut---
+ts(code, {
   // n is the visible index, source_line the 1-based input line
   line: (n, source_line) => {
     if (source_line % 2 === 0) return { class: "even" };
@@ -51,20 +64,25 @@ const out = ts(code, {
     if (type === "keyword") return { attrs: { "data-kw": true } };
   },
 });`;
-	const hooks = ts(hooks_src);
 
-	const inline_src = `// no <pre>, no <code>, no line spans — <br> between lines
+	const inline = twoslash`import { language } from "@twinkleplop/typescript";
+const ts = language();
+declare const code: string;
+// ---cut---
+// no <pre>, no <code>, no line spans — <br> between lines
 const snippet = ts("const x = 1", { structure: "inline" });
 
 // drop it straight into prose
 \`Try <code>\${snippet}</code> instead.\`;`;
-	const inline = ts(inline_src);
 
-	const whitespace_src = `ts(code, {
+	const whitespace = twoslash`import { language } from "@twinkleplop/typescript";
+const ts = language();
+declare const code: string;
+// ---cut---
+ts(code, {
   whitespace: "leading",      // "all" | "boundary" | "leading" | "trailing"
   indent_guides: { size: 4 }, // a tab is one level, 4 spaces is one level
 });`;
-	const whitespace = ts(whitespace_src);
 
 	const whitespace_css_src = `.twinkleplop .space { white-space: pre; }
 .twinkleplop .tab   { white-space: pre; }

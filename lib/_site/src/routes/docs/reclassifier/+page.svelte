@@ -6,12 +6,13 @@
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import ParamTable from "$lib/docs/components/ParamTable.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { ts } from "$lib/docs/highlighters";
+	import { twoslash } from "$lib/docs/twoslash";
 
-	const shape_src = `type Reclassifier = (input: string, result: TokenizeResult) => TokenizeResult;`;
-	const shape = ts(shape_src);
+	const shape = twoslash`import type { TokenizeResult } from "@twinkleplop/core";
+// ---cut---
+type Reclassifier = (input: string, result: TokenizeResult) => TokenizeResult;`;
 
-	const rewrite_src = `import { rewrite_types, seq, any_of, optional, type, balanced_parens } from "@twinkleplop/core";
+	const rewrite = twoslash`import { rewrite_types, seq, any_of, optional, type, balanced_parens } from "@twinkleplop/core";
 
 // \`const foo = () => {}\` makes foo a function
 const function_value = seq(
@@ -32,26 +33,35 @@ const rules = [
 ];
 
 const pass = rewrite_types(rules, { trivia: ["comment"] });`;
-	const rewrite = ts(rewrite_src);
 
-	const embed_src = `import { embed_grammars, embed_interleaved } from "@twinkleplop/core";
+	const embed = twoslash`import type { GroupScanFn } from "@twinkleplop/core";
+import { tokenize as js_tokenize, scan_tagged_template as scan_js } from "@twinkleplop/javascript";
+// scan_tagged_template is untyped in @twinkleplop/javascript and fails GroupScanFn under strict
+const scan_tagged_template = scan_js as GroupScanFn;
+import { tokenize as css_tokenize } from "@twinkleplop/css";
+const js_language = js_tokenize();
+const css_language = css_tokenize();
+// ---cut---
+import { embed_grammars, embed_interleaved } from "@twinkleplop/core";
 
 // whole-token replacement: <script> content becomes JavaScript
 embed_grammars({ raw_script: js_language, raw_style: css_language });
 
 // interpolated content, holes preserved: html\`<p class="\${cls}">hi</p>\`
-embed_interleaved({ scan: find_tagged_templates, /* ... */ });`;
-	const embed = ts(embed_src);
+embed_interleaved({ scan: scan_tagged_template, /* ... */ });`;
 
-	const fidelity_src = `import {
+	const fidelity = twoslash`import {
   promote_by_text_set,
   promote_pascal_case,
   promote_by_upper_snake_case,
   promote_function_calls,
 } from "@twinkleplop/core";`;
-	const fidelity = ts(fidelity_src);
 
-	const tag_src = `import { tag, always } from "@twinkleplop/core";
+	const tag_code = twoslash`import type { Reclassifier } from "@twinkleplop/core";
+declare const my_pass: Reclassifier, my_shape_pass: Reclassifier;
+declare const correctness_fixup: Reclassifier, embedder: Reclassifier;
+// ---cut---
+import { tag, always } from "@twinkleplop/core";
 
 // fidelity-gated: declares the token types it produces
 tag(my_pass, ["function"]);                 // layer defaults to "type_claim"
@@ -60,24 +70,26 @@ tag(my_shape_pass, ["class_name"], "shape");
 // always-on: no outputs to gate on, runs at every fidelity setting
 always(correctness_fixup, "type_claim");
 always(embedder, "embed");`;
-	const tag_code = ts(tag_src);
 
-	const claim_src = `import { as_claim_producer } from "@twinkleplop/core";
+	const claim = twoslash`declare const token_idx: number, type_id: number, precedence: number;
+// ---cut---
+import { as_claim_producer } from "@twinkleplop/core";
 
 const pass = as_claim_producer((input, tokens, token_types, sink, frames) => {
   // read the frozen stream, emit claims — never write a token slot
   sink.emit(token_idx, type_id, precedence);
 });`;
-	const claim = ts(claim_src);
 
-	const compose_src = `import { create_language, tag } from "@twinkleplop/core";
+	const compose = twoslash`import type { Reclassifier } from "@twinkleplop/core";
+declare const my_pass: Reclassifier;
+// ---cut---
+import { create_language, tag } from "@twinkleplop/core";
 import { grammar, reclassifiers } from "@twinkleplop/javascript";
 
 const tokenize = create_language(grammar, [
   ...reclassifiers,
   tag(my_pass, ["type"]),
 ]);`;
-	const compose = ts(compose_src);
 </script>
 
 <ArticleMain
