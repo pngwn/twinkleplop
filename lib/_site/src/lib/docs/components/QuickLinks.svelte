@@ -35,7 +35,7 @@
 		color: var(--docs-fg);
 	}
 	.num {
-		color: var(--docs-fg-ghost);
+		color: var(--docs-fg-mute);
 		font-size: var(--docs-fs-xs);
 	}
 	.t {

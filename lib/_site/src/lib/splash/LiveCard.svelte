@@ -134,7 +134,7 @@ console.log(msg);`;
 <div class="card">
 	<div class="bar">
 		<span><i class="dot"></i>mini-lab · editable</span>
-		<span>github-dark · typescript</span>
+		<span><span class="for-dark">github-dark</span><span class="for-light">github-light</span> · typescript</span>
 	</div>
 	<div class="editor">
 		<textarea
@@ -168,6 +168,19 @@ console.log(msg);`;
 		border: 1px solid var(--line);
 		background: var(--bg2);
 		position: relative;
+	}
+	/* the textarea is invisible (the pre shows through), so the card
+	 * carries its keyboard focus ring */
+	.card:has(textarea:focus-visible) {
+		outline: 2px solid var(--green);
+		outline-offset: 2px;
+	}
+	.for-light,
+	:global(:root[data-mode="light"]) .for-dark {
+		display: none;
+	}
+	:global(:root[data-mode="light"]) .for-light {
+		display: inline;
 	}
 
 	.bar {
@@ -265,7 +278,7 @@ console.log(msg);`;
 	}
 
 	.tok {
-		color: var(--ink3);
+		color: var(--unlit);
 		transition:
 			color 0.35s,
 			text-shadow 0.35s;

@@ -1,12 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-mode="dark" class="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      // apply the stored light/dark choice before first paint so prerendered
+      // pages don't flash the wrong mode. mirrors $lib/theme_mode.svelte.ts.
+      (function () {
+        var mode = "system";
+        try {
+          mode = localStorage.getItem("twinkleplop:mode") || "system";
+        } catch (e) {}
+        if (mode !== "light" && mode !== "dark") {
+          mode = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
+        var root = document.documentElement;
+        root.dataset.mode = mode;
+        root.className = mode;
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Silkscreen:wght@400;700&family=VT323&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="https://use.typekit.net/pyq0xig.css" />

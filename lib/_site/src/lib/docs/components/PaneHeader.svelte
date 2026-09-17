@@ -11,9 +11,6 @@
 		right?: string;
 		path?: boolean;
 	} = $props();
-	import { chrome, set_tweak, close_nav } from "../chrome.svelte";
-
-	const NAV_OPTIONS = ["tree", "grouped", "manpage"] as const;
 </script>
 
 <div class="pane-header">

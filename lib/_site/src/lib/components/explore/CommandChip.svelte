@@ -4,10 +4,20 @@
 		value: string;
 		options: string[];
 		hint?: string;
+		show_label?: boolean;
+		align?: "left" | "right";
 		on_change: (next: string) => void;
 	}
 
-	let { label, value, options, hint, on_change }: Props = $props();
+	let {
+		label,
+		value,
+		options,
+		hint,
+		show_label = false,
+		align = "left",
+		on_change,
+	}: Props = $props();
 
 	let open = $state(false);
 	let hi = $state(0);
@@ -60,12 +70,14 @@
 		type="button"
 		aria-expanded={open}
 		aria-haspopup="listbox"
+		aria-label="{label}: {value}"
 		onclick={toggle}
 	>
+		{#if show_label}<span class="chip__label">{label}</span>{/if}
 		<span class="chip__value">{value}</span>
 	</button>
 	{#if open}
-		<div class="chip__menu" role="listbox" aria-label={label}>
+		<div class="chip__menu" class:chip__menu--right={align === "right"} role="listbox" aria-label={label}>
 			<div class="chip__menu-head">
 				<span>{label}</span>
 				{#if hint}<span class="chip__menu-hint">{hint}</span>{/if}
@@ -82,9 +94,9 @@
 					onmouseenter={() => (hi = i)}
 					onclick={() => pick(opt)}
 				>
-					<span class="chip__item-marker">{opt === value ? "●" : "○"}</span>
+					<span class="chip__item-marker" aria-hidden="true">{opt === value ? "●" : "○"}</span>
 					<span>{opt}</span>
-					{#if i === hi}<span class="chip__item-hint">↵</span>{/if}
+					{#if i === hi}<span class="chip__item-hint" aria-hidden="true">↵</span>{/if}
 				</button>
 			{/each}
 			</div>

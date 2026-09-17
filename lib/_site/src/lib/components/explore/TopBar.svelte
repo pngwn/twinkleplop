@@ -1,20 +1,26 @@
 <script lang="ts">
 	import CommandChip from "./CommandChip.svelte";
+	import ModeSwitch from "$lib/components/ModeSwitch.svelte";
 
 	interface Props {
 		lang: string;
 		sample: string;
 		languages: string[];
 		samples: string[];
+		theme: string;
+		themes: string[];
+		font: string;
+		fonts: string[];
 		show_line_numbers: boolean;
 		inspect: boolean;
 		edit_open: boolean;
 		on_lang_change: (next: string) => void;
 		on_sample_change: (next: string) => void;
+		on_theme_change: (next: string) => void;
+		on_font_change: (next: string) => void;
 		on_toggle_line_numbers: () => void;
 		on_toggle_inspect: () => void;
 		on_toggle_edit: () => void;
-		on_toggle_tweaks: () => void;
 	}
 
 	let {
@@ -22,37 +28,36 @@
 		sample,
 		languages,
 		samples,
+		theme,
+		themes,
+		font,
+		fonts,
 		show_line_numbers,
 		inspect,
 		edit_open,
 		on_lang_change,
 		on_sample_change,
+		on_theme_change,
+		on_font_change,
 		on_toggle_line_numbers,
 		on_toggle_inspect,
 		on_toggle_edit,
-		on_toggle_tweaks,
 	}: Props = $props();
 </script>
 
 <header class="topbar">
 	<div class="topbar__l">
 		<a class="brand" href="/">
-			<!-- <div class="brand__mark" aria-hidden="true">
-				<span class="brand__pip brand__pip--1"></span>
-				<span class="brand__pip brand__pip--2"></span>
-				<span class="brand__pip brand__pip--3"></span>
-			</div> -->
 			<div class="brand__name">
 				<span class="brand__glyph">twinkleplop</span>
-				<!-- <span class="brand__tag">syntax highlighter · explore</span> -->
 			</div>
 		</a>
 		<div class="divider"></div>
 		<nav class="crumbs" aria-label="Breadcrumb">
 			<span class="crumb">lab</span>
-			<span class="crumb__sep">/</span>
+			<span class="crumb__sep" aria-hidden="true">/</span>
 			<span class="crumb">compare</span>
-			<span class="crumb__sep">/</span>
+			<span class="crumb__sep" aria-hidden="true">/</span>
 			<CommandChip
 				label="lang"
 				value={lang}
@@ -60,7 +65,7 @@
 				hint="↑↓ navigate · ↵ select"
 				on_change={on_lang_change}
 			/>
-			<span class="crumb__sep">/</span>
+			<span class="crumb__sep" aria-hidden="true">/</span>
 			<CommandChip
 				label="sample"
 				value={sample}
@@ -71,32 +76,57 @@
 		</nav>
 	</div>
 	<div class="topbar__r">
+		<div class="topbar__group" role="group" aria-label="Code view">
+			<CommandChip
+				label="theme"
+				value={theme}
+				options={themes}
+				show_label
+				align="right"
+				on_change={on_theme_change}
+			/>
+			<CommandChip
+				label="font"
+				value={font}
+				options={fonts}
+				show_label
+				align="right"
+				on_change={on_font_change}
+			/>
+		</div>
+		<div class="topbar__divider"></div>
 		<button
 			class="toggle"
 			class:is-on={show_line_numbers}
 			type="button"
+			aria-pressed={show_line_numbers}
+			title="line numbers"
 			onclick={on_toggle_line_numbers}
 		>
 			<span class="toggle__pip"></span>
 			<span>ln</span>
 		</button>
-		<button class="toggle" class:is-on={inspect} type="button" onclick={on_toggle_inspect}>
+		<button
+			class="toggle"
+			class:is-on={inspect}
+			type="button"
+			aria-pressed={inspect}
+			onclick={on_toggle_inspect}
+		>
 			<span class="toggle__pip"></span>
-			<span>inspect</span>
+			<span>inspect tokens</span>
 		</button>
 		<button
 			class="toggle"
 			class:is-on={edit_open}
 			type="button"
+			aria-pressed={edit_open}
 			onclick={on_toggle_edit}
 		>
 			<span class="toggle__pip"></span>
 			<span>edit</span>
 		</button>
 		<div class="topbar__divider"></div>
-		<button class="topbar__btn" type="button" onclick={on_toggle_tweaks}>
-			<span class="topbar__btn-kbd">T</span>
-			<span>tweaks</span>
-		</button>
+		<ModeSwitch />
 	</div>
 </header>

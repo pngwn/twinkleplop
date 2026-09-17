@@ -1,5 +1,7 @@
 import { browser } from '$app/environment';
 
+// keep in sync with the inline script in app.html, which applies the
+// stored mode to <html> before first paint.
 const STATE_KEY = 'twinkleplop:mode';
 
 export type theme_mode_value = 'system' | 'light' | 'dark';
@@ -25,6 +27,16 @@ function resolve(value: theme_mode_value): resolved_mode {
 	return value === 'system' ? read_os() : value;
 }
 
+// site css keys off `:root[data-mode]`, and theme packages switch their
+// token vars on a `.dark` class, so both live on <html>.
+function apply(mode: resolved_mode) {
+	if (!browser) return;
+	const root = document.documentElement;
+	root.dataset.mode = mode;
+	root.classList.toggle('dark', mode === 'dark');
+	root.classList.toggle('light', mode === 'light');
+}
+
 const initial = read_stored();
 
 export const theme_mode = $state<{
@@ -42,6 +54,7 @@ if (browser) {
 	mql.addEventListener('change', () => {
 		if (theme_mode.value === 'system') {
 			theme_mode.resolved = read_os();
+			apply(theme_mode.resolved);
 		}
 	});
 }
@@ -49,6 +62,7 @@ if (browser) {
 export function set_mode(value: theme_mode_value) {
 	theme_mode.value = value;
 	theme_mode.resolved = resolve(value);
+	apply(theme_mode.resolved);
 	if (!browser) return;
 	try {
 		localStorage.setItem(STATE_KEY, value);
@@ -61,4 +75,5 @@ export function hydrate_mode() {
 	const stored = read_stored();
 	theme_mode.value = stored;
 	theme_mode.resolved = resolve(stored);
+	apply(theme_mode.resolved);
 }

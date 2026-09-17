@@ -5,6 +5,7 @@
 	import Wordmark from "$lib/splash/Wordmark.svelte";
 	import Rainbow from "$lib/splash/Rainbow.svelte";
 	import LiveCard from "$lib/splash/LiveCard.svelte";
+	import { theme_mode } from "$lib/theme_mode.svelte";
 
 	const INSTALL = "npm i @twinkleplop/typescript";
 	const GITHUB = "https://github.com/pngwn/twinkleplop";
@@ -63,6 +64,10 @@
 		start();
 		return () => engine?.destroy();
 	});
+
+	$effect(() => {
+		engine?.set_mode(theme_mode.resolved);
+	});
 </script>
 
 <svelte:head>
@@ -70,10 +75,6 @@
 	<meta
 		name="description"
 		content="A syntax highlighter and code authoring toolkit. Small, fast, customisable."
-	/>
-	<link
-		href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
-		rel="stylesheet"
 	/>
 </svelte:head>
 
@@ -141,9 +142,15 @@
 		--bg3: #151515;
 		--line: #222;
 		--line2: #2c2c2c;
-		--ink: #d8d8d8;
-		--ink2: #8b8b8b;
-		--ink3: #555;
+		/* text tiers on bg..bg3: ink ≥ 15:1, ink2 (body) ≥ 10.5:1,
+		 * ink3 (hints, § labels) ≥ 7:1. unlit code tokens and the ghost
+		 * wordmark are effects rather than reading text, so they sit lower
+		 * (unlit still clears 4.5:1) to keep the twinkle visible. */
+		--ink: #ededed;
+		--ink2: #c5c5c5;
+		--ink3: #a1a1a1;
+		--unlit: #808080;
+		--ghost: #555;
 		--green: #5be08c;
 		--red: #f0716c;
 		--orange: #f2a25c;
@@ -152,6 +159,16 @@
 		--purple: #c792ea;
 		--pink: #f08ab8;
 		--mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+		--header-bg: rgba(10, 10, 10, 0.88);
+		--selection-ink: #041a0c;
+
+		--mode-height: 34px;
+		--mode-font-size: 12px;
+		--mode-line: var(--line2);
+		--mode-fg: var(--ink2);
+		--mode-fg-on: var(--green);
+		--mode-bg-on: color-mix(in oklab, var(--green) 12%, transparent);
+		--mode-focus: var(--green);
 
 		flex: 1;
 		background: var(--bg);
@@ -159,14 +176,41 @@
 		font-family: var(--mono);
 		font-size: 14px;
 		line-height: 1.6;
-		-webkit-font-smoothing: antialiased;
 		/* pixels arc a little way past the wordmark in flight. clip, not
 		 * hidden: a scroll container here would break the sticky header. */
 		overflow-x: clip;
 	}
+	/* light mode: a token swap, same tiers as dark. colour tokens clear
+	 * 4.5:1 on bg, bg2 and bg3 (green, the tightest, is 4.5:1 on bg3) */
+	:global(:root[data-mode="light"]) .splash {
+		--bg: #fbfbf9;
+		--bg2: #f4f4f1;
+		--bg3: #ebebe7;
+		--line: #dcdcd6;
+		--line2: #c4c4bd;
+		--ink: #171715;
+		--ink2: #33332f;
+		--ink3: #4e4e48;
+		--unlit: #66665f;
+		--ghost: #66665f;
+		--green: #0f7a3f;
+		--red: #b8321f;
+		--orange: #a4520a;
+		--yellow: #7a5c00;
+		--blue: #1b5fc4;
+		--purple: #7b3fb8;
+		--pink: #b8256b;
+		--header-bg: rgba(251, 251, 249, 0.88);
+		--selection-ink: #fff;
+		--mode-bg-on: color-mix(in oklab, var(--green) 8%, transparent);
+	}
+	/* grayscale antialiasing thins glyphs; keep it for light-on-dark only */
+	:global(:root:not([data-mode="light"])) .splash {
+		-webkit-font-smoothing: antialiased;
+	}
 	.splash :global(::selection) {
 		background: var(--green);
-		color: #041a0c;
+		color: var(--selection-ink);
 	}
 	p,
 	h2,

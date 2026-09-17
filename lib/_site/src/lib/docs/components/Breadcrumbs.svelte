@@ -7,7 +7,7 @@
 {#if crumbs.length}
 	<div class="breadcrumbs">
 		{#each crumbs as part, i}
-			{#if i > 0}<span class="sep">/</span>{/if}
+			{#if i > 0}<span class="sep" aria-hidden="true">/</span>{/if}
 			{#if part.href}
 				<a href={part.href}>{part.label}</a>
 			{:else}
