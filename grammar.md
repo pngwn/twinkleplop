@@ -60,7 +60,7 @@ Standard names include: `boolean`, `comment`, `function`, `identifier`, `keyword
 Custom token types can still be passed as plain strings to any helper:
 
 ```js
-match("@media", "at_rule"); // "at_rule" is a custom token — just a string
+match("@media", "at_rule"); // "at_rule" is a custom token type
 ```
 
 > **Note on `TOKENS.function`**: because `function` is a reserved word, the module uses the ES2022 string-literal export form internally (`export { fn as "function" }`). Dot access (`TOKENS.function`) and bracket access (`TOKENS["function"]`) both resolve it.
@@ -178,7 +178,7 @@ fallback(goto("division")); // sideways transition (doesn't consume the char)
 
 ## Transition helpers
 
-State transitions are just partial rule objects you spread into a full rule. All helpers return plain objects, so you can mix them freely with your own fields.
+State transitions are partial rule objects. Spread them into a rule and add any other fields it needs.
 
 ```js
 enter("foo"); // → { state: "foo" }              push; enters foo, parent stays on stack
@@ -188,7 +188,7 @@ to("foo"); // → { state: "foo", exit: true }  same as goto
 to(null); // → {}                            stay in current state
 ```
 
-`to()` is convenient for parameterised rule factories where the destination may be `null` to mean "stay":
+Use `to()` in parameterised rule factories when the destination may be `null` to mean "stay":
 
 ```js
 const operators = (afterOp) => match(ALL_OPERATORS, TOKENS.operator, to(afterOp));
@@ -232,7 +232,7 @@ Optional fields on a state:
 
 ### Sharing rules with arrays
 
-Because states are plain objects, the easiest way to share rules is a regular JavaScript array you spread into each state's `rules`:
+To share rules, store them in an array and spread it into each state's `rules`:
 
 ```js
 const js_common = [
@@ -302,7 +302,7 @@ Inside a probe state, rules are positive-match only — the probe keeps consumin
 
 ## Disambiguation rules
 
-- **Maximal munch**: when one pattern is a prefix of another (`>` vs `>>`, `/` vs `/=`), the longer match wins. The compiler handles this automatically — all patterns in a first-char bucket are sorted by descending length, so you don't need to order your `match(...)` calls carefully.
+- **Maximal munch**: when one pattern is a prefix of another (`>` vs `>>`, `/` vs `/=`), the longer match wins. The compiler sorts patterns in each first-character bucket by descending length.
 - **Contextual ambiguity**: use probe states (above).
 - **Word boundaries**: use `keyword(...)` (or pass `boundary: true` manually) so `return` doesn't match inside `returning`.
 
@@ -320,7 +320,7 @@ on([" ", "\t", "\n", "\r"]);
 
 ## Writing a custom helper
 
-Helpers are pure factories, so building your own is just a JS function that returns a rule or an array of rules:
+To write a custom helper, create a function that returns a rule or an array of rules:
 
 ```js
 // Shortcut for a sideways transition that emits a punctuation token

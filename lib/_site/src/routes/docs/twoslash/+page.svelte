@@ -105,7 +105,7 @@ unified()
 		</p>
 		<p>
 			Pass <code>custom_tags</code> to replace that list, or
-			<code>[]</code> to disable tags entirely.
+			<code>[]</code> to disable tags.
 		</p>
 	</Section>
 

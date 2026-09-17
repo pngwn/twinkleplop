@@ -200,7 +200,7 @@ const grammar = compile(raw_grammar);`;
 				A <strong>multi-char</strong> match never coalesces, enforced at runtime per emission rather
 				than at compile time. That distinction matters for a rule that mixes lengths:
 				<code>match: [...OP_4CHAR, "?"]</code>
-				seals only when one of the longer alternatives actually fires, not when the bare
+				seals only when one of the longer alternatives matches, not when the
 				<code>?</code> matches.
 			</li>
 		</ul>
