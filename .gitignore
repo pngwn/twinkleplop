@@ -6,7 +6,9 @@ CLAUDE.md
 .claude
 AGENTS.md
 dist/
-scripts/
+# anchored: an unanchored `scripts/` would also match a nested scripts dir
+/scripts/*
+!/scripts/setup-trusted-publishing.mjs
 # anchored: an unanchored `docs/` also matched lib/_site/src/routes/docs,
 # silently ignoring every new page added to the docs site.
 /docs/
