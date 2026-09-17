@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
@@ -100,13 +99,3 @@ for (let i = 0; i < result.tokens.length; i += 3) {
 		<a href="/docs/tokenization">how tokenization works</a> .
 	</Callout>
 </ArticleMain>
-
-<ArticleOtp
-	title="getting started"
-	sections={[
-		{ href: "#s1", label: "§01 — install", active: true },
-		{ href: "#s2", label: "§02 — highlighting code" },
-		{ href: "#s3", label: "§03 — per-call options" },
-		{ href: "#s4", label: "§04 — tokens instead of html" },
-	]}
-/>

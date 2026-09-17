@@ -36,7 +36,6 @@ console.log(msg);`;
 
 	const segments = $derived(build_segments(source));
 	const tokens = $derived(segments.filter((s) => s.type !== null));
-	const line_count = $derived(source.split("\n").length);
 
 	function build_segments(text: string): segment[] {
 		const { tokens, token_types } = tokenize(text);
@@ -159,7 +158,6 @@ console.log(msg);`;
 				twinkling · <b>{lit}/{total}</b> tokens
 			{/if}
 		</span>
-		<span>{tokens.length} tokens · {line_count} lines</span>
 	</div>
 </div>
 

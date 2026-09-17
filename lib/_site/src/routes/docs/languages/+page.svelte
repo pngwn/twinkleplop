@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
@@ -112,14 +111,3 @@ const html = await get_lang("html");`;
 		</Callout>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="languages"
-	sections={[
-		{ href: "#s1", label: "§01 — language support", active: true },
-		{ href: "#s2", label: "§02 — loading languages" },
-		{ href: "#s3", label: "§03 — using multiple languages" },
-		{ href: "#s4", label: "§04 — lazy loading" },
-		{ href: "#s5", label: "§05 — package exports" },
-	]}
-/>

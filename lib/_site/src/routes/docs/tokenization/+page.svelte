@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import SubSection from "$lib/docs/components/SubSection.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
@@ -186,15 +185,3 @@ mapper.generate_report(introspector);`;
 		<CodeBlock fname="mapper.ts" html={mapper} />
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="how tokenization works"
-	sections={[
-		{ href: "#tokenize", label: "§01 — tokenize", active: true },
-		{ href: "#reclassify", label: "§02 — reclassify" },
-		{ href: "#render", label: "§03 — to_html" },
-		{ href: "#debugging", label: "§04 — debugging a grammar" },
-		{ href: "#introspector", label: "§05 — introspector" },
-		{ href: "#mapper", label: "§06 — grammar mapper" },
-	]}
-/>

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import SubSection from "$lib/docs/components/SubSection.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
@@ -333,15 +332,3 @@ const result = overlays(source, [
 		</SubSection>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="api reference"
-	sections={[
-		{ href: "#language", label: "§01 — language()", active: true },
-		{ href: "#tokenize", label: "§02 — tokenize()" },
-		{ href: "#to_html", label: "§03 — to_html()" },
-		{ href: "#language_options", label: "§04 — LanguageOptions" },
-		{ href: "#render_options", label: "§05 — RenderOptions" },
-		{ href: "#core", label: "§06 — @twinkleplop/core" },
-	]}
-/>

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
@@ -201,15 +200,3 @@ ts(code, {
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="render options"
-	sections={[
-		{ href: "#block", label: "§01 — block attributes", active: true },
-		{ href: "#overlays", label: "§02 — overlays" },
-		{ href: "#hooks", label: "§03 — line and token hooks" },
-		{ href: "#inline", label: "§04 — inline structure" },
-		{ href: "#whitespace", label: "§05 — whitespace" },
-		{ href: "#output", label: "§06 — HTML output" },
-	]}
-/>

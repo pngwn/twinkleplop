@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import FaqList from "$lib/docs/components/FaqList.svelte";
 	import { twoslash, bash } from "$lib/docs/snippets";
@@ -209,14 +208,3 @@ const tokens = html_tokenizer("hello world");`;
 	/>
 
 </ArticleMain>
-
-<ArticleOtp
-	title="faq"
-	sections={[
-		{ href: "#s-01", label: "§01 — getting started", active: true },
-		{ href: "#s-02", label: "§02 — loading languages" },
-		{ href: "#s-03", label: "§03 — rendering & output" },
-		{ href: "#s-04", label: "§04 — performance & bundling" },
-		{ href: "#s-05", label: "§05 — issues" },
-	]}
-/>

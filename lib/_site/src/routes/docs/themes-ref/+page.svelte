@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
-	import ArticleOtp from "$lib/docs/components/ArticleOtp.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
@@ -117,12 +116,3 @@ export const light: theme_palette = {
 		</p>
 	</Section>
 </ArticleMain>
-
-<ArticleOtp
-	title="theme reference"
-	sections={[
-		{ href: "#builtin", label: "§01 — built-in themes", active: true },
-		{ href: "#vocabulary", label: "§02 — token types" },
-		{ href: "#authoring", label: "§03 — authoring a theme" },
-	]}
-/>
