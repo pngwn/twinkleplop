@@ -1,0 +1,76 @@
+/* ---- unit 1 ---- */
+/* site theme tokens and layout */
+@import url("./base.css");
+:root {
+  --fg: #1f2328;
+  --bg: rgb(255 255 255 / 0.9);
+}
+html,
+body {
+  margin: 0;
+  font-size: 16px;
+  color: inherit;
+}
+#main > .card:hover {
+  padding: 1.5rem;
+  color: var(--fg);
+  background: linear-gradient(90deg, #fff 0%, #eee 100%);
+  cursor: pointer;
+}
+@media (min-width: 768px) {
+  .card {
+    flex: 1 1 320px;
+  }
+}
+
+
+/* ---- unit 2 ---- */
+/* site theme tokens and layout */
+@import url("./base.css");
+:root {
+  --fg: #1f2328;
+  --bg: rgb(255 255 255 / 0.9);
+}
+html,
+body {
+  margin: 0;
+  font-size: 16px;
+  color: inherit;
+}
+#main > .card:hover {
+  padding: 1.5rem;
+  color: var(--fg);
+  background: linear-gradient(90deg, #fff 0%, #eee 100%);
+  cursor: pointer;
+}
+@media (min-width: 768px) {
+  .card {
+    flex: 1 1 320px;
+  }
+}
+
+
+/* ---- unit 3 ---- */
+/* site theme tokens and layout */
+@import url("./base.css");
+:root {
+  --fg: #1f2328;
+  --bg: rgb(255 255 255 / 0.9);
+}
+html,
+body {
+  margin: 0;
+  font-size: 16px;
+  color: inherit;
+}
+#main > .card:hover {
+  padding: 1.5rem;
+  color: var(--fg);
+  background: linear-gradient(90deg, #fff 0%, #eee 100%);
+  cursor: pointer;
+}
+@media (min-width: 768px) {
+  .card {
+    flex: 1 1 320px;
+  }
+}

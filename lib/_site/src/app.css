@@ -30,6 +30,14 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
 }
 
+:root {
+  color-scheme: dark;
+}
+:root[data-mode="light"] {
+  color-scheme: light;
+  --bg-primary: #fbfbf9;
+}
+
 * {
   margin: 0;
   padding: 0;

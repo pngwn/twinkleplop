@@ -1,7 +1,14 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "twinkleplop-site",
+  // must match the deployed Worker. a mismatch does not fail: wrangler
+  // happily creates a second Worker under the new name, with no custom domain
+  // attached, and the live site simply never updates.
+  "name": "twinkleplop",
   "compatibility_date": "2026-04-24",
+  // pull requests upload a version behind a "pr-<n>" alias (see
+  // .github/workflows/preview-site.yml). that only works while preview urls
+  // are on, so say so here instead of relying on the account default.
+  "preview_urls": true,
   "assets": {
     "directory": "build",
     "not_found_handling": "404-page",

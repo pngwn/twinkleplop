@@ -1,42 +1,58 @@
-// shared, annotation-enabled language highlighters for the docs site.
+// the highlighters behind the docs snippet tags in snippets.ts. build only:
+// the docs-snippets vite plugin loads this module and renders every tagged
+// snippet with the function of the same name, so none of it ships.
 //
-// every code snippet in `/docs/**` runs through one of these factories so
-// authors can drop `[!em]`, `[!hl]`, `[!add]`, `[!del]`, etc. into example
-// sources without each page wiring its own AnnotationConfig. the early-out
-// in the extractor (no `[!` in input → undefined) keeps the cost on
-// non-annotation snippets at noise level.
+// the plain highlighters run annotation extraction, so authors can drop
+// `[!em]`, `[!hl]`, `[!add]`, `[!del]`, etc. into example sources. the
+// extractor early-outs on input with no `[!`, so the cost elsewhere is noise.
 
+import { add, del, dim, em, err, hl, info, mod, warn } from "@twinkleplop/annotation";
+import { shiki_notation } from "@twinkleplop/annotation/shiki";
 import { language as make_bash } from "@twinkleplop/bash";
+import type { RenderOptions } from "@twinkleplop/core";
 import { language as make_css } from "@twinkleplop/css";
 import { language as make_html } from "@twinkleplop/html";
+import { create_highlighter as create_twoslash } from "@twinkleplop/twoslash";
 import { language as make_ts } from "@twinkleplop/typescript";
-import {
-  add,
-  del,
-  dim,
-  em,
-  err,
-  hl,
-  info,
-  mod,
-  warn,
-} from "@twinkleplop/annotation";
+import typescript from "typescript";
 
-const plugins = [em, hl, dim, add, del, mod, err, warn, info];
-const annotation = { plugins };
+const annotation = { plugins: [em, hl, dim, add, del, mod, err, warn, info] };
 
-export const ts = make_ts({ annotation });
-export const html = make_html({ annotation });
-export const css = make_css({ annotation });
-export const bash = make_bash({ annotation });
+/** `root` is the site root, which twoslash resolves snippet imports from. */
+export function create_highlighters(root: string) {
+  const ts = make_ts({ annotation });
+  const ts_raw = make_ts();
+  const ts_shiki = make_ts({ annotation: { plugins: [shiki_notation()] } });
+  const twoslash = create_twoslash({
+    class_name: "twinkleplop twoslash",
+    // `import("@twinkleplop/core").LanguageOptions` reads as `LanguageOptions`
+    process_type: (type) => type.replace(/import\("[^"]*"\)\./g, ""),
+    twoslash: {
+      // twoslash joins this with `/index.ts` itself; a trailing slash makes
+      // the diagnostics' file names miss and silently drops every error.
+      vfsRoot: root.replace(/\/+$/, ""),
+      compilerOptions: {
+        target: typescript.ScriptTarget.ES2022,
+        module: typescript.ModuleKind.ESNext,
+        moduleResolution: typescript.ModuleResolutionKind.Bundler,
+        // type check against workspace sources, never a stale dist
+        customConditions: ["source"],
+        strict: true,
+        skipLibCheck: true,
+      },
+    },
+  });
 
-// `*_raw` variants leave annotation off entirely. used by the side-by-side
-// directive demos: the input pane shows the source as authored (markers
-// rendered as literal comment text), the output pane shows the fully
-// rendered view. consumers that just want plain highlighting should still
-// use the annotation-enabled exports above; the cost is near-zero on
-// snippets without `[!`.
-export const ts_raw = make_ts();
-export const html_raw = make_html();
-export const css_raw = make_css();
-export const bash_raw = make_bash();
+  return {
+    twoslash: (code: string) => twoslash(code),
+    ts,
+    // source -> output pairs for SplitCodeBlock: the input pane shows the
+    // markup as authored comment text, the output pane what it renders to.
+    ts_split: (code: string) => ({ input: ts_raw(code), output: ts(code) }),
+    ts_shiki_split: (code: string) => ({ input: ts_raw(code), output: ts_shiki(code) }),
+    twoslash_split: (code: string) => ({ input: ts_raw(code), output: twoslash(code) }),
+    html: make_html({ annotation }),
+    css: make_css({ annotation }),
+    bash: make_bash({ annotation }),
+  } satisfies Record<string, (code: string, render?: RenderOptions) => unknown>;
+}

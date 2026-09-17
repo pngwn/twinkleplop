@@ -17,7 +17,6 @@
 	<span class="spacer"></span>
 	<div class="hints">
 		<span class="h"><Keycap>⌘</Keycap><Keycap>K</Keycap> palette</span>
-		<span class="h"><Keycap>t</Keycap> tweaks</span>
 		<span class="h"><Keycap>j</Keycap><Keycap>k</Keycap> navigate</span>
 		<span class="h live">● live</span>
 	</div>

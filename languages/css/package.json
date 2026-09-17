@@ -12,7 +12,7 @@
   },
   "scripts": {
     "test": "vitest",
-    "gen_test": "node gen_test.js"
+    "gen_test": "node generate-snapshots.js"
   },
   "dependencies": {
     "@twinkleplop/core": "workspace:*"
@@ -22,7 +22,7 @@
     "url": "https://github.com/pngwn/twinkleplop",
     "directory": "languages/css"
   },
-  "homepage": "https://twinkleplop.pngwn.dev",
+  "homepage": "https://twinkleplop.pngwn.at",
   "bugs": "https://github.com/pngwn/twinkleplop/issues",
   "author": {
     "name": "pngwn",

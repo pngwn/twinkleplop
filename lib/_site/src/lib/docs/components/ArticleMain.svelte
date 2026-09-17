@@ -80,7 +80,7 @@
 		padding: 30px 36px 120px;
 	}
 	.content :global(p) {
-		margin: 0 0 12px;
+		margin: 0 0 20px;
 		color: var(--docs-fg-dim);
 	}
 	.content :global(p strong),
@@ -100,11 +100,15 @@
 		font-family: var(--docs-mono);
 	}
 	.content :global(ul) {
+		margin: 0 0 20px;
 		padding-left: 20px;
 		color: var(--docs-fg-dim);
 	}
+	.content :global(li + li) {
+		margin-top: 10px;
+	}
 	.content :global(ul li::marker) {
-		color: var(--docs-fg-ghost);
+		color: var(--docs-fg-mute);
 		content: "› ";
 	}
 	.content :global(a) {

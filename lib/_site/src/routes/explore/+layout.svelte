@@ -8,8 +8,10 @@
 {@render children?.()}
 
 <style>
-	:global(html),
-	:global(body) {
+	/* stylesheets outlive client-side navigation, so lock scrolling only
+	 * while the lab is actually on the page */
+	:global(html:has(.explore-app)),
+	:global(html:has(.explore-app) body) {
 		height: 100%;
 		overflow: hidden;
 	}

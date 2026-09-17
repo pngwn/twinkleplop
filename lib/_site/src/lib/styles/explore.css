@@ -1,10 +1,40 @@
 /* terminal aesthetic for the explore route. scoped via the
-   `.explore-app` wrapper so flavor vars and global crt overlays
-   do not leak into the rest of the site. */
+   `.explore-app` wrapper so its vars and the scanline overlay do not leak
+   into the rest of the site.
+
+   text tiers on the chrome surfaces (bg, bg-elev, bg-pane): fg ≥ 15:1,
+   fg-dim ≥ 10.5:1, fg-muted ≥ 7:1, accent* and warn ≥ 4.5:1. fg-muted
+   still clears 4.5:1 on the code themes' own backgrounds, so line
+   numbers use it. */
 
 .explore-app {
 	--font-mono:
 		'Berkeley Mono', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+	--bg: #0f0f10;
+	--bg-elev: #18181b;
+	--bg-pane: #121214;
+	--fg: #f4f0e4;
+	--fg-dim: #ccc7ba;
+	--fg-muted: #a7a396;
+	--border: #2a2822;
+	--border-bright: #3f3c34;
+	--accent: #d4c896;
+	--accent2: #a8e0c8;
+	--warn: #e8b56a;
+	--scanline: rgba(255, 255, 255, 0.015);
+	--glow: 0 0 0 transparent;
+
+	--mode-height: 24px;
+	--mode-font-size: 11px;
+	--mode-line: var(--border-bright);
+	--mode-fg: var(--fg-dim);
+	--mode-fg-on: var(--accent);
+	--mode-bg-on: color-mix(in oklab, var(--accent) 16%, transparent);
+	--mode-focus: var(--accent);
+
+	/* strength of annotation tints (diff, highlight, ...) on code lines */
+	--anno: 1;
 
 	position: relative;
 	height: 100vh;
@@ -16,17 +46,46 @@
 	font-family: var(--font-mono);
 	font-size: 13px;
 	overflow: hidden;
-	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
 	font-feature-settings:
 		'liga' 0,
 		'calt' 0;
 }
 
+/* light mode swaps the chrome for a neutral paper palette */
+:root[data-mode='light'] .explore-app {
+	--bg: #f3f0e8;
+	--bg-elev: #ebe8df;
+	--bg-pane: #e3e0d5;
+	--fg: #090909;
+	--fg-dim: #2c2c2c;
+	--fg-muted: #4b473c;
+	--border: #c5c0b0;
+	--border-bright: #a9a595;
+	--accent: #1c6c2f;
+	--accent2: #2a5ab8;
+	--warn: #9c4400;
+	--scanline: rgba(0, 0, 0, 0.02);
+	--glow: 0 0 0 transparent;
+	/* light code themes leave little contrast headroom for tinted lines */
+	--anno: 0.55;
+}
+
+/* grayscale antialiasing thins glyphs; keep it for light-on-dark only */
+:root:not([data-mode='light']) .explore-app {
+	-webkit-font-smoothing: antialiased;
+}
+
 .explore-app *,
 .explore-app *::before,
 .explore-app *::after {
 	box-sizing: border-box;
+}
+
+/* the ua stylesheet gives pre/code a bare `monospace` (courier on macos),
+   which beats inheritance and ignores the font picker */
+.explore-app :where(pre, code, kbd, samp) {
+	font-family: inherit;
 }
 
 .explore-app::before {
@@ -42,108 +101,12 @@
 		var(--scanline) 2px,
 		var(--scanline) 3px
 	);
-	mix-blend-mode: screen;
-	opacity: 0.5;
 }
 
-.explore-app[data-flavor='paperwhite']::before {
-	opacity: 1;
-	mix-blend-mode: normal;
-}
-
-/* ---------- flavor variable sets ---------- */
-.explore-app[data-flavor='paperwhite'] {
-	--bg: #0f0f10;
-	--bg-elev: #18181b;
-	--bg-pane: #121214;
-	--fg: #e8e4d9;
-	--fg-dim: #8a8578;
-	--fg-muted: #56524a;
-	--border: #2a2822;
-	--border-bright: #3f3c34;
-	--accent: #d4c896;
-	--accent2: #a8e0c8;
-	--warn: #e8b56a;
-	--scanline: rgba(255, 255, 255, 0.015);
-	--glow: 0 0 0 transparent;
-}
-.explore-app[data-flavor='phosphor'] {
-	--bg: #030907;
-	--bg-elev: #0a1410;
-	--bg-pane: #05100b;
-	--fg: #a8ffc8;
-	--fg-dim: #4a8f6a;
-	--fg-muted: #2d5a43;
-	--border: #153a28;
-	--border-bright: #2a6447;
-	--accent: #5dff9b;
-	--accent2: #00ffaa;
-	--warn: #ffdc5d;
-	--scanline: rgba(93, 255, 155, 0.04);
-	--glow: 0 0 12px rgba(93, 255, 155, 0.35);
-}
-.explore-app[data-flavor='amber'] {
-	--bg: #0c0703;
-	--bg-elev: #1a0f05;
-	--bg-pane: #130a03;
-	--fg: #ffb84d;
-	--fg-dim: #9c6826;
-	--fg-muted: #6b4417;
-	--border: #3a2409;
-	--border-bright: #5e3b12;
-	--accent: #ffcb6b;
-	--accent2: #ff8a3c;
-	--warn: #ff6b35;
-	--scanline: rgba(255, 184, 77, 0.04);
-	--glow: 0 0 14px rgba(255, 184, 77, 0.3);
-}
-.explore-app[data-flavor='synth'] {
-	--bg: #0a0415;
-	--bg-elev: #150a28;
-	--bg-pane: #10061f;
-	--fg: #f0d4ff;
-	--fg-dim: #9470b8;
-	--fg-muted: #5c4080;
-	--border: #2a1555;
-	--border-bright: #4a2c80;
-	--accent: #ff4ad6;
-	--accent2: #4adaff;
-	--warn: #ffd84a;
-	--scanline: rgba(255, 74, 214, 0.03);
-	--glow: 0 0 18px rgba(255, 74, 214, 0.4);
-}
-.explore-app[data-flavor='ember'] {
-	--bg: #060708;
-	--bg-elev: #0c0f14;
-	--bg-pane: #080a0e;
-	--fg: #ff8a3d;
-	--fg-dim: #a35a28;
-	--fg-muted: #6a3d1c;
-	--border: #16304d;
-	--border-bright: #234a78;
-	--accent: #ff7a1f;
-	--accent2: #4ea0ff;
-	--warn: #ffb84a;
-	--scanline: rgba(255, 122, 31, 0.035);
-	--glow: 0 0 14px rgba(255, 122, 31, 0.55);
-}
-
-/* light mode overrides the flavor-driven chrome with a neutral light
-   palette. flavors stay available as a dark-mode aesthetic only. */
-.explore-app[data-mode='light'] {
-	--bg: #f3f0e8;
-	--bg-elev: #ebe8df;
-	--bg-pane: #e3e0d5;
-	--fg: #1a1a1a;
-	--fg-dim: #4a4a4a;
-	--fg-muted: #7a766a;
-	--border: #c5c0b0;
-	--border-bright: #a9a595;
-	--accent: #2a7a3a;
-	--accent2: #2a5ab8;
-	--warn: #b85a20;
-	--scanline: rgba(0, 0, 0, 0.02);
-	--glow: 0 0 0 transparent;
+@media (prefers-contrast: more) {
+	.explore-app::before {
+		display: none;
+	}
 }
 
 /* ---------- top bar ---------- */
@@ -265,31 +228,10 @@
 	font-size: 11px;
 }
 
-.explore-app .topbar__btn {
+.explore-app .topbar__group {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	background: var(--bg-elev);
-	border: 1px solid var(--border-bright);
-	color: var(--fg);
-	padding: 5px 10px;
-	font: inherit;
-	font-size: 11px;
-	cursor: pointer;
-	transition:
-		border-color 0.15s,
-		background 0.15s,
-		color 0.15s;
-}
-.explore-app .topbar__btn:hover {
-	border-color: var(--accent);
-	color: var(--accent);
-}
-.explore-app .topbar__btn-kbd {
-	font-size: 9px;
-	padding: 1px 5px;
-	border: 1px solid var(--border-bright);
-	color: var(--fg-dim);
+	gap: 4px;
 }
 
 .explore-app .topbar__divider {
@@ -325,6 +267,9 @@
 .explore-app .chip__button[aria-expanded='true'] {
 	background: color-mix(in oklab, var(--accent) 14%, transparent);
 }
+.explore-app .chip__label {
+	color: var(--fg-dim);
+}
 .explore-app .chip__value {
 	color: var(--accent);
 	font-weight: 500;
@@ -350,6 +295,11 @@
 		0 12px 40px rgba(0, 0, 0, 0.6),
 		var(--glow);
 	padding: 4px;
+}
+.explore-app .chip__menu--right {
+	left: auto;
+	right: 0;
+	min-width: 200px;
 }
 .explore-app .chip__menu-head {
 	display: flex;
@@ -506,13 +456,9 @@
 .explore-app .source__ta:focus {
 	background: color-mix(in oklab, var(--bg) 92%, var(--accent) 3%);
 }
-.explore-app .source__ta[data-density='compact'] {
-	line-height: 1.4;
-	font-size: 12px;
-}
-.explore-app .source__ta[data-density='relaxed'] {
-	line-height: 1.75;
-	font-size: 14px;
+/* outline is off for the flush look, so draw the focus ring inside */
+.explore-app .source__ta:focus-visible {
+	box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 /* ---------- panes ----------
@@ -533,7 +479,7 @@
 	flex-direction: column;
 	min-width: 0;
 	/* --twp-background comes from the active theme's palette (set on the
-	   .panes wrapper). when absent we fall back to the flavor's pane bg. */
+	   .panes wrapper). when absent we fall back to the chrome's pane bg. */
 	background: var(--twp-background, var(--bg-pane));
 	border-top: 1px solid var(--border);
 }
@@ -616,23 +562,16 @@
 	min-width: max-content;
 	font-family: inherit;
 }
-.explore-app .code[data-density='compact'] {
-	line-height: 1.35;
-	font-size: 12px;
-	padding: 10px 0;
-}
-.explore-app .code[data-density='relaxed'] {
-	line-height: 1.8;
-	font-size: 14px;
-	padding: 18px 0;
-}
 
 .explore-app .line-number {
 	display: flex;
 	padding: 0 16px 0 0;
 }
 
-.explore-app .ln {
+/* the shiki pane draws the same gutter from a css counter, since shiki
+   emits no line number markup. */
+.explore-app .ln,
+.explore-app .pane__body.show-line-numbers pre.shiki .line::before {
 	display: inline-block;
 	width: 44px;
 	padding-right: 12px;
@@ -643,12 +582,21 @@
 	border-right: 1px solid var(--border);
 	margin-right: 12px;
 	font-size: 11px;
-	opacity: 0.6;
 }
 
+/* horizontal padding lives on the line rather than the <pre>, so line
+   hover and line-mode overlays reach the pane edges. with line numbers on,
+   the gutter supplies the left inset instead. */
 .explore-app .l {
 	width: 100%;
 	display: inline-block;
+	padding: 0 16px;
+}
+.explore-app .pane__body.show-line-numbers .l {
+	padding-left: 0;
+}
+.explore-app .code--plain {
+	padding: 14px 16px;
 }
 
 .explore-app .l:hover {
@@ -858,7 +806,6 @@
 .explore-app .racebar__delta-sign {
 	font-weight: 700;
 	font-size: 11px;
-	opacity: 0.9;
 }
 .explore-app .racebar__delta-sep {
 	opacity: 0.4;
@@ -888,138 +835,10 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* ---------- tweaks ---------- */
-.explore-app .tweaks {
-	position: fixed;
-	top: 76px;
-	right: 18px;
-	width: 300px;
-	max-height: calc(100vh - 96px);
-	overflow: auto;
-	background: var(--bg-elev);
-	border: 1px solid var(--border-bright);
-	box-shadow:
-		0 20px 60px rgba(0, 0, 0, 0.7),
-		var(--glow);
-	z-index: 200;
-	padding: 0;
-}
-.explore-app .tweaks__head {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 10px 14px;
-	border-bottom: 1px dashed var(--border);
-}
-.explore-app .tweaks__title {
-	color: var(--accent);
-	font-size: 11px;
-	text-transform: uppercase;
-	letter-spacing: 0.15em;
-	font-weight: 600;
-}
-.explore-app .tweaks__close {
-	background: transparent;
-	border: 0;
-	color: var(--fg-dim);
-	font: inherit;
-	cursor: pointer;
-	font-size: 14px;
-}
-.explore-app .tweaks__close:hover {
-	color: var(--accent);
-}
-
-.explore-app .tweaks__sec {
-	padding: 10px 14px;
-	border-bottom: 1px dashed var(--border);
-}
-.explore-app .tweaks__sec:last-child {
-	border-bottom: 0;
-}
-.explore-app .tweaks__label {
-	color: var(--fg-muted);
-	font-size: 10px;
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
-	margin-bottom: 8px;
-}
-.explore-app .tweaks__chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 5px;
-}
-.explore-app .tweaks__groups {
-	display: grid;
-	gap: 8px;
-}
-.explore-app .tweak-group {
-	display: grid;
-	gap: 5px;
-}
-.explore-app .tweak-group__label {
-	color: var(--fg-muted);
-	font-size: 9px;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-}
-.explore-app .tweak-chip {
-	background: var(--bg-pane);
-	border: 1px solid var(--border);
-	color: var(--fg-dim);
-	padding: 4px 9px;
-	font: inherit;
-	font-size: 11px;
-	cursor: pointer;
-	transition: all 0.15s;
-}
-.explore-app .tweak-chip:hover {
-	color: var(--fg);
-	border-color: var(--border-bright);
-}
-.explore-app .tweak-chip.is-on {
-	background: color-mix(in oklab, var(--accent) 20%, var(--bg-pane));
-	color: var(--accent);
-	border-color: var(--accent);
-}
-
-/* ---------- flavor-specific glow ---------- */
-.explore-app[data-flavor='phosphor'] .brand__glyph,
-.explore-app[data-flavor='phosphor'] .pane__title,
-.explore-app[data-flavor='phosphor'] .chip__value {
-	text-shadow: 0 0 10px color-mix(in oklab, var(--accent) 60%, transparent);
-}
-.explore-app[data-flavor='amber'] .brand__glyph,
-.explore-app[data-flavor='amber'] .pane__title {
-	text-shadow: 0 0 10px color-mix(in oklab, var(--accent) 50%, transparent);
-}
-.explore-app[data-flavor='synth'] .brand__glyph {
-	background: linear-gradient(90deg, var(--accent), var(--accent2));
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-}
-.explore-app[data-flavor='ember'] .brand__glyph,
-.explore-app[data-flavor='ember'] .pane__title,
-.explore-app[data-flavor='ember'] .chip__value {
-	text-shadow:
-		0 0 10px color-mix(in oklab, var(--accent) 70%, transparent),
-		0 0 18px color-mix(in oklab, var(--accent) 35%, transparent);
-}
-.explore-app[data-flavor='ember'] .toggle.is-on,
-.explore-app[data-flavor='ember'] .racebar__delta {
-	text-shadow: 0 0 8px color-mix(in oklab, var(--accent) 55%, transparent);
-}
-.explore-app[data-flavor='ember'] .toggle.is-on .toggle__pip {
-	box-shadow:
-		0 0 8px var(--accent),
-		0 0 14px color-mix(in oklab, var(--accent) 60%, transparent);
-}
-
 /* ---------- shiki override inside pane ---------- */
 .explore-app .pane__body pre.shiki {
 	margin: 0;
-	padding: 14px 16px;
+	padding: 14px 0;
 	background: transparent !important;
 	font-family: inherit;
 	font-size: 13px;
@@ -1034,6 +853,17 @@
 .explore-app .pane__body pre.shiki .line {
 	display: inline-block;
 	width: 100%;
+	padding: 0 16px;
+}
+.explore-app .pane__body.show-line-numbers pre.shiki {
+	counter-reset: line;
+}
+.explore-app .pane__body.show-line-numbers pre.shiki .line {
+	padding-left: 0;
+}
+.explore-app .pane__body.show-line-numbers pre.shiki .line::before {
+	counter-increment: line;
+	content: counter(line);
 }
 
 /* token colors driven by css variables on the owning pane so swapping
@@ -1053,7 +883,6 @@
 .explore-app .tok.comment {
 	color: var(--twp-comment);
 	font-style: italic;
-	opacity: 0.85;
 }
 .explore-app .tok.identifier {
 	color: var(--twp-identifier);
@@ -1337,22 +1166,22 @@
    .l, token-mode overlays land on .tok. the styles below cover the phase 1
    verbs (em, hl) plus the verbs the spec reserves for later phases (dim,
    focus, diff, diagnostic) so themes have something sensible to render
-   when phase 2/3 ship. tuned to read across both light and dark flavors
+   when phase 2/3 ship. tuned to read across both light and dark modes
    via color-mix into theme tokens — accent for the active overlays, fg
    for subdued, semantic colors for diff/diagnostic. */
 
 .explore-app .l.emphasis {
-	background: color-mix(in oklab, var(--accent) 18%, transparent);
+	background: color-mix(in oklab, var(--accent) calc(18% * var(--anno)), transparent);
 	box-shadow: inset 3px 0 0 var(--accent);
 }
 .explore-app .l.highlight {
-	background: color-mix(in oklab, var(--accent2) 22%, transparent);
+	background: color-mix(in oklab, var(--accent2) calc(22% * var(--anno)), transparent);
 }
 .explore-app .l.subdued {
 	opacity: 0.45;
 }
 .explore-app .l.focus {
-	background: color-mix(in oklab, var(--accent) 14%, transparent);
+	background: color-mix(in oklab, var(--accent) calc(14% * var(--anno)), transparent);
 	box-shadow: inset 3px 0 0 var(--accent);
 }
 .explore-app .l.not-focused {
@@ -1361,28 +1190,28 @@
 }
 
 .explore-app .l.diff-add {
-	background: color-mix(in oklab, #46c66f 22%, transparent);
+	background: color-mix(in oklab, #46c66f calc(22% * var(--anno)), transparent);
 	box-shadow: inset 3px 0 0 #46c66f;
 }
 .explore-app .l.diff-del {
-	background: color-mix(in oklab, #d8533c 22%, transparent);
+	background: color-mix(in oklab, #d8533c calc(22% * var(--anno)), transparent);
 	box-shadow: inset 3px 0 0 #d8533c;
 }
 .explore-app .l.diff-mod {
-	background: color-mix(in oklab, #c8a64b 20%, transparent);
+	background: color-mix(in oklab, #c8a64b calc(20% * var(--anno)), transparent);
 	box-shadow: inset 3px 0 0 #c8a64b;
 }
 
 .explore-app .l.error {
-	background: color-mix(in oklab, #d8533c 18%, transparent);
+	background: color-mix(in oklab, #d8533c calc(18% * var(--anno)), transparent);
 	box-shadow: inset 3px 0 0 #d8533c;
 }
 .explore-app .l.warning {
-	background: color-mix(in oklab, #d4a13a 18%, transparent);
+	background: color-mix(in oklab, #d4a13a calc(18% * var(--anno)), transparent);
 	box-shadow: inset 3px 0 0 #d4a13a;
 }
 .explore-app .l.info {
-	background: color-mix(in oklab, #4a90d9 18%, transparent);
+	background: color-mix(in oklab, #4a90d9 calc(18% * var(--anno)), transparent);
 	box-shadow: inset 3px 0 0 #4a90d9;
 }
 
@@ -1392,26 +1221,26 @@
    the line variants so they stack legibly with the underlying token
    color. */
 .explore-app .tok.emphasis {
-	background: color-mix(in oklab, var(--accent) 24%, transparent);
+	background: color-mix(in oklab, var(--accent) calc(24% * var(--anno)), transparent);
 	border-radius: 1px;
 }
 .explore-app .tok.highlight {
-	background: color-mix(in oklab, var(--accent2) 28%, transparent);
+	background: color-mix(in oklab, var(--accent2) calc(28% * var(--anno)), transparent);
 	border-radius: 1px;
 }
 .explore-app .tok.subdued {
 	opacity: 0.55;
 }
 .explore-app .tok.diff-add {
-	background: color-mix(in oklab, #46c66f 28%, transparent);
+	background: color-mix(in oklab, #46c66f calc(28% * var(--anno)), transparent);
 	border-radius: 1px;
 }
 .explore-app .tok.diff-del {
-	background: color-mix(in oklab, #d8533c 28%, transparent);
+	background: color-mix(in oklab, #d8533c calc(28% * var(--anno)), transparent);
 	border-radius: 1px;
 }
 .explore-app .tok.diff-mod {
-	background: color-mix(in oklab, #c8a64b 26%, transparent);
+	background: color-mix(in oklab, #c8a64b calc(26% * var(--anno)), transparent);
 	border-radius: 1px;
 }
 .explore-app .tok.error {

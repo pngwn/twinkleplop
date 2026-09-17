@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Keycap from './Keycap.svelte';
 	import { FLAT } from '../nav';
-	import { chrome, close_palette, set_tweak } from '../chrome.svelte';
+	import { chrome, close_palette } from '../chrome.svelte';
 	import { set_mode } from '$lib/theme_mode.svelte';
 
 	let query = $state('');
@@ -38,13 +38,6 @@
 			crumb: 'cmd / mode',
 			icon: '⎈',
 			action: () => set_mode('dark')
-		},
-		{
-			id: 'cmd:crt:toggle',
-			title: 'Toggle CRT scanlines',
-			crumb: 'cmd / crt',
-			icon: '⎈',
-			action: () => set_tweak('crt', chrome.tweaks.crt === 'on' ? 'off' : 'on')
 		},
 		{
 			id: 'cmd:lab',
@@ -346,7 +339,7 @@
 		color: var(--t-yellow);
 	}
 	.empty .ghost {
-		color: var(--docs-fg-ghost);
+		color: var(--docs-fg-mute);
 	}
 	.foot {
 		display: flex;

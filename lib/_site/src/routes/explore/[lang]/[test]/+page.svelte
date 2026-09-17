@@ -6,10 +6,16 @@
 	import CodePane from '$lib/components/explore/CodePane.svelte';
 	import ShikiPane from '$lib/components/explore/ShikiPane.svelte';
 	import RaceBar from '$lib/components/explore/RaceBar.svelte';
-	import TweaksPanel from '$lib/components/explore/TweaksPanel.svelte';
 
 	import { SvelteSet } from 'svelte/reactivity';
-	import { DEFAULT_TWEAKS, resolve_theme, type tweak_state } from '$lib/explore/themes';
+	import {
+		DEFAULT_VIEW,
+		FONTS,
+		THEME_NAMES,
+		resolve_theme,
+		type lab_view,
+		type theme_name
+	} from '$lib/explore/themes';
 	import { theme_mode, hydrate_mode } from '$lib/theme_mode.svelte';
 	import { onMount } from 'svelte';
 	import { GRAMMAR_EXTENSION_CATEGORIES, to_html } from '@twinkleplop/core';
@@ -21,11 +27,8 @@
 		token_types: string[];
 	}
 
-	// annotation plugins enabled when the tweak is on. defining the array
-	// once keeps the factory call cheap (no new array every reactive update)
-	// and matches the spec's "always opt-in" rule: when annotation is off,
-	// the key is omitted and the language factory takes the zero-cost
-	// no-extractor path inside create_language.
+	// annotation plugins are always on in the lab. defining the array once
+	// keeps the factory call cheap (no new array every reactive update).
 	const annotation_plugins = [em, hl, dim, add, del, mod, err, warn, info];
 	import { palette_to_vars } from '$lib/explore/palette_vars';
 	import { measure } from '$lib/explore/measure';
@@ -130,17 +133,7 @@
 				: enabled_tags.size === available_tags.length
 					? 'high'
 					: [...enabled_tags];
-		// only include the annotation key when the tweak is on. when
-		// omitted, create_language captures a null extractor and the
-		// LanguageFn fast path is byte-for-byte identical to today's.
-		const opts: {
-			fidelity: typeof fidelity;
-			annotation?: { plugins: typeof annotation_plugins };
-		} = {
-			fidelity
-		};
-		if (tweaks.annotation) opts.annotation = { plugins: annotation_plugins };
-		return make_language(opts);
+		return make_language({ fidelity, annotation: { plugins: annotation_plugins } });
 	});
 
 	function toggle_tag(tag: string) {
@@ -158,10 +151,26 @@
 		source = data.css_files.find(([file]) => file === data.test)?.[1] ?? '';
 	});
 
-	let tweaks = $state<tweak_state>({ ...DEFAULT_TWEAKS });
-	function update_tweaks(patch: Partial<tweak_state>) {
-		tweaks = { ...tweaks, ...patch };
+	let view = $state<lab_view>({ ...DEFAULT_VIEW });
+	function update_view(patch: Partial<lab_view>) {
+		view = { ...view, ...patch };
 	}
+
+	const font = $derived(FONTS.find((f) => f.label === view.font) ?? FONTS[0]);
+	const font_labels = FONTS.map((f) => f.label);
+
+	// only jetbrains mono ships with the site; the other fonts are pulled
+	// from google fonts the first time they're picked
+	$effect(() => {
+		if (!font.google) return;
+		const id = `lab-font-${font.google}`;
+		if (document.getElementById(id)) return;
+		const link = document.createElement('link');
+		link.id = id;
+		link.rel = 'stylesheet';
+		link.href = `https://fonts.googleapis.com/css2?family=${font.google}&display=swap`;
+		document.head.append(link);
+	});
 
 	// fidelity popout: bind:open makes the native disclosure reactive, and
 	// the effect closes it on clicks outside the <details> element.
@@ -183,10 +192,9 @@
 		hydrate_mode();
 	});
 
-	let tweaks_visible = $state(false);
 	let source_open = $state(false);
 
-	// token inspector tooltip. when tweaks.inspect is on, hovering a span in
+	// token inspector tooltip. when view.inspect is on, hovering a span in
 	// either pane reveals the classification the highlighter assigned. for
 	// the plop pane we read the second class on a `.tok` span (the first is
 	// always `tok`); for the shiki pane we read the `data-scopes` attribute
@@ -201,7 +209,7 @@
 	let shift_held = $state(false);
 
 	function on_inspect_move(e: PointerEvent) {
-		if (!tweaks.inspect) return;
+		if (!view.inspect) return;
 		const target = e.target as Element | null;
 		const plop_tok = target?.closest?.('[data-pane="plop"] .tok') as HTMLElement | null;
 		if (plop_tok) {
@@ -245,7 +253,7 @@
 	}
 
 	$effect(() => {
-		if (!tweaks.inspect) {
+		if (!view.inspect) {
 			inspect_label = null;
 			inspect_chain = null;
 			inspect_theme_scope = null;
@@ -339,7 +347,7 @@
 				() =>
 					local_highlighter.codeToHtml(source, {
 						lang: shiki_lang,
-						theme: resolve_theme(tweaks.theme, theme_mode.resolved).shiki_id
+						theme: resolve_theme(view.theme, theme_mode.resolved).shiki_id
 					}),
 				// shiki is an order of magnitude heavier than twinkleplop;
 				// trim the budget so edits still feel responsive.
@@ -369,11 +377,11 @@
 		// always invalidate first so the annotation effect doesn't run with
 		// stale tokens against fresh dom while the microtask is in flight.
 		shiki_explained = null;
-		if (!tweaks.inspect || !highlighter || !source || !shiki_lang || !shiki_html) return;
+		if (!view.inspect || !highlighter || !source || !shiki_lang || !shiki_html) return;
 		const local_highlighter = highlighter;
 		const local_source = source;
 		const local_lang = shiki_lang;
-		const local_theme = resolve_theme(tweaks.theme, theme_mode.resolved).shiki_id;
+		const local_theme = resolve_theme(view.theme, theme_mode.resolved).shiki_id;
 		let cancelled = false;
 		// `codeToTokens` is sync but can be heavy; defer it so it doesn't
 		// block the same microtask that just rendered shiki_html.
@@ -565,7 +573,7 @@
 		plop_tokens
 			? to_html(source, plop_tokens, {
 					class_name: 'code',
-					line_numbers: tweaks.show_line_numbers
+					line_numbers: view.show_line_numbers
 				})
 			: ''
 	);
@@ -586,12 +594,14 @@
 	// background. it lives on the .panes wrapper so the shiki pane — which
 	// ignores the token vars — still inherits --twp-background.
 	let palette_style = $derived(
-		palette_to_vars(resolve_theme(tweaks.theme, theme_mode.resolved).palette)
+		palette_to_vars(resolve_theme(view.theme, theme_mode.resolved).palette)
 	);
 
 	function handle_lang(next: string) {
 		if (next === data.lang) return;
-		goto(`/explore/${next}/${data.test}`);
+		// keep the sample when the next language has one of the same name
+		const sample = data.samples[next]?.includes(data.test) ? data.test : 'demo';
+		goto(`/explore/${next}/${sample}`);
 	}
 
 	function handle_sample(next: string) {
@@ -600,28 +610,32 @@
 	}
 </script>
 
-<div class="explore-app" data-flavor={tweaks.flavor} data-mode={theme_mode.resolved}>
+<div class="explore-app">
 	<TopBar
 		lang={data.lang}
 		sample={data.test}
 		languages={all_languages}
 		samples={sample_options}
-		show_line_numbers={tweaks.show_line_numbers}
-		inspect={tweaks.inspect}
+		theme={view.theme}
+		themes={THEME_NAMES}
+		font={view.font}
+		fonts={font_labels}
+		show_line_numbers={view.show_line_numbers}
+		inspect={view.inspect}
 		edit_open={source_open}
 		on_lang_change={handle_lang}
 		on_sample_change={handle_sample}
-		on_toggle_line_numbers={() => update_tweaks({ show_line_numbers: !tweaks.show_line_numbers })}
-		on_toggle_inspect={() => update_tweaks({ inspect: !tweaks.inspect })}
+		on_theme_change={(next) => update_view({ theme: next as theme_name })}
+		on_font_change={(next) => update_view({ font: next })}
+		on_toggle_line_numbers={() => update_view({ show_line_numbers: !view.show_line_numbers })}
+		on_toggle_inspect={() => update_view({ inspect: !view.inspect })}
 		on_toggle_edit={() => (source_open = !source_open)}
-		on_toggle_tweaks={() => (tweaks_visible = !tweaks_visible)}
 	/>
 
 	<SourceEditor
 		value={source}
 		visible={source_open}
-		font={tweaks.font}
-		density={tweaks.density}
+		font={font.value}
 		on_change={(next) => (source = next)}
 		on_toggle_visible={() => (source_open = !source_open)}
 	/>
@@ -656,7 +670,7 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="panes"
-		class:is-inspect={tweaks.inspect}
+		class:is-inspect={view.inspect}
 		style={palette_style}
 		onpointermove={on_inspect_move}
 		onpointerleave={on_inspect_leave}
@@ -664,13 +678,13 @@
 		<CodePane
 			pane_id="plop"
 			title="twinkleplop"
-			subtitle={`theme: ${tweaks.theme}-${theme_mode.resolved} · timer ${
+			subtitle={`theme: ${view.theme}-${theme_mode.resolved} · timer ${
 				cross_origin_isolated ? '~5µs' : '~100µs'
 			}`}
 			html={plop_html}
 			line_count={plop_line_count}
-			density={tweaks.density}
-			font={tweaks.font}
+			font={font.value}
+			show_line_numbers={view.show_line_numbers}
 			perf_ms={plop_ms}
 			perf_token_count={plop_token_count}
 			meta={fidelity_meta}
@@ -682,12 +696,11 @@
 				? 'loading oniguruma...'
 				: shiki_error
 					? `error: ${shiki_error}`
-					: `theme: ${resolve_theme(tweaks.theme, theme_mode.resolved).shiki_id}`}
+					: `theme: ${resolve_theme(view.theme, theme_mode.resolved).shiki_id}`}
 			{shiki_html}
 			{source}
-			font={tweaks.font}
-			density={tweaks.density}
-			show_line_numbers={tweaks.show_line_numbers}
+			font={font.value}
+			show_line_numbers={view.show_line_numbers}
 			perf_ms={shiki_ms}
 			perf_token_count={shiki_token_count}
 			bind:body_el={shiki_body_el}
@@ -700,14 +713,7 @@
 		</div>
 	</div>
 
-	<TweaksPanel
-		visible={tweaks_visible}
-		state={tweaks}
-		on_update={update_tweaks}
-		on_close={() => (tweaks_visible = false)}
-	/>
-
-	{#if tweaks.inspect && inspect_label}
+	{#if view.inspect && inspect_label}
 		<div
 			class="inspect-tip"
 			class:inspect-tip--stack={inspect_extra || inspect_theme_scope}

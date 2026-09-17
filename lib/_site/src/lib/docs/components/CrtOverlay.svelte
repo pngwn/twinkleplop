@@ -17,8 +17,10 @@
 		opacity: 1;
 		transition: opacity 0.25s;
 	}
-	:global([data-docs-crt="off"]) .crt-overlay {
-		opacity: 0;
+	@media (prefers-contrast: more) {
+		.crt-overlay {
+			display: none;
+		}
 	}
 
 	@media (max-width: 760px) {

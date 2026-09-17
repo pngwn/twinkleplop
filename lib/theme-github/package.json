@@ -7,9 +7,18 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./dist/index.css",
-    "./light": "./dist/light.css",
-    "./dark": "./dist/dark.css",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.css"
+    },
+    "./light": {
+      "types": "./dist/light.d.ts",
+      "default": "./dist/light.css"
+    },
+    "./dark": {
+      "types": "./dist/dark.d.ts",
+      "default": "./dist/dark.css"
+    },
     "./tokens": {
       "source": "./src/tokens.ts",
       "import": "./src/tokens.ts",
@@ -33,7 +42,7 @@
     "url": "https://github.com/pngwn/twinkleplop",
     "directory": "lib/theme-github"
   },
-  "homepage": "https://twinkleplop.pngwn.dev",
+  "homepage": "https://twinkleplop.pngwn.at",
   "bugs": "https://github.com/pngwn/twinkleplop/issues",
   "author": {
     "name": "pngwn",

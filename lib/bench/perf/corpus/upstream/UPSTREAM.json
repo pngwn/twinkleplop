@@ -1,0 +1,141 @@
+{
+  "repo": "https://github.com/shikijs/textmate-grammars-themes",
+  "commit": "45e292ef67d3a55911dfd02a5039dc238a07040c",
+  "license": "MIT",
+  "fetched_at": "2026-09-15T21:41:07.641Z",
+  "note": "vendored verbatim. these are the sample files shiki's own benchmark uses, included so our numbers can be checked against inputs we did not choose.",
+  "uncovered": [
+    "diff-basic",
+    "whitespace"
+  ],
+  "entries": [
+    {
+      "lang": "bash",
+      "upstream": "samples/shellscript.sample",
+      "file": "bash.sh",
+      "bytes": 661,
+      "lines": 29,
+      "hash": "24865be6c138ea36"
+    },
+    {
+      "lang": "css",
+      "upstream": "samples/css.sample",
+      "file": "css.css",
+      "bytes": 578,
+      "lines": 47,
+      "hash": "306317f104772168"
+    },
+    {
+      "lang": "diff",
+      "upstream": "samples/diff.sample",
+      "file": "diff.diff",
+      "bytes": 3107,
+      "lines": 28,
+      "hash": "cd67c5a41524fc52"
+    },
+    {
+      "lang": "go",
+      "upstream": "samples/go.sample",
+      "file": "go.go",
+      "bytes": 329,
+      "lines": 18,
+      "hash": "af40f5738486ffa3"
+    },
+    {
+      "lang": "html",
+      "upstream": "samples/html.sample",
+      "file": "html.html",
+      "bytes": 1596,
+      "lines": 53,
+      "hash": "fefd5f7bd5f952da"
+    },
+    {
+      "lang": "javascript",
+      "upstream": "samples/javascript.sample",
+      "file": "javascript.js",
+      "bytes": 3946,
+      "lines": 152,
+      "hash": "fff0add0e2876252"
+    },
+    {
+      "lang": "json",
+      "upstream": "samples/json.sample",
+      "file": "json.json",
+      "bytes": 880,
+      "lines": 39,
+      "hash": "636ba5c511a313a9"
+    },
+    {
+      "lang": "markdown",
+      "upstream": "samples/markdown.sample",
+      "file": "markdown.md",
+      "bytes": 3725,
+      "lines": 171,
+      "hash": "094283aa12ccb4df"
+    },
+    {
+      "lang": "python",
+      "upstream": "samples/python.sample",
+      "file": "python.py",
+      "bytes": 315,
+      "lines": 12,
+      "hash": "cd6b293641e2450e"
+    },
+    {
+      "lang": "rust",
+      "upstream": "samples/rust.sample",
+      "file": "rust.rs",
+      "bytes": 1011,
+      "lines": 40,
+      "hash": "1a4505ab4bee9995"
+    },
+    {
+      "lang": "sql",
+      "upstream": "samples/sql.sample",
+      "file": "sql.sql",
+      "bytes": 422,
+      "lines": 18,
+      "hash": "6880c4946fb4a73e"
+    },
+    {
+      "lang": "svelte",
+      "upstream": "samples/svelte.sample",
+      "file": "svelte.svelte",
+      "bytes": 714,
+      "lines": 29,
+      "hash": "4f68d7be31ab07a0"
+    },
+    {
+      "lang": "toml",
+      "upstream": "samples/toml.sample",
+      "file": "toml.toml",
+      "bytes": 393,
+      "lines": 26,
+      "hash": "ae856120c8b16c97"
+    },
+    {
+      "lang": "tsx",
+      "upstream": "samples/tsx.sample",
+      "file": "tsx.tsx",
+      "bytes": 506,
+      "lines": 27,
+      "hash": "51c13d7b2f2f5625"
+    },
+    {
+      "lang": "typescript",
+      "upstream": "samples/typescript.sample",
+      "file": "typescript.ts",
+      "bytes": 2205,
+      "lines": 78,
+      "hash": "18669770e176f60b"
+    },
+    {
+      "lang": "yaml",
+      "upstream": "samples/yaml.sample",
+      "file": "yaml.yaml",
+      "bytes": 1208,
+      "lines": 51,
+      "hash": "d8d449f817792195"
+    }
+  ]
+}

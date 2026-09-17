@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { chrome, open_palette, toggle_nav, toggle_tweaks } from '../chrome.svelte';
+	import ModeSwitch from '$lib/components/ModeSwitch.svelte';
+	import { chrome, open_palette, toggle_nav } from '../chrome.svelte';
 </script>
 
 <nav class="botbar" role="navigation" aria-label="Mobile nav">
@@ -9,12 +10,7 @@
 		<span class="placeholder">search docs…</span>
 		<span class="kb">⌘K</span>
 	</button>
-	<button
-		class="menu"
-		aria-label="Toggle tweaks"
-		aria-expanded={chrome.tweaks_open}
-		onclick={toggle_tweaks}>⚙</button
-	>
+	<ModeSwitch compact />
 	<button
 		class="menu"
 		aria-label="Toggle navigation"
@@ -38,6 +34,12 @@
 		align-items: center;
 		gap: 8px;
 		padding: 0 10px;
+		--mode-height: 32px;
+		--mode-line: var(--docs-line);
+		--mode-fg: var(--docs-fg-dim);
+		--mode-fg-on: var(--docs-accent);
+		--mode-bg-on: color-mix(in oklch, var(--docs-accent) 12%, transparent);
+		--mode-focus: var(--docs-accent);
 	}
 	.brand {
 		font-family: var(--docs-pixel);

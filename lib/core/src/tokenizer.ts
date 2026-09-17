@@ -1,15 +1,21 @@
 import type { CompiledGrammar, PatternInfo, TokenizeResult } from "./types";
 import type { TokenizerIntrospector } from "./introspector";
 
+// every field is set in the literal that creates an entry, and none is added
+// later: adding a property after creation moves the object to a map that only
+// the transition tree holds (weakly). no entry outlives a tokenize() call, so
+// V8 collected those maps a couple of full GCs later and threw away the
+// optimised tokenize that had embedded them, once every few full GCs for the
+// life of the process. -1 means "not resolved".
 interface ProbeEntry {
   pos: number; // original position for reset
   entry_pos: number; // position where probe was entered (after consuming match)
   state: number;
   stack_ptr: number;
   rule_idx: number;
-  probe_state?: number;
-  resolved_state?: number;
-  resolved_pos?: number;
+  probe_state: number;
+  resolved_state: number;
+  resolved_pos: number;
 }
 
 declare const INTROSPECTION: boolean;
@@ -386,6 +392,8 @@ export function tokenize(
             stack_ptr: stack_ptr,
             rule_idx: char_class,
             probe_state: target_state, // save the probe state we're entering
+            resolved_state: -1,
+            resolved_pos: -1,
           };
           // INTROSPECTION_START
           if (INTROSPECTION && introspector) {
@@ -511,7 +519,7 @@ export function tokenize(
             current_state = transition;
 
             const transition_pos =
-              is_in_probe_state && probe_entry?.resolved_pos !== undefined
+              is_in_probe_state && probe_entry !== null && probe_entry.resolved_pos >= 0
                 ? probe_entry.resolved_pos
                 : pos;
 
@@ -553,7 +561,7 @@ export function tokenize(
           const prev_state = current_state;
           current_state = transition;
           const transition_pos =
-            is_in_probe_state && probe_entry?.resolved_pos !== undefined
+            is_in_probe_state && probe_entry !== null && probe_entry.resolved_pos >= 0
               ? probe_entry.resolved_pos
               : pos;
           // INTROSPECTION_START
@@ -595,12 +603,12 @@ export function tokenize(
               pos: probe_entry.pos,
             });
             // record the push that happened inside probe mode, now with correct depth
-            if (stack_op === 1 && probe_entry.resolved_state) {
+            if (stack_op === 1 && probe_entry.resolved_state > 0) {
               introspector.pushed_state({
                 from_state: probe_entry.probe_state ?? probe_entry.state,
                 to_state: probe_entry.resolved_state,
                 stackPtr: stack_ptr,
-                pos: probe_entry.resolved_pos ?? probe_entry.pos,
+                pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
               });
             }
           }
@@ -744,6 +752,8 @@ export function tokenize(
             stack_ptr: stack_ptr,
             rule_idx: matched_rule_idx,
             probe_state: target_state,
+            resolved_state: -1,
+            resolved_pos: -1,
           };
           // INTROSPECTION_START
           if (INTROSPECTION && introspector) {
@@ -851,7 +861,7 @@ export function tokenize(
             current_state = transition;
 
             const transition_pos =
-              is_in_probe_state && probe_entry?.resolved_pos !== undefined
+              is_in_probe_state && probe_entry !== null && probe_entry.resolved_pos >= 0
                 ? probe_entry.resolved_pos
                 : pos;
 
@@ -892,7 +902,7 @@ export function tokenize(
           const prev_state = current_state;
           current_state = transition;
           const transition_pos =
-            is_in_probe_state && probe_entry?.resolved_pos !== undefined
+            is_in_probe_state && probe_entry !== null && probe_entry.resolved_pos >= 0
               ? probe_entry.resolved_pos
               : pos;
           // INTROSPECTION_START
@@ -926,12 +936,12 @@ export function tokenize(
               current_state: current_state,
               pos: probe_entry.pos,
             });
-            if (stack_op === 1 && probe_entry.resolved_state) {
+            if (stack_op === 1 && probe_entry.resolved_state > 0) {
               introspector.pushed_state({
                 from_state: probe_entry.probe_state ?? probe_entry.state,
                 to_state: probe_entry.resolved_state,
                 stackPtr: stack_ptr,
-                pos: probe_entry.resolved_pos ?? probe_entry.pos,
+                pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
               });
             }
           }

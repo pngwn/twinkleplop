@@ -1,5 +1,5 @@
 {
-  "corpus_hash": "73b6d51a2c464ba5",
+  "corpus_hash": "1bd8ef683ecb5fea",
   "generated_from": "bin/build-corpus.mjs",
   "entries": [
     {
@@ -754,9 +754,9 @@
       "family": "real",
       "lang": "typescript",
       "file": "core-frames.ts",
-      "bytes": 55122,
-      "lines": 1481,
-      "hash": "6d69fef5cce747b9",
+      "bytes": 57288,
+      "lines": 1547,
+      "hash": "94fc51645b88faaa",
       "sources": [
         "lib/core/src/frame_track.ts",
         "lib/core/src/fidelity.ts",
@@ -768,9 +768,9 @@
       "family": "real",
       "lang": "typescript",
       "file": "core-runtime.ts",
-      "bytes": 65894,
-      "lines": 1796,
-      "hash": "48854c27652eee85",
+      "bytes": 70294,
+      "lines": 1904,
+      "hash": "59db0387ceb05f95",
       "sources": [
         "lib/core/src/tokenizer.ts",
         "lib/core/src/scan.ts",
@@ -781,9 +781,9 @@
       "family": "real",
       "lang": "typescript",
       "file": "core-types.ts",
-      "bytes": 54300,
-      "lines": 1329,
-      "hash": "4eb5e3b035454209",
+      "bytes": 58047,
+      "lines": 1406,
+      "hash": "29d4112739202000",
       "sources": [
         "lib/core/src/types.ts"
       ]
@@ -969,9 +969,9 @@
       "family": "scale",
       "lang": "typescript",
       "file": "typescript.ts",
-      "bytes": 253232,
-      "lines": 7077,
-      "hash": "8c465f69983cb6ac",
+      "bytes": 267945,
+      "lines": 7436,
+      "hash": "4a6f80579291c012",
       "sources": [
         "4 distinct sources cycled to ~200k"
       ]
@@ -996,6 +996,776 @@
       "hash": "17c3121153f5280c",
       "sources": [
         "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "bash",
+      "file": "bash.large.sh",
+      "bytes": 98856,
+      "lines": 5046,
+      "hash": "9b48c9355110c7c1",
+      "sources": [
+        "large tier, target ~100KB, 28 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "bash",
+      "file": "bash.medium.sh",
+      "bytes": 10941,
+      "lines": 558,
+      "hash": "a1889b76117a1a8e",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "bash",
+      "file": "bash.small.sh",
+      "bytes": 1054,
+      "lines": 47,
+      "hash": "250cbd0d0a8dd7a2",
+      "sources": [
+        "small tier, target ~1KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "css",
+      "file": "css.large.css",
+      "bytes": 97622,
+      "lines": 4815,
+      "hash": "e9b7d3f40073cc5d",
+      "sources": [
+        "large tier, target ~100KB, 8 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "css",
+      "file": "css.medium.css",
+      "bytes": 10562,
+      "lines": 671,
+      "hash": "7acee29978ea2572",
+      "sources": [
+        "medium tier, target ~10KB, 4 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "css",
+      "file": "css.small.css",
+      "bytes": 1246,
+      "lines": 77,
+      "hash": "9dcd4743fd5b6c6f",
+      "sources": [
+        "small tier, target ~1KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "diff",
+      "file": "diff.large.diff",
+      "bytes": 100173,
+      "lines": 3911,
+      "hash": "b761b32cd8bf3493",
+      "sources": [
+        "large tier, target ~100KB, 44 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "diff",
+      "file": "diff.medium.diff",
+      "bytes": 8874,
+      "lines": 375,
+      "hash": "db75df0b5cd86166",
+      "sources": [
+        "medium tier, target ~10KB, 5 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "diff",
+      "file": "diff.small.diff",
+      "bytes": 944,
+      "lines": 39,
+      "hash": "96834380364f1684",
+      "sources": [
+        "small tier, target ~1KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "diff-basic",
+      "file": "diff-basic.large.txt",
+      "bytes": 99661,
+      "lines": 6262,
+      "hash": "7dee2bf3d8942e27",
+      "sources": [
+        "large tier, target ~100KB, 237 unit(s) cycled from 2 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "diff-basic",
+      "file": "diff-basic.medium.txt",
+      "bytes": 10115,
+      "lines": 636,
+      "hash": "1757ff246a0eb98d",
+      "sources": [
+        "medium tier, target ~10KB, 24 unit(s) cycled from 2 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "diff-basic",
+      "file": "diff-basic.small.txt",
+      "bytes": 1030,
+      "lines": 61,
+      "hash": "1bbd330fa3044635",
+      "sources": [
+        "small tier, target ~1KB, 3 unit(s) cycled from 2 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "go",
+      "file": "go.large.go",
+      "bytes": 102735,
+      "lines": 5389,
+      "hash": "b53499624fc67dd5",
+      "sources": [
+        "large tier, target ~100KB, 21 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "go",
+      "file": "go.medium.go",
+      "bytes": 5661,
+      "lines": 402,
+      "hash": "dbde1bd3465773c3",
+      "sources": [
+        "medium tier, target ~10KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "go",
+      "file": "go.small.go",
+      "bytes": 1080,
+      "lines": 61,
+      "hash": "4cbc7e1d4d40e637",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "html",
+      "file": "html.large.html",
+      "bytes": 99865,
+      "lines": 4427,
+      "hash": "7e2bcabed0c48670",
+      "sources": [
+        "large tier, target ~100KB, 88 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "html",
+      "file": "html.medium.html",
+      "bytes": 10262,
+      "lines": 456,
+      "hash": "b2095e15c8f79d6d",
+      "sources": [
+        "medium tier, target ~10KB, 9 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "html",
+      "file": "html.small.html",
+      "bytes": 1327,
+      "lines": 53,
+      "hash": "bda9e908f029dcb9",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "javascript",
+      "file": "javascript.large.js",
+      "bytes": 102836,
+      "lines": 4844,
+      "hash": "21043d35304aa31c",
+      "sources": [
+        "large tier, target ~100KB, 8 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "javascript",
+      "file": "javascript.medium.js",
+      "bytes": 10597,
+      "lines": 298,
+      "hash": "8c37952b36f1cbe0",
+      "sources": [
+        "medium tier, target ~10KB, 13 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "javascript",
+      "file": "javascript.small.js",
+      "bytes": 813,
+      "lines": 22,
+      "hash": "430ad5a85eba4f77",
+      "sources": [
+        "small tier, target ~1KB, 1 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "json",
+      "file": "json.large.json",
+      "bytes": 99831,
+      "lines": 4193,
+      "hash": "bc2b0a68eb3a1529",
+      "sources": [
+        "large tier, target ~100KB, 205 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "json",
+      "file": "json.medium.json",
+      "bytes": 10131,
+      "lines": 421,
+      "hash": "cbe99a3bb06e6d32",
+      "sources": [
+        "medium tier, target ~10KB, 21 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "json",
+      "file": "json.small.json",
+      "bytes": 974,
+      "lines": 41,
+      "hash": "5733867b2af3b533",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "markdown",
+      "file": "markdown.large.md",
+      "bytes": 101226,
+      "lines": 2573,
+      "hash": "e8685f95be3375e7",
+      "sources": [
+        "large tier, target ~100KB, 10 unit(s) cycled from 4 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "markdown",
+      "file": "markdown.medium.md",
+      "bytes": 9733,
+      "lines": 810,
+      "hash": "c4434478a7b58982",
+      "sources": [
+        "medium tier, target ~10KB, 7 unit(s) cycled from 4 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "markdown",
+      "file": "markdown.small.md",
+      "bytes": 1186,
+      "lines": 73,
+      "hash": "9dab8a0c8b7a938d",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 4 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "python",
+      "file": "python.large.py",
+      "bytes": 104381,
+      "lines": 4783,
+      "hash": "62e608f439e03978",
+      "sources": [
+        "large tier, target ~100KB, 24 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "python",
+      "file": "python.medium.py",
+      "bytes": 13044,
+      "lines": 597,
+      "hash": "e5404c5b081bdd47",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "python",
+      "file": "python.small.py",
+      "bytes": 1344,
+      "lines": 63,
+      "hash": "518ad0b15f6b4b25",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "rust",
+      "file": "rust.large.rs",
+      "bytes": 101709,
+      "lines": 4831,
+      "hash": "67257a561daf52aa",
+      "sources": [
+        "large tier, target ~100KB, 24 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "rust",
+      "file": "rust.medium.rs",
+      "bytes": 12710,
+      "lines": 603,
+      "hash": "c0311daa79dac481",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "rust",
+      "file": "rust.small.rs",
+      "bytes": 1260,
+      "lines": 65,
+      "hash": "abb3a7da4565328f",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "sql",
+      "file": "sql.large.sql",
+      "bytes": 96336,
+      "lines": 3041,
+      "hash": "0d9834e228afb323",
+      "sources": [
+        "large tier, target ~100KB, 14 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "sql",
+      "file": "sql.medium.sql",
+      "bytes": 7894,
+      "lines": 217,
+      "hash": "48c9c910554bc19c",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "sql",
+      "file": "sql.small.sql",
+      "bytes": 996,
+      "lines": 39,
+      "hash": "a7de051cea4f1f58",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "svelte",
+      "file": "svelte.large.svelte",
+      "bytes": 99669,
+      "lines": 4642,
+      "hash": "26ce0131d27722ad",
+      "sources": [
+        "large tier, target ~100KB, 21 unit(s) cycled from 4 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "svelte",
+      "file": "svelte.medium.svelte",
+      "bytes": 10090,
+      "lines": 437,
+      "hash": "094809e40bc8edbf",
+      "sources": [
+        "medium tier, target ~10KB, 4 unit(s) cycled from 4 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "svelte",
+      "file": "svelte.small.svelte",
+      "bytes": 714,
+      "lines": 32,
+      "hash": "10814e0695f30aa5",
+      "sources": [
+        "small tier, target ~1KB, 1 unit(s) cycled from 4 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "toml",
+      "file": "toml.large.toml",
+      "bytes": 103365,
+      "lines": 4136,
+      "hash": "d4855e44276f89bc",
+      "sources": [
+        "large tier, target ~100KB, 21 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "toml",
+      "file": "toml.medium.toml",
+      "bytes": 9404,
+      "lines": 385,
+      "hash": "b71ce497220925af",
+      "sources": [
+        "medium tier, target ~10KB, 5 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "toml",
+      "file": "toml.small.toml",
+      "bytes": 1078,
+      "lines": 65,
+      "hash": "e69ee43108604734",
+      "sources": [
+        "small tier, target ~1KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "tsx",
+      "file": "tsx.large.tsx",
+      "bytes": 98065,
+      "lines": 3860,
+      "hash": "60b6cea530db9e57",
+      "sources": [
+        "large tier, target ~100KB, 26 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "tsx",
+      "file": "tsx.medium.tsx",
+      "bytes": 11790,
+      "lines": 458,
+      "hash": "4c97e3ae5d78da0f",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "tsx",
+      "file": "tsx.small.tsx",
+      "bytes": 1146,
+      "lines": 49,
+      "hash": "91423b72761396c2",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "typescript",
+      "file": "typescript.large.ts",
+      "bytes": 122206,
+      "lines": 3322,
+      "hash": "b9d10ea240ed5e82",
+      "sources": [
+        "large tier, target ~100KB, 4 unit(s) cycled from 5 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "typescript",
+      "file": "typescript.medium.ts",
+      "bytes": 7628,
+      "lines": 394,
+      "hash": "4c36f3f44e13a469",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 5 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "typescript",
+      "file": "typescript.small.ts",
+      "bytes": 799,
+      "lines": 28,
+      "hash": "9659962309cb9cc0",
+      "sources": [
+        "small tier, target ~1KB, 1 unit(s) cycled from 5 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "whitespace",
+      "file": "whitespace.large.txt",
+      "bytes": 99347,
+      "lines": 7286,
+      "hash": "34345090f9a9c341",
+      "sources": [
+        "large tier, target ~100KB, 663 unit(s) cycled from 2 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "whitespace",
+      "file": "whitespace.medium.txt",
+      "bytes": 9947,
+      "lines": 730,
+      "hash": "5f74d66f66dec633",
+      "sources": [
+        "medium tier, target ~10KB, 67 unit(s) cycled from 2 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "whitespace",
+      "file": "whitespace.small.txt",
+      "bytes": 947,
+      "lines": 70,
+      "hash": "8f86be1566ae6ce9",
+      "sources": [
+        "small tier, target ~1KB, 7 unit(s) cycled from 2 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "yaml",
+      "file": "yaml.large.yaml",
+      "bytes": 100789,
+      "lines": 5796,
+      "hash": "c384769173e9f09c",
+      "sources": [
+        "large tier, target ~100KB, 65 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "yaml",
+      "file": "yaml.medium.yaml",
+      "bytes": 9770,
+      "lines": 561,
+      "hash": "ec40eb122bead53e",
+      "sources": [
+        "medium tier, target ~10KB, 7 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "yaml",
+      "file": "yaml.small.yaml",
+      "bytes": 1174,
+      "lines": 71,
+      "hash": "7d7c5fbd557c83e9",
+      "sources": [
+        "small tier, target ~1KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "bash",
+      "file": "bash.sh",
+      "bytes": 661,
+      "lines": 29,
+      "hash": "24865be6c138ea36",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/shellscript.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "css",
+      "file": "css.css",
+      "bytes": 578,
+      "lines": 47,
+      "hash": "306317f104772168",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/css.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "diff",
+      "file": "diff.diff",
+      "bytes": 3107,
+      "lines": 28,
+      "hash": "cd67c5a41524fc52",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/diff.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "go",
+      "file": "go.go",
+      "bytes": 329,
+      "lines": 18,
+      "hash": "af40f5738486ffa3",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/go.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "html",
+      "file": "html.html",
+      "bytes": 1596,
+      "lines": 53,
+      "hash": "fefd5f7bd5f952da",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/html.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "javascript",
+      "file": "javascript.js",
+      "bytes": 3946,
+      "lines": 152,
+      "hash": "fff0add0e2876252",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/javascript.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "json",
+      "file": "json.json",
+      "bytes": 880,
+      "lines": 39,
+      "hash": "636ba5c511a313a9",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/json.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "markdown",
+      "file": "markdown.md",
+      "bytes": 3725,
+      "lines": 171,
+      "hash": "094283aa12ccb4df",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/markdown.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "python",
+      "file": "python.py",
+      "bytes": 315,
+      "lines": 12,
+      "hash": "cd6b293641e2450e",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/python.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "rust",
+      "file": "rust.rs",
+      "bytes": 1011,
+      "lines": 40,
+      "hash": "1a4505ab4bee9995",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/rust.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "sql",
+      "file": "sql.sql",
+      "bytes": 422,
+      "lines": 18,
+      "hash": "6880c4946fb4a73e",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/sql.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "svelte",
+      "file": "svelte.svelte",
+      "bytes": 714,
+      "lines": 29,
+      "hash": "4f68d7be31ab07a0",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/svelte.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "toml",
+      "file": "toml.toml",
+      "bytes": 393,
+      "lines": 26,
+      "hash": "ae856120c8b16c97",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/toml.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "tsx",
+      "file": "tsx.tsx",
+      "bytes": 506,
+      "lines": 27,
+      "hash": "51c13d7b2f2f5625",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/tsx.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "typescript",
+      "file": "typescript.ts",
+      "bytes": 2205,
+      "lines": 78,
+      "hash": "18669770e176f60b",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/typescript.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "yaml",
+      "file": "yaml.yaml",
+      "bytes": 1208,
+      "lines": 51,
+      "hash": "d8d449f817792195",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/yaml.sample"
       ]
     }
   ]

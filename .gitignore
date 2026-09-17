@@ -6,8 +6,15 @@ CLAUDE.md
 .claude
 AGENTS.md
 dist/
-scripts/
-docs/
+# anchored: an unanchored `scripts/` would also match a nested scripts dir
+/scripts/*
+!/scripts/setup-trusted-publishing.mjs
+# anchored: an unanchored `docs/` also matched lib/_site/src/routes/docs,
+# silently ignoring every new page added to the docs site.
+/docs/
+
+# grammar research notes are working documents for the grammar skills
+languages/*/RESEARCH.md
 
 # frozen reference builds for the perf harness
 .perf/
@@ -15,3 +22,7 @@ lib/bench/perf/reports/
 
 # generated comparison bundles for the cold start harness
 lib/bench/coldstart/.artifacts/
+
+# benchmark results are produced by CI and downloaded at build time.
+# checking them in would let a stale run keep rendering confident charts.
+lib/bench/results/

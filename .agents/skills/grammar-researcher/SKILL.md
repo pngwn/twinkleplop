@@ -13,6 +13,8 @@ An LLM writing a grammar from memory will confidently emit the common constructs
 
 Produce a single deliverable: `languages/{name}/RESEARCH.md`, containing the five sections below, in order. Create `languages/{name}/` if it does not exist.
 
+`RESEARCH.md` is a working document for the grammar-author pass. It is gitignored and is not committed.
+
 If the user has not chosen a language name (the directory slug) yet, ask. The name becomes the package name (`@twinkleplop/{name}`) and must be lowercase, no spaces.
 
 At the very top of `RESEARCH.md`, record the URLs and file paths consulted, so later revisions can re-check the sources.

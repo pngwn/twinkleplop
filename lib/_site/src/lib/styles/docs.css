@@ -9,41 +9,30 @@
 		'Courier New', monospace;
 	--docs-pixel: 'Pixel Code', 'VT323', monospace;
 
-	/* density defaults (cozy) */
-	--docs-line-height: 1.55;
-	--docs-fs-body: 13px;
-	--docs-fs-sm: 11.5px;
-	--docs-fs-xs: 10.5px;
-}
-
-/* density variants */
-[data-docs-density='compact'] {
-	--docs-fs-body: 12px;
-	--docs-fs-sm: 10.5px;
-	--docs-line-height: 1.45;
-}
-[data-docs-density='cozy'] {
-	--docs-fs-body: 13px;
-	--docs-fs-sm: 11.5px;
-	--docs-line-height: 1.55;
-}
-[data-docs-density='comfortable'] {
+	--docs-line-height: 1.7;
 	--docs-fs-body: 14.5px;
 	--docs-fs-sm: 12.5px;
-	--docs-line-height: 1.7;
+	--docs-fs-xs: 11.5px;
 }
 
-/* dark mode — site chrome + twinkle letter palette */
-[data-docs-mode='dark'] {
+/* dark doubles as the fallback when <html> has no data-mode.
+ *
+ * text tiers, on every surface from bg to bg-2 (mute: to bg-3):
+ *   fg (headings, emphasis) ≥ 15:1, fg-dim (body) ≥ 10.5:1,
+ *   fg-mute (secondary) ≥ 7:1, t-* accents ≥ 4.5:1.
+ * fg-ghost is for decoration only (separators, list markers, disabled
+ * controls) and is deliberately below all of that. */
+:root,
+:root[data-mode='dark'] {
 	--docs-bg: #000000;
 	--docs-bg-1: #08080a;
 	--docs-bg-2: #101014;
 	--docs-bg-3: #16161c;
 	--docs-line: #26262e;
 	--docs-line-2: #1a1a20;
-	--docs-fg: #e8e6df;
-	--docs-fg-dim: #a6a49c;
-	--docs-fg-mute: #6b6963;
+	--docs-fg: #eeece5;
+	--docs-fg-dim: #c3c1b9;
+	--docs-fg-mute: #a4a29b;
 	--docs-fg-ghost: #3d3b37;
 
 	--t-red: #f26d6d;
@@ -57,32 +46,41 @@
 
 	--docs-accent: #7fe08a;
 	--docs-accent-dim: #3d8a47;
+	--docs-code-bg: var(--docs-bg-1);
+	/* strength of annotation tints (diff, highlight, ...) on code lines */
+	--docs-anno: 1;
 }
 
 /* light mode — adapted from the old "paper" theme */
-[data-docs-mode='light'] {
+:root[data-mode='light'] {
 	--docs-bg: #f3f0e8;
 	--docs-bg-1: #ebe8df;
 	--docs-bg-2: #e3e0d5;
 	--docs-bg-3: #d8d4c7;
 	--docs-line: #c5c0b0;
 	--docs-line-2: #d5d0c0;
-	--docs-fg: #1a1a1a;
-	--docs-fg-dim: #4a4a4a;
-	--docs-fg-mute: #7a766a;
+	--docs-fg: #090909;
+	--docs-fg-dim: #2c2c2c;
+	--docs-fg-mute: #433f34;
 	--docs-fg-ghost: #b5b0a0;
 
-	--t-red: #b83030;
-	--t-orange: #b85a20;
-	--t-yellow: #9a7a10;
-	--t-green: #2a7a3a;
+	--t-red: #b02a2b;
+	--t-orange: #9c4400;
+	--t-yellow: #735900;
+	--t-green: #1c6c2f;
 	--t-teal: #186a62;
 	--t-blue: #2a5ab8;
 	--t-purple: #6a3ab0;
-	--t-pink: #b03a80;
+	--t-pink: #a53077;
 
-	--docs-accent: #2a7a3a;
+	--docs-accent: #1c6c2f;
 	--docs-accent-dim: #5aa868;
+	/* theme palettes are tuned for their own editor background (white for
+	 * github-light), so highlighted code sits on it, pulled halfway to the
+	 * paper so it isn't stark. github-light comments dip to ~4.25:1 there;
+	 * every other token keeps 4.5:1 or more. */
+	--docs-code-bg: color-mix(in srgb, var(--twp-background, #ffffff) 50%, var(--docs-bg));
+	--docs-anno: 0.4;
 }
 
 /* root wrapper — owned by layout, kept global so cursor/tree animations can reach */
@@ -95,7 +93,6 @@
 	font-feature-settings:
 		'calt' 1,
 		'liga' 1;
-	-webkit-font-smoothing: antialiased;
 	height: 100vh;
 	overflow: hidden;
 	display: flex;
@@ -105,6 +102,15 @@
 .docs-root *::before,
 .docs-root *::after {
 	box-sizing: border-box;
+}
+/* the ua stylesheet gives pre/code/kbd a bare `monospace` (courier on
+ * macos: hairline strokes, small x-height), which beats inheritance */
+.docs-root :where(pre, code, kbd, samp) {
+	font-family: inherit;
+}
+/* grayscale antialiasing thins glyphs; keep it for light-on-dark only */
+:root:not([data-mode='light']) .docs-root {
+	-webkit-font-smoothing: antialiased;
 }
 
 @media (max-width: 760px) {
@@ -164,4 +170,18 @@
 }
 .tok-prop {
 	color: var(--t-teal);
+}
+
+/* markdown tables in the docs spell out literal syntax, so ligatures would
+   draw `...` as one glyph and hide the `..` / `...` distinction, and a chip
+   wrapped mid-expression reads as two. the rules live here rather than in a
+   page <style> because mdsvex currently runs svx style blocks through
+   markdown, which produces css no browser (and no minifier) accepts. */
+.docs-root table:not(.param-table) code {
+	font-feature-settings:
+		'calt' 0,
+		'liga' 0;
+}
+.docs-root table:not(.param-table) td:first-child code {
+	white-space: nowrap;
 }

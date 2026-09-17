@@ -1,6 +1,4 @@
 <script lang="ts">
-	import type { density_mode } from "$lib/explore/themes";
-
 	interface Props {
 		title: string;
 		subtitle: string;
@@ -8,7 +6,6 @@
 		shiki_html: string | null;
 		source: string;
 		font: string;
-		density: density_mode;
 		show_line_numbers: boolean;
 		perf_ms: number;
 		perf_token_count: number;
@@ -22,7 +19,6 @@
 		shiki_html,
 		source,
 		font,
-		density,
 		show_line_numbers,
 		perf_ms,
 		perf_token_count,
@@ -45,7 +41,6 @@
 		bind:this={body_el}
 		class="pane__body"
 		class:show-line-numbers={show_line_numbers}
-		data-density={density}
 		style:font-family={font}
 	>
 		{#if shiki_html}
@@ -53,7 +48,7 @@
 				 own background so our pane chrome shows through. -->
 			{@html shiki_html}
 		{:else}
-			<pre class="code" data-density={density}><code>{source}</code></pre>
+			<pre class="code code--plain"><code>{source}</code></pre>
 		{/if}
 	</div>
 
@@ -61,7 +56,7 @@
 		<div class="pane__foot-l">
 			<span class="dot"></span>
 			<span>{perf_token_count} tokens</span>
-			<span class="sep">·</span>
+			<span class="sep" aria-hidden="true">·</span>
 			<span>{line_count} lines</span>
 		</div>
 		<div class="pane__foot-r">

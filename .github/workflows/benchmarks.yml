@@ -1,0 +1,211 @@
+name: Benchmarks
+
+on:
+  # `labeled` is required or adding `bench:compare` does nothing until the
+  # next push. the cost is that any label change re-runs the A/B.
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      comparison:
+        description: "Run the cross-library comparison (~25 min)"
+        type: boolean
+        default: true
+      repeat:
+        description: "Independent A/B passes (2 for anything you intend to claim)"
+        type: string
+        default: "1"
+
+# two benchmarks on one machine do not give two noisy results, they give two
+# wrong ones. main is never cancelled: that run is what the charts come from.
+concurrency:
+  group: benchmarks-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  # outside the workspace, which the checkout action wipes. deliberately NOT
+  # cached: both reference arms build in 16s here, and mounting a cache volume
+  # over this path only bought an EBUSY on rmdir.
+  TWINKLEPLOP_PERF_DIR: /home/runner/.cache/twinkleplop-perf
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10"
+
+jobs:
+  bench:
+    name: Benchmark
+    runs-on: namespace-profile-basic
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out
+        uses: namespacelabs/nscloud-checkout-action@v8
+        with:
+          # deep enough to find the merge base the A/B compares against.
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # must come after checkout (which wipes the workspace) and after the
+      # toolchains (the pnpm mode needs pnpm on PATH to find its store).
+      - name: Set up pnpm store cache
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: pnpm
+
+      - name: Resolve baseline commit
+        id: baseline
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # the merge base of the branch and its target, computed from the
+            # event's own SHAs rather than from HEAD. a pull_request checkout
+            # is the MERGE commit, so `merge-base origin/main HEAD` there
+            # resolves to the tip of main and the A/B would charge this branch
+            # for everything that landed on main since it forked - someone
+            # else's delta, attributed to whoever opened the PR.
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+            git fetch --no-tags --quiet origin "$base" "$head"
+            sha=$(git merge-base "$base" "$head")
+          else
+            sha=$(git rev-parse HEAD^)
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Baseline: $sha — $(git log -1 --format=%s "$sha")"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build candidate
+        # both arms load `dist`; measuring the sources would measure the
+        # TypeScript transform.
+        run: pnpm build
+
+      - name: Build reference at baseline
+        run: node lib/bench/perf/bin/setup-baseline.mjs --ref "${{ steps.baseline.outputs.sha }}"
+
+      - name: Calibrate the noise floor on this runner
+        # the floor is a property of THIS machine; the one checked into the
+        # repo was measured on a laptop. overwritten on the runner only.
+        #
+        # --rounds 15 is deliberate and is not the harness default of 9. the
+        # statistic is a median of per-round ratios, so a floor taken at 9
+        # rounds describes a noisier measurement than the 15-round A/B it
+        # gates. measured here: 9 rounds gave ~17%, 15 rounds gave 9.5%.
+        run: node --expose-gc lib/bench/perf/bin/calibrate.mjs --suite ci --rounds 15
+
+      - name: A/B against baseline
+        id: ab
+        # exits 1 on any single-workload regression, which is too
+        # trigger-happy for a shared runner. the Verdict step gates instead.
+        continue-on-error: true
+        run: |
+          node --expose-gc lib/bench/perf/bin/ab.mjs \
+            --suite ci \
+            --repeat "${{ github.event.inputs.repeat || '1' }}" \
+            --label "${{ github.head_ref || github.ref_name }}" \
+            --out lib/bench/results/ab.json
+
+      - name: Output parity against baseline
+        id: parity
+        # reported, not gated: this workflow also runs on feature branches
+        # whose whole purpose is to change output. the comment says plainly
+        # when the two arms are no longer the same library.
+        continue-on-error: true
+        run: node lib/bench/perf/bin/parity.mjs
+
+      - name: Cross-library comparison
+        # on demand only: a dispatch, or the `bench:compare` label on a PR.
+        # the site renders the committed run in lib/bench/published/, taken on
+        # a named machine with a pinned clock; this shared runner's absolute
+        # numbers depend on which host the job lands on, so a run here is a
+        # check on that file, not the headline, and not worth ~25 minutes on
+        # every push to main. a PR cannot move competitor numbers either — the
+        # A/B already catches "we got slower" more sensitively.
+        if: >-
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.comparison == 'true') ||
+          contains(github.event.pull_request.labels.*.name, 'bench:compare')
+        env:
+          RUNNER_LABEL: namespace-profile-basic
+        run: |
+          node --expose-gc lib/bench/compare/bin/compare.mjs \
+            --out lib/bench/results/comparison.json
+
+      - name: Render comment
+        # --fail-on none: a rendering error should fail here, a regression
+        # should not. the gate is the last step, so a red check never arrives
+        # before the evidence for it.
+        run: |
+          set -euo pipefail
+          args=(--ab lib/bench/results/ab.json --fail-on none)
+          if [ -f lib/bench/results/comparison.json ]; then
+            args+=(--comparison lib/bench/results/comparison.json)
+          fi
+          if [ "${{ steps.parity.outcome }}" = "success" ]; then
+            args+=(--parity-status clean)
+          else
+            args+=(--parity-status diverged --parity lib/bench/perf/reports/parity-latest.json)
+          fi
+          node lib/bench/perf/bin/pr-comment.mjs "${args[@]}" --out lib/bench/results/comment.md
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: |
+            lib/bench/results/
+            lib/bench/perf/calibration.json
+            lib/bench/perf/reports/parity-latest.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Post comment
+        if: github.event_name == 'pull_request'
+        # a fork PR has a read-only token. the markdown is in the artifact
+        # either way, so this failing should not fail the run.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # update in place: only the newest comment is true. the marker is
+          # the first line of the rendered markdown.
+          id=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
+                 --jq 'first(.[] | select(.body | startswith("<!-- twinkleplop-benchmarks -->")) | .id) // empty')
+          # -F body=@file, not -f body="$(cat ...)" — the markdown is full
+          # of backticks and pipes and must not go through the shell.
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" \
+              -F body=@lib/bench/results/comment.md >/dev/null
+            echo "updated comment $id"
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" \
+              -F body=@lib/bench/results/comment.md >/dev/null
+            echo "posted new comment"
+          fi
+
+      - name: Verdict
+        # gates on GROUP geomeans. the A/A calibration flags roughly one
+        # workload in eight as "significant" when both arms are the same
+        # commit, so a per-workload gate here would go red on PRs that
+        # changed nothing.
+        run: |
+          node lib/bench/perf/bin/pr-comment.mjs \
+            --ab lib/bench/results/ab.json \
+            --fail-on group \
+            --out /dev/null

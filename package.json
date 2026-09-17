@@ -13,7 +13,6 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "bench": "pnpm build && vitest bench --config lib/bench/vitest.config.js",
     "build:languages": "pnpm --filter='./languages/**' exec vite build --config ../../build/language.vite.config.ts",
     "build:lib": "pnpm --filter=@twinkleplop/core -r build && pnpm --filter=@twinkleplop/theme-github run build && pnpm --filter=@twinkleplop/theme-atom-one run build",
     "build": "pnpm build:lib && pnpm build:languages",
@@ -38,7 +37,8 @@
     ]
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^1.0.1",
     "@changesets/cli": "^2.31.0"
   },
-  "homepage": "https://twinkleplop.pngwn.dev"
+  "homepage": "https://twinkleplop.pngwn.at"
 }

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { twoslash_popovers } from "$lib/docs/twoslash_popover";
+
 	let {
 		fname,
 		html,
@@ -15,7 +17,7 @@
 	const ext = $derived(dot < 0 ? "" : fname.slice(dot));
 </script>
 
-<div class="code">
+<div class="code" {@attach twoslash_popovers}>
 	<div class="head">
 		<span class="fname">{base}<span class="ext">{ext}</span></span>
 		<span class="copy">copy</span>
@@ -25,7 +27,7 @@
 
 <style>
 	.code {
-		background: var(--docs-bg-1);
+		background: var(--docs-code-bg);
 		border: 1px solid var(--docs-line);
 		border-radius: 3px;
 		font-family: var(--docs-mono);
@@ -90,7 +92,7 @@
 		width: 28px;
 		margin-right: 16px;
 		text-align: right;
-		color: var(--docs-fg-ghost);
+		color: var(--docs-fg-mute);
 		user-select: none;
 	}
 
@@ -99,61 +101,62 @@
 	   renderer. tuned to read across themes via color-mix into the docs
 	   palette. */
 	.code :global(pre .l.emphasis) {
-		background: color-mix(in oklab, var(--docs-accent) 18%, transparent);
+		background: color-mix(in oklab, var(--docs-accent) calc(18% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 var(--docs-accent);
 	}
 	.code :global(pre .l.highlight) {
-		background: color-mix(in oklab, var(--t-purple) 22%, transparent);
+		background: color-mix(in oklab, var(--t-purple) calc(22% * var(--docs-anno)), transparent);
 	}
-	.code :global(pre .l.subdued) {
+	.code :global(pre .l.subdued),
+	.code :global(pre.has-focus .l:not(.focus)) {
 		opacity: 0.45;
 	}
 	.code :global(pre .l.diff-add) {
-		background: color-mix(in oklab, #46c66f 22%, transparent);
+		background: color-mix(in oklab, #46c66f calc(22% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #46c66f;
 	}
 	.code :global(pre .l.diff-del) {
-		background: color-mix(in oklab, #d8533c 22%, transparent);
+		background: color-mix(in oklab, #d8533c calc(22% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #d8533c;
 	}
 	.code :global(pre .l.diff-mod) {
-		background: color-mix(in oklab, #c8a64b 20%, transparent);
+		background: color-mix(in oklab, #c8a64b calc(20% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #c8a64b;
 	}
 	.code :global(pre .l.error) {
-		background: color-mix(in oklab, #d8533c 18%, transparent);
+		background: color-mix(in oklab, #d8533c calc(18% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #d8533c;
 	}
 	.code :global(pre .l.warning) {
-		background: color-mix(in oklab, #d4a13a 18%, transparent);
+		background: color-mix(in oklab, #d4a13a calc(18% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #d4a13a;
 	}
 	.code :global(pre .l.info) {
-		background: color-mix(in oklab, #4a90d9 18%, transparent);
+		background: color-mix(in oklab, #4a90d9 calc(18% * var(--docs-anno)), transparent);
 		box-shadow: inset 3px 0 0 #4a90d9;
 	}
 
 	.code :global(pre .tok.emphasis) {
-		background: color-mix(in oklab, var(--docs-accent) 24%, transparent);
+		background: color-mix(in oklab, var(--docs-accent) calc(24% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.highlight) {
-		background: color-mix(in oklab, var(--t-purple) 28%, transparent);
+		background: color-mix(in oklab, var(--t-purple) calc(28% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.subdued) {
 		opacity: 0.55;
 	}
 	.code :global(pre .tok.diff-add) {
-		background: color-mix(in oklab, #46c66f 28%, transparent);
+		background: color-mix(in oklab, #46c66f calc(28% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.diff-del) {
-		background: color-mix(in oklab, #d8533c 28%, transparent);
+		background: color-mix(in oklab, #d8533c calc(28% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.diff-mod) {
-		background: color-mix(in oklab, #c8a64b 26%, transparent);
+		background: color-mix(in oklab, #c8a64b calc(26% * var(--docs-anno)), transparent);
 		border-radius: 1px;
 	}
 	.code :global(pre .tok.error) {
@@ -167,5 +170,122 @@
 	.code :global(pre .tok.info) {
 		text-decoration: underline wavy #4a90d9;
 		text-underline-offset: 3px;
+	}
+
+	/* twoslash. the renderer emits no line spans, so the block carries the
+	   horizontal padding the .l spans would otherwise hold. */
+	.code :global(pre.twoslash) {
+		padding: 14px;
+	}
+	.code :global(pre.twoslash:hover .twoslash-target) {
+		text-decoration: underline dotted color-mix(in oklab, var(--docs-fg-mute) 60%, transparent);
+		text-underline-offset: 3px;
+	}
+	.code :global(pre.twoslash .twoslash-hover:hover > .twoslash-target) {
+		text-decoration-color: var(--docs-accent);
+	}
+	/* hidden until twoslash_popover.ts lifts it into the top layer. it stays
+	   a descendant of pre.twinkleplop, so theme token colors still apply. */
+	.code :global(.twoslash-popover) {
+		display: none;
+	}
+	.code :global(.twoslash-popover:popover-open) {
+		display: block;
+		position: fixed;
+		inset: auto;
+		margin: 0;
+		max-width: min(72ch, calc(100vw - 16px));
+		max-height: min(24rem, calc(100vh - 16px));
+		overflow: auto;
+		padding: 8px 10px;
+		background: var(--docs-bg-2);
+		border: 1px solid var(--docs-line);
+		border-radius: 3px;
+		box-shadow: 0 6px 20px rgb(0 0 0 / 0.35);
+		color: var(--docs-fg);
+		font-family: var(--docs-mono);
+		font-size: var(--docs-fs-sm);
+		line-height: 1.55;
+		white-space: pre-wrap;
+	}
+	.code :global(.twoslash-popover-docs),
+	.code :global(.twoslash-query-docs) {
+		display: block;
+		margin-top: 6px;
+		padding-top: 6px;
+		border-top: 1px solid var(--docs-line);
+		color: var(--docs-fg-dim);
+	}
+	.code :global(.twoslash-popover-tags),
+	.code :global(.twoslash-query-tags) {
+		display: block;
+		margin-top: 4px;
+		color: var(--docs-fg-dim);
+	}
+	.code :global(.twoslash-popover-tag),
+	.code :global(.twoslash-query-tag) {
+		display: block;
+	}
+	.code :global(.twoslash-popover-tag)::before,
+	.code :global(.twoslash-query-tag)::before {
+		content: "@" attr(data-tag) " ";
+		color: var(--docs-fg-mute);
+	}
+	.code :global(.twoslash-popover-tag-name),
+	.code :global(.twoslash-query-tag-name) {
+		color: var(--docs-fg);
+	}
+
+	/* line annotations render after the line they belong to. */
+	.code :global(.twoslash-query),
+	.code :global(.twoslash-error-line),
+	.code :global(.twoslash-tag) {
+		display: block;
+		width: max-content;
+		max-width: 100%;
+		margin: 2px 0 4px;
+		padding: 4px 10px;
+		border-left: 2px solid var(--docs-line);
+		background: var(--docs-bg-2);
+		white-space: pre-wrap;
+	}
+	.code :global(.twoslash-query) {
+		border-left-color: var(--docs-accent);
+	}
+	.code :global(.twoslash-error) {
+		text-decoration: underline wavy #d8533c;
+		text-underline-offset: 3px;
+	}
+	.code :global(.twoslash-error-line) {
+		border-left-color: #d8533c;
+		color: var(--docs-fg-dim);
+	}
+	.code :global(.twoslash-tag) {
+		color: var(--docs-fg-dim);
+	}
+	.code :global(.twoslash-tag)::before {
+		content: "@" attr(data-tag-name) " ";
+		color: var(--docs-fg-mute);
+	}
+	.code :global(.twoslash-tag[data-tag-name="warn"]) {
+		border-left-color: #d4a13a;
+	}
+	.code :global(.twoslash-tag[data-tag-name="error"]) {
+		border-left-color: #d8533c;
+	}
+	.code :global(.twoslash-highlight) {
+		background: color-mix(in oklab, var(--t-purple) calc(22% * var(--docs-anno)), transparent);
+		border-radius: 1px;
+	}
+	.code :global(.twoslash-completions) {
+		display: block;
+		width: max-content;
+		margin: 2px 0 4px;
+		padding: 4px 10px;
+		border-left: 2px solid var(--docs-accent);
+		background: var(--docs-bg-2);
+	}
+	.code :global(.twoslash-completion-entry) {
+		display: block;
 	}
 </style>

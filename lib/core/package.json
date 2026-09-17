@@ -53,9 +53,6 @@
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
-    "build:tokenizer": "node build-tokenizer.js",
-    "build:tokenizer:debug": "node build-tokenizer.js --debug",
-    "build:tokenizer:prod": "node build-tokenizer.js",
     "test": "vitest",
     "typecheck": "tsc --noEmit"
   },
@@ -76,6 +73,6 @@
     "email": "hello@pngwn.io",
     "url": "https://pngwn.at"
   },
-  "homepage": "https://twinkleplop.pngwn.dev",
+  "homepage": "https://twinkleplop.pngwn.at",
   "bugs": "https://github.com/pngwn/twinkleplop/issues"
 }

@@ -487,6 +487,14 @@ export function render(
   if (current_token_type !== null) out.push("</span>");
   while (stack.length) out.push(stack.pop()!.close);
 
+  // the walk flushes a line's annotations at its newline, so the last line
+  // only gets them here, when the input does not end in one.
+  if (input.charCodeAt(input.length - 1) !== 10) {
+    for (const ann of line_annotations.get(line_starts.length - 1) ?? []) {
+      out.push(render_line_annotation(ann, ctx));
+    }
+  }
+
   out.push(`</code></pre>`);
 
   return out.join("");

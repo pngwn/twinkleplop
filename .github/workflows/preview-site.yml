@@ -1,0 +1,106 @@
+name: Preview site
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# one preview per pr. a newer push makes the older build worthless.
+concurrency:
+  group: preview-site-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10"
+
+jobs:
+  preview:
+    name: Build and upload preview
+    # a fork pr cannot see the cloudflare secrets, so it cannot upload a
+    # version, and a step that fails for that reason tells the author nothing.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: namespace-profile-basic
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out
+        uses: namespacelabs/nscloud-checkout-action@v8
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set up caches
+        uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build library
+        run: pnpm build
+
+      - name: Build site
+        run: pnpm --filter=site build
+
+      - name: Upload preview version
+        id: upload
+        working-directory: lib/_site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PR: ${{ github.event.pull_request.number }}
+        # a version upload is not a deploy: production traffic never sees it.
+        # the alias gives every push on this pr the same url, so the comment
+        # below is written once and stays true.
+        run: |
+          set -euo pipefail
+          pnpm exec wrangler versions upload --preview-alias "pr-${PR}" | tee upload.log
+          url=$(grep -o 'Version Preview Alias URL: https://[^[:space:]]*' upload.log | head -1 | awk '{print $NF}')
+          if [ -z "$url" ]; then
+            url=$(grep -o 'Version Preview URL: https://[^[:space:]]*' upload.log | head -1 | awk '{print $NF}')
+          fi
+          if [ -z "$url" ]; then
+            echo "::error::wrangler printed no preview url. are preview urls enabled on the worker?"
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Post comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          URL: ${{ steps.upload.outputs.url }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          {
+            echo "<!-- twinkleplop-preview -->"
+            echo "Site preview: ${URL}"
+            echo
+            echo "Built from ${SHA}. The url stays the same for every push on this pr."
+          } > comment.md
+          # update in place: only the newest build is true. the marker is the
+          # first line of the comment.
+          id=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate \
+                 --jq 'first(.[] | select(.body | startswith("<!-- twinkleplop-preview -->")) | .id) // empty')
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${id}" \
+              -F body=@comment.md >/dev/null
+            echo "updated comment $id"
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" \
+              -F body=@comment.md >/dev/null
+            echo "posted new comment"
+          fi
