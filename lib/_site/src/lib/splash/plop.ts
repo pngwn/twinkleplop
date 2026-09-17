@@ -29,6 +29,18 @@ const MIN_TOKEN_WIDTH = 8;
 // and is 90% of the way to a new position after about 4 / RESPONSE.
 const RESPONSE = 16;
 
+// a pixel part way through its flight hangs over whatever the page has
+// scrolled under it. while the scroll is moving that reads as the effect;
+// once it has been still this long the pixel is only covering the text, so
+// the flight fades out until the scroll moves again.
+const IDLE_FADE_AFTER = 500;
+const FADE_OUT = 260;
+const FADE_IN = 140;
+// how far into its flight a pixel has to be before it fades all the way
+// out. the ones still sitting in the letters keep the wordmark whole
+// rather than punching holes in it.
+const CLEAR_AT = 0.3;
+
 // a spark is a tiny square with a soft glow of its own colour. drawn
 // directly that means parsing two colour strings and running a blur pass
 // for every spark on every frame, so each colour's mote is rendered once
@@ -246,6 +258,10 @@ export function create_plop(opts: plop_options): plop {
 	let last_frame = 0;
 	let last_lit = -1;
 	let sparks: spark[] = [];
+	// how far the flight has faded out under a still scroll, 0 → 1
+	let dim = 0;
+	let idle = false;
+	let idle_timer: ReturnType<typeof setTimeout> | undefined;
 	let canvas_dirty = false;
 	let raf = 0;
 	let scheduled = false;
@@ -394,6 +410,18 @@ export function create_plop(opts: plop_options): plop {
 		}
 	}
 
+	// a pixel's own fade as it lands, times the flight-wide idle fade, which
+	// only takes hold once it is clear of the wordmark
+	function set_opacity(c: cell, l: number) {
+		const away = clamp((l - GHOST_AT) / (CLEAR_AT - GHOST_AT));
+		c.el.style.opacity = ((1 - clamp((l - 0.9) / 0.1)) * (1 - dim * away)).toFixed(3);
+	}
+
+	// the idle fade moves on its own, with no change in p to drive update()
+	function fade_flight() {
+		for (const c of cells) if (c.l > GHOST_AT) set_opacity(c, c.l);
+	}
+
 	function update(p: number) {
 		// no burst for pixels that are already down when the page loads
 		const first = last_p < 0;
@@ -415,7 +443,7 @@ export function create_plop(opts: plop_options): plop {
 				const scale = 1 - clamp((l - 0.8) / 0.2) * 0.55;
 				const rotate = l * (c.seed[1] - 0.5) * 360;
 				c.el.style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) rotate(${rotate.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
-				c.el.style.opacity = String(1 - clamp((l - 0.9) / 0.1));
+				set_opacity(c, l);
 				c.el.style.setProperty("--land", clamp((l - 0.6) / 0.3).toFixed(2));
 
 				const x = c.hx + tx;
@@ -485,7 +513,8 @@ export function create_plop(opts: plop_options): plop {
 			const y = s.y - sy;
 			if (y < -8 || y > bottom) continue;
 			const side = s.size * (0.5 + s.life * 0.5) * mote_scale;
-			ctx.globalAlpha = Math.min(1, s.life * 0.9) * (0.45 + 0.55 * Math.abs(Math.sin(s.phase)));
+			ctx.globalAlpha =
+				Math.min(1, s.life * 0.9) * (0.45 + 0.55 * Math.abs(Math.sin(s.phase))) * (1 - dim);
 			ctx.drawImage(atlas, s.sprite, 0, mote_cell, mote_cell, s.x - sx - side / 2, y - side / 2, side, side);
 		}
 		sparks.length = kept;
@@ -520,6 +549,16 @@ export function create_plop(opts: plop_options): plop {
 		if (Math.abs(target - shown) < 0.0005 && Math.abs(velocity) < 0.005) {
 			shown = target;
 			velocity = 0;
+		}
+
+		// nothing is in the way at the very top, where every pixel is home, so
+		// the fade never has to run back in as a scroll starts
+		const want = !reduced && idle && shown > 0 ? 1 : 0;
+		if (dim !== want) {
+			const step = (dt * 1000) / (want ? FADE_OUT : FADE_IN);
+			dim = want ? Math.min(1, dim + step) : Math.max(0, dim - step);
+			fade_flight();
+			schedule();
 		}
 
 		if (shown !== last_p) {
@@ -596,11 +635,23 @@ export function create_plop(opts: plop_options): plop {
 		measure();
 	}
 
+	// frames stop once the scroll settles, so the fade is woken by a timer
+	// rather than by a clock read in a frame that would never run
+	function watch_idle() {
+		idle = false;
+		clearTimeout(idle_timer);
+		idle_timer = setTimeout(() => {
+			idle = true;
+			schedule();
+		}, IDLE_FADE_AFTER);
+	}
+
 	// scroll events are dispatched before the frame's styles are touched, so
 	// the read is free here
 	function handle_scroll() {
 		scroll_x = window.scrollX;
 		scroll_y = window.scrollY;
+		watch_idle();
 		schedule();
 	}
 
@@ -615,6 +666,7 @@ export function create_plop(opts: plop_options): plop {
 
 	size_canvas();
 	measure();
+	watch_idle();
 
 	return {
 		set_targets,
@@ -624,6 +676,7 @@ export function create_plop(opts: plop_options): plop {
 			cancelAnimationFrame(raf);
 			cancelAnimationFrame(scroll_raf);
 			clearTimeout(settle);
+			clearTimeout(idle_timer);
 			observer.disconnect();
 			window.removeEventListener("resize", handle_resize);
 			window.removeEventListener("scroll", handle_scroll);
