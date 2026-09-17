@@ -47,9 +47,9 @@
     }
   },
   "scripts": {
-    "build": "vite build --mode=debug && vite build",
+    "build": "vite build --mode=debug && vite build && node ../../build/dts.mjs",
     "ts": "tsc --noEmit",
-    "types": "node dts.js",
+    "types": "node ../../build/dts.mjs",
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",

@@ -14,14 +14,21 @@
     "directory": "lib/remark"
   },
   "type": "module",
-  "main": "src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "types": "./dist/types.d.ts",
   "exports": {
     ".": {
       "source": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/types.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
+    "build": "vite build --config ../../build/package.vite.config.ts && node ../../build/dts.mjs",
     "test": "vitest"
   },
   "dependencies": {

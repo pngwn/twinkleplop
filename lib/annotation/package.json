@@ -14,18 +14,27 @@
     "directory": "lib/annotation"
   },
   "type": "module",
-  "main": "src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "types": "./dist/types.d.ts",
   "exports": {
     ".": {
       "source": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/types.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./shiki": {
       "source": "./src/shiki.ts",
-      "default": "./src/shiki.ts"
+      "types": "./dist/types.d.ts",
+      "import": "./dist/shiki.js",
+      "default": "./dist/shiki.js"
     }
   },
   "scripts": {
+    "build": "vite build --config ../../build/package.vite.config.ts && node ../../build/dts.mjs",
     "test": "vitest"
   },
   "dependencies": {

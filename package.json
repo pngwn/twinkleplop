@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:languages": "pnpm --filter='./languages/**' exec vite build --config ../../build/language.vite.config.ts",
-    "build:lib": "pnpm --filter=@twinkleplop/core -r build && pnpm --filter=@twinkleplop/theme-github run build && pnpm --filter=@twinkleplop/theme-atom-one run build",
+    "build:lib": "pnpm -r --filter='./lib/*' --filter='!site' build",
     "build": "pnpm build:lib && pnpm build:languages",
     "format:write": "oxfmt",
     "format:check": "oxfmt --check",

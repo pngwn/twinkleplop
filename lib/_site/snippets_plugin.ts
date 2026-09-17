@@ -20,9 +20,10 @@
 
 import MagicString from "magic-string";
 import ts from "typescript";
-import { runnerImport, type Plugin } from "vite";
+import type { Plugin } from "vite";
+import { create_highlighters } from "./src/lib/docs/highlighters";
 
-type Highlighters = ReturnType<typeof import("./src/lib/docs/highlighters").create_highlighters>;
+type Highlighters = ReturnType<typeof create_highlighters>;
 
 const MODULE = "$lib/docs/snippets";
 const SCRIPT = /(<script\b[^>]*>)([\s\S]*?)<\/script>/g;
@@ -134,20 +135,9 @@ function find_snippets(code: string): Snippet[] {
   return snippets;
 }
 
-// the highlighters import packages that publish typescript source, which the
-// node that loads this config cannot import, so they come in through a vite
-// module runner.
-async function load_highlighters(root: string): Promise<Highlighters> {
-  const { module } = await runnerImport<typeof import("./src/lib/docs/highlighters")>(
-    `${root}/src/lib/docs/highlighters.ts`,
-    { root, configFile: false, logLevel: "error" },
-  );
-  return module.create_highlighters(root);
-}
-
 export function snippets_plugin(): Plugin {
   let root = process.cwd();
-  let highlighters: Promise<Highlighters> | undefined;
+  let highlighters: Highlighters | undefined;
   // keyed by tag, options and source. the ssr and client builds transform
   // every page once each, and dev re-transforms a page on every save.
   const cache = new Map<string, string>();
@@ -160,7 +150,7 @@ export function snippets_plugin(): Plugin {
       root = config.root;
     },
 
-    async transform(code, id) {
+    transform(code, id) {
       const file = id.split("?", 1)[0];
       if (!file.endsWith(".svelte") && !file.endsWith(".svx")) return;
       if (!code.includes(MODULE)) return;
@@ -168,15 +158,14 @@ export function snippets_plugin(): Plugin {
       const snippets = find_snippets(code);
       if (snippets.length === 0) return;
 
-      highlighters ??= load_highlighters(root);
-      const loaded = await highlighters;
+      highlighters ??= create_highlighters(root);
       const s = new MagicString(code);
       const failures: string[] = [];
       for (const snippet of snippets) {
         const key = `${snippet.name}\0${JSON.stringify(snippet.options) ?? ""}\0${snippet.source}`;
         let rendered = cache.get(key);
         if (rendered === undefined) {
-          const highlight = loaded[snippet.name as keyof Highlighters] as (
+          const highlight = highlighters[snippet.name as keyof Highlighters] as (
             code: string,
             options?: unknown,
           ) => unknown;
