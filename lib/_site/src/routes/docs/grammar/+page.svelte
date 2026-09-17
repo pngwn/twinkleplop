@@ -138,21 +138,19 @@ const grammar = compile(raw_grammar);`;
 <ArticleMain
 	pane_path="docs / reference / grammar"
 	title="grammars"
-	subtitle="Writing a language definition against the DSL."
+	subtitle="Define a language grammar using rule helpers."
 >
 	<p>
-		A grammar is a plain JavaScript module built from helper factories. Each
-		helper returns a rule object, and the compiler does not care whether you
-		called a helper or wrote the object by hand — the helpers just remove
-		boilerplate and let you compose rules with ordinary JavaScript.
+		A grammar is a JavaScript module that defines states and rules. Use the helper functions to
+		create rules, or write rule objects directly.
 	</p>
 	<CodeBlock fname="grammar.ts" html={skeleton} />
 	<p>
-		The <strong>first state declared</strong> is the initial state. Rules are
-		tried top to bottom and the first match wins.
+		The <strong>first state declared</strong> is the initial state. Rules are tried top to bottom and
+		the first match wins.
 	</p>
 
-	<Section id="shape" title="the grammar shape" num="§ 01">
+	<Section id="shape" title="grammar structure" num="§ 01">
 		<CodeBlock fname="types.ts" html={shape} />
 		<ParamTable
 			headers={["field", "on", "meaning"]}
@@ -193,49 +191,43 @@ const grammar = compile(raw_grammar);`;
 				],
 			]}
 		/>
-		<p>
-			Two separate things stop a token coalescing backward into a same-type run,
-			and it is worth knowing which is which.
-		</p>
+		<p>Adjacent tokens of the same type are usually merged. Two conditions prevent this:</p>
 		<ul>
 			<li>
-				The compiler sets the seal flag for <code>boundary: true</code> rules and
-				for rules that opt in with <code>seal: true</code>. Nothing else.
+				The compiler sets the seal flag for <code>boundary: true</code> rules and for rules that opt
+				in with <code>seal: true</code>.
 			</li>
 			<li>
-				A <strong>multi-char</strong> match never coalesces, enforced at runtime
-				per emission rather than at compile time. That distinction matters for a
-				rule that mixes lengths: <code>match: [...OP_4CHAR, "?"]</code> seals
-				only when one of the longer alternatives actually fires, not when the
-				bare <code>?</code> matches.
+				A <strong>multi-char</strong> match never coalesces, enforced at runtime per emission rather
+				than at compile time. That distinction matters for a rule that mixes lengths:
+				<code>match: [...OP_4CHAR, "?"]</code>
+				seals only when one of the longer alternatives actually fires, not when the bare
+				<code>?</code> matches.
 			</li>
 		</ul>
 		<p>
-			Structural transitions do <strong>not</strong> seal. Most grammars use
-			single-char push rules whose emission is meant to coalesce with the body
-			that follows — an opening quote with its string body, an <code>E</code>
-			prefix with an <code>LSE</code> continuation. A push or pop that does need
-			to seal opts in with <code>seal: true</code>.
+			Structural transitions do <strong>not</strong> seal. Most grammars use single-char push rules
+			whose emission is meant to coalesce with the body that follows — an opening quote with its
+			string body, an <code>E</code>
+			prefix with an <code>LSE</code> continuation. A push or pop that does need to seal opts in
+			with <code>seal: true</code>.
 		</p>
 		<p>
-			So reach for <code>seal: true</code> on a single-char match that would
-			otherwise merge into a following run of the same type.
+			Use <code>seal: true</code> to keep a single-character match separate from adjacent tokens of the
+			same type.
 		</p>
 	</Section>
 
 	<Section id="factories" title="rule factories" num="§ 02">
 		<CodeBlock fname="factories.ts" html={factories} />
 		<p>
-			A single <code>match(...)</code> can emit both <code>match</code> and
-			<code>range</code>, collapsing what would otherwise be two rules.
-			A token-less <code>on(...)</code> rule <strong>does</strong> advance the
-			pointer — the character is consumed silently.
+			A <code>match(...)</code> rule can contain both literal patterns and character ranges. An
+			<code>on(...)</code> rule consumes the matched character without emitting a token.
 		</p>
 		<p>
 			<code>any: true</code> combined with a sideways transition does
-			<em>not</em> consume the character; it re-processes it in the destination
-			state. That is how you hand a character back when you realise you are in
-			the wrong context.
+			<em>not</em> consume the character; it re-processes it in the destination state. Use this to retry
+			the current character in a different state.
 		</p>
 
 		<SubSection id="transitions" title="transitions">
@@ -268,51 +260,43 @@ const grammar = compile(raw_grammar);`;
 	</Section>
 
 	<Section id="sharing" title="sharing rules" num="§ 03">
-		<p>
-			Use plain arrays and spread. Because states are ordinary objects and
-			helpers are ordinary functions, this is all you need — and it is the only
-			supported mechanism.
-		</p>
+		<p>Store shared rules in an array and spread it into each state's rules.</p>
 		<CodeBlock fname="sharing.ts" html={sharing} />
 		<Callout mark="▸" variant="warn">
-			There is no <code>rulesets</code> field, and no <code>include</code> or
-			<code>extend</code> on a state. If you find those in an older document,
-			they were never implemented — the compiler has no handling for them.
+			The compiler does not support <code>rulesets</code>, <code>include</code> or
+			<code>extend</code>. Use arrays to share rules.
 		</Callout>
 	</Section>
 
 	<Section id="classes" title="character classes" num="§ 04">
 		<p>
-			There are two unrelated sets of constants, and six names appear in both.
-			Pick one import and stay with it.
+			Character class constants are exported from two modules. They share names but use different
+			formats:
 		</p>
 		<CodeBlock fname="classes.ts" html={classes} />
 		<p>
-			From <code>@twinkleplop/core</code> they are <code>RangeTag</code> objects
-			you mix into a pattern array. From
+			From <code>@twinkleplop/core</code> they are <code>RangeTag</code> objects you mix into a
+			pattern array. From
 			<code>@twinkleplop/core/compile</code> they are symbols you pass as
 			<code>match</code> on their own.
 		</p>
 		<Callout mark="▸" variant="warn">
 			<code>ANY</code> is exported from <code>@twinkleplop/core/compile</code>
-			but the compiler has no branch for it — a rule using it silently matches
-			nothing. Use <code>fallback()</code> instead.
+			but rules using it do not match any characters. Use <code>fallback()</code> instead.
 		</Callout>
 	</Section>
 
 	<Section id="probe" title="probe states" num="§ 05">
 		<p>
-			Some tokens cannot be classified until you see what follows. CSS is the
-			standard case: after entering a block,
-			<code>a:hover one two three</code> could be a selector chain or a property
-			and value until you reach <code>&#123;</code>, <code>;</code>,
+			Some token types depend on the text that follows. For example, inside a CSS block,
+			<code>a:hover one two three</code> could be a selector chain or a property and value until you
+			reach <code>&#123;</code>, <code>;</code>,
 			<code>&#125;</code> or EOF.
 		</p>
 		<p>
-			A probe state scans ahead without committing. When it transitions to a
-			non-probe state, the tokenizer rewinds to where the probe started — now
-			with the correct target state. If it reaches EOF without matching, it goes
-			to <code>fallback</code>.
+			A probe state scans ahead without committing. When it transitions to a non-probe state, the
+			tokenizer rewinds to where the probe started — now with the correct target state. If it
+			reaches EOF without matching, it goes to <code>fallback</code>.
 		</p>
 		<CodeBlock fname="probe.ts" html={probe} />
 		<p>Inside a probe state, rules are positive-match only.</p>
@@ -321,9 +305,9 @@ const grammar = compile(raw_grammar);`;
 	<Section id="ambiguity" title="disambiguation" num="§ 06">
 		<ul>
 			<li>
-				<strong>Maximal munch</strong> is automatic. Patterns in a first-character
-				bucket are sorted longest-first at compile time, so <code>/=</code> beats
-				<code>/</code> regardless of the order you wrote them in.
+				<strong>Maximal munch</strong> is automatic. Patterns in a first-character bucket are sorted
+				longest-first at compile time, so <code>/=</code> matches before <code>/</code> regardless of
+				their order in the grammar.
 			</li>
 			<li><strong>Contextual ambiguity</strong> — use a probe state.</li>
 			<li>
@@ -333,18 +317,17 @@ const grammar = compile(raw_grammar);`;
 			</li>
 		</ul>
 		<p>
-			Whitespace gets no special treatment. If you want to skip it, add a rule
-			that consumes it without emitting a token.
+			Whitespace gets no special treatment. If you want to skip it, add a rule that consumes it
+			without emitting a token.
 		</p>
 	</Section>
 
 	<Section id="verify" title="compiling and verifying" num="§ 07">
 		<CodeBlock fname="verify.ts" html={verify} />
 		<p>
-			<code>compile()</code> warns about <code>exit: true</code> in the root
-			state, where there is no parent to return to. When tokenization
-			misbehaves, see <a href="/docs/tokenization">tokenization</a> for the
-			debugging tools.
+			<code>compile()</code> warns about <code>exit: true</code> in the root state, where there is
+			no parent to return to. For unexpected tokenization results, see
+			<a href="/docs/tokenization">tokenization</a> for the debugging tools.
 		</p>
 	</Section>
 </ArticleMain>
@@ -352,7 +335,7 @@ const grammar = compile(raw_grammar);`;
 <ArticleOtp
 	title="grammars"
 	sections={[
-		{ href: "#shape", label: "§01 — the grammar shape", active: true },
+		{ href: "#shape", label: "§01 — grammar structure", active: true },
 		{ href: "#factories", label: "§02 — rule factories" },
 		{ href: "#sharing", label: "§03 — sharing rules" },
 		{ href: "#classes", label: "§04 — character classes" },

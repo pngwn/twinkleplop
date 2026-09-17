@@ -5,42 +5,42 @@
 	let { data }: { data: PageData } = $props();
 	const beats = [
 		[
-			'One helper. A whole little machine.',
+			'Define a string rule',
 			'Describe a string by the characters that open, close, and escape it.'
 		],
 		[
-			'Between the quotes is a new place.',
-			'The start quote enters it. The end quote returns from it.'
+			'String state',
+			'The opening quote enters the string state. The closing quote leaves it.'
 		],
 		[
-			'An escape needs a place of its own.',
+			'Escape state',
 			'Take one character literally, then return to the string.'
 		],
 		[
-			'That is where the states come from.',
-			'Each place has different rules for the same characters.'
+			'State rules',
+			'Each state defines how characters are interpreted.'
 		],
 		[
-			'Give each route an address.',
+			'Compile the rules',
 			'The compiler stores character → rule → action. Here is the opening quote.'
 		],
 		[
-			'Now let some source use it.',
-			'The machine begins in root. Follow the character through its route.'
+			'Tokenize the source',
+			'The tokenizer starts in the root state and looks up a rule for each character.'
 		],
 		[
-			'The first quote takes us inside.',
-			'Remember root as the return address. Begin a string token.'
+			'Open the string',
+			'Push the string state onto the stack and begin a string token.'
 		],
 		[
-			'Ordinary characters stay inside.',
-			'The body rule consumes h and i together. The same token grows.'
+			'Read the string body',
+			'The body rule reads h and i and extends the string token.'
 		],
-		['The backslash takes a detour.', 'Remember inside. The next character gets the escape rule.'],
-		['This quote does not close the string.', 'Consume it literally, then return to inside.'],
-		['This quote does.', 'After the !, the closing quote returns to root. The string is complete.'],
+		['Read an escape sequence', 'Push the escape state onto the stack to read the next character.'],
+		['Read the escaped quote', 'Consume it literally, then return to inside.'],
+		['Close the string', 'After the !, the closing quote returns to root. The string is complete.'],
 		[
-			'Seven characters. One token.',
+			'Store the token',
 			'Keep the original source. Store its type and its start and end offsets.'
 		]
 	];
@@ -198,10 +198,10 @@
 </script>
 
 <svelte:head>
-	<title>One helper, a whole machine — twinkleplop</title>
+	<title>How tokenization works — twinkleplop</title>
 	<meta
 		name="description"
-		content="Watch a quoted-string helper unfold into a state machine, compile into tables, and turn seven characters into one token."
+		content="How a string rule is compiled and used to tokenize source code."
 	/>
 </svelte:head>
 
@@ -210,12 +210,12 @@
 		<header>
 			<a href="/" class="brand">✳ <span>twinkleplop</span></a><span class="part"
 				>{beat < 4
-					? 'Build the machine'
+					? "Define the states"
 					: beat === 4
-						? 'Compile its routes'
+						? "Compile the rules"
 						: beat < 11
-							? 'Use the machine'
-							: 'Keep the spans'}</span
+							? "Tokenize the source"
+							: "Store the tokens"}</span
 			><a href="/explore/svelte" class="explore">Explore</a>
 		</header>
 		<div class="caption">

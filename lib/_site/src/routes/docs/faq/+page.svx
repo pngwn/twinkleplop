@@ -109,7 +109,7 @@ const tokens = html_tokenizer("hello world");`;
 	{#snippet a_themes()}
 		Tokens are CSS classes, themes are CSS files. The highlighter emits stable class names for each token (`.keyword`, `.string`, etc.).
 
-		Two theme packages ship today, each with a dark and a light variant in one stylesheet, switched by a `.dark` class on any ancestor. Because everything is a CSS custom property, restyling one token is one declaration rather than a fork.
+		Two theme packages ship today, each with a dark and a light variant in one stylesheet, switched by a `.dark` class on any ancestor. Themes are CSS custom properties and can be customised with plain CSS.
 
 
 		You can learn more in the [theme guide](/docs/themes) or [theme reference](/docs/themes-ref)

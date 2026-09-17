@@ -54,33 +54,30 @@ for (let i = 0; i < result.tokens.length; i += 3) {
 >
 	<Section id="s1" title="install" num="§ 01">
 		<p>
-			Install one language package per language you want to highlight, plus a
-			theme. Language packages depend on <code>@twinkleplop/core</code>, so you
-			rarely install it directly.
+			Install one language package per language you want to highlight, plus a theme. Language
+			packages depend on <code>@twinkleplop/core</code>, so it is installed automatically.
 		</p>
 		<CodeBlock fname="terminal" html={install_code} />
 		<p>
 			There are two theme packages: <code>@twinkleplop/theme-github</code> and
-			<code>@twinkleplop/theme-atom-one</code>. Each ships a light and a dark
-			variant. See <a href="/docs/themes">themes</a> for the options.
+			<code>@twinkleplop/theme-atom-one</code>. Each includes a light and a dark variant. See
+			<a href="/docs/themes">themes</a> for the options.
 		</p>
 	</Section>
 
-	<Section id="s2" title="first highlight" num="§ 02">
-		<p>Import. Initialize. Highlight.</p>
+	<Section id="s2" title="highlighting code" num="§ 02">
+		<p>Import <code>language</code> and call it to create a highlighter.</p>
 		<CodeBlock fname="first-twinkle.ts" html={first_highlight_code} />
 		<p>
-			<code>language()</code> is a <em>factory</em>. It takes configuration and
-			returns a highlight function; that function takes source and returns an
-			HTML string. Create the highlighter once and reuse it — compiling the
-			grammar is the expensive part, and it happens at import.
+			<code>language()</code> takes configuration and returns a function that highlights source code as
+			HTML. Create the highlighter once and reuse it. The grammar is compiled when the package is imported.
 		</p>
 	</Section>
 
 	<Section id="s3" title="per-call options" num="§ 03">
 		<p>
-			The highlight function takes a second argument of render options, applied
-			to that call alone. The highlighter itself stays reusable.
+			Pass render options as the second argument to the highlight function. Each call can use
+			different options.
 		</p>
 		<CodeBlock fname="render.ts" html={render_code} />
 		<p>
@@ -90,17 +87,17 @@ for (let i = 0; i < result.tokens.length; i += 3) {
 
 	<Section id="s4" title="tokens instead of html" num="§ 04">
 		<p>
-			When you want to render yourself — the CSS Custom Highlight API, a canvas
-			renderer, an editor — use <code>tokenize</code> and skip the generator.
+			Use <code>tokenize</code> to get tokens for a custom renderer, such as the CSS Custom Highlight
+			API, a canvas renderer or an editor.
 		</p>
 		<CodeBlock fname="tokens.ts" html={tokens_code} />
 	</Section>
 
 	<Callout mark="✦">
-		<strong>What next?</strong> Pick a <a href="/docs/themes">theme</a>, skim the
+		<strong>What next?</strong> Pick a <a href="/docs/themes">theme</a>, read the
 		<a href="/docs/api">API reference</a>, add
 		<a href="/docs/directives">directives</a> to your snippets, or learn
-		<a href="/docs/tokenization">how tokenization works</a> under the hood.
+		<a href="/docs/tokenization">how tokenization works</a> .
 	</Callout>
 </ArticleMain>
 
@@ -108,7 +105,7 @@ for (let i = 0; i < result.tokens.length; i += 3) {
 	title="getting started"
 	sections={[
 		{ href: "#s1", label: "§01 — install", active: true },
-		{ href: "#s2", label: "§02 — first highlight" },
+		{ href: "#s2", label: "§02 — highlighting code" },
 		{ href: "#s3", label: "§03 — per-call options" },
 		{ href: "#s4", label: "§04 — tokens instead of html" },
 	]}

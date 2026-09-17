@@ -29,9 +29,4 @@ that stringifies markdown back to markdown keeps the HTML as a block.
 
 Errors name the file and line whenever the tree carries positions.
 
-Every option, every fence meta convention and the output contract are
-documented once in
-[`@twinkleplop/markdown-core`](../markdown-core), which
-[`@twinkleplop/rehype`](../rehype) and
-[`@twinkleplop/markdown-it`](../markdown-it) share: the same options produce
-the same HTML for the same fence through any of the three.
+See [`@twinkleplop/markdown-core`](../markdown-core) for shared options, fence metadata and HTML output.
