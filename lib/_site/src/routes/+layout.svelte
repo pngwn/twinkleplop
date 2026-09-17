@@ -1,6 +1,5 @@
 <script>
 	import '../app.css';
-	import '../highlight-styles.css';
 	import { page } from '$app/stores';
 
 	// Determine which theme to use based on the current route
