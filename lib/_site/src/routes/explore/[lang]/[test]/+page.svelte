@@ -599,7 +599,9 @@
 
 	function handle_lang(next: string) {
 		if (next === data.lang) return;
-		goto(`/explore/${next}/${data.test}`);
+		// keep the sample when the next language has one of the same name
+		const sample = data.samples[next]?.includes(data.test) ? data.test : 'demo';
+		goto(`/explore/${next}/${sample}`);
 	}
 
 	function handle_sample(next: string) {
