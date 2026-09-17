@@ -45,6 +45,9 @@ function fixture_files(lang: string): string[] {
 
 /** every sample for `lang` as `[name, source]`, the demo first. */
 export function read_samples(lang: string): [string, string][] {
+  // `lang` is a url param, so only a known language may name a directory:
+  // `..%2F..` would otherwise walk out of languages/.
+  if (!Object.hasOwn(list_samples(), lang)) return [];
   const samples: [string, string][] = [];
   const demo = demo_file(lang);
   if (demo) samples.push(["demo", fs.readFileSync(path.join(DEMOS_DIR, demo), "utf-8")]);
