@@ -6,7 +6,8 @@ CLAUDE.md
 .claude
 AGENTS.md
 dist/
-scripts/
+scripts/*
+!scripts/setup-trusted-publishing.mjs
 docs/
 
 # grammar research notes are working documents for the grammar skills
