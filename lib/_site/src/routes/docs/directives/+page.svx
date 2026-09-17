@@ -17,6 +17,13 @@ const NUM = 50 // [!add]
 
 const v = add(NUM, "hi") // [!err add...*]`;
 
+	const syntax_demo = ts_split`import { add } from "./math" // [!dim]
+// [!hl +2]
+const price = 100;
+const tax = 20;
+const total = add(price, tax); // [!em price...tax]
+log(total, total); // [!err =total]`;
+
 	const html_output = html`<pre class="twinkleplop">
   <code>
     <span class="l"><span class="ln">1</span> ...tokens </span>
@@ -53,7 +60,50 @@ const v = add(NUM, "hi") // [!err add...*]`;
 		/>
 	</Section>
 
-<Section id="s2" title="using directives" num="§ 02">
+<Section id="syntax" title="syntax" num="§ 02">
+
+A directive is `[!verb]` or `[!verb arguments]`, written inside a comment and closed on the same line. A verb starts with a letter and continues with letters, digits, `_` or `-`. The argument form decides what the directive applies to: line numbers select whole lines, anchors select text.
+
+| form | mode | applies to |
+| ---- | ---- | ---------- |
+| `[!verb]` | line | the line the marker is on |
+| `[!verb +N]` | line | the N lines below the marker |
+| `[!verb :N]` | line | line N of the source |
+| `[!verb :N..M]` | line | the lines between N and M, excluding both |
+| `[!verb :N...M]` | line | lines N to M, including both |
+| `[!verb a..b]` | token | the text between anchors `a` and `b` on the marker's line |
+| `[!verb a...b]` | token | from `a` to `b` on the marker's line, including both |
+| `[!verb ***]` | token | the code on the marker's line |
+| `[!verb =a]` | token | every occurrence of `a` on the marker's line |
+| `[!verb =a +N]` | token | every occurrence of `a` in the N lines below; `:N`, `:N..M` and `:N...M` work too |
+| `[!verb =a :*]` | token | every occurrence of `a` in the snippet |
+| `[!verb a...]` `[!verb ...b]` | token | a pair, from `a` on the opening marker's line to `b` on the closing marker's line; `..` excludes the anchors |
+| `[!verb#id a...]` | token | names a pair, so pairs of the same verb can overlap |
+
+Anchors come in three kinds:
+
+| anchor | matches |
+| ------ | ------- |
+| `foo` | the whole word `foo`: letters, digits and `_`, so it does not match inside `foobar` |
+| `"foo(bar"` | the exact text, spaces and punctuation included; `\"` and `\\` escape |
+| `*` | the start of the line as the first anchor, the end of the line as the second |
+
+- Anchors never match inside a comment, so a marker cannot match its own text.
+- A line holding nothing but a marker comment is removed from the output, so a bare `[!verb]` has to follow code on the same line. `:N` line numbers still count removed lines.
+- A verb no configured plugin claims is ordinary comment text.
+- A marker with arguments the parser cannot read stays in the output; one whose anchor is not found is removed and applies nothing. Both are reported to the `on_error` option of the annotation config, or with `console.warn` when it is not set.
+
+Several forms at once:
+
+<SplitCodeBlock
+	lang="typescript"
+	left_html={syntax_demo.input}
+	right_html={syntax_demo.output}
+/>
+
+</Section>
+
+<Section id="s2" title="using directives" num="§ 03">
 
 Directives only take affect if you configure them. By default, comments are just comments. When you configure directives, only the specific directives you configure will take effect.
 
@@ -81,6 +131,18 @@ There are several pre-made directives available, each with their own verbs. All 
 	title="directives"
 	sections={[
 		{ href: "#s1", label: "§01 — intro", active: true },
-		{ href: "#s2", label: "§02 — using directives" },
+		{ href: "#syntax", label: "§02 — syntax" },
+		{ href: "#s2", label: "§03 — using directives" },
 	]}
 />
+
+<style>
+	/* ligatures draw `...` as one glyph, which hides the difference between
+	   `..` and `...` that these tables are about. */
+	table :global(code) {
+		font-feature-settings:
+			'calt' 0,
+			'liga' 0;
+		white-space: nowrap;
+	}
+</style>
