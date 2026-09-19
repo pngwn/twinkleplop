@@ -18,7 +18,7 @@
 
 // px from a click to the nearest edge of a token's box for the cast to
 // reach it
-export const HIT_RADIUS = 50;
+export const HIT_RADIUS = 25;
 // ms between launches. a launch doesn't wait for the one before to land.
 const STAGGER = 200;
 // pixels per token
