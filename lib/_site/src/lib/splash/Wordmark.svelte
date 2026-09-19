@@ -57,7 +57,7 @@
 <style>
 	.wordmark {
 		/* whole pixels only: fractional cells leave uneven seams */
-		--fit: calc(min(92vw, 600px) / var(--cols));
+		--fit: calc(min(92vw, 510px) / var(--cols));
 		--sz: clamp(4px, var(--fit), 12px);
 		position: relative;
 		/* above the ghosts and the page, below the sticky header */

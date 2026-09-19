@@ -8,9 +8,6 @@
 	import LiveCard from "$lib/splash/LiveCard.svelte";
 	import { theme_mode } from "$lib/theme_mode.svelte";
 
-	// clearance for the sticky header when scrolling to the live section
-	const SCROLL_OFFSET = 72;
-
 	const quick_links = [
 		{ title: "quick start", meta: "install and twinkle", href: "/docs/getting_started" },
 		{ title: "themes", meta: "light and dark", href: "/docs/themes" },
@@ -20,7 +17,6 @@
 
 	let wordmark: Wordmark | undefined = $state();
 	let canvas: HTMLCanvasElement | undefined = $state();
-	let live: HTMLElement | undefined = $state();
 
 	let lit = $state(0);
 	let total = $state(0);
@@ -33,12 +29,6 @@
 		targets = next;
 		if (engine) engine.set_targets(next, changed);
 		else start();
-	}
-
-	function go_live(e: MouseEvent) {
-		if (!engine || !live) return;
-		e.preventDefault();
-		engine.scroll_to(live, SCROLL_OFFSET);
 	}
 
 	let mounted = false;
@@ -83,35 +73,16 @@
 			<Wordmark bind:this={wordmark} text="twinkleplop" />
 			<canvas class="sparks" bind:this={canvas} aria-hidden="true"></canvas>
 			<p class="tagline">plop some <Rainbow text="twinkle" /> in your code</p>
-			<p class="lede">
-				A syntax highlighter and code authoring toolkit. <b>Small, fast, customisable.</b> plop it in
-				and twinkle.
-			</p>
-			<div class="ctas">
-				<a class="cta pri" href="#live" onclick={go_live}>
-					twinkle some code <span class="ar">↓</span>
-				</a>
-				<a class="cta" href="/docs">learn more <small>docs / welcome.md</small></a>
+			<div class="lab">
+				<LiveCard {lit} {total} on_targets={handle_targets} />
 			</div>
-			<div class="hint">↓ scroll to plop the twinkle into the code</div>
+			<a class="cta" href="/docs">learn more <small>docs / welcome.md</small></a>
 		</div>
-
-		<section id="live" bind:this={live}>
-			<div class="sh">
-				<h2>try it live</h2>
-				<span class="n">§ 01</span>
-			</div>
-			<p class="sp">
-				Edit the source and watch it re-twinkle in real-time. This is a scaled-down embed of
-				<a href="/explore/typescript">the lab</a>.
-			</p>
-			<LiveCard {lit} {total} on_targets={handle_targets} />
-		</section>
 
 		<section>
 			<div class="sh">
 				<h2>quick links</h2>
-				<span class="n">§ 02</span>
+				<span class="n">§ 01</span>
 			</div>
 			<div class="links">
 				{#each quick_links as link, i (link.href)}
@@ -229,19 +200,19 @@
 		white-space: nowrap;
 	}
 
-	/* the wordmark sits about a third of the way down the viewport, and the
-	 * hero always fills it, so the live section starts below the fold
-	 * whatever the screen */
+	/* wordmark, tagline, live card and docs link all sit above the fold, centred
+	 * in the viewport under the header. the gap above the card gives way
+	 * first on short screens. */
 	.hero {
 		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: flex-start;
+		justify-content: center;
 		text-align: center;
 		gap: 28px;
-		min-height: calc(100vh - 56px);
-		padding: calc(30vh - 28px) 24px 10vh;
+		min-height: calc(100svh - 56px);
+		padding: 24px;
 	}
 	.sparks {
 		position: fixed;
@@ -252,31 +223,22 @@
 		z-index: 30;
 	}
 	.tagline {
-		font-size: clamp(26px, 4.2vw, 44px);
+		font-size: clamp(24px, 3.4vw, 34px);
 		font-weight: 500;
 		letter-spacing: -0.01em;
 		line-height: 1.25;
 		color: var(--ink);
 		text-wrap: balance;
 	}
-	.lede {
-		max-width: 560px;
-		color: var(--ink2);
-		font-size: 14px;
-		text-wrap: pretty;
-	}
-	.lede b {
-		font-weight: 400;
-		color: var(--ink);
+	.lab {
+		width: 100%;
+		max-width: 680px;
+		margin-top: clamp(0px, 14vh - 64px, 72px);
+		text-align: left;
 	}
 
-	.ctas {
-		display: flex;
-		gap: 12px;
-		flex-wrap: wrap;
-		justify-content: center;
-	}
 	.cta {
+		margin-top: clamp(0px, 3vh, 28px);
 		display: inline-flex;
 		align-items: center;
 		gap: 10px;
@@ -295,32 +257,11 @@
 		color: var(--ink3);
 		font-size: 11px;
 	}
-	.cta .ar {
-		color: var(--green);
-	}
-	.cta.pri,
-	.cta.pri:hover {
-		border-color: var(--green);
-		color: var(--green);
-	}
-
-	.hint {
-		position: absolute;
-		bottom: 28px;
-		left: 50%;
-		transform: translateX(-50%);
-		font-size: 12px;
-		color: var(--ink3);
-		white-space: nowrap;
-	}
 
 	section {
 		max-width: 1040px;
 		margin: 0 auto;
 		padding: 72px 24px;
-	}
-	#live {
-		padding-top: 0;
 	}
 	.sh {
 		display: flex;
@@ -343,20 +284,6 @@
 		color: var(--ink3);
 		font-size: 13px;
 	}
-	.sp {
-		color: var(--ink2);
-		max-width: 640px;
-		margin-bottom: 24px;
-		text-wrap: pretty;
-	}
-	.sp a {
-		color: var(--green);
-	}
-	.sp a:hover {
-		text-decoration: underline;
-		text-underline-offset: 3px;
-	}
-
 	.links {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

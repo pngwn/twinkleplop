@@ -36,6 +36,7 @@ console.log(msg);`;
 
 	const segments = $derived(build_segments(source));
 	const tokens = $derived(segments.filter((s) => s.type !== null));
+	const line_count = $derived(source.split("\n").length);
 
 	function build_segments(text: string): segment[] {
 		const { tokens, token_types } = tokenize(text);
@@ -158,6 +159,7 @@ console.log(msg);`;
 				twinkling · <b>{lit}/{total}</b> tokens
 			{/if}
 		</span>
+		<span class="stats">{tokens.length} tokens · {line_count} lines</span>
 	</div>
 </div>
 
@@ -181,11 +183,13 @@ console.log(msg);`;
 		display: inline;
 	}
 
+	/* on a phone the two sides stack rather than each wrapping mid-label */
 	.bar {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
+		gap: 4px 12px;
 		padding: 10px 16px;
 		font-size: 12px;
 		color: var(--ink2);
@@ -195,6 +199,9 @@ console.log(msg);`;
 	.bar.foot {
 		border-bottom: 0;
 		border-top: 1px solid var(--line);
+	}
+	.bar > span {
+		white-space: nowrap;
 	}
 	.bar b {
 		font-weight: 400;
@@ -214,8 +221,8 @@ console.log(msg);`;
 	 * the tokens. native editing, real spans to animate. */
 	.editor {
 		position: relative;
-		font-size: 15px;
-		line-height: 1.85;
+		font-size: 13px;
+		line-height: 1.75;
 
 		--tok-keyword: var(--red);
 		--tok-function: var(--yellow);
@@ -244,7 +251,7 @@ console.log(msg);`;
 	textarea {
 		display: block;
 		margin: 0;
-		padding: 22px 24px;
+		padding: 18px 24px;
 		border: 0;
 		font: inherit;
 		letter-spacing: 0;
@@ -254,7 +261,9 @@ console.log(msg);`;
 	}
 	.code {
 		position: relative;
-		min-height: 230px;
+		/* the starting sample's six lines, so clearing it doesn't collapse
+		 * the card */
+		min-height: calc(6lh + 36px);
 		overflow: hidden;
 		pointer-events: none;
 	}
@@ -290,9 +299,10 @@ console.log(msg);`;
 			color: var(--tc);
 		}
 	}
-	@media (max-width: 760px) {
-		.editor {
-			font-size: 13px;
+	/* the status beside it runs long mid-flight */
+	@media (max-width: 560px) {
+		.stats {
+			display: none;
 		}
 	}
 </style>
