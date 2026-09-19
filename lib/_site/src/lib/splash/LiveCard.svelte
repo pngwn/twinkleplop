@@ -126,7 +126,7 @@ for (const [i, src] of docs) {
 	<div class="bar">
 		<span>
 			{#if lit === 0}
-				tap the code with the wand to <b>twinkle</b> it
+				no twinkle :[
 			{:else if lit >= total}
 				twinkled in <b>{parse_ms.toFixed(3)}ms</b>
 			{:else}
