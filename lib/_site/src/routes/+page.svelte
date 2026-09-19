@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { create_plop, type plop, type plop_target } from "$lib/splash/plop";
+	import { create_plop, type plop } from "$lib/splash/plop";
 	import SiteHeader from "$lib/components/SiteHeader.svelte";
 	import Seo from "$lib/components/Seo.svelte";
 	import Wordmark from "$lib/splash/Wordmark.svelte";
@@ -23,12 +23,16 @@
 
 	let engine: plop | undefined;
 	// the card reports its tokens before the engine exists
-	let targets: plop_target[] = [];
+	let targets: HTMLElement[] = [];
 
-	function handle_targets(next: plop_target[], changed: number[]) {
+	function handle_targets(next: HTMLElement[]) {
 		targets = next;
-		if (engine) engine.set_targets(next, changed);
+		if (engine) engine.set_targets(next);
 		else start();
+	}
+
+	function handle_cast(x: number, y: number) {
+		engine?.cast(x, y);
 	}
 
 	let mounted = false;
@@ -36,7 +40,7 @@
 		if (engine || !mounted || !wordmark || !canvas || !targets.length) return;
 		engine = create_plop({
 			mount: wordmark.element(),
-			code: targets[0].el.closest("pre") ?? targets[0].el,
+			code: targets[0].closest("pre") ?? targets[0],
 			canvas,
 			pixels: wordmark.pixels(),
 			cols: wordmark.cols(),
@@ -74,7 +78,7 @@
 			<canvas class="sparks" bind:this={canvas} aria-hidden="true"></canvas>
 			<p class="tagline">plop some <Rainbow text="twinkle" /> in your code</p>
 			<div class="lab">
-				<LiveCard {lit} {total} on_targets={handle_targets} />
+				<LiveCard {lit} {total} on_targets={handle_targets} on_cast={handle_cast} />
 			</div>
 			<a class="cta" href="/docs">learn more <small>docs / welcome.md</small></a>
 		</div>
@@ -110,14 +114,13 @@
 		--line: #222;
 		--line2: #2c2c2c;
 		/* text tiers on bg..bg3: ink ≥ 15:1, ink2 (body) ≥ 10.5:1,
-		 * ink3 (hints, § labels) ≥ 7:1. unlit code tokens and the ghost
-		 * wordmark are effects rather than reading text, so they sit lower
-		 * (unlit still clears 4.5:1) to keep the twinkle visible. */
+		 * ink3 (hints, § labels) ≥ 7:1. unlit code tokens are an effect
+		 * rather than reading text, so they sit lower (still clearing 4.5:1)
+		 * to keep the twinkle visible. */
 		--ink: #ededed;
 		--ink2: #c5c5c5;
 		--ink3: #a1a1a1;
 		--unlit: #808080;
-		--ghost: #555;
 		--green: #5be08c;
 		--red: #f0716c;
 		--orange: #f2a25c;
@@ -161,7 +164,6 @@
 		--ink2: #33332f;
 		--ink3: #4e4e48;
 		--unlit: #66665f;
-		--ghost: #66665f;
 		--green: #0f7a3f;
 		--red: #b8321f;
 		--orange: #a4520a;
