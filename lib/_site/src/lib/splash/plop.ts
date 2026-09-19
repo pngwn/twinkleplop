@@ -2,12 +2,13 @@
 //
 // the code card starts grey. a click on it is a cast: every unlit token
 // within HIT_RADIUS of the click is queued, nearest first, and the queue
-// launches one token every STAGGER ms. each launch steals a wordmark pixel,
-// which is lobbed up and comes down onto its token on an underdamped
-// spring; on contact the token flashes and takes its colour. a stolen pixel
-// leaves a ghost and never comes back, and the snippet has as many tokens
-// as the wordmark has pixels, so a fully lit card leaves a fully grey
-// wordmark.
+// launches one token every STAGGER ms. each launch steals a pair of
+// wordmark pixels, one from each side, from mirrored bands. they are lobbed
+// up and outwards, come down onto either half of the token on an
+// underdamped spring, and touch down together; the token flashes and takes
+// its colour. a stolen pixel leaves a ghost and never comes back, and the
+// snippet has half as many tokens as the wordmark has pixels (the odd one
+// out flies alone), so a fully lit card leaves a fully grey wordmark.
 //
 // the dom is rendered by svelte; this module only animates it. per-frame
 // work never reads layout: the wordmark and the tokens are measured in page
@@ -20,22 +21,31 @@
 export const HIT_RADIUS = 50;
 // ms between launches. a launch doesn't wait for the one before to land.
 const STAGGER = 200;
+// pixels per token
+const PAIR = 2;
 // the flight spring's natural frequency, in rad/s, and its damping ratio.
 // under 1 it overshoots a little before it settles.
 const STIFFNESS = 6.5;
 const DAMPING = 0.6;
-// upward launch speed in px/s, on top of 0.6 × the distance to cover: the
-// pixel is lobbed, not fired
+// upward launch speed in px/s, on top of 0.6 × the pair's mean distance to
+// cover: the pixels are lobbed, not fired
 const TOSS = 500;
-// the wordmark's width is cut into this many bands, visited in shuffled
-// order, so consecutive steals are spread across it
+// sideways launch speed in px/s, each pixel away from its partner, so the
+// pair opens out and closes back in on the token
+const SPREAD = 140;
+// how far either side of the token's middle each pixel lands, as a share
+// of its width
+const LAND_SPLIT = 0.2;
+// the wordmark's width is cut into this many bands. a pair takes a band on
+// the left and its mirror on the right, the left bands visited in shuffled
+// order, so consecutive steals are spread across the wordmark.
 const BANDS = 12;
-// a pixel lands once it is within this many cells of its token (4px at
-// least) after SETTLE_AFTER seconds, and regardless at GIVE_UP
+// a pair lands once both pixels are within this many cells of their spots
+// (4px at least) after SETTLE_AFTER seconds, and regardless at GIVE_UP
 const LAND_WITHIN = 0.6;
 const SETTLE_AFTER = 0.25;
 const GIVE_UP = 1.6;
-// ms a landed pixel takes to shrink away
+// ms a landed pair takes to shrink away
 const SHRINK = 320;
 
 // a spark is a tiny square with a soft glow of its own colour. drawn
@@ -152,30 +162,37 @@ interface target {
 	lit: boolean;
 }
 
+interface cell extends plop_pixel {
+	// x offset of this pixel's mote in the atlas, per mode
+	sprite: Record<splash_mode, number>;
+	band: number;
+	// -1 on the wordmark's left half, 1 on its right
+	side: number;
+	gone: boolean;
+}
+
 interface flight {
-	target: target;
-	t0: number;
+	cell: cell;
 	// page-space centre of the home cell at launch
 	sx: number;
 	sy: number;
-	// start minus landing point, and launch velocity in px/s, per axis
+	// start minus landing spot, and launch velocity in px/s, per axis
 	dx: number;
 	dy: number;
 	vx: number;
 	vy: number;
-	// when it touched down, 0 while still in the air
-	landed: number;
 	// last page-space centre, to shed the trail behind it
 	px: number;
 	py: number;
 }
 
-interface cell extends plop_pixel {
-	// x offset of this pixel's mote in the atlas, per mode
-	sprite: Record<splash_mode, number>;
-	band: number;
-	gone: boolean;
-	flight: flight | null;
+// the pixels one token launched, flown and landed as one
+interface pair {
+	target: target;
+	t0: number;
+	// when it touched down, 0 while still in the air
+	landed: number;
+	flights: flight[];
 }
 
 interface spark {
@@ -239,20 +256,26 @@ export function create_plop(opts: plop_options): plop {
 			light: colors.indexOf(pixel.color.light) * mote_cell
 		},
 		band: Math.floor((pixel.x / cols) * BANDS),
-		gone: false,
-		flight: null
+		side: pixel.x < cols / 2 ? -1 : 1,
+		gone: false
 	}));
 
 	let targets: target[] = [];
 	let queue: target[] = [];
 	let next_launch = 0;
-	let flying: cell[] = [];
+	let flying: pair[] = [];
 	let sparks: spark[] = [];
 	let lit = 0;
 	// page-space top left of the wordmark, and the side of one of its cells
 	let home_x = 0;
 	let home_y = 0;
 	let size = 0;
+	// page-space left and right of the code's scrollport: a line too long
+	// for it scrolls sideways, and what's out of view can't be hit or landed
+	// on. scrolling it leaves the token boxes stale until the next launch.
+	let view_l = 0;
+	let view_r = 0;
+	let stale = false;
 	let canvas_dirty = false;
 	let raf = 0;
 	let scheduled = false;
@@ -260,11 +283,11 @@ export function create_plop(opts: plop_options): plop {
 	let scroll_y = window.scrollY;
 	let viewport_h = window.innerHeight;
 
-	// the order bands are stolen from, reshuffled each time round
+	// the order the left bands are stolen from, reshuffled each time round
 	let bands: number[] = [];
 	let band_at = 0;
 	function shuffle_bands() {
-		bands = Array.from({ length: BANDS }, (_, i) => i);
+		bands = Array.from({ length: BANDS / 2 }, (_, i) => i);
 		for (let i = bands.length - 1; i > 0; i--) {
 			const j = Math.floor(Math.random() * (i + 1));
 			[bands[i], bands[j]] = [bands[j], bands[i]];
@@ -273,17 +296,28 @@ export function create_plop(opts: plop_options): plop {
 	}
 	shuffle_bands();
 
-	// a random pixel from the next band that has one left
-	function pick(): cell | undefined {
+	const any = (pool: cell[]) => pool[Math.floor(Math.random() * pool.length)];
+
+	// a random pixel from the next left band with one left, and one from the
+	// mirrored band on the right. the halves don't hold the same number of
+	// pixels, so once a side runs dry the rest come from the other.
+	function pick_pair(): cell[] {
 		const free = cells.filter((c) => !c.gone);
-		if (!free.length) return;
-		for (let tries = 0; tries < BANDS; tries++) {
+		const left = free.filter((c) => c.side < 0);
+		const right = free.filter((c) => c.side > 0);
+		for (let tries = 0; tries < bands.length; tries++) {
 			const band = bands[band_at++];
 			if (band_at === bands.length) shuffle_bands();
-			const pool = free.filter((c) => c.band === band);
-			if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
+			const l = left.filter((c) => c.band === band);
+			const r = right.filter((c) => c.band === BANDS - 1 - band);
+			if (l.length && r.length) return [any(l), any(r)];
 		}
-		return free[Math.floor(Math.random() * free.length)];
+		if (left.length && right.length) return [any(left), any(right)];
+		const rest = left.length ? left : right;
+		const out: cell[] = [];
+		while (out.length < PAIR && rest.length) out.push(...rest.splice(Math.floor(Math.random() * rest.length), 1));
+		// left to right, so each takes the side it is on
+		return out.sort((a, b) => a.x - b.x);
 	}
 
 	function measure() {
@@ -293,6 +327,10 @@ export function create_plop(opts: plop_options): plop {
 		size = m.width / cols;
 		home_x = m.left + scroll_x;
 		home_y = m.top + scroll_y;
+		const view = opts.code.getBoundingClientRect();
+		view_l = view.left + scroll_x;
+		view_r = view.right + scroll_x;
+		stale = false;
 		for (const t of targets) {
 			const rect = t.el.getBoundingClientRect();
 			t.x = rect.left + scroll_x;
@@ -300,6 +338,16 @@ export function create_plop(opts: plop_options): plop {
 			t.w = rect.width;
 			t.h = rect.height;
 		}
+	}
+
+	// the stretch of a token's box that is in view. scrolled wholly out, it
+	// comes back empty, pinned to the nearest edge of the view.
+	function visible(t: target): [number, number] {
+		const left = Math.max(t.x, view_l);
+		const right = Math.min(t.x + t.w, view_r);
+		if (right > left) return [left, right];
+		const edge = Math.min(Math.max(t.x + t.w / 2, view_l), view_r);
+		return [edge, edge];
 	}
 
 	// the hit: white-hot, then cooling to the token's colour. white vanishes
@@ -339,9 +387,11 @@ export function create_plop(opts: plop_options): plop {
 		const hits: { t: target; d: number }[] = [];
 		for (const t of targets) {
 			if (t.lit || t.queued) continue;
+			const [left, right] = visible(t);
+			if (left === right) continue;
 			// from the click to the nearest point of the token's box, so a
 			// token the circle only clips still counts
-			const d = Math.hypot(x - Math.min(Math.max(x, t.x), t.x + t.w), y - Math.min(Math.max(y, t.y), t.y + t.h));
+			const d = Math.hypot(x - Math.min(Math.max(x, left), right), y - Math.min(Math.max(y, t.y), t.y + t.h));
 			if (d <= HIT_RADIUS) hits.push({ t, d });
 		}
 		hits.sort((a, b) => a.d - b.d);
@@ -361,74 +411,82 @@ export function create_plop(opts: plop_options): plop {
 	}
 
 	function launch(t: target, now: number) {
-		const c = pick();
-		// more tokens than pixels: the rest light without one
-		if (!c) return light(t);
-		c.gone = true;
-		c.ghost.style.opacity = "1";
-		c.el.toggleAttribute("data-fly", true);
+		const picked = pick_pair();
+		// more tokens than pixels: the rest light without any
+		if (!picked.length) return light(t);
 
-		const sx = home_x + (c.x + 0.5) * size;
-		const sy = home_y + (c.y + 0.5) * size;
-		const dx = sx - (t.x + t.w * (0.2 + 0.6 * Math.random()));
-		const dy = sy - (t.y + t.h * 0.52);
-		c.flight = {
-			target: t,
-			t0: now,
-			sx,
-			sy,
-			dx,
-			dy,
-			// drifts a little towards the token, and is thrown upwards
-			// harder the further it has to go
-			vx: -dx * 0.35 + (Math.random() - 0.5) * 160,
-			vy: -(TOSS + Math.hypot(dx, dy) * 0.6),
-			landed: 0,
-			px: sx,
-			py: sy
-		};
-		flying.push(c);
+		// reads before this frame writes anything, so no forced flush
+		if (stale) measure();
+		const [left, right] = visible(t);
+		const ey = t.y + t.h * 0.52;
+		const starts = picked.map((c) => [home_x + (c.x + 0.5) * size, home_y + (c.y + 0.5) * size]);
+		const reach = starts.reduce((sum, [sx, sy]) => sum + Math.hypot(sx - (left + right) / 2, sy - ey), 0) / starts.length;
+		const flights = picked.map((c, i): flight => {
+			c.gone = true;
+			c.ghost.style.opacity = "1";
+			c.el.toggleAttribute("data-fly", true);
+			// the pair comes left to right: the left one lands left of the
+			// middle, the right one right of it. alone, a pixel lands in the
+			// middle.
+			const side = picked.length > 1 ? (i === 0 ? -1 : 1) : 0;
+			const [sx, sy] = starts[i];
+			const dx = sx - (left + (right - left) * (0.5 + side * LAND_SPLIT));
+			const dy = sy - ey;
+			return {
+				cell: c,
+				sx,
+				sy,
+				dx,
+				dy,
+				// drifts towards the token and away from its partner, and both
+				// are thrown up alike, harder the further they have to go
+				vx: -dx * 0.35 + side * SPREAD,
+				vy: -(TOSS + reach * 0.6),
+				px: sx,
+				py: sy
+			};
+		});
+		flying.push({ target: t, t0: now, landed: 0, flights });
 	}
 
 	function fly(now: number) {
 		let kept = 0;
-		for (const c of flying) {
-			const f = c.flight!;
-			const t = (now - f.t0) / 1000;
-			const rx = spring(t, f.dx, f.vx);
-			const ry = spring(t, f.dy, f.vy);
-			// the spring is centred on the landing point; the transform is
-			// relative to the home cell
-			const tx = rx - f.dx;
-			const ty = ry - f.dy;
-			const x = f.sx + tx;
-			const y = f.sy + ty;
-
-			if (!f.landed && ((t > SETTLE_AFTER && Math.hypot(rx, ry) < Math.max(4, size * LAND_WITHIN)) || t > GIVE_UP)) {
-				f.landed = now;
-				light(f.target);
-				if (!reduced) emit(c, x, y, true);
+		for (const p of flying) {
+			const t = (now - p.t0) / 1000;
+			// where each pixel is, relative to its landing spot
+			const offsets = p.flights.map((f) => [spring(t, f.dx, f.vx), spring(t, f.dy, f.vy)]);
+			const near = Math.max(4, size * LAND_WITHIN);
+			const landing =
+				!p.landed && ((t > SETTLE_AFTER && offsets.every(([rx, ry]) => Math.hypot(rx, ry) < near)) || t > GIVE_UP);
+			if (landing) {
+				p.landed = now;
+				light(p.target);
 			}
-
 			// shrinks away where it landed, still riding out the spring
-			const k = f.landed ? clamp((now - f.landed) / SHRINK) : 0;
-			if (!f.landed && Math.random() < 0.6) emit(c, x, y, false);
-			f.px = x;
-			f.py = y;
-			c.el.style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${(1 - k).toFixed(3)})`;
-			c.el.style.opacity = String(1 - k * k);
+			const k = p.landed ? clamp((now - p.landed) / SHRINK) : 0;
 
-			if (k < 1) flying[kept++] = c;
-			else {
-				c.el.removeAttribute("data-fly");
-				c.flight = null;
-			}
+			p.flights.forEach((f, i) => {
+				// the spring is centred on the landing spot; the transform is
+				// relative to the home cell
+				const tx = offsets[i][0] - f.dx;
+				const ty = offsets[i][1] - f.dy;
+				const x = f.sx + tx;
+				const y = f.sy + ty;
+				if (landing) emit(f, x, y, true);
+				else if (!p.landed && Math.random() < 0.6) emit(f, x, y, false);
+				f.px = x;
+				f.py = y;
+				const el = f.cell.el;
+				el.style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${(1 - k).toFixed(3)})`;
+				el.style.opacity = String(1 - k * k);
+				if (k >= 1) el.removeAttribute("data-fly");
+			});
+			if (k < 1) flying[kept++] = p;
 		}
 		flying.length = kept;
 	}
 
-	function emit(c: cell, x: number, y: number, burst: boolean) {
-		const f = c.flight!;
+	function emit(f: flight, x: number, y: number, burst: boolean) {
 		const vx = x - f.px;
 		const vy = y - f.py;
 		const speed = Math.hypot(vx, vy);
@@ -463,7 +521,7 @@ export function create_plop(opts: plop_options): plop {
 				phase: Math.random() * 6.3,
 				freq: 0.15 + Math.random() * 0.25,
 				// three in ten twinkle white
-				sprite: Math.random() < 0.3 ? 0 : c.sprite[mode]
+				sprite: Math.random() < 0.3 ? 0 : f.cell.sprite[mode]
 			});
 		}
 	}
@@ -563,6 +621,10 @@ export function create_plop(opts: plop_options): plop {
 		measure();
 	}
 
+	function handle_code_scroll() {
+		stale = true;
+	}
+
 	// scroll events are dispatched before the frame's styles are touched, so
 	// the read is free here
 	function handle_scroll() {
@@ -575,6 +637,7 @@ export function create_plop(opts: plop_options): plop {
 	observer.observe(opts.code);
 	window.addEventListener("resize", handle_resize);
 	window.addEventListener("scroll", handle_scroll, { passive: true });
+	opts.code.addEventListener("scroll", handle_code_scroll, { passive: true });
 	// web fonts change token widths without necessarily resizing anything
 	document.fonts?.ready.then(measure);
 
@@ -590,6 +653,7 @@ export function create_plop(opts: plop_options): plop {
 			observer.disconnect();
 			window.removeEventListener("resize", handle_resize);
 			window.removeEventListener("scroll", handle_scroll);
+			opts.code.removeEventListener("scroll", handle_code_scroll);
 		}
 	};
 }

@@ -6,32 +6,23 @@
 
 	const tokenize = ts_tokenize({ fidelity: "high" });
 
-	// every token the wand lights costs the wordmark a pixel, so this has
-	// exactly as many tokens as "twinkleplop" has pixels: 123. recount if
-	// either changes.
-	const SOURCE = `import { twinkle, type Token } from "twinkleplop";
+	// every token the wand lights costs the wordmark a pair of pixels, so
+	// this has half as many tokens as "twinkleplop" has pixels, rounded up:
+	// 62 for 123, the odd pixel flying alone. short lines of short tokens
+	// keep it narrow: on a phone only the first import runs past the card.
+	// recount if either changes.
+	const SOURCE = `import { language } from "@twinkleplop/typescript";
+import "@twinkleplop/theme-github";
 
-type Theme = "light" | "dark";
+const ts = language();
 
-interface Options {
-  theme: Theme;
-  lang: string;
-  tabSize?: number;
-}
-
-export function highlight(src: string, opts: Options): string {
-  if (!src) return "";
-  const tokens = twinkle(src, opts.lang, opts.tabSize);
-  return tokens
-    .map((t: Token) => \`<span class="\${t.kind}">\${t.text}</span>\`)
-    .join("");
-}
-
-export const html = highlight("const x = 1;", {
-  theme: "dark",
-  lang: "ts",
-  tabSize: 2,
-});`;
+for (const [i, src] of docs) {
+  const html = ts(src, {
+    line_numbers: i > 0,
+    attributes: { id: \`doc-\${i}\` },
+  });
+  el[i].innerHTML = html;
+}`;
 
 	let {
 		lit,
@@ -181,8 +172,10 @@ export const html = highlight("const x = 1;", {
 		font-feature-settings:
 			"liga" 0,
 			"calt" 0;
-		white-space: pre-wrap;
-		overflow-wrap: break-word;
+		/* a line that doesn't fit scrolls rather than wraps: a wrapped line
+		 * costs a phone the room for the link under the card */
+		white-space: pre;
+		overflow-x: auto;
 		tab-size: 2;
 		user-select: none;
 		-webkit-user-select: none;
@@ -260,8 +253,8 @@ export const html = highlight("const x = 1;", {
 	@media (max-width: 760px) {
 		.code {
 			padding: 14px 16px;
-			font-size: 12.5px;
-			line-height: 1.7;
+			font-size: 11.5px;
+			line-height: 1.6;
 		}
 		.bar {
 			padding: 8px 12px;

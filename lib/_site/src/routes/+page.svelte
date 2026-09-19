@@ -204,7 +204,8 @@
 
 	/* wordmark, tagline, live card and docs link all sit above the fold, centred
 	 * in the viewport under the header. the gap above the card gives way
-	 * first on short screens. */
+	 * first on short screens, then the rest of the spacing, down to an
+	 * iphone se. */
 	.hero {
 		position: relative;
 		display: flex;
@@ -212,9 +213,9 @@
 		align-items: center;
 		justify-content: center;
 		text-align: center;
-		gap: 28px;
+		gap: clamp(20px, 4vh, 28px);
 		min-height: calc(100svh - 56px);
-		padding: 24px;
+		padding: clamp(12px, 3vh, 24px) 24px;
 	}
 	.sparks {
 		position: fixed;
