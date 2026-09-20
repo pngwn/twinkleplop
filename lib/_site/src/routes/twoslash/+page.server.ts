@@ -59,6 +59,16 @@ const result = square("four")
 `,
   },
   {
+    id: "completions",
+    title: "Completions (^|)",
+    blurb:
+      "A // ^| comment asks the compiler what could come next at that caret. The members matching what has already been typed render as a dropdown anchored to the caret, the way an editor would show them.",
+    code: `const users = ["ada", "grace"]
+const found = users.find
+//                     ^|
+`,
+  },
+  {
     id: "types",
     title: "Type-level programming",
     blurb:
@@ -135,4 +145,3 @@ export const load: PageServerLoad = () => {
     })),
   };
 };
-

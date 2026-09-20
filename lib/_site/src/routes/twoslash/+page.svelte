@@ -309,20 +309,37 @@
 		color: #d2a6ff;
 	}
 
+	/* the host is an empty span at the caret; the list hangs off it. Unlike
+	   the hover popover it is always visible — it stands in for an editor's
+	   completion popup — so it overflows the <pre>. */
 	.code-wrap :global(.twoslash-completion) {
-		border-bottom: 1px dashed #6bffb8;
+		position: relative;
 	}
 
 	.code-wrap :global(.twoslash-completions) {
 		display: block;
-		margin: 0.25rem 0;
-		padding: 0.5rem 0.75rem;
-		border-left: 3px solid #6bffb8;
-		background: rgba(107, 255, 184, 0.06);
+		position: absolute;
+		top: calc(100% + 0.25rem);
+		left: 0;
+		z-index: 15;
+		width: max-content;
+		padding: 0.25rem 0;
+		border: 1px solid #6bffb8;
+		background: #1a1a1a;
+		box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
 		color: #6bffb8;
+		text-align: left;
+		text-decoration: none;
 	}
 
 	.code-wrap :global(.twoslash-completion-entry) {
 		display: block;
+		padding: 0 0.75rem;
+	}
+
+	/* the dropdown escapes the code block, so a snippet carrying one needs
+	   room below or the next section sits underneath it. */
+	.code-wrap:has(:global(.twoslash-completions)) {
+		margin-bottom: 9rem;
 	}
 </style>

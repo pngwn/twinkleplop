@@ -63,13 +63,18 @@ interface HighlightWrapper extends BaseWrapper {
   text?: string;
 }
 
-interface CompletionWrapper extends BaseWrapper {
-  kind: "completion";
+export type Wrapper = HoverWrapper | ErrorWrapper | HighlightWrapper;
+
+/**
+ * a completion list. twoslash reports `^|` as a zero-length node, so unlike
+ * the wrappers above it decorates no text: it anchors to a single offset
+ * (the caret, sitting just after `prefix`) and renders an empty host there.
+ * `render` keys these by that offset, so it is not repeated here.
+ */
+export interface CompletionPoint {
   prefix: string;
   completions: CompletionItem[];
 }
-
-export type Wrapper = HoverWrapper | ErrorWrapper | HighlightWrapper | CompletionWrapper;
 
 interface ErrorLineAnnotation {
   kind: "error-line";
