@@ -73,7 +73,7 @@
 			<div class="lab">
 				<LiveCard {lit} {total} on_targets={handle_targets} on_cast={handle_cast} />
 			</div>
-			<a class="cta" href="/docs">learn more <small>docs / welcome.md</small></a>
+			<a class="cta" href="/docs">learn more</a>
 		</div>
 
 	</main>
@@ -226,10 +226,6 @@
 	.cta:hover {
 		color: var(--ink);
 		border-color: var(--green);
-	}
-	.cta small {
-		color: var(--ink3);
-		font-size: 11px;
 	}
 
 
