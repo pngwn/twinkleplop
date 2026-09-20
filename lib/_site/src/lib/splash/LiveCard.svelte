@@ -325,12 +325,12 @@ for (const [i, src] of docs) {
 			     token lights -->
 			<svg class="wand" viewBox="0 0 26 26" shape-rendering="crispEdges" aria-hidden="true">
 				<g fill="var(--ink)">
-					<rect x="6" y="2" width="3" height="3" />
-					<rect x="3" y="5" width="3" height="3" />
-					<rect x="9" y="5" width="3" height="3" />
-					<rect x="6" y="8" width="3" height="3" />
+					<rect x="5" y="2" width="3" height="3" />
+					<rect x="2" y="5" width="3" height="3" />
+					<rect x="8" y="5" width="3" height="3" />
+					<rect x="5" y="8" width="3" height="3" />
 				</g>
-				<rect x="6" y="5" width="3" height="3" fill="var(--yellow)" />
+				<rect x="5" y="5" width="3" height="3" fill="var(--yellow)" />
 				<rect x="10" y="10" width="3" height="3" fill="var(--purple)" />
 				<rect x="13" y="13" width="3" height="3" fill="var(--blue)" />
 				<rect x="16" y="16" width="3" height="3" fill="var(--green)" />
@@ -453,10 +453,10 @@ for (const [i, src] of docs) {
 		-webkit-user-select: none;
 		/* quick taps stay taps, not a double-tap zoom */
 		touch-action: manipulation;
-		/* a pixel-art wand: a star at the tip, the hotspot, on a rainbow stick */
+		/* the same wand as the corner hint, its heart on the hotspot */
 		cursor:
-			url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' shape-rendering='crispEdges'%3E%3Crect x='3' y='0' width='3' height='3' fill='%23fff'/%3E%3Crect x='0' y='3' width='3' height='3' fill='%23fff'/%3E%3Crect x='6' y='3' width='3' height='3' fill='%23fff'/%3E%3Crect x='3' y='6' width='3' height='3' fill='%23fff'/%3E%3Crect x='3' y='3' width='3' height='3' fill='%23e6c07b'/%3E%3Crect x='8' y='8' width='3' height='3' fill='%23c792ea'/%3E%3Crect x='10' y='10' width='3' height='3' fill='%237cb7ff'/%3E%3Crect x='12' y='12' width='3' height='3' fill='%235be08c'/%3E%3Crect x='14' y='14' width='3' height='3' fill='%23e6c07b'/%3E%3Crect x='16' y='16' width='3' height='3' fill='%23f2a25c'/%3E%3Crect x='18' y='18' width='3' height='3' fill='%23f0716c'/%3E%3Crect x='20' y='20' width='3' height='3' fill='%23d8d8d8'/%3E%3Crect x='22' y='22' width='3' height='3' fill='%23d8d8d8'/%3E%3C/svg%3E")
-				4 4,
+			url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' shape-rendering='crispEdges'><rect x='5' y='2' width='3' height='3' fill='%23ededed'/><rect x='2' y='5' width='3' height='3' fill='%23ededed'/><rect x='8' y='5' width='3' height='3' fill='%23ededed'/><rect x='5' y='8' width='3' height='3' fill='%23ededed'/><rect x='5' y='5' width='3' height='3' fill='%23e6c07b'/><rect x='10' y='10' width='3' height='3' fill='%23c792ea'/><rect x='13' y='13' width='3' height='3' fill='%237cb7ff'/><rect x='16' y='16' width='3' height='3' fill='%235be08c'/><rect x='19' y='19' width='3' height='3' fill='%23f2a25c'/><rect x='22' y='22' width='3' height='3' fill='%23f0716c'/><rect x='16' y='4' width='2' height='2' fill='%23f08ab8'/><rect x='21' y='9' width='2' height='2' fill='%237cb7ff'/><rect x='2' y='13' width='2' height='2' fill='%235be08c'/></svg>")
+				6 6,
 			crosshair;
 
 		--tok-keyword: var(--red);
@@ -482,11 +482,11 @@ for (const [i, src] of docs) {
 		--tok-comment: var(--ink2);
 		--tok-identifier: var(--ink);
 	}
-	/* a white star is lost on paper: ink star, light-mode rainbow */
+	/* a white star is lost on paper: the light palette's wand */
 	:global(:root[data-mode="light"]) .code {
 		cursor:
-			url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' shape-rendering='crispEdges'%3E%3Crect x='3' y='0' width='3' height='3' fill='%23171715'/%3E%3Crect x='0' y='3' width='3' height='3' fill='%23171715'/%3E%3Crect x='6' y='3' width='3' height='3' fill='%23171715'/%3E%3Crect x='3' y='6' width='3' height='3' fill='%23171715'/%3E%3Crect x='3' y='3' width='3' height='3' fill='%23e6c07b'/%3E%3Crect x='8' y='8' width='3' height='3' fill='%237b3fb8'/%3E%3Crect x='10' y='10' width='3' height='3' fill='%231b5fc4'/%3E%3Crect x='12' y='12' width='3' height='3' fill='%230f7a3f'/%3E%3Crect x='14' y='14' width='3' height='3' fill='%237a5c00'/%3E%3Crect x='16' y='16' width='3' height='3' fill='%23a4520a'/%3E%3Crect x='18' y='18' width='3' height='3' fill='%23b8321f'/%3E%3Crect x='20' y='20' width='3' height='3' fill='%2333332f'/%3E%3Crect x='22' y='22' width='3' height='3' fill='%2333332f'/%3E%3C/svg%3E")
-				4 4,
+			url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' shape-rendering='crispEdges'><rect x='5' y='2' width='3' height='3' fill='%23171715'/><rect x='2' y='5' width='3' height='3' fill='%23171715'/><rect x='8' y='5' width='3' height='3' fill='%23171715'/><rect x='5' y='8' width='3' height='3' fill='%23171715'/><rect x='5' y='5' width='3' height='3' fill='%237a5c00'/><rect x='10' y='10' width='3' height='3' fill='%237b3fb8'/><rect x='13' y='13' width='3' height='3' fill='%231b5fc4'/><rect x='16' y='16' width='3' height='3' fill='%230f7a3f'/><rect x='19' y='19' width='3' height='3' fill='%23a4520a'/><rect x='22' y='22' width='3' height='3' fill='%23b8321f'/><rect x='16' y='4' width='2' height='2' fill='%23b8256b'/><rect x='21' y='9' width='2' height='2' fill='%231b5fc4'/><rect x='2' y='13' width='2' height='2' fill='%230f7a3f'/></svg>")
+				6 6,
 			crosshair;
 	}
 
