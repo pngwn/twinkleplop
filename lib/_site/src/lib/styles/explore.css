@@ -38,7 +38,8 @@
 	--anno: 1;
 
 	position: relative;
-	height: 100vh;
+	/* svh: the visible height on a phone, toolbars and all */
+	height: 100svh;
 	width: 100%;
 	display: grid;
 	grid-template-rows: auto auto 1fr auto;

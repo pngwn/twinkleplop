@@ -195,7 +195,7 @@
 		inset: auto;
 		margin: 0;
 		max-width: min(72ch, calc(100vw - 16px));
-		max-height: min(24rem, calc(100vh - 16px));
+		max-height: min(24rem, calc(100svh - 16px));
 		overflow: auto;
 		padding: 8px 10px;
 		background: var(--docs-bg-2);
