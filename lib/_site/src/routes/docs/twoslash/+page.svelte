@@ -79,6 +79,10 @@ unified()
 		Twoslash uses the TypeScript compiler to get hover types, query results, completions and errors
 		for a snippet. Twinkleplop includes this information in the highlighted HTML.
 	</p>
+	<p>
+		Every notation below is rendered side by side with <code>@shikijs/twoslash</code> on the
+		<a href="/twoslash">twoslash comparison page</a>.
+	</p>
 
 	<Section id="install" title="install and use" num="§ 01">
 		<CodeBlock fname="terminal" html={install} />

@@ -39,11 +39,12 @@
     "@twinkleplop/typescript": "workspace:*",
     "@twinkleplop/whitespace": "workspace:*",
     "@twinkleplop/yaml": "workspace:*",
-    "mdsvex": "https://pkg.pr.new/pngwn/MDsveX/mdsvex@704",
+    "mdsvex": "1.0.0-next.0",
     "prismjs": "^1.30.0",
-    "shiki": "^4.0.2"
+    "shiki": "^4.4.3"
   },
   "devDependencies": {
+    "@shikijs/twoslash": "^4.4.3",
     "@sveltejs/kit": "^2.58.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@twinkleplop/markdown-it": "workspace:*",
