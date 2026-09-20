@@ -8,11 +8,10 @@
 
 	// every token the wand lights costs the wordmark a pair of pixels, so
 	// this has half as many tokens as "twinkleplop" has pixels, rounded up:
-	// 62 for 123, the odd pixel flying alone. every line is short enough to
-	// sit in a phone's card without wrapping or scrolling. recount if
-	// either changes.
-	const SOURCE = `import { language } from
-  "@twinkleplop/typescript";
+	// 62 for 123, the odd pixel flying alone. every line but the first
+	// import fits a phone's card as is; that one wraps there and sits on one
+	// line wherever there is room. recount if either changes.
+	const SOURCE = `import { language } from "@twinkleplop/typescript";
 import "@twinkleplop/theme-github";
 
 const ts = language();
@@ -262,7 +261,7 @@ for (const [i, src] of docs) {
 			{#if lit === 0}
 				no twinkle :[
 			{:else if lit >= total}
-				twinkled in <b>{parse_ms.toFixed(3)}ms</b> · my time <b>{my_time}</b>
+				twinkled in <b>{parse_ms.toFixed(3)}ms</b> · your time <b>{my_time}</b>
 			{:else}
 				twinkling · <b>{lit}/{total}</b> twinkles
 			{/if}
@@ -327,9 +326,11 @@ for (const [i, src] of docs) {
 		font-feature-settings:
 			"liga" 0,
 			"calt" 0;
-		/* nothing here is wide enough to need either, but a stray line
-		 * should scroll rather than wrap and cost a phone a row */
-		white-space: pre;
+		/* a line too wide for the card wraps at a space; a single token too
+		 * wide to fit scrolls instead, since a token split over two rows
+		 * would be aimed at by its union box */
+		white-space: pre-wrap;
+		overflow-wrap: normal;
 		overflow-x: auto;
 		tab-size: 2;
 		user-select: none;
