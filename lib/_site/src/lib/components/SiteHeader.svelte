@@ -28,7 +28,10 @@
 	<div class="brand">
 		<a class="wordmark" href="/"><Rainbow text="twinkleplop" /></a>
 		<nav>
-			<a href="/explore" aria-current={current('/explore')}>explore</a><i aria-hidden="true">/</i>
+			<a href="/explore" aria-current={current('/explore')}>explore</a>
+			<i aria-hidden="true">/</i>
+			<a href="/twoslash" aria-current={current('/twoslash')}>twoslash</a>
+			<i aria-hidden="true">/</i>
 			<a href="/docs" aria-current={current('/docs')}>docs</a>
 		</nav>
 	</div>
