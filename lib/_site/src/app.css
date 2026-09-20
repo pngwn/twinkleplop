@@ -60,7 +60,9 @@ body {
   /*font-family: var(--font-mono);*/
   font-size: 0.875rem;
   line-height: 1.6;
-  min-height: 100vh;
+  /* svh, not vh: on a phone vh is the height with the browser's toolbars
+     hidden, which leaves every page a toolbar taller than the screen */
+  min-height: 100svh;
   /* overflow: hidden; */
 }
 

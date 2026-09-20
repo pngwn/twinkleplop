@@ -126,7 +126,8 @@
 	}*/
 
 	.app-container {
-		min-height: 100vh;
+		/* svh: see the note on body in app.css */
+		min-height: 100svh;
 		display: flex;
 		flex-direction: column;
 		transition: background 0.3s ease;
