@@ -9,6 +9,10 @@
  * colours come from `currentColor` and the two custom properties below, so
  * it composes with any theme.
  *
+ * Popovers also carry `aria-hidden` in the markup, which keeps them out of the
+ * code for readers that never apply this file: screen readers, indexers and
+ * HTML-to-text fetchers.
+ *
  * Popovers are positioned absolutely against their hover target, which an
  * ancestor with `overflow: hidden` or `overflow: auto` will clip. If your
  * code blocks scroll, drive the popovers with the Popover API instead and

@@ -10,6 +10,37 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { create_highlighter } from "../src/index.js";
 
+// The text a reader gets from rendered HTML. `aria: true` drops `aria-hidden`
+// subtrees as an accessibility tree does; without it this is `textContent`.
+function text_of(html: string, { aria = false }: { aria?: boolean } = {}): string {
+  let out = "";
+  let i = 0;
+  let depth = 0; // open elements inside an aria-hidden subtree, 0 = outside
+
+  const tag = /<(\/?)([a-zA-Z][^\s/>]*)([^>]*)>/g;
+  let m: RegExpExecArray | null;
+  while ((m = tag.exec(html))) {
+    if (depth === 0) out += html.slice(i, m.index);
+    i = tag.lastIndex;
+
+    const closing = m[1] === "/";
+    if (depth > 0) {
+      depth += closing ? -1 : 1;
+    } else if (aria && !closing && /\saria-hidden=["']true["']/.test(m[3])) {
+      depth = 1;
+    }
+  }
+  if (depth === 0) out += html.slice(i);
+
+  return out
+    .replace(/<pre[^>]*>|<\/pre>|<code[^>]*>|<\/code>/g, "")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&amp;", "&");
+}
+
 describe("@twinkleplop/twoslash", () => {
   /** @type {(code: string) => string} */
   let highlight: (code: string) => string;
@@ -46,6 +77,19 @@ describe("@twinkleplop/twoslash", () => {
     const html = highlight(`const x = 1\n`);
     expect(html.startsWith(`<pre class="twinkleplop twoslash"><code>`)).toBe(true);
     expect(html.endsWith(`</code></pre>`)).toBe(true);
+  });
+
+  // popovers sit inline between the tokens they describe, and the CSS that
+  // hides them is unavailable to a screen reader, indexer or fetcher
+  it("keeps hover popovers out of the code's text", () => {
+    const source = `const greeting = "hello world"\nconst n = greeting.length\n`;
+    const html = highlight(source);
+
+    expect(text_of(html, { aria: true })).toBe(source);
+
+    // not vacuous: without the marker their text lands in the code
+    expect(html).toContain(`twoslash-popover-type`);
+    expect(text_of(html)).toContain(`const greeting: "hello world"`);
   });
 
   it("closes every span it opens", () => {

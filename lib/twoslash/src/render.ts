@@ -210,7 +210,7 @@ function wrapper_tags(w: Wrapper, ctx: RenderContext): { open: string; close: st
         popover += `<span class="twoslash-popover-docs">${ctx.render_docs(w.docs)}</span>`;
       }
       popover += render_doc_tags(w.tags, "twoslash-popover", ctx);
-      const close = `</span><span class="twoslash-popover">${popover}</span></span>`;
+      const close = `</span><span class="twoslash-popover" aria-hidden="true">${popover}</span></span>`;
       return { open, close };
     }
     case "error": {
