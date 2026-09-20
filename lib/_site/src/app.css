@@ -49,6 +49,11 @@
 
 html {
   font-size: 14px;
+  /* phones inflate the text of blocks they judge wide and text-heavy, which
+     blows up a code block with long lines and leaves the prose beside it
+     alone. 100% keeps our sizes; pinch-zoom still works. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
