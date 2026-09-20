@@ -321,23 +321,24 @@ for (const [i, src] of docs) {
 		<pre class="code" bind:this={pre} tabindex="0" role="group" aria-label="twinkleplop sample: arrow keys move the wand, enter twinkles the code under it" onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={cancel} onkeydown={key} onfocus={focus_code} onblur={blur_code}>{#each segments as segment}{#if segment.type}<span class="tok" style:--tc="var(--tok-{segment.type}, var(--ink))">{segment.text}</span>{:else}{segment.text}{/if}{/each}</pre>
 		{#if lit === 0}
 			<!-- the cursor carries the hint on a pointer; touch gets the wand
-			     in the corner until the first token lights -->
-			<svg class="wand" viewBox="0 0 26 26" aria-hidden="true">
+			     in the corner, pointing back into the code, until the first
+			     token lights -->
+			<svg class="wand" viewBox="0 0 26 26" shape-rendering="crispEdges" aria-hidden="true">
 				<g fill="var(--ink)">
-					<rect x="3" y="0" width="3" height="3" />
-					<rect x="0" y="3" width="3" height="3" />
-					<rect x="6" y="3" width="3" height="3" />
-					<rect x="3" y="6" width="3" height="3" />
+					<rect x="6" y="2" width="3" height="3" />
+					<rect x="3" y="5" width="3" height="3" />
+					<rect x="9" y="5" width="3" height="3" />
+					<rect x="6" y="8" width="3" height="3" />
 				</g>
-				<rect x="3" y="3" width="3" height="3" fill="var(--yellow)" />
-				<rect x="8" y="8" width="3" height="3" fill="var(--purple)" />
-				<rect x="10" y="10" width="3" height="3" fill="var(--blue)" />
-				<rect x="12" y="12" width="3" height="3" fill="var(--green)" />
-				<rect x="14" y="14" width="3" height="3" fill="var(--yellow)" />
-				<rect x="16" y="16" width="3" height="3" fill="var(--orange)" />
-				<rect x="18" y="18" width="3" height="3" fill="var(--red)" />
-				<rect x="20" y="20" width="3" height="3" fill="var(--ink2)" />
-				<rect x="22" y="22" width="3" height="3" fill="var(--ink2)" />
+				<rect x="6" y="5" width="3" height="3" fill="var(--yellow)" />
+				<rect x="10" y="10" width="3" height="3" fill="var(--purple)" />
+				<rect x="13" y="13" width="3" height="3" fill="var(--blue)" />
+				<rect x="16" y="16" width="3" height="3" fill="var(--green)" />
+				<rect x="19" y="19" width="3" height="3" fill="var(--orange)" />
+				<rect x="22" y="22" width="3" height="3" fill="var(--red)" />
+				<rect x="16" y="4" width="2" height="2" fill="var(--pink)" />
+				<rect x="21" y="9" width="2" height="2" fill="var(--blue)" />
+				<rect x="2" y="13" width="2" height="2" fill="var(--green)" />
 			</svg>
 		{/if}
 	</div>
@@ -394,7 +395,8 @@ for (const [i, src] of docs) {
 	.editor {
 		position: relative;
 	}
-	/* pinned to the corner of the card, not the scrolling code */
+	/* pinned to the corner of the card, not the scrolling code, breathing
+	 * slowly so it is noticed without insisting */
 	.wand {
 		position: absolute;
 		right: 10px;
@@ -404,6 +406,21 @@ for (const [i, src] of docs) {
 		display: none;
 		pointer-events: none;
 		opacity: 0.85;
+		animation: wand 2.6s ease-in-out infinite;
+	}
+	@keyframes wand {
+		0%,
+		100% {
+			opacity: 0.55;
+		}
+		50% {
+			opacity: 0.95;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.wand {
+			animation: none;
+		}
 	}
 	/* where there is no pointer there is no wand cursor to find */
 	@media (hover: none) {
