@@ -21,8 +21,9 @@
     },
     "./tokens": {
       "source": "./src/tokens.ts",
-      "import": "./src/tokens.ts",
-      "types": "./src/tokens.ts"
+      "types": "./dist/tokens.d.ts",
+      "import": "./dist/tokens.js",
+      "default": "./dist/tokens.js"
     }
   },
   "scripts": {

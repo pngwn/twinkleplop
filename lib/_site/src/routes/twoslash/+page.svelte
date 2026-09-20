@@ -153,14 +153,14 @@
 
 	/* --- rendered highlight ----------------------------------------- */
 	/*
-	 * The twoslash package emits a single <pre class="highlight twoslash">
+	 * The twoslash package emits a single <pre class="twinkleplop twoslash">
 	 * with nested <span class="keyword">…</span> etc. tokens. The default
 	 * highlight-styles.css in the site uses the CSS Custom Highlight API
 	 * (::highlight(keyword)) which only applies to ranges registered by
 	 * JS — it has no effect on real <span> elements. So this page ships
 	 * its own span-based palette.
 	 */
-	.code-wrap :global(pre.highlight.twoslash) {
+	.code-wrap :global(pre.twinkleplop.twoslash) {
 		background: #0d0d0d;
 		border: 2px solid #333;
 		padding: 1.25rem 1.5rem;
@@ -171,7 +171,7 @@
 		box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
 	}
 
-	.code-wrap :global(pre.highlight.twoslash code) {
+	.code-wrap :global(pre.twinkleplop.twoslash code) {
 		background: none;
 		border: none;
 		padding: 0;

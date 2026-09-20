@@ -1,14 +1,14 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`custom tags > renders a tag line with no configuration 1`] = `
-"<pre class="highlight twoslash"><code><span class="punctuation">&lt;</span><span class="tag_name">script</span> <span class="attr_name">lang</span><span class="operator">=</span><span class="string">&quot;ts&quot;</span><span class="punctuation">&gt;</span>
+"<pre class="twinkleplop twoslash"><code><span class="punctuation">&lt;</span><span class="tag_name">script</span> <span class="attr_name">lang</span><span class="operator">=</span><span class="string">&quot;ts&quot;</span><span class="punctuation">&gt;</span>
 <span class="keyword">const</span> <span class="twoslash-hover"><span class="twoslash-target"><span class="constant">a</span></span><span class="twoslash-popover"><span class="twoslash-popover-type"><span class="keyword">const</span> <span class="constant">a</span><span class="punctuation">:</span> <span class="number">1</span></span></span></span> <span class="operator">=</span> <span class="number">1</span><span class="punctuation">;</span>
 <span class="twoslash-tag" data-tag-name="log">hello</span><span class="punctuation">&lt;/</span><span class="tag_name">script</span><span class="punctuation">&gt;</span>
 </code></pre>"
 `;
 
 exports[`docs > escapes the docs and splits the tags by default 1`] = `
-"<pre class="highlight twoslash"><code><span class="punctuation">&lt;</span><span class="tag_name">script</span> <span class="attr_name">lang</span><span class="operator">=</span><span class="string">&quot;ts&quot;</span><span class="punctuation">&gt;</span>
+"<pre class="twinkleplop twoslash"><code><span class="punctuation">&lt;</span><span class="tag_name">script</span> <span class="attr_name">lang</span><span class="operator">=</span><span class="string">&quot;ts&quot;</span><span class="punctuation">&gt;</span>
 	<span class="comment">/**
 	 * Adds two numbers. **Bold** &amp; &quot;quoted&quot;.
 	 * @param a the first operand

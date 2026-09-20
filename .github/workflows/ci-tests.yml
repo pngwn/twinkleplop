@@ -42,8 +42,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # both themes assert their built palette matches src/tokens.ts, so both
+      # need a dist before the suite runs. the path filter picks up a new theme
+      # without anyone having to remember this step.
       - name: Build required test artifacts
-        run: pnpm --filter=@twinkleplop/theme-github build
+        run: pnpm --filter='./lib/theme-*' build
 
       - name: Run tests
         run: pnpm test
@@ -72,3 +75,12 @@ jobs:
 
       - name: Run build
         run: pnpm build
+
+      # everything else in the repo resolves @twinkleplop/* through the `source`
+      # condition, straight to src/. a consumer installing from npm never does:
+      # they get dist/ and the generated declaration bundle. an unparseable
+      # .d.ts, a missing `types` condition or an export pointing at an
+      # unpublished file passes `pnpm test` and breaks every consumer, so the
+      # packed tarballs get type-checked and run on their own.
+      - name: Check packed artifacts
+        run: pnpm check:packed
