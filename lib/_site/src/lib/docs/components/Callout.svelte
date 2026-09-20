@@ -11,7 +11,7 @@
 </script>
 
 <div class="callout" class:warn={variant === "warn"} class:tip={variant === "tip"}>
-	<span class="mark">{mark}</span>
+	<span class="mark" aria-hidden="true">{mark}</span>
 	<div class="body">{@render children()}</div>
 </div>
 

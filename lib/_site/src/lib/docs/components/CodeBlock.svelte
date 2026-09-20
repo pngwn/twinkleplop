@@ -20,7 +20,7 @@
 <div class="code" {@attach twoslash_popovers}>
 	<div class="head">
 		<span class="fname">{base}<span class="ext">{ext}</span></span>
-		<span class="copy">copy</span>
+		<span class="copy" aria-hidden="true">copy</span>
 	</div>
 	{@html html}
 </div>
