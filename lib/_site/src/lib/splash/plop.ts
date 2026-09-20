@@ -1,33 +1,56 @@
-// the "plop into code" scroll effect.
+// the pixel wand.
 //
-// every wordmark pixel is assigned a token in the live code sample. scroll
-// progress `p` drives each pixel along an arc from its home cell to a point
-// on that token; landing lights the token up. pixels shed sparks in flight
-// and puff on impact. everything is a pure function of `p`, so scrolling
-// back up runs it in reverse.
+// the code card starts grey. a click on it is a cast: every unlit token
+// within HIT_RADIUS of the click is queued, nearest first, and the queue
+// launches one token every STAGGER ms. each launch steals a pair of
+// wordmark pixels, one from each side, from mirrored bands. they are lobbed
+// up and outwards, come down onto either half of the token on an
+// underdamped spring, and touch down together; the token flashes and takes
+// its colour. a stolen pixel leaves a ghost and never comes back, and the
+// snippet has half as many tokens as the wordmark has pixels (the odd one
+// out flies alone), so a fully lit card leaves a fully grey wordmark.
 //
 // the dom is rendered by svelte; this module only animates it. per-frame
-// work never reads layout: pixel centres are derived from the measured home
-// position plus the transform we just wrote, and the scroll position is
-// cached from the scroll event. even `window.scrollY` is a layout read: asked
-// for mid-frame it makes the browser flush every style written so far.
+// work never reads layout: the wordmark and the tokens are measured in page
+// space when something resizes or a cast lands, and the scroll position is
+// cached from the scroll event. even `window.scrollY` is a layout read:
+// asked for mid-frame it makes the browser flush every style written so far.
 
-// scroll distance, in viewport heights, over which p runs 0 → 1
-const RANGE = 0.85;
-// each pixel flies for this much of p. with the latest start at 0.55 the
-// last pixel lands exactly at p = 1.
-const FLIGHT = 0.45;
-const LAND_AT = 0.92;
-const GHOST_AT = 0.12;
-const MIN_TOKEN_WIDTH = 8;
-// scroll reaches the page in steps: a wheel notch is a hundred px at once,
-// close to a third of a pixel's flight, and even a smooth scroll is only
-// reported once a frame. so p is not pinned to the scroll position, it
-// follows it on a critically damped spring: it eases away from rest as
-// well as into it, and never overshoots. this is the spring's natural
-// frequency, per second. it trails a steady scroll by 2 / RESPONSE seconds
-// and is 90% of the way to a new position after about 4 / RESPONSE.
-const RESPONSE = 16;
+// px from a click to the nearest edge of a token's box for the cast to
+// reach it
+export const HIT_RADIUS = 25;
+// ms between launches. a launch doesn't wait for the one before to land.
+// a drag queues tokens faster than that, so a long queue drains quicker,
+// down to STAGGER_MIN.
+const STAGGER = 200;
+const STAGGER_MIN = 60;
+const STAGGER_STEP = 20;
+// pixels per token
+const PAIR = 2;
+// the flight spring's natural frequency, in rad/s, and its damping ratio.
+// under 1 it overshoots a little before it settles.
+const STIFFNESS = 6.5;
+const DAMPING = 0.6;
+// upward launch speed in px/s, on top of 0.6 × the pair's mean distance to
+// cover: the pixels are lobbed, not fired
+const TOSS = 500;
+// sideways launch speed in px/s, each pixel away from its partner, so the
+// pair opens out and closes back in on the token
+const SPREAD = 140;
+// how far either side of the token's middle each pixel lands, as a share
+// of its width
+const LAND_SPLIT = 0.2;
+// the wordmark's width is cut into this many bands. a pair takes a band on
+// the left and its mirror on the right, the left bands visited in shuffled
+// order, so consecutive steals are spread across the wordmark.
+const BANDS = 12;
+// a pair lands once both pixels are within this many cells of their spots
+// (4px at least) after SETTLE_AFTER seconds, and regardless at GIVE_UP
+const LAND_WITHIN = 0.6;
+const SETTLE_AFTER = 0.25;
+const GIVE_UP = 1.6;
+// ms a landed pair takes to shrink away
+const SHRINK = 320;
 
 // a spark is a tiny square with a soft glow of its own colour. drawn
 // directly that means parsing two colour strings and running a blur pass
@@ -109,15 +132,9 @@ export interface plop_pixel {
 	color: Record<splash_mode, string>;
 }
 
-export interface plop_target {
-	el: HTMLElement;
-	// index among the lines that hold at least one token
-	line: number;
-}
-
 export interface plop_options {
 	mount: HTMLElement;
-	// the block the targets live in
+	// the block the tokens live in
 	code: HTMLElement;
 	canvas: HTMLCanvasElement;
 	pixels: plop_pixel[];
@@ -126,43 +143,60 @@ export interface plop_options {
 }
 
 export interface plop {
-	// swap in a new token list. `changed` indexes re-flash if they are lit.
-	set_targets: (targets: plop_target[], changed?: Iterable<number>) => void;
-	scroll_to: (el: HTMLElement, offset: number) => void;
+	set_targets: (tokens: HTMLElement[]) => void;
+	// a click on the code, in page coordinates
+	cast: (x: number, y: number) => void;
 	// follow a light/dark switch: sparks and the landing flash are drawn
 	// from resolved colours, not css vars
 	set_mode: (mode: splash_mode) => void;
 	destroy: () => void;
 }
 
-interface cell extends plop_pixel {
-	seed: [number, number, number, number];
-	// assigned target, and this pixel's ordinal among those sharing it
-	k: number;
-	q: number;
-	start: number;
-	// page-space centre of the home cell, and the delta to the landing point
-	hx: number;
-	hy: number;
-	dx: number;
-	dy: number;
-	// x offset of this pixel's mote in the atlas, per mode
-	sprite: Record<splash_mode, number>;
-	// last local progress written, last page-space centre, landed flag
-	l: number;
-	px: number;
-	py: number;
-	on: boolean;
-}
-
-interface target extends plop_target {
+interface target {
+	el: HTMLElement;
 	// the token's syntax colour, resolved from its --tc
 	color: string;
-	hits: number;
-	// no pixel reached this token (more tokens than pixels can cover), so
-	// it lights on scroll progress alone
-	free: boolean;
+	// page-space box
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+	// claimed by a cast, waiting for its pixel
+	queued: boolean;
 	lit: boolean;
+}
+
+interface cell extends plop_pixel {
+	// x offset of this pixel's mote in the atlas, per mode
+	sprite: Record<splash_mode, number>;
+	band: number;
+	// -1 on the wordmark's left half, 1 on its right
+	side: number;
+	gone: boolean;
+}
+
+interface flight {
+	cell: cell;
+	// page-space centre of the home cell at launch
+	sx: number;
+	sy: number;
+	// start minus landing spot, and launch velocity in px/s, per axis
+	dx: number;
+	dy: number;
+	vx: number;
+	vy: number;
+	// last page-space centre, to shed the trail behind it
+	px: number;
+	py: number;
+}
+
+// the pixels one token launched, flown and landed as one
+interface pair {
+	target: target;
+	t0: number;
+	// when it touched down, 0 while still in the air
+	landed: number;
+	flights: flight[];
 }
 
 interface spark {
@@ -180,8 +214,15 @@ interface spark {
 }
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
-const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
-const ease_cubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+// offset from rest of an underdamped spring let go at offset d0 with speed
+// v0, t seconds later. closed form, so a frame depends only on the time
+// since launch, never on the frame before it.
+const DAMPED = STIFFNESS * Math.sqrt(1 - DAMPING * DAMPING);
+function spring(t: number, d0: number, v0: number) {
+	const b = (v0 + DAMPING * STIFFNESS * d0) / DAMPED;
+	return Math.exp(-DAMPING * STIFFNESS * t) * (d0 * Math.cos(DAMPED * t) + b * Math.sin(DAMPED * t));
+}
 
 export function create_plop(opts: plop_options): plop {
 	const { mount, canvas, cols, on_progress } = opts;
@@ -218,117 +259,109 @@ export function create_plop(opts: plop_options): plop {
 			dark: colors.indexOf(pixel.color.dark) * mote_cell,
 			light: colors.indexOf(pixel.color.light) * mote_cell
 		},
-		seed: [Math.random(), Math.random(), Math.random(), Math.random()],
-		k: -1,
-		q: 0,
-		start: 0,
-		hx: 0,
-		hy: 0,
-		dx: 0,
-		dy: 0,
-		l: -1,
-		px: NaN,
-		py: NaN,
-		on: false
+		band: Math.floor((pixel.x / cols) * BANDS),
+		side: pixel.x < cols / 2 ? -1 : 1,
+		gone: false
 	}));
-	// the order pixels are dealt out to tokens in; fixed for the page's life
-	const dealt = cells.slice().sort((a, b) => a.seed[2] - b.seed[2]);
 
 	let targets: target[] = [];
-	let lines = 1;
-	let size = 0;
-	let last_p = -1;
-	// where the flight is drawn, easing towards where the scroll says it
-	// should be. negative until the first frame, which snaps: a page loaded
-	// part-scrolled starts in place rather than flying there.
-	let shown = -1;
-	let velocity = 0;
-	let last_frame = 0;
-	let last_lit = -1;
+	let queue: target[] = [];
+	let next_launch = 0;
+	let flying: pair[] = [];
 	let sparks: spark[] = [];
+	let lit = 0;
+	// page-space top left of the wordmark, and the side of one of its cells
+	let home_x = 0;
+	let home_y = 0;
+	let size = 0;
+	// page-space left and right of the code's scrollport: a line too long
+	// for it scrolls sideways, and what's out of view can't be hit or landed
+	// on. scrolling it leaves the token boxes stale until the next launch.
+	let view_l = 0;
+	let view_r = 0;
+	let stale = false;
+	let measured_at = 0;
 	let canvas_dirty = false;
 	let raf = 0;
 	let scheduled = false;
-	let scroll_raf = 0;
 	let scroll_x = window.scrollX;
 	let scroll_y = window.scrollY;
 	let viewport_h = window.innerHeight;
 
-	function line_start(line: number) {
-		return lines > 1 ? (line / (lines - 1)) * 0.3 : 0;
+	// the order the left bands are stolen from, reshuffled each time round
+	let bands: number[] = [];
+	let band_at = 0;
+	function shuffle_bands() {
+		bands = Array.from({ length: BANDS / 2 }, (_, i) => i);
+		for (let i = bands.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[bands[i], bands[j]] = [bands[j], bands[i]];
+		}
+		band_at = 0;
+	}
+	shuffle_bands();
+
+	const any = (pool: cell[]) => pool[Math.floor(Math.random() * pool.length)];
+
+	// a random pixel from the next left band with one left, and one from the
+	// mirrored band on the right. the halves don't hold the same number of
+	// pixels, so once a side runs dry the rest come from the other.
+	function pick_pair(): cell[] {
+		const free = cells.filter((c) => !c.gone);
+		const left = free.filter((c) => c.side < 0);
+		const right = free.filter((c) => c.side > 0);
+		for (let tries = 0; tries < bands.length; tries++) {
+			const band = bands[band_at++];
+			if (band_at === bands.length) shuffle_bands();
+			const l = left.filter((c) => c.band === band);
+			const r = right.filter((c) => c.band === BANDS - 1 - band);
+			if (l.length && r.length) return [any(l), any(r)];
+		}
+		if (left.length && right.length) return [any(left), any(right)];
+		const rest = left.length ? left : right;
+		const out: cell[] = [];
+		while (out.length < PAIR && rest.length) out.push(...rest.splice(Math.floor(Math.random() * rest.length), 1));
+		// left to right, so each takes the side it is on
+		return out.sort((a, b) => a.x - b.x);
 	}
 
 	function measure() {
 		const m = mount.getBoundingClientRect();
-		size = m.width / cols;
 		scroll_x = window.scrollX;
 		scroll_y = window.scrollY;
-		for (const c of cells) {
-			c.hx = m.left + scroll_x + (c.x + 0.5) * size;
-			c.hy = m.top + scroll_y + (c.y + 0.5) * size;
-			c.l = -1;
+		size = m.width / cols;
+		home_x = m.left + scroll_x;
+		home_y = m.top + scroll_y;
+		const view = opts.code.getBoundingClientRect();
+		view_l = view.left + scroll_x;
+		view_r = view.right + scroll_x;
+		stale = false;
+		measured_at = performance.now();
+		for (const t of targets) {
+			const rect = t.el.getBoundingClientRect();
+			t.x = rect.left + scroll_x;
+			t.y = rect.top + scroll_y;
+			t.w = rect.width;
+			t.h = rect.height;
 		}
-		last_p = -1;
-		schedule();
-		if (!targets.length) {
-			for (const c of cells) c.k = -1;
-			return;
-		}
+	}
 
-		// deal pixels out in proportion to token width, so long tokens
-		// catch more of them
-		const rects = targets.map((t) => t.el.getBoundingClientRect());
-		const cumulative: number[] = [];
-		let total = 0;
-		for (const rect of rects) {
-			total += Math.max(MIN_TOKEN_WIDTH, rect.width);
-			cumulative.push(total);
-		}
-
-		const counts = new Array<number>(targets.length).fill(0);
-		dealt.forEach((c, i) => {
-			const pick = ((i + 0.5) / dealt.length) * total;
-			let k = 0;
-			while (k < cumulative.length - 1 && cumulative[k] < pick) k++;
-			c.k = k;
-			c.q = ++counts[k];
-			c.start = line_start(targets[k].line) + c.seed[0] * 0.25;
-		});
-
-		for (const c of cells) {
-			const rect = rects[c.k];
-			const slot = rect.width / counts[c.k];
-			c.dx = rect.left + scroll_x + (c.q - 0.5) * slot - c.hx;
-			c.dy = rect.top + scroll_y + rect.height * (0.35 + c.seed[3] * 0.3) - c.hy;
-		}
-
-		for (let k = 0; k < targets.length; k++) {
-			targets[k].free = counts[k] === 0;
-			targets[k].hits = 0;
-		}
-		for (const c of cells) if (c.on) targets[c.k].hits++;
-		// settle lit state here, without the landing flash, so a resize or
-		// an edit doesn't re-fire every token
-		for (const t of targets) if (!t.free) set_lit(t, t.hits > 0);
+	// the stretch of a token's box that is in view. scrolled wholly out, it
+	// comes back empty, pinned to the nearest edge of the view.
+	function visible(t: target): [number, number] {
+		const left = Math.max(t.x, view_l);
+		const right = Math.min(t.x + t.w, view_r);
+		if (right > left) return [left, right];
+		const edge = Math.min(Math.max(t.x + t.w / 2, view_l), view_r);
+		return [edge, edge];
 	}
 
 	// the hit: white-hot, then cooling to the token's colour. white vanishes
 	// on a light page, so there the token keeps its colour and only the glow
-	// flares. run through
-	// the animations api because a css animation can only be re-triggered by
-	// forcing a reflow, and this fires in the middle of a frame's writes.
-	// easing sits on the keyframes so it applies per segment, as css does it.
-	const flashes = new WeakMap<HTMLElement, { color: string; animation: Animation }>();
-
+	// flares. easing sits on the keyframes so it applies per segment, as css
+	// does it.
 	function flash(t: target) {
 		if (reduced) return;
-		const running = flashes.get(t.el);
-		if (running?.color === t.color) {
-			running.animation.currentTime = 0;
-			running.animation.play();
-			return;
-		}
-		running?.animation.cancel();
 		const c = t.color;
 		const keyframes =
 			mode === "light"
@@ -342,39 +375,144 @@ export function create_plop(opts: plop_options): plop {
 						{ color: "#fff", textShadow: `0 0 6px #fff, 0 0 16px ${c}`, easing: "ease-out", offset: 0.4 },
 						{ color: c, textShadow: "0 0 0 transparent" }
 					];
-		const animation = t.el.animate(keyframes, 500);
-		flashes.set(t.el, { color: c, animation });
+		t.el.animate(keyframes, 500);
 	}
 
-	function set_lit(t: target, lit: boolean) {
-		if (t.lit === lit) return;
-		t.lit = lit;
-		t.el.toggleAttribute("data-lit", lit);
-		if (!lit) flashes.get(t.el)?.animation.cancel();
+	function light(t: target) {
+		if (t.lit) return;
+		t.lit = true;
+		t.el.toggleAttribute("data-lit", true);
+		flash(t);
+		on_progress(++lit, targets.length);
 	}
 
-	function emit(c: cell, x: number, y: number, width: number, burst: boolean) {
-		const vx = x - c.px;
-		const vy = y - c.py;
+	function cast(x: number, y: number) {
+		// catches anything that moved without resizing. a drag casts many
+		// times a second, so it is not worth doing on every one.
+		if (stale || performance.now() - measured_at > 400) measure();
+		const hits: { t: target; d: number }[] = [];
+		for (const t of targets) {
+			if (t.lit || t.queued) continue;
+			const [left, right] = visible(t);
+			if (left === right) continue;
+			// from the click to the nearest point of the token's box, so a
+			// token the circle only clips still counts
+			const d = Math.hypot(x - Math.min(Math.max(x, left), right), y - Math.min(Math.max(y, t.y), t.y + t.h));
+			if (d <= HIT_RADIUS) hits.push({ t, d });
+		}
+		hits.sort((a, b) => a.d - b.d);
+		if (reduced) {
+			for (const { t } of hits) light(t);
+			return;
+		}
+		if (!hits.length) return;
+		// one queue for every cast, so quick clicks chain rather than
+		// interleave. after a quiet spell the first launch goes at once.
+		if (!queue.length && performance.now() >= next_launch) next_launch = 0;
+		for (const { t } of hits) {
+			t.queued = true;
+			queue.push(t);
+		}
+		schedule();
+	}
+
+	function launch(t: target, now: number) {
+		const picked = pick_pair();
+		// more tokens than pixels: the rest light without any
+		if (!picked.length) return light(t);
+
+		// reads before this frame writes anything, so no forced flush
+		if (stale) measure();
+		const [left, right] = visible(t);
+		const ey = t.y + t.h * 0.52;
+		const starts = picked.map((c) => [home_x + (c.x + 0.5) * size, home_y + (c.y + 0.5) * size]);
+		const reach = starts.reduce((sum, [sx, sy]) => sum + Math.hypot(sx - (left + right) / 2, sy - ey), 0) / starts.length;
+		const flights = picked.map((c, i): flight => {
+			c.gone = true;
+			c.ghost.style.opacity = "1";
+			c.el.toggleAttribute("data-fly", true);
+			// the pair comes left to right: the left one lands left of the
+			// middle, the right one right of it. alone, a pixel lands in the
+			// middle.
+			const side = picked.length > 1 ? (i === 0 ? -1 : 1) : 0;
+			const [sx, sy] = starts[i];
+			const dx = sx - (left + (right - left) * (0.5 + side * LAND_SPLIT));
+			const dy = sy - ey;
+			return {
+				cell: c,
+				sx,
+				sy,
+				dx,
+				dy,
+				// drifts towards the token and away from its partner, and both
+				// are thrown up alike, harder the further they have to go
+				vx: -dx * 0.35 + side * SPREAD,
+				vy: -(TOSS + reach * 0.6),
+				px: sx,
+				py: sy
+			};
+		});
+		flying.push({ target: t, t0: now, landed: 0, flights });
+	}
+
+	function fly(now: number) {
+		let kept = 0;
+		for (const p of flying) {
+			const t = (now - p.t0) / 1000;
+			// where each pixel is, relative to its landing spot
+			const offsets = p.flights.map((f) => [spring(t, f.dx, f.vx), spring(t, f.dy, f.vy)]);
+			const near = Math.max(4, size * LAND_WITHIN);
+			const landing =
+				!p.landed && ((t > SETTLE_AFTER && offsets.every(([rx, ry]) => Math.hypot(rx, ry) < near)) || t > GIVE_UP);
+			if (landing) {
+				p.landed = now;
+				light(p.target);
+			}
+			// shrinks away where it landed, still riding out the spring
+			const k = p.landed ? clamp((now - p.landed) / SHRINK) : 0;
+
+			p.flights.forEach((f, i) => {
+				// the spring is centred on the landing spot; the transform is
+				// relative to the home cell
+				const tx = offsets[i][0] - f.dx;
+				const ty = offsets[i][1] - f.dy;
+				const x = f.sx + tx;
+				const y = f.sy + ty;
+				if (landing) emit(f, x, y, true);
+				else if (!p.landed && Math.random() < 0.6) emit(f, x, y, false);
+				f.px = x;
+				f.py = y;
+				const el = f.cell.el;
+				el.style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${(1 - k).toFixed(3)})`;
+				el.style.opacity = String(1 - k * k);
+				if (k >= 1) el.removeAttribute("data-fly");
+			});
+			if (k < 1) flying[kept++] = p;
+		}
+		flying.length = kept;
+	}
+
+	function emit(f: flight, x: number, y: number, burst: boolean) {
+		const vx = x - f.px;
+		const vy = y - f.py;
 		const speed = Math.hypot(vx, vy);
-		// NaN on the first frame, before there is a previous centre
-		if (!burst && !(speed >= 0.5)) return;
+		if (!burst && speed < 0.4) return;
 		const bx = speed ? -vx / speed : 0;
 		const by = speed ? -vy / speed : 0;
 
-		for (let i = 0; i < (burst ? 6 : 2); i++) {
+		for (let i = 0; i < (burst ? 7 : 2); i++) {
 			let angle: number, velocity: number, ox: number, oy: number;
 			if (burst) {
 				angle = Math.random() * Math.PI * 2;
 				velocity = 0.4 + Math.random() * 0.9;
-				ox = (Math.random() - 0.5) * width;
-				oy = (Math.random() - 0.5) * width;
+				ox = (Math.random() - 0.5) * size;
+				oy = (Math.random() - 0.5) * size;
 			} else {
 				// shed from the trailing edge, roughly back along the path
 				angle = Math.atan2(by, bx) + (Math.random() - 0.5) * 0.8;
 				velocity = 0.1 + Math.random() * 0.35;
-				const back = width * 0.45;
-				const jitter = (Math.random() - 0.5) * width * 0.5;
+				const back = size * 0.45;
+				const jitter = (Math.random() - 0.5) * size * 0.5;
 				ox = bx * back - by * jitter;
 				oy = by * back + bx * jitter;
 			}
@@ -389,70 +527,8 @@ export function create_plop(opts: plop_options): plop {
 				phase: Math.random() * 6.3,
 				freq: 0.15 + Math.random() * 0.25,
 				// three in ten twinkle white
-				sprite: Math.random() < 0.3 ? 0 : c.sprite[mode]
+				sprite: Math.random() < 0.3 ? 0 : f.cell.sprite[mode]
 			});
-		}
-	}
-
-	function update(p: number) {
-		// no burst for pixels that are already down when the page loads
-		const first = last_p < 0;
-
-		for (const c of cells) {
-			if (c.k < 0) continue;
-			const l = clamp((p - c.start) / FLIGHT);
-			if (l === c.l) continue;
-			c.l = l;
-
-			const t = targets[c.k];
-			c.ghost.style.opacity = l > GHOST_AT ? "1" : "0";
-
-			if (!reduced) {
-				const e = ease(l);
-				const fall = Math.sin(l * Math.PI);
-				const tx = c.dx * e + fall * (c.seed[1] - 0.5) * 40;
-				const ty = c.dy * e - fall * 30 * c.seed[3];
-				const scale = 1 - clamp((l - 0.8) / 0.2) * 0.55;
-				const rotate = l * (c.seed[1] - 0.5) * 360;
-				c.el.style.transform = `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) rotate(${rotate.toFixed(1)}deg) scale(${scale.toFixed(3)})`;
-				c.el.style.opacity = String(1 - clamp((l - 0.9) / 0.1));
-				c.el.style.setProperty("--land", clamp((l - 0.6) / 0.3).toFixed(2));
-
-				const x = c.hx + tx;
-				const y = c.hy + ty;
-				const width = size * 0.84 * scale;
-				if (l > 0.05 && l < 0.9 && Math.random() < 0.55) emit(c, x, y, width, false);
-				if (l > LAND_AT && !c.on && !first) emit(c, x, y, width, true);
-				c.px = x;
-				c.py = y;
-			}
-
-			const on = l > LAND_AT;
-			if (on && !c.on) {
-				c.on = true;
-				if (t.hits++ === 0) set_lit(t, true);
-				flash(t);
-			} else if (!on && c.on) {
-				c.on = false;
-				if (--t.hits <= 0) {
-					t.hits = 0;
-					set_lit(t, false);
-				}
-			}
-		}
-
-		for (const t of targets) {
-			if (!t.free) continue;
-			const lit = clamp((p - line_start(t.line) - 0.125) / FLIGHT) > LAND_AT;
-			if (lit && !t.lit) flash(t);
-			set_lit(t, lit);
-		}
-
-		let lit = 0;
-		for (const t of targets) if (t.lit) lit++;
-		if (lit !== last_lit || first) {
-			last_lit = lit;
-			on_progress(lit, targets.length);
 		}
 	}
 
@@ -492,8 +568,8 @@ export function create_plop(opts: plop_options): plop {
 		ctx.globalAlpha = 1;
 	}
 
-	// frames run only while something is moving: a scroll, a re-measure, or
-	// sparks still in the air
+	// frames run only while something is moving: a queue to launch, pixels
+	// in the air, or sparks still falling
 	function schedule() {
 		if (scheduled) return;
 		scheduled = true;
@@ -502,41 +578,21 @@ export function create_plop(opts: plop_options): plop {
 
 	function frame(now: number) {
 		scheduled = false;
-		const target = reduced ? 1 : clamp(scroll_y / Math.max(200, viewport_h * RANGE));
-		// by elapsed time, so it feels the same at 60hz and 120hz. after an
-		// idle spell there is no previous frame to measure from.
-		const dt = (now - last_frame > 100 ? 1000 / 60 : now - last_frame) / 1000;
-		last_frame = now;
-		if (shown < 0 || reduced) {
-			shown = target;
-		} else {
-			// exact solution over dt, so a long frame can't blow it up
-			const gap = shown - target;
-			const pull = (velocity + RESPONSE * gap) * dt;
-			const decay = Math.exp(-RESPONSE * dt);
-			shown = target + (gap + pull) * decay;
-			velocity = (velocity - RESPONSE * pull) * decay;
+		if (queue.length && now >= next_launch) {
+			launch(queue.shift()!, now);
+			next_launch = now + Math.max(STAGGER_MIN, STAGGER - queue.length * STAGGER_STEP);
 		}
-		if (Math.abs(target - shown) < 0.0005 && Math.abs(velocity) < 0.005) {
-			shown = target;
-			velocity = 0;
-		}
-
-		if (shown !== last_p) {
-			update(shown);
-			last_p = shown;
-		}
-		if (shown !== target) schedule();
+		fly(now);
 
 		if (sparks.length) {
 			draw_sparks();
 			canvas_dirty = true;
-			schedule();
 		} else if (canvas_dirty) {
 			ctx.setTransform(1, 0, 0, 1, 0, 0);
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 			canvas_dirty = false;
 		}
+		if (queue.length || flying.length || sparks.length) schedule();
 	}
 
 	function token_color(el: HTMLElement) {
@@ -549,46 +605,21 @@ export function create_plop(opts: plop_options): plop {
 		for (const t of targets) t.color = token_color(t.el);
 	}
 
-	function set_targets(next: plop_target[], changed: Iterable<number> = []) {
-		targets = next.map((t) => ({
-			...t,
-			color: token_color(t.el),
-			hits: 0,
-			free: false,
-			lit: t.el.hasAttribute("data-lit")
+	function set_targets(tokens: HTMLElement[]) {
+		targets = tokens.map((el) => ({
+			el,
+			color: token_color(el),
+			x: 0,
+			y: 0,
+			w: 0,
+			h: 0,
+			queued: false,
+			lit: el.hasAttribute("data-lit")
 		}));
-		lines = 1 + next.reduce((max, t) => Math.max(max, t.line), 0);
+		queue = [];
+		lit = targets.filter((t) => t.lit).length;
 		measure();
-		for (const k of changed) if (targets[k]?.lit) flash(targets[k]);
-	}
-
-	// native smooth scrolling can't be given a duration, and the flight wants
-	// a slow, even pass to read well
-	function scroll_to(el: HTMLElement, offset: number) {
-		cancelAnimationFrame(scroll_raf);
-		const from = window.scrollY;
-		const to = el.getBoundingClientRect().top + from - offset;
-		const duration = reduced ? 0 : 2200;
-		const t0 = performance.now();
-		const stop = () => cancelAnimationFrame(scroll_raf);
-		const step = (now: number) => {
-			const k = duration ? clamp((now - t0) / duration) : 1;
-			window.scrollTo({ top: from + (to - from) * ease_cubic(k), behavior: "instant" });
-			if (k < 1) scroll_raf = requestAnimationFrame(step);
-			else cleanup();
-		};
-		const cleanup = () => {
-			window.removeEventListener("wheel", cancel);
-			window.removeEventListener("touchstart", cancel);
-		};
-		// never fight the user for the scroll position
-		const cancel = () => {
-			stop();
-			cleanup();
-		};
-		window.addEventListener("wheel", cancel, { passive: true, once: true });
-		window.addEventListener("touchstart", cancel, { passive: true, once: true });
-		step(t0);
+		on_progress(lit, targets.length);
 	}
 
 	function handle_resize() {
@@ -596,12 +627,15 @@ export function create_plop(opts: plop_options): plop {
 		measure();
 	}
 
+	function handle_code_scroll() {
+		stale = true;
+	}
+
 	// scroll events are dispatched before the frame's styles are touched, so
 	// the read is free here
 	function handle_scroll() {
 		scroll_x = window.scrollX;
 		scroll_y = window.scrollY;
-		schedule();
 	}
 
 	const observer = new ResizeObserver(measure);
@@ -609,24 +643,23 @@ export function create_plop(opts: plop_options): plop {
 	observer.observe(opts.code);
 	window.addEventListener("resize", handle_resize);
 	window.addEventListener("scroll", handle_scroll, { passive: true });
+	opts.code.addEventListener("scroll", handle_code_scroll, { passive: true });
 	// web fonts change token widths without necessarily resizing anything
 	document.fonts?.ready.then(measure);
-	const settle = setTimeout(measure, 600);
 
 	size_canvas();
 	measure();
 
 	return {
 		set_targets,
-		scroll_to,
+		cast,
 		set_mode,
 		destroy() {
 			cancelAnimationFrame(raf);
-			cancelAnimationFrame(scroll_raf);
-			clearTimeout(settle);
 			observer.disconnect();
 			window.removeEventListener("resize", handle_resize);
 			window.removeEventListener("scroll", handle_scroll);
+			opts.code.removeEventListener("scroll", handle_code_scroll);
 		}
 	};
 }

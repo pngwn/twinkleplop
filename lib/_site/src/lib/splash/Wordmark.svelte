@@ -24,7 +24,7 @@
 
 	export function pixels(): plop_pixel[] {
 		const els = mount!.querySelectorAll<HTMLElement>(".px");
-		const ghosts = mount!.querySelectorAll<HTMLElement>(".ghosts i");
+		const ghosts = mount!.querySelectorAll<HTMLElement>(".ghosts span");
 		return cells.map((cell, i) => ({ ...cell, el: els[i], ghost: ghosts[i] }));
 	}
 </script>
@@ -38,7 +38,7 @@
 >
 	<div class="ghosts">
 		{#each cells as cell}
-			<i style:--x={cell.x} style:--y={cell.y}></i>
+			<span style:--x={cell.x} style:--y={cell.y}><i></i></span>
 		{/each}
 	</div>
 	{#each cells as cell}
@@ -57,7 +57,7 @@
 <style>
 	.wordmark {
 		/* whole pixels only: fractional cells leave uneven seams */
-		--fit: calc(min(92vw, 600px) / var(--cols));
+		--fit: calc(min(92vw, 510px) / var(--cols));
 		--sz: clamp(4px, var(--fit), 12px);
 		position: relative;
 		/* above the ghosts and the page, below the sticky header */
@@ -73,7 +73,7 @@
 	}
 
 	.px,
-	.ghosts i {
+	.ghosts span {
 		position: absolute;
 		left: calc(var(--x) * var(--sz));
 		top: calc(var(--y) * var(--sz));
@@ -88,12 +88,24 @@
 	:global(:root[data-mode="light"]) .px {
 		--c: var(--c-light);
 	}
-	.px b {
+	/* in flight: over the pixels still at home, and glowing */
+	.px:global([data-fly]) {
+		z-index: 2;
+	}
+	.px b,
+	.ghosts i {
 		display: block;
 		width: 84%;
 		height: 84%;
+		margin: 8%;
+	}
+	.px b {
 		background: var(--c);
-		box-shadow: 0 0 calc(var(--land, 0) * 10px) var(--c);
+	}
+	.px:global([data-fly]) b {
+		box-shadow:
+			0 0 6px var(--c),
+			0 0 14px var(--c);
 	}
 
 	.ghosts {
@@ -102,20 +114,11 @@
 		z-index: 0;
 		pointer-events: none;
 	}
-	.ghosts i {
-		display: block;
+	/* a stolen pixel's empty socket, recessed into the page */
+	.ghosts span {
 		opacity: 0;
-		transition: opacity 0.4s;
 	}
-	.ghosts i::before {
-		content: "";
-		position: absolute;
-		inset: 8%;
-		background: var(--ghost);
-		opacity: 0.35;
-		border-radius: 1px;
-	}
-	:global(:root[data-mode="light"]) .ghosts i::before {
-		opacity: 0.28;
+	.ghosts i {
+		background: var(--bg3);
 	}
 </style>

@@ -49,6 +49,11 @@
 
 html {
   font-size: 14px;
+  /* phones inflate the text of blocks they judge wide and text-heavy, which
+     blows up a code block with long lines and leaves the prose beside it
+     alone. 100% keeps our sizes; pinch-zoom still works. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -60,7 +65,9 @@ body {
   /*font-family: var(--font-mono);*/
   font-size: 0.875rem;
   line-height: 1.6;
-  min-height: 100vh;
+  /* svh, not vh: on a phone vh is the height with the browser's toolbars
+     hidden, which leaves every page a toolbar taller than the screen */
+  min-height: 100svh;
   /* overflow: hidden; */
 }
 
@@ -83,12 +90,20 @@ button {
 pre,
 code {
   /* font-family: var(--font-mono); */
-  font-size: 0.875rem;
   line-height: 1.6;
   tab-size: 2;
 }
 
+/* the surface hosting a block sets its size. a global rem here fought every
+   shell's own scale, and re-applied itself to the <code> that a highlighted
+   <pre> wraps its lines in, so a 13px block rendered 12.25px tokens. */
+pre {
+  font-size: inherit;
+}
+
+/* inline code keeps a touch under the text around it */
 code {
+  font-size: 0.85em;
   padding: 0.125rem 0.375rem;
   background: var(--bg-tertiary);
   border-radius: 4px;
@@ -96,6 +111,7 @@ code {
 }
 
 pre code {
+  font-size: inherit;
   padding: 0;
   background: transparent;
   color: inherit;

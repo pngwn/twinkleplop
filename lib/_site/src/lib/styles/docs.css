@@ -104,7 +104,9 @@
 	font-feature-settings:
 		'calt' 1,
 		'liga' 1;
-	height: 100vh;
+	/* svh, not vh: on a phone vh is the height with the browser's
+	   toolbars hidden, which leaves the page taller than the screen */
+	height: 100svh;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
