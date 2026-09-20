@@ -113,25 +113,47 @@ for (const [i, src] of docs) {
 	let hold: ReturnType<typeof setTimeout> | undefined;
 	let last_x = 0;
 	let last_y = 0;
+	// the ring the wand carries while painting, in card coordinates, and
+	// the code's box to keep it over the code
+	let live: { x: number; y: number } | null = $state(null);
+	let code_box: DOMRect | undefined;
 
-	function cast(e: PointerEvent, ring: boolean) {
+	function cast(e: PointerEvent) {
 		last_x = e.clientX;
 		last_y = e.clientY;
-		if (ring) {
-			const box = card!.getBoundingClientRect();
-			const id = next_ring++;
-			rings.push({ id, x: e.clientX - box.left, y: e.clientY - box.top });
-			setTimeout(() => (rings = rings.filter((r) => r.id !== id)), 600);
-		}
 		on_cast(e.pageX, e.pageY);
+	}
+
+	// where the ring sits, unless the wand has wandered off the code
+	function aim(e: PointerEvent) {
+		const box = card!.getBoundingClientRect();
+		const over =
+			code_box &&
+			e.clientX >= code_box.left &&
+			e.clientX <= code_box.right &&
+			e.clientY >= code_box.top &&
+			e.clientY <= code_box.bottom;
+		live = over ? { x: e.clientX - box.left, y: e.clientY - box.top } : null;
+	}
+
+	// the ring left behind on release, fading where the wand let go
+	function drop_ring() {
+		if (!live) return;
+		const id = next_ring++;
+		const { x, y } = live;
+		rings.push({ id, x, y });
+		setTimeout(() => (rings = rings.filter((r) => r.id !== id)), 600);
+		live = null;
 	}
 
 	function down(e: PointerEvent) {
 		if (e.button > 0) return;
 		pre!.setPointerCapture(e.pointerId);
+		code_box = pre!.getBoundingClientRect();
 		if (e.pointerType !== "touch") {
 			painting = true;
-			cast(e, true);
+			aim(e);
+			cast(e);
 			return;
 		}
 		// a tap casts when the finger lifts; a hold turns into painting
@@ -140,7 +162,8 @@ for (const [i, src] of docs) {
 		hold = setTimeout(() => {
 			hold = undefined;
 			painting = true;
-			cast(e, true);
+			aim(e);
+			cast(e);
 		}, HOLD_MS);
 	}
 
@@ -151,22 +174,28 @@ for (const [i, src] of docs) {
 			clearTimeout(hold);
 			hold = undefined;
 		}
-		if (painting && moved >= PAINT_STEP) cast(e, false);
+		if (!painting) return;
+		// the ring follows every move; casting waits for a step
+		aim(e);
+		if (moved >= PAINT_STEP) cast(e);
 	}
 
 	function up(e: PointerEvent) {
 		if (hold) {
 			clearTimeout(hold);
 			hold = undefined;
-			cast(e, true);
+			aim(e);
+			cast(e);
 		}
 		painting = false;
+		drop_ring();
 	}
 
 	function cancel() {
 		clearTimeout(hold);
 		hold = undefined;
 		painting = false;
+		live = null;
 	}
 
 	$effect(() => {
@@ -222,8 +251,11 @@ for (const [i, src] of docs) {
 			</svg>
 		{/if}
 	</div>
+	{#if live}
+		<span class="ring live" style:translate="{live.x}px {live.y}px" style:--r="{HIT_RADIUS}px"></span>
+	{/if}
 	{#each rings as ring (ring.id)}
-		<span class="ring" style:left="{ring.x}px" style:top="{ring.y}px" style:--r="{HIT_RADIUS}px"></span>
+		<span class="ring gone" style:translate="{ring.x}px {ring.y}px" style:--r="{HIT_RADIUS}px"></span>
 	{/each}
 	<div class="bar">
 		<span>
@@ -351,24 +383,43 @@ for (const [i, src] of docs) {
 		color: var(--tc);
 	}
 
+	/* the wand's reticle: it opens where the press lands, rides along with
+	 * the drag, and is left behind to fade on release */
 	.ring {
 		position: absolute;
 		z-index: 31;
+		top: 0;
+		left: 0;
 		width: calc(2 * var(--r));
 		height: calc(2 * var(--r));
 		margin: calc(-1 * var(--r)) 0 0 calc(-1 * var(--r));
 		border: 1px dashed var(--ink2);
 		border-radius: 50%;
 		pointer-events: none;
-		animation: ring 0.55s ease-out forwards;
 	}
-	@keyframes ring {
+	.ring.live {
+		animation: ring_in 0.12s ease-out both;
+	}
+	.ring.gone {
+		animation: ring_out 0.45s ease-out forwards;
+	}
+	@keyframes ring_in {
 		from {
 			transform: scale(0.5);
-			opacity: 0.9;
+			opacity: 0;
 		}
 		to {
 			transform: scale(1);
+			opacity: 0.9;
+		}
+	}
+	@keyframes ring_out {
+		from {
+			transform: scale(1);
+			opacity: 0.9;
+		}
+		to {
+			transform: scale(1.3);
 			opacity: 0;
 		}
 	}
