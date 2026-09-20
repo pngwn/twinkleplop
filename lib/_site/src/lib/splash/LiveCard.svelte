@@ -48,9 +48,11 @@ for (const [i, src] of docs) {
 	// wall-clock time from the first cast to the last token, for the joke
 	// next to the parse time
 	let started = 0;
-	let my_ms = $state(0);
-	const my_time = $derived(
-		my_ms < 60000 ? `${(my_ms / 1000).toFixed(1)}s` : `${Math.floor(my_ms / 60000)}m ${Math.round((my_ms % 60000) / 1000)}s`
+	let spent_ms = $state(0);
+	const spent = $derived(
+		spent_ms < 60000
+			? `${(spent_ms / 1000).toFixed(1)}s`
+			: `${Math.floor(spent_ms / 60000)}m ${Math.round((spent_ms % 60000) / 1000)}s`
 	);
 
 	let card: HTMLElement | undefined = $state();
@@ -135,14 +137,103 @@ for (const [i, src] of docs) {
 		live = over ? { x: e.clientX - box.left, y: e.clientY - box.top } : null;
 	}
 
-	// the ring left behind on release, fading where the wand let go
-	function drop_ring() {
+	// a ring left to fade where the wand just cast
+	function pulse() {
 		if (!live) return;
 		const id = next_ring++;
 		const { x, y } = live;
 		rings.push({ id, x, y });
 		setTimeout(() => (rings = rings.filter((r) => r.id !== id)), 600);
+	}
+
+	// on release the wand goes with it
+	function drop_ring() {
+		pulse();
 		live = null;
+	}
+
+	// --- keyboard: the wand hops from token to token
+
+	// where the wand sits, as an index into the tokens
+	let key_at = -1;
+
+	const all_tokens = () => [...pre!.querySelectorAll<HTMLElement>(".tok")];
+
+	function aim_at(el: HTMLElement) {
+		const box = card!.getBoundingClientRect();
+		const r = el.getBoundingClientRect();
+		live = { x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top };
+	}
+
+	// left and right walk the code as it reads; up and down land on the
+	// nearest token in the row above or below
+	function hop(tokens: HTMLElement[], dx: number, dy: number) {
+		if (dx) {
+			key_at = Math.min(tokens.length - 1, Math.max(0, key_at + dx));
+			return;
+		}
+		const boxes = tokens.map((el) => el.getBoundingClientRect());
+		const from = boxes[key_at];
+		const cx = from.left + from.width / 2;
+		// a wrapped line is two rows, so rows come from where tokens sit
+		let row: number | null = null;
+		for (const box of boxes) {
+			const step = box.top - from.top;
+			if (step * dy <= 1) continue;
+			if (row === null || Math.abs(step) < Math.abs(row - from.top)) row = box.top;
+		}
+		if (row === null) return;
+		let best = -1;
+		let score = Infinity;
+		boxes.forEach((box, i) => {
+			if (box.top !== row) return;
+			const ex = Math.abs(box.left + box.width / 2 - cx);
+			if (ex < score) {
+				score = ex;
+				best = i;
+			}
+		});
+		if (best >= 0) key_at = best;
+	}
+
+	function focus_code() {
+		const tokens = all_tokens();
+		if (!tokens.length || painting) return;
+		// start where there is still something to light
+		if (key_at < 0) key_at = Math.max(0, tokens.findIndex((t) => !t.hasAttribute("data-lit")));
+		aim_at(tokens[key_at]);
+	}
+
+	function blur_code() {
+		if (!painting) live = null;
+	}
+
+	const ARROWS: Record<string, [number, number]> = {
+		ArrowLeft: [-1, 0],
+		ArrowRight: [1, 0],
+		ArrowUp: [0, -1],
+		ArrowDown: [0, 1]
+	};
+
+	function key(e: KeyboardEvent) {
+		const tokens = all_tokens();
+		if (!tokens.length) return;
+		if (key_at < 0) key_at = 0;
+		const arrow = ARROWS[e.key];
+		if (arrow) {
+			// the page would scroll otherwise
+			e.preventDefault();
+			hop(tokens, arrow[0], arrow[1]);
+			aim_at(tokens[key_at]);
+			return;
+		}
+		if (e.key !== "Enter" && e.key !== " ") return;
+		e.preventDefault();
+		const el = tokens[key_at];
+		const r = el.getBoundingClientRect();
+		aim_at(el);
+		pulse();
+		on_cast(r.left + window.scrollX + r.width / 2, r.top + window.scrollY + r.height / 2);
 	}
 
 	function down(e: PointerEvent) {
@@ -199,7 +290,7 @@ for (const [i, src] of docs) {
 
 	$effect(() => {
 		if (lit > 0 && !started) started = Date.now();
-		if (total > 0 && lit >= total && started && !my_ms) my_ms = Date.now() - started;
+		if (total > 0 && lit >= total && started && !spent_ms) spent_ms = Date.now() - started;
 	});
 
 	onMount(() => {
@@ -221,13 +312,13 @@ for (const [i, src] of docs) {
 </script>
 
 <div class="card" bind:this={card}>
-	<!-- the wand is a pointer flourish: without it the code still reads, in
-	     grey that clears 4.5:1 -->
-	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 	<!-- whitespace in here is rendered -->
 	<div class="editor">
+		<!-- pointer, touch or keyboard: the code takes focus and the arrows
+		     hop the wand from token to token -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_no_noninteractive_tabindex -->
 		<!-- prettier-ignore -->
-		<pre class="code" bind:this={pre} onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={cancel}>{#each segments as segment}{#if segment.type}<span class="tok" style:--tc="var(--tok-{segment.type}, var(--ink))">{segment.text}</span>{:else}{segment.text}{/if}{/each}</pre>
+		<pre class="code" bind:this={pre} tabindex="0" role="group" aria-label="twinkleplop sample: arrow keys move the wand, enter twinkles the code under it" onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={cancel} onkeydown={key} onfocus={focus_code} onblur={blur_code}>{#each segments as segment}{#if segment.type}<span class="tok" style:--tc="var(--tok-{segment.type}, var(--ink))">{segment.text}</span>{:else}{segment.text}{/if}{/each}</pre>
 		{#if lit === 0}
 			<!-- the cursor carries the hint on a pointer; touch gets the wand
 			     in the corner until the first token lights -->
@@ -261,7 +352,7 @@ for (const [i, src] of docs) {
 			{#if lit === 0}
 				no twinkle :[
 			{:else if lit >= total}
-				twinkled in <b>{parse_ms.toFixed(3)}ms</b> · your time <b>{my_time}</b>
+				twinkled in <b>{parse_ms.toFixed(3)}ms</b> · your time <b>{spent}</b>
 			{:else}
 				twinkling · <b>{lit}/{total}</b> twinkles
 			{/if}
@@ -278,6 +369,14 @@ for (const [i, src] of docs) {
 	}
 	.card:hover {
 		border-color: var(--line2);
+	}
+	/* the code takes the focus; the card wears the ring */
+	.card:has(.code:focus-visible) {
+		outline: 2px solid var(--green);
+		outline-offset: 2px;
+	}
+	.code:focus {
+		outline: none;
 	}
 
 	.bar {
