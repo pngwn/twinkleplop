@@ -247,8 +247,8 @@ importers:
         specifier: workspace:*
         version: link:../../languages/yaml
       mdsvex:
-        specifier: https://pkg.pr.new/pngwn/MDsveX/mdsvex@704
-        version: https://pkg.pr.new/pngwn/MDsveX/mdsvex@704(svelte@5.55.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0))
+        specifier: 1.0.0-next.0
+        version: 1.0.0-next.0(svelte@5.55.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0))
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0
@@ -1383,13 +1383,11 @@ packages:
   '@manypkg/get-packages@1.1.3':
     resolution: {integrity: sha512-fo+QhuU3qE/2TQMQmbVMqaQ6EWbMhi4ABWP+O4AM1NqPBuy0OrApV5LO6BrrgnhtAHS2NH6RrVk9OL181tTi8A==}
 
-  '@mdsvex/parse@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@11c8fe4ac8ad8717d14a32821f1437b042b4d8be':
-    resolution: {integrity: sha512-AZB+wtmC1atVLZ2kfOU9G63SbuslscO9nVA68/XgR6ohXv6UIQg9lPu+vt/dL5lggOBaBZqDj1g+eGmIGw2qcQ==, tarball: https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@11c8fe4ac8ad8717d14a32821f1437b042b4d8be}
-    version: 1.0.0-next.0
+  '@mdsvex/parse@1.0.0-next.0':
+    resolution: {integrity: sha512-wrARAU2nZvuBrlZQAhvMt5XQLN0y9F5D4Wq8hl64xan9sbHB1sbRSY6jcPgrR4SqugpgzqWtTqggp7gAaVhR0g==}
 
-  '@mdsvex/render@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@11c8fe4ac8ad8717d14a32821f1437b042b4d8be':
-    resolution: {integrity: sha512-be1Mi6+hGhZdSaFfnoSXLnPOmO5T0dANZT2za0nR8tHf62pexpdA8PvFsG+fIIQvmGLSr1YB8No7wzCs2rJgaQ==, tarball: https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@11c8fe4ac8ad8717d14a32821f1437b042b4d8be}
-    version: 1.0.0-next.0
+  '@mdsvex/render@1.0.0-next.0':
+    resolution: {integrity: sha512-eBeiUTbBaiUs81+FCqyJO+NgXmpx5kNpEncGujxLtBk+OeBE37fUWP18kqS+ntCbRW1Ne/tqeDnmTYATcWW9xg==}
     peerDependencies:
       svelte: ^5.0.0
     peerDependenciesMeta:
@@ -2655,9 +2653,8 @@ packages:
   mdast-util-to-string@4.0.0:
     resolution: {integrity: sha512-0H44vDimn51F0YwvxSJSm0eCDOJTRlmN0R1yBh4HLj9wiV1Dn0QoXGbvFAWj2hSItVTlCmBF1hqKlIyUBVFLPg==}
 
-  mdsvex@https://pkg.pr.new/pngwn/MDsveX/mdsvex@704:
-    resolution: {integrity: sha512-jKMhuG/fi+kQ1ZmcyFo4NRWExqd6myF1fG442Vt1NHsmoyyvvpLLqFvDyf20KPqfmIU2DM6WhDKWrftcbMmHYQ==, tarball: https://pkg.pr.new/pngwn/MDsveX/mdsvex@704}
-    version: 1.0.0-next.0
+  mdsvex@1.0.0-next.0:
+    resolution: {integrity: sha512-o5g4TDdAwsIJ2cCtyZST7aPbgXTBIxwlI39AywGSG0diH5Ll49z6Y3qA5z2KMeYleuFSmsovRxP23+qR035TmA==}
     peerDependencies:
       vite: '>=5.0.0'
     peerDependenciesMeta:
@@ -4030,11 +4027,11 @@ snapshots:
       globby: 11.1.0
       read-yaml-file: 1.1.0
 
-  '@mdsvex/parse@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@11c8fe4ac8ad8717d14a32821f1437b042b4d8be': {}
+  '@mdsvex/parse@1.0.0-next.0': {}
 
-  '@mdsvex/render@https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@11c8fe4ac8ad8717d14a32821f1437b042b4d8be(svelte@5.55.5)':
+  '@mdsvex/render@1.0.0-next.0(svelte@5.55.5)':
     dependencies:
-      '@mdsvex/parse': https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@11c8fe4ac8ad8717d14a32821f1437b042b4d8be
+      '@mdsvex/parse': 1.0.0-next.0
     optionalDependencies:
       svelte: 5.55.5
 
@@ -5190,11 +5187,11 @@ snapshots:
     dependencies:
       '@types/mdast': 4.0.4
 
-  mdsvex@https://pkg.pr.new/pngwn/MDsveX/mdsvex@704(svelte@5.55.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)):
+  mdsvex@1.0.0-next.0(svelte@5.55.5)(vite@8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)):
     dependencies:
       '@ampproject/remapping': 2.3.0
-      '@mdsvex/parse': https://pkg.pr.new/pngwn/MDsveX/@mdsvex/parse@11c8fe4ac8ad8717d14a32821f1437b042b4d8be
-      '@mdsvex/render': https://pkg.pr.new/pngwn/MDsveX/@mdsvex/render@11c8fe4ac8ad8717d14a32821f1437b042b4d8be(svelte@5.55.5)
+      '@mdsvex/parse': 1.0.0-next.0
+      '@mdsvex/render': 1.0.0-next.0(svelte@5.55.5)
     optionalDependencies:
       vite: 8.0.10(@types/node@20.19.17)(esbuild@0.27.7)(terser@5.44.0)(tsx@4.21.0)
     transitivePeerDependencies:
