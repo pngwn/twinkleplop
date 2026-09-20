@@ -8,13 +8,6 @@
 	import LiveCard from "$lib/splash/LiveCard.svelte";
 	import { theme_mode } from "$lib/theme_mode.svelte";
 
-	const quick_links = [
-		{ title: "quick start", meta: "install and twinkle", href: "/docs/getting_started" },
-		{ title: "themes", meta: "light and dark", href: "/docs/themes" },
-		{ title: "customization", meta: "make it your own", href: "/docs/tokenization" },
-		{ title: "faq", meta: "no-one actually asked", href: "/docs/faq" }
-	];
-
 	let wordmark: Wordmark | undefined = $state();
 	let canvas: HTMLCanvasElement | undefined = $state();
 
@@ -83,27 +76,7 @@
 			<a class="cta" href="/docs">learn more <small>docs / welcome.md</small></a>
 		</div>
 
-		<section>
-			<div class="sh">
-				<h2>quick links</h2>
-				<span class="n">§ 01</span>
-			</div>
-			<div class="links">
-				{#each quick_links as link, i (link.href)}
-					<a class="q" href={link.href}>
-						<span class="i">{String(i + 1).padStart(2, "0")} ›</span>
-						<h3>{link.title}</h3>
-						<p>{link.meta}</p>
-					</a>
-				{/each}
-			</div>
-		</section>
 	</main>
-
-	<footer>
-		<span class="brand"><Rainbow text="twinkleplop" /></span>
-		<span>© 2026 · plop it in and twinkle</span>
-	</footer>
 </div>
 
 <style>
@@ -182,9 +155,7 @@
 		background: var(--green);
 		color: var(--selection-ink);
 	}
-	p,
-	h2,
-	h3 {
+	p {
 		margin: 0;
 	}
 
@@ -213,9 +184,9 @@
 		align-items: center;
 		justify-content: center;
 		text-align: center;
-		gap: clamp(20px, 4vh, 28px);
+		gap: clamp(18px, 3.6vh, 28px);
 		min-height: calc(100svh - 56px);
-		padding: clamp(12px, 3vh, 24px) 24px;
+		padding: clamp(8px, 2vh, 24px) 24px;
 	}
 	.sparks {
 		position: fixed;
@@ -236,7 +207,7 @@
 	.lab {
 		width: 100%;
 		max-width: 680px;
-		margin-top: clamp(0px, 14vh - 64px, 72px);
+		margin-top: clamp(0px, 18vh - 100px, 72px);
 		text-align: left;
 	}
 
@@ -261,80 +232,5 @@
 		font-size: 11px;
 	}
 
-	section {
-		max-width: 1040px;
-		margin: 0 auto;
-		padding: 72px 24px;
-	}
-	.sh {
-		display: flex;
-		align-items: baseline;
-		gap: 14px;
-		margin-bottom: 14px;
-	}
-	.sh h2 {
-		font-size: 26px;
-		font-weight: 500;
-		letter-spacing: -0.01em;
-		line-height: 1.6;
-		color: var(--ink);
-	}
-	.sh h2::before {
-		content: "# ";
-		color: var(--green);
-	}
-	.sh .n {
-		color: var(--ink3);
-		font-size: 13px;
-	}
-	.links {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 14px;
-	}
-	.q {
-		display: block;
-		border: 1px solid var(--line);
-		background: var(--bg2);
-		padding: 18px 20px 20px;
-		color: var(--ink);
-		transition: border-color 0.2s;
-	}
-	.q:hover {
-		color: var(--ink);
-		border-color: var(--line2);
-	}
-	.q .i {
-		display: block;
-		font-size: 12px;
-		color: var(--ink3);
-		margin-bottom: 22px;
-	}
-	.q h3 {
-		font-size: 17px;
-		font-weight: 500;
-		line-height: 1.6;
-		color: var(--ink);
-		margin-bottom: 4px;
-	}
-	.q p {
-		font-size: 12.5px;
-		color: var(--green);
-	}
 
-	footer {
-		display: flex;
-		justify-content: space-between;
-		flex-wrap: wrap;
-		gap: 16px;
-		max-width: 1088px;
-		margin: 0 auto;
-		padding: 26px 24px 90px;
-		border-top: 1px solid var(--line);
-		font-size: 12px;
-		color: var(--ink3);
-	}
-	footer .brand {
-		font-weight: 700;
-	}
 </style>
