@@ -8,14 +8,14 @@
 
 	// every token the wand lights costs the wordmark a pair of pixels, so
 	// this has half as many tokens as "twinkleplop" has pixels, rounded up:
-	// 62 for 123, the odd pixel flying alone. short lines of short tokens
-	// keep it narrow: on a phone only the first import runs past the card.
-	// recount if either changes.
-	const SOURCE = `import { language } from "@twinkleplop/typescript";
+	// 62 for 123, the odd pixel flying alone. every line is short enough to
+	// sit in a phone's card without wrapping or scrolling. recount if
+	// either changes.
+	const SOURCE = `import { language } from
+  "@twinkleplop/typescript";
 import "@twinkleplop/theme-github";
 
 const ts = language();
-
 for (const [i, src] of docs) {
   const html = ts(src, {
     line_numbers: i > 0,
@@ -102,12 +102,71 @@ for (const [i, src] of docs) {
 		return out;
 	}
 
-	function cast(e: MouseEvent) {
-		const box = card!.getBoundingClientRect();
-		const id = next_ring++;
-		rings.push({ id, x: e.clientX - box.left, y: e.clientY - box.top });
-		setTimeout(() => (rings = rings.filter((ring) => ring.id !== id)), 600);
+	// dragging paints casts along the path: from the press with a mouse,
+	// and on touch only after a short hold, so a swipe still scrolls
+	const PAINT_STEP = 14;
+	const HOLD_MS = 150;
+	// far enough to call it a swipe rather than a hold
+	const SLIP = 8;
+
+	let painting = false;
+	let hold: ReturnType<typeof setTimeout> | undefined;
+	let last_x = 0;
+	let last_y = 0;
+
+	function cast(e: PointerEvent, ring: boolean) {
+		last_x = e.clientX;
+		last_y = e.clientY;
+		if (ring) {
+			const box = card!.getBoundingClientRect();
+			const id = next_ring++;
+			rings.push({ id, x: e.clientX - box.left, y: e.clientY - box.top });
+			setTimeout(() => (rings = rings.filter((r) => r.id !== id)), 600);
+		}
 		on_cast(e.pageX, e.pageY);
+	}
+
+	function down(e: PointerEvent) {
+		if (e.button > 0) return;
+		pre!.setPointerCapture(e.pointerId);
+		if (e.pointerType !== "touch") {
+			painting = true;
+			cast(e, true);
+			return;
+		}
+		// a tap casts when the finger lifts; a hold turns into painting
+		last_x = e.clientX;
+		last_y = e.clientY;
+		hold = setTimeout(() => {
+			hold = undefined;
+			painting = true;
+			cast(e, true);
+		}, HOLD_MS);
+	}
+
+	function move(e: PointerEvent) {
+		const moved = Math.hypot(e.clientX - last_x, e.clientY - last_y);
+		// moving before the hold is up means they meant to scroll
+		if (hold && moved > SLIP) {
+			clearTimeout(hold);
+			hold = undefined;
+		}
+		if (painting && moved >= PAINT_STEP) cast(e, false);
+	}
+
+	function up(e: PointerEvent) {
+		if (hold) {
+			clearTimeout(hold);
+			hold = undefined;
+			cast(e, true);
+		}
+		painting = false;
+	}
+
+	function cancel() {
+		clearTimeout(hold);
+		hold = undefined;
+		painting = false;
 	}
 
 	$effect(() => {
@@ -117,12 +176,19 @@ for (const [i, src] of docs) {
 
 	onMount(() => {
 		on_targets([...pre!.querySelectorAll<HTMLElement>(".tok")]);
+		// the page is free to scroll until a hold turns into a drag, so this
+		// has to be able to cancel the scroll: not a passive listener
+		const keep = (e: TouchEvent) => painting && e.preventDefault();
+		pre!.addEventListener("touchmove", keep, { passive: false });
 		// timing a microsecond-scale call means running it for a few ms, so
 		// keep it out of hydration
 		const id = setTimeout(() => {
 			parse_ms = measure(() => tokenize(SOURCE), { samples: 10 }).ms;
 		}, 150);
-		return () => clearTimeout(id);
+		return () => {
+			clearTimeout(id);
+			pre!.removeEventListener("touchmove", keep);
+		};
 	});
 </script>
 
@@ -133,7 +199,7 @@ for (const [i, src] of docs) {
 	<!-- whitespace in here is rendered -->
 	<div class="editor">
 		<!-- prettier-ignore -->
-		<pre class="code" bind:this={pre} onclick={cast}>{#each segments as segment}{#if segment.type}<span class="tok" style:--tc="var(--tok-{segment.type}, var(--ink))">{segment.text}</span>{:else}{segment.text}{/if}{/each}</pre>
+		<pre class="code" bind:this={pre} onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={cancel}>{#each segments as segment}{#if segment.type}<span class="tok" style:--tc="var(--tok-{segment.type}, var(--ink))">{segment.text}</span>{:else}{segment.text}{/if}{/each}</pre>
 		{#if lit === 0}
 			<!-- the cursor carries the hint on a pointer; touch gets the wand
 			     in the corner until the first token lights -->
@@ -229,8 +295,8 @@ for (const [i, src] of docs) {
 		font-feature-settings:
 			"liga" 0,
 			"calt" 0;
-		/* a line that doesn't fit scrolls rather than wraps: a wrapped line
-		 * costs a phone the room for the link under the card */
+		/* nothing here is wide enough to need either, but a stray line
+		 * should scroll rather than wrap and cost a phone a row */
 		white-space: pre;
 		overflow-x: auto;
 		tab-size: 2;

@@ -20,7 +20,11 @@
 // reach it
 export const HIT_RADIUS = 25;
 // ms between launches. a launch doesn't wait for the one before to land.
+// a drag queues tokens faster than that, so a long queue drains quicker,
+// down to STAGGER_MIN.
 const STAGGER = 200;
+const STAGGER_MIN = 60;
+const STAGGER_STEP = 20;
 // pixels per token
 const PAIR = 2;
 // the flight spring's natural frequency, in rad/s, and its damping ratio.
@@ -276,6 +280,7 @@ export function create_plop(opts: plop_options): plop {
 	let view_l = 0;
 	let view_r = 0;
 	let stale = false;
+	let measured_at = 0;
 	let canvas_dirty = false;
 	let raf = 0;
 	let scheduled = false;
@@ -331,6 +336,7 @@ export function create_plop(opts: plop_options): plop {
 		view_l = view.left + scroll_x;
 		view_r = view.right + scroll_x;
 		stale = false;
+		measured_at = performance.now();
 		for (const t of targets) {
 			const rect = t.el.getBoundingClientRect();
 			t.x = rect.left + scroll_x;
@@ -381,9 +387,9 @@ export function create_plop(opts: plop_options): plop {
 	}
 
 	function cast(x: number, y: number) {
-		// cheap next to a click, and it catches anything that moved without
-		// resizing
-		measure();
+		// catches anything that moved without resizing. a drag casts many
+		// times a second, so it is not worth doing on every one.
+		if (stale || performance.now() - measured_at > 400) measure();
 		const hits: { t: target; d: number }[] = [];
 		for (const t of targets) {
 			if (t.lit || t.queued) continue;
@@ -574,7 +580,7 @@ export function create_plop(opts: plop_options): plop {
 		scheduled = false;
 		if (queue.length && now >= next_launch) {
 			launch(queue.shift()!, now);
-			next_launch = now + STAGGER;
+			next_launch = now + Math.max(STAGGER_MIN, STAGGER - queue.length * STAGGER_STEP);
 		}
 		fly(now);
 
