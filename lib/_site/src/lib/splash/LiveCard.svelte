@@ -46,6 +46,14 @@ for (const [i, src] of docs) {
 
 	const segments = build_segments(SOURCE);
 
+	// wall-clock time from the first cast to the last token, for the joke
+	// next to the parse time
+	let started = 0;
+	let my_ms = $state(0);
+	const my_time = $derived(
+		my_ms < 60000 ? `${(my_ms / 1000).toFixed(1)}s` : `${Math.floor(my_ms / 60000)}m ${Math.round((my_ms % 60000) / 1000)}s`
+	);
+
 	let card: HTMLElement | undefined = $state();
 	let pre: HTMLPreElement | undefined = $state();
 	let parse_ms = $state(0);
@@ -102,6 +110,11 @@ for (const [i, src] of docs) {
 		on_cast(e.pageX, e.pageY);
 	}
 
+	$effect(() => {
+		if (lit > 0 && !started) started = Date.now();
+		if (total > 0 && lit >= total && started && !my_ms) my_ms = Date.now() - started;
+	});
+
 	onMount(() => {
 		on_targets([...pre!.querySelectorAll<HTMLElement>(".tok")]);
 		// timing a microsecond-scale call means running it for a few ms, so
@@ -118,8 +131,31 @@ for (const [i, src] of docs) {
 	     grey that clears 4.5:1 -->
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 	<!-- whitespace in here is rendered -->
-	<!-- prettier-ignore -->
-	<pre class="code" bind:this={pre} onclick={cast}>{#each segments as segment}{#if segment.type}<span class="tok" style:--tc="var(--tok-{segment.type}, var(--ink))">{segment.text}</span>{:else}{segment.text}{/if}{/each}</pre>
+	<div class="editor">
+		<!-- prettier-ignore -->
+		<pre class="code" bind:this={pre} onclick={cast}>{#each segments as segment}{#if segment.type}<span class="tok" style:--tc="var(--tok-{segment.type}, var(--ink))">{segment.text}</span>{:else}{segment.text}{/if}{/each}</pre>
+		{#if lit === 0}
+			<!-- the cursor carries the hint on a pointer; touch gets the wand
+			     in the corner until the first token lights -->
+			<svg class="wand" viewBox="0 0 26 26" aria-hidden="true">
+				<g fill="var(--ink)">
+					<rect x="3" y="0" width="3" height="3" />
+					<rect x="0" y="3" width="3" height="3" />
+					<rect x="6" y="3" width="3" height="3" />
+					<rect x="3" y="6" width="3" height="3" />
+				</g>
+				<rect x="3" y="3" width="3" height="3" fill="var(--yellow)" />
+				<rect x="8" y="8" width="3" height="3" fill="var(--purple)" />
+				<rect x="10" y="10" width="3" height="3" fill="var(--blue)" />
+				<rect x="12" y="12" width="3" height="3" fill="var(--green)" />
+				<rect x="14" y="14" width="3" height="3" fill="var(--yellow)" />
+				<rect x="16" y="16" width="3" height="3" fill="var(--orange)" />
+				<rect x="18" y="18" width="3" height="3" fill="var(--red)" />
+				<rect x="20" y="20" width="3" height="3" fill="var(--ink2)" />
+				<rect x="22" y="22" width="3" height="3" fill="var(--ink2)" />
+			</svg>
+		{/if}
+	</div>
 	{#each rings as ring (ring.id)}
 		<span class="ring" style:left="{ring.x}px" style:top="{ring.y}px" style:--r="{HIT_RADIUS}px"></span>
 	{/each}
@@ -128,9 +164,9 @@ for (const [i, src] of docs) {
 			{#if lit === 0}
 				no twinkle :[
 			{:else if lit >= total}
-				twinkled in <b>{parse_ms.toFixed(3)}ms</b>
+				twinkled in <b>{parse_ms.toFixed(3)}ms</b> · my time <b>{my_time}</b>
 			{:else}
-				twinkling · <b>{lit}/{total}</b> tokens
+				twinkling · <b>{lit}/{total}</b> twinkles
 			{/if}
 		</span>
 	</div>
@@ -157,6 +193,27 @@ for (const [i, src] of docs) {
 	.bar b {
 		font-weight: 400;
 		color: var(--green);
+	}
+
+	.editor {
+		position: relative;
+	}
+	/* pinned to the corner of the card, not the scrolling code */
+	.wand {
+		position: absolute;
+		right: 10px;
+		bottom: 10px;
+		width: 26px;
+		height: 26px;
+		display: none;
+		pointer-events: none;
+		opacity: 0.85;
+	}
+	/* where there is no pointer there is no wand cursor to find */
+	@media (hover: none) {
+		.wand {
+			display: block;
+		}
 	}
 
 	.code {
