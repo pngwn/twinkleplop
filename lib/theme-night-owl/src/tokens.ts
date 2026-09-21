@@ -264,7 +264,7 @@ export const light: theme_palette = palette(light_owl);
 
 export const dark: theme_palette = palette(night_owl);
 
-// shared by both themes, keyword stays upright as night owl italicises only some keywords
+// shared by both themes
 const styles: theme_styles = {
   attr_name: ["italic"], // entity.other.attribute-name
   block_scalar_header: ["italic"], // keyword.control.flow.block-scalar.yaml via keyword.control
@@ -278,10 +278,12 @@ const styles: theme_styles = {
   function: ["italic"], // entity.name.function
   inserted: ["italic"], // markup.inserted.diff
   italic: ["italic"], // markup.italic
+  keyword: ["italic"], // keyword.control and storage.modifier, declaration keywords like const are upright
   selector_class: ["italic"], // entity.other.attribute-name.class.css via entity.other.attribute-name
   selector_id: ["italic"], // entity.other.attribute-name.id.css via entity.other.attribute-name
   selector_pseudo: ["italic"], // entity.other.attribute-name.pseudo-class.css via entity.other.attribute-name
   svelte_block: ["italic"], // keyword.control.svelte via keyword.control
+  svelte_directive: ["italic"], // entity.other.attribute-name.svelte on on, bind, class, use and style
 };
 
 export const light_styles: theme_styles = styles;

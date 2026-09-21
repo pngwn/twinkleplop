@@ -35,4 +35,4 @@ Night Owl's italics, bold and underlines come from variables too, so you can tur
 }
 ```
 
-twinkleplop has one type per token, so a few distinctions VS Code makes are merged. Light Owl gives `//` comments a slightly different grey from other comments, and every comment here uses the main comment grey. Keywords stay upright, because Night Owl italicises only some of them, such as `return` and `import`.
+twinkleplop has one type per token, so a few distinctions VS Code makes are merged. Light Owl gives `//` comments a slightly different grey from other comments, and every comment here uses the main comment grey. Every keyword is italic, including declaration keywords such as `const` and `function` that Night Owl draws upright.
