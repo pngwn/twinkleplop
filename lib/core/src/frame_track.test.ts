@@ -460,6 +460,171 @@ describe("frame_track — declarative brace kinds", () => {
   });
 });
 
+describe("frame_track — scan_back and in_kinds prev rules", () => {
+  // toy shaped like the JS/TS spec's two hard brace positions: a return
+  // type between `)` and the body brace, and a switch label whose colon
+  // is a statement separator rather than an annotation.
+  const scan_toy: Grammar = {
+    name: "scan_toy",
+    states: {
+      root: {
+        rules: [
+          { match: ["case", "default", "void", "switch"], boundary: true, token: "keyword" },
+          { match: ["=>", "<", ">"], token: "operator" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { range: [["0", "9"]], token: "number" },
+          { match: ["(", ")", "{", "}", "[", "]", ",", ";", ":", ".", "="], token: "punctuation" },
+          { match: [" ", "\n"] },
+        ],
+      },
+    },
+  };
+  const scan_compiled = compile(scan_toy);
+
+  const return_scan = {
+    over: [
+      { type: "identifier" },
+      { type: "keyword", texts: ["void"] },
+      { type: "operator", texts: ["<", ">"] },
+      { type: "punctuation", chars: ".[]," },
+    ],
+    to: { type: "punctuation", last_char_in: ":", preceded_by_char_in: ")" },
+  };
+
+  function make_tracker(max?: number) {
+    return frame_track({
+      punct_type: "punctuation",
+      brackets: {
+        paren: { open: "(", close: ")" },
+        brace: { open: "{", close: "}" },
+        bracket: { open: "[", close: "]" },
+      },
+      brace_kinds: {
+        prev_rules: [
+          {
+            prev_type: "punctuation",
+            prev_texts: [":"],
+            in_kinds: ["block"],
+            scan_back: {
+              over: [
+                { type: "identifier" },
+                { type: "number" },
+                { type: "punctuation", chars: "." },
+              ],
+              to: { type: "keyword", texts: ["case", "default"] },
+            },
+            kind: "block",
+          },
+          { prev_type: "punctuation", prev_texts: [":"], kind: "type_literal" },
+          { prev_type: "punctuation", prev_last_char_in: ")", kind: "block" },
+          {
+            prev_type: "identifier",
+            scan_back: max === undefined ? return_scan : { ...return_scan, max },
+            kind: "block",
+          },
+          {
+            prev_type: "keyword",
+            prev_texts: ["void"],
+            scan_back: max === undefined ? return_scan : { ...return_scan, max },
+            kind: "block",
+          },
+          {
+            prev_type: "operator",
+            prev_texts: [">"],
+            scan_back: max === undefined ? return_scan : { ...return_scan, max },
+            kind: "block",
+          },
+          {
+            prev_type: "punctuation",
+            prev_last_char_in: "]",
+            scan_back: max === undefined ? return_scan : { ...return_scan, max },
+            kind: "block",
+          },
+        ],
+        default_kind: "object",
+        start_kind: "block",
+      },
+      at_start: { reset_chars: ",;" },
+    });
+  }
+  const tracker = make_tracker();
+
+  function kinds_of(src: string, t = tracker): string[] {
+    const raw = tokenize(src, scan_compiled);
+    const out = reclassify([t])(src, raw);
+    const f = out.frames as FrameTable;
+    return f.frames
+      .filter((fr) => fr.bracket === FRAME_BRACKET_BRACE)
+      .map((fr) => f.kind_names[fr.kind]);
+  }
+
+  test("walks a return type back to the `):` that opened it", () => {
+    expect(kinds_of("f ( a ) : void { x }")).toEqual(["block"]);
+    expect(kinds_of("f ( a ) : Result { x }")).toEqual(["block"]);
+  });
+
+  test("walks over generic, indexed and tuple type tails", () => {
+    expect(kinds_of("f ( a ) : Map < K , V > { x }")).toEqual(["block"]);
+    expect(kinds_of("f ( a ) : Series [ u ] { x }")).toEqual(["block"]);
+  });
+
+  test("landing shape reads characters, so a coalesced `):` still matches", () => {
+    // no spaces: the grammar coalesces `):` into one punctuation token,
+    // and `preceded_by_char_in` reads the char before the `:` inside it.
+    expect(kinds_of("f(a): void {x}")).toEqual(["block"]);
+  });
+
+  test("a walk that reaches no `):` leaves the brace on the default kind", () => {
+    expect(kinds_of("a = { x }")).toEqual(["object"]);
+    expect(kinds_of("f ( a ) . b { x }")).toEqual(["object"]);
+  });
+
+  test("the walk stops at the first token outside the over set", () => {
+    // `=` is in no `over` entry, so the walk gives up before the `):`.
+    expect(kinds_of("f ( a ) : void = b { x }")).toEqual(["object"]);
+  });
+
+  test("max bounds the walk", () => {
+    const src = "f ( a ) : A , B , C , D { x }";
+    expect(kinds_of(src)).toEqual(["block"]);
+    expect(kinds_of(src, make_tracker(3))).toEqual(["object"]);
+  });
+
+  test("a label colon opens a block, a bare colon still opens a type literal", () => {
+    expect(kinds_of("switch ( k ) { case 1 : { x } }")).toEqual(["block", "block"]);
+    expect(kinds_of("switch ( k ) { default : { x } }")).toEqual(["block", "block"]);
+    expect(kinds_of("switch ( k ) { case U . B : { x } }")).toEqual(["block", "block"]);
+    expect(kinds_of("a : { x }")).toEqual(["type_literal"]);
+  });
+
+  test("in_kinds gates the label rule on the enclosing frame", () => {
+    // same token shape, but the enclosing frame is an object literal:
+    // `default` is a property name there, not a switch label.
+    expect(kinds_of("a = { default : { x } }")).toEqual(["object", "type_literal"]);
+    expect(kinds_of("a = { case : { x } }")).toEqual(["object", "type_literal"]);
+  });
+
+  test("an unknown in_kinds name warns and never matches", () => {
+    const t = frame_track({
+      punct_type: "punctuation",
+      brackets: { brace: { open: "{", close: "}" } },
+      brace_kinds: {
+        prev_rules: [
+          { prev_type: "punctuation", prev_texts: [":"], in_kinds: ["nope"], kind: "block" },
+        ],
+        default_kind: "object",
+      },
+    });
+    expect(kinds_of("a : { x }", t)).toEqual(["object"]);
+  });
+});
+
 describe("frame_track — ternary and stmt flag signals", () => {
   // grammar with a `?` operator and `:` punctuation so ternary pairs and
   // annotation colons are distinguishable, plus declarator keywords for

@@ -1362,6 +1362,25 @@ function params_detect_arrow(
   );
 }
 
+// is the token directly before `idx` a bare "?" operator? distinguishes
+// an optional member's `?:` from a ternary's colon, which the frame
+// tracker's mode-blind qmark counting cannot tell apart on its own.
+function params_qmark_before(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  idx: number,
+  input: string,
+  trivia: Uint8Array,
+): boolean {
+  if (spec.operator_id < 0) return false;
+  const before = params_prev_non_trivia(tokens, idx - 1, trivia);
+  if (before < 0) return false;
+  const b = before * 3;
+  if (tokens[b] !== spec.operator_id) return false;
+  const bs = tokens[b + 1];
+  return tokens[b + 2] - bs === 1 && input.charCodeAt(bs) === CH_QMARK;
+}
+
 // "arrow": the anchor token (one to the left of the pattern cursor)
 // carries the "(". try each offset, cheapest checks first.
 function params_find_arrow(
@@ -1382,10 +1401,16 @@ function params_find_arrow(
   for (let off = 0; off < e - s; off++) {
     if (input.charCodeAt(s + off) !== CH_PAREN_OPEN) continue;
     if (spec.skip_in_type_position && off === 0 && frames !== undefined) {
-      // `: (x: T) => Y` is a function TYPE except directly inside an
-      // object literal, where `key: (x) => x` is a function value. the
-      // enclosing frame is read after the previous token -- this token's
-      // own "(" has not pushed yet.
+      // `: (x: T) => Y` is a function TYPE, so the names in it are not
+      // parameters. two shapes put a value after that colon instead:
+      // an object-literal member (`key: (x) => x`), and a ternary
+      // alternative (`c ? (x) => a : (x) => b`). the enclosing frame is
+      // read after the previous token -- this token's own "(" has not
+      // pushed yet.
+      //
+      // the ternary test needs the upstream tracker to count qmarks; it
+      // fails closed against the empty signals array when it doesn't,
+      // leaving the enclosing-frame test on its own as before.
       const prev = params_prev_non_trivia(tokens, anchor_idx - 1, trivia);
       if (prev >= 0 && tokens[prev * 3] === spec.punct_id) {
         const ps = tokens[prev * 3 + 1];
@@ -1395,7 +1420,23 @@ function params_find_arrow(
           const enclosing = frames.frames[anchor_idx > 0 ? frames.active_frame[anchor_idx - 1] : 0];
           const in_object =
             enclosing.bracket === FRAME_BRACKET_BRACE && enclosing.kind === object_kind;
-          if (!in_object) continue;
+          // the length test keeps the read in bounds: `signals` is a
+          // shared zero-length singleton when the tracker does not count
+          // ternaries, and an out-of-bounds typed-array load returns
+          // undefined, which poisons this site for every pipeline in the
+          // process -- not just the ones without signals.
+          let ternary_colon =
+            prev < frames.signals.length && (frames.signals[prev] & SIGNAL_TERNARY_COLON) !== 0;
+          if (ternary_colon && params_qmark_before(spec, tokens, prev, input, trivia)) {
+            // an optional member writes `?` directly before the colon
+            // (`onHover?: (i) => void`), and qmark counting is
+            // mode-blind, so it consumed that `?` as if it opened a
+            // ternary. a real ternary always has its consequent in
+            // between, so an adjacent qmark means this colon is a
+            // member separator and what follows is a type.
+            ternary_colon = false;
+          }
+          if (!in_object && !ternary_colon) continue;
         }
       }
     }

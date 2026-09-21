@@ -39,6 +39,7 @@ import {
 } from "@twinkleplop/core";
 import { compile } from "@twinkleplop/core/compile";
 import type {
+  BraceKindScan,
   ClaimFn,
   ClaimingReclassifier,
   FrameSpec,
@@ -188,14 +189,12 @@ const function_value = seq(
 // `switch` arm keep their keywords.
 const NAMED_MEMBER_KINDS = ["object", "interface", "type_literal"];
 
-// only the two kinds the frame tracker names from a keyword. `object` is
-// its FALLBACK kind (a TypeScript body whose return type sits between the
-// `)` and the `{` lands there) and `type_literal` catches `case X: {`,
-// whose colon reads like an annotation. Promoting a keyword to `function`
-// on a misread frame is louder than leaving a method name alone, so
-// `const o = { default() {} }` and `type T = { delete(): void }` are given
-// up.
-const METHOD_MEMBER_KINDS = ["class", "interface"];
+// `object` is the frame tracker's fallback kind, so this list is only
+// safe while every brace it cannot place is a genuine object literal --
+// the return-type and `case` label rules in `js_frame_spec` are what make
+// that true. `type_literal` is absent because a type alias's `= {` is
+// already `object`.
+const METHOD_MEMBER_KINDS = ["class", "interface", "object"];
 
 // `true` / `false` arrive as `boolean` rather than `keyword`; both are
 // legal keys.
@@ -284,6 +283,62 @@ export const claim_property_scope: ClaimingReclassifier = rewrite_types(property
   trivia: ["comment"],
 });
 
+// keywords the grammar emits that can sit inside a type expression.
+// `string` / `number` / `boolean` and the rest of the builtin type names
+// are plain identifiers at this stage -- builtin-type promotion is a
+// reclassifier that runs downstream of frame_track.
+const TYPE_EXPR_KEYWORDS = [
+  "void",
+  "null",
+  "undefined",
+  "this",
+  "typeof",
+  "keyof",
+  "readonly",
+  "infer",
+  "is",
+  "asserts",
+];
+
+// the subset of those that can be the LAST token of a return type, i.e.
+// the token a body brace actually follows.
+const TYPE_TAIL_KEYWORDS = ["void", "null", "undefined", "this"];
+
+// walk back over a return-type annotation to the `):` that opened it.
+// `[`, `]` and `,` come in through `chars` rather than a text list
+// because the grammar coalesces adjacent punctuation -- `readonly T[] {`
+// arrives with a single `[]` token.
+const RETURN_TYPE_SCAN: BraceKindScan = {
+  over: [
+    { type: "identifier" },
+    // the TSX grammar tags the builtin type names (`string`, `number`)
+    // as `type` directly, where the TS grammar leaves them identifiers
+    // for a downstream pass. the walk has to accept both.
+    { type: "type" },
+    { type: "keyword", texts: TYPE_EXPR_KEYWORDS },
+    { type: "string" },
+    { type: "number" },
+    { type: "boolean" },
+    { type: "operator", texts: ["|", "&", "<", ">", ">>", ">>>"] },
+    { type: "punctuation", chars: ".[]," },
+  ],
+  to: { type: "punctuation", last_char_in: ":", preceded_by_char_in: ")" },
+};
+
+// walk back over a switch label's expression to the `case` keyword.
+const CASE_LABEL_SCAN: BraceKindScan = {
+  over: [
+    { type: "identifier" },
+    { type: "string" },
+    { type: "number" },
+    { type: "boolean" },
+    { type: "keyword", texts: ["this", "null", "undefined"] },
+    { type: "operator", texts: ["-"] },
+    { type: "punctuation", chars: "." },
+  ],
+  to: { type: "keyword", texts: ["case", "default"] },
+};
+
 // shared frame_track config for JS/TS/TSX/Svelte. the spec object is
 // exported separately so TS-family packages can extend it (ternary and
 // stmt flag tracking for type-position rules) without re-stating the
@@ -327,11 +382,54 @@ export const js_frame_spec: FrameSpec = {
       // `${` in a template: the brace opens an interpolated expression.
       // it shares a token with the `$`, so this matches on that character.
       { prev_type: "punctuation", prev_last_char_in: "$", kind: "block" },
+      // a switch label ends in `:` too -- `case "bytes": { ... }` opens a
+      // block, not the annotation type literal the next rule reads a bare
+      // `:` as. the walk steps back over the label expression to the
+      // `case` keyword. `in_kinds` is what keeps a reserved word used as
+      // an object key out of it: in `{ default: { a: 1 } }` the walk lands
+      // on `default` just the same, but the enclosing frame is the object
+      // literal rather than a block.
+      {
+        prev_type: "punctuation",
+        prev_texts: [":"],
+        in_kinds: ["block"],
+        scan_back: CASE_LABEL_SCAN,
+        kind: "block",
+      },
       // `:` is punctuation in the grammar (separator, not operator); a
       // brace after it is an annotation / return-position type literal.
       { prev_type: "punctuation", prev_texts: [":"], kind: "type_literal" },
       { prev_type: "keyword", prev_texts: ["do", "try", "else", "finally"], kind: "block" },
       { prev_type: "punctuation", prev_last_char_in: ")", kind: "block" },
+      // a return-type annotation hides the parameter list from the rule
+      // above: in `f(): Promise<void> {` the token before the body brace
+      // is the tail of the type, not the `)`. one entry rule per shape a
+      // type can end with, each walking back over the annotation to the
+      // `):` that opened it -- keying on the annotation rather than on
+      // whichever token happens to be last. the entry conditions stay
+      // narrow on purpose; they are what keeps the walk off the object
+      // literals that reach these rules (`= {`, `, {`, `return {` all
+      // fail them without a step).
+      { prev_type: "identifier", scan_back: RETURN_TYPE_SCAN, kind: "block" },
+      { prev_type: "type", scan_back: RETURN_TYPE_SCAN, kind: "block" },
+      {
+        prev_type: "keyword",
+        prev_texts: TYPE_TAIL_KEYWORDS,
+        scan_back: RETURN_TYPE_SCAN,
+        kind: "block",
+      },
+      {
+        prev_type: "operator",
+        prev_texts: [">", ">>", ">>>"],
+        scan_back: RETURN_TYPE_SCAN,
+        kind: "block",
+      },
+      {
+        prev_type: "punctuation",
+        prev_last_char_in: "]",
+        scan_back: RETURN_TYPE_SCAN,
+        kind: "block",
+      },
     ],
     default_kind: "object",
     start_kind: "block",

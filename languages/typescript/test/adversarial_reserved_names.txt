@@ -155,17 +155,13 @@ class Animal {
   constructor(public name: string) {}
 }
 
-// --- known gaps ---
-
-// a type literal's method signatures are named, generic or not
+// a type literal's method signatures are named, generic or not, and a
+// reserved word works as a method name in a type literal or an object
 type Factory = { make<T>(base: T): T; build(): T };
-
-// a RESERVED WORD as a method name is not claimed here. method shorthand
-// is only claimed in a `class` / `interface` body, the two kinds the frame
-// tracker names from a keyword rather than from the shape around the
-// brace — `delete` below stays a keyword
 type Handlers = { delete(): void };
 const handlers2 = { delete() {} };
+
+// --- known gaps ---
 
 // optional members, nested and direct
 interface Brackets {

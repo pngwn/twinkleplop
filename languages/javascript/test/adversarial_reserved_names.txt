@@ -127,10 +127,7 @@ fn((a || typeof b));
 fn((x.default));
 map.get(0, typeof x);
 
-// --- known gaps ---
-
-
-// object-literal method shorthand is deliberately not claimed: `object`
-// is the frame tracker's fallback kind, so a brace it cannot classify
-// lands there. `default` below stays a keyword.
+// object-literal method shorthand. this only became safe once every brace
+// the tracker could not place stopped landing on `object` — see the
+// return-type and `case` label rules in js_frame_spec.
 const handlers = { default() {}, delete() {} };

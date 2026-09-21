@@ -2407,76 +2407,76 @@ export default [
 	{
 		"type": "comment",
 		"start": 3479,
-		"end": 3501
+		"end": 3554
 	},
 	{
 		"type": "comment",
-		"start": 3503,
-		"end": 3576
+		"start": 3554,
+		"end": 3613
 	},
 	{
 		"type": "comment",
-		"start": 3576,
-		"end": 3647
+		"start": 3614,
+		"end": 3623
 	},
 	{
 		"type": "comment",
-		"start": 3647,
-		"end": 3696
+		"start": 3623,
+		"end": 3679
 	},
 	{
 		"type": "keyword",
-		"start": 3696,
-		"end": 3701
+		"start": 3679,
+		"end": 3684
 	},
 	{
 		"type": "identifier",
-		"start": 3702,
-		"end": 3710
+		"start": 3685,
+		"end": 3693
 	},
 	{
 		"type": "operator",
-		"start": 3711,
-		"end": 3712
+		"start": 3694,
+		"end": 3695
 	},
 	{
 		"type": "punctuation",
-		"start": 3713,
-		"end": 3714
+		"start": 3696,
+		"end": 3697
 	},
 	{
 		"type": "keyword",
-		"start": 3715,
-		"end": 3722
+		"start": 3698,
+		"end": 3705
 	},
 	{
 		"type": "punctuation",
-		"start": 3722,
-		"end": 3724
+		"start": 3705,
+		"end": 3707
 	},
 	{
 		"type": "punctuation",
-		"start": 3725,
-		"end": 3728
+		"start": 3708,
+		"end": 3711
 	},
 	{
 		"type": "keyword",
-		"start": 3729,
-		"end": 3735
+		"start": 3712,
+		"end": 3718
 	},
 	{
 		"type": "punctuation",
-		"start": 3735,
-		"end": 3737
+		"start": 3718,
+		"end": 3720
 	},
 	{
 		"type": "punctuation",
-		"start": 3738,
-		"end": 3740
+		"start": 3721,
+		"end": 3723
 	},
 	{
 		"type": "punctuation",
-		"start": 3741,
-		"end": 3743
+		"start": 3724,
+		"end": 3726
 	}
 ];

@@ -3,7 +3,8 @@
 // interface_member_promoter pass.
 
 import { describe, it, expect } from "vitest";
-import { tokenize as make_language } from "./index.js";
+import { FRAME_BRACKET_BRACE, reclassify, tokenize as raw_tokenize } from "@twinkleplop/core";
+import { grammar, tokenize as make_language, ts_frame_track } from "./index.js";
 
 const language = make_language();
 
@@ -564,5 +565,80 @@ describe("TypeScript reclassifier — ternary colons around casts", () => {
     const tokens = enrich("const z = cond ? x as T : y;");
     expect(type_of(tokens, "T")).toBe("type");
     expect(type_of(tokens, "y")).toBe("type");
+  });
+});
+
+describe("TypeScript frame kinds — return types and switch labels", () => {
+  // these two brace positions used to fall through to the wrong kind:
+  // a body brace behind a return-type annotation read as an object
+  // literal, and a `case` arm read as a type-literal annotation. the
+  // kinds themselves are what downstream claim passes gate on, so they
+  // are asserted directly rather than through a token type.
+  function brace_kinds(input) {
+    const raw = raw_tokenize(input, grammar);
+    const out = reclassify([ts_frame_track])(input, raw);
+    return out.frames.frames
+      .filter((f) => f.bracket === FRAME_BRACKET_BRACE)
+      .map((f) => out.frames.kind_names[f.kind]);
+  }
+
+  it("a body brace behind a return type is a block", () => {
+    expect(brace_kinds("function f(state: number): void { return; }")).toEqual(["block"]);
+    expect(brace_kinds('function f(u: S["unit"]): string { return ""; }')).toEqual(["block"]);
+    expect(brace_kinds("function f(): Promise<void> { g(); }")).toEqual(["block"]);
+    expect(brace_kinds("function f(): Record<string, number> { g(); }")).toEqual(["block"]);
+    expect(brace_kinds("function f(): [A, B] { g(); }")).toEqual(["block"]);
+    expect(brace_kinds("function f(): readonly string[] { g(); }")).toEqual(["block"]);
+    expect(brace_kinds("const o = { m(): void { return; } };")).toEqual(["object", "block"]);
+  });
+
+  it("a case arm is a block, a bare annotation colon is still a type literal", () => {
+    expect(brace_kinds('switch (u) { case "bytes": { g(); } }')).toEqual(["block", "block"]);
+    expect(brace_kinds("switch (u) { default: { g(); } }")).toEqual(["block", "block"]);
+    expect(brace_kinds("switch (u) { case U.B: { g(); } }")).toEqual(["block", "block"]);
+    expect(brace_kinds("const x: { a: number } = y;")).toEqual(["type_literal"]);
+  });
+
+  it("a reserved word used as an object key does not open a block", () => {
+    // same `default:` / `case:` shape, but inside an object literal.
+    expect(brace_kinds("function f() { const o = { default: { a: 1 } }; }")).toEqual([
+      "block",
+      "object",
+      "type_literal",
+    ]);
+    expect(brace_kinds("function f() { const o = { case: { a: 1 } }; }")).toEqual([
+      "block",
+      "object",
+      "type_literal",
+    ]);
+  });
+
+  it("object literals reached through the new rules keep their kind", () => {
+    expect(brace_kinds("const o = { a: 1 };")).toEqual(["object"]);
+    expect(brace_kinds("const y = c ? f(x) : g({ b: 1 });")).toEqual(["object"]);
+    expect(brace_kinds("namespace Foo { const a = 1; }")).toEqual(["object"]);
+  });
+});
+
+describe("TypeScript parameters — arrows after a ternary colon", () => {
+  it("both arms of a ternary tag their parameters", () => {
+    // the second arrow sits behind the ternary colon. the type-position
+    // guard used to read that colon as an annotation unless the
+    // enclosing frame was an object literal, so the parameter went
+    // untagged inside a function body.
+    const tokens = enrich(
+      "function f(): View {\n  const t = c ? (i: number) => a(i) : (i: number) => b(i);\n}",
+    );
+    // the two declaration sites are the `i` tokens followed by `:`.
+    const declared = tokens.filter(
+      (t, k) => t.value === "i" && tokens[k + 1] && tokens[k + 1].value === ":",
+    );
+    expect(declared).toHaveLength(2);
+    expect(declared.map((t) => t.type)).toEqual(["parameter", "parameter"]);
+  });
+
+  it("an optional member's function type is still a type, not a parameter list", () => {
+    const tokens = enrich("interface P { onHover?: (index: number) => void; }");
+    expect(type_of(tokens, "index")).not.toBe("parameter");
   });
 });

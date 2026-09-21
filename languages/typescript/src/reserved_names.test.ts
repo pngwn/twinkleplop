@@ -48,10 +48,10 @@ describe("reserved words in TypeScript member positions", () => {
     expect(pick(src, "new")).toBe("keyword");
   });
 
-  it("a type literal method is left alone", () => {
-    // `type_literal` is not in the method frame list — see the comment on
-    // METHOD_MEMBER_KINDS in the javascript package.
-    expect(pick("type T = { delete(): void };", "delete")).toBe("keyword");
+  it("a type literal method is a function", () => {
+    // a type alias's `= {` is an `object` frame, so this needs no
+    // separate entry in METHOD_MEMBER_KINDS.
+    expect(pick("type T = { delete(): void };", "delete")).toBe("function");
   });
 
   it("a class method named `new` is still a method", () => {

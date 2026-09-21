@@ -20,6 +20,6 @@ Each word lands where the equivalent plain name lands:
 
 Positions where the word really is a keyword are unchanged: `switch (a) { default: }`, `export default`, labelled statements, and the `new (): T` construct signature in an interface.
 
-Method shorthand is only claimed inside a body an explicit `class` or `interface` marker opened. `object` is the frame tracker's fallback kind, so a brace it cannot classify lands there, and a reserved word promoted to `function` on a misread frame is a louder error than a method name left as a keyword — `const o = { default() {} }` is the case this gives up.
+Method shorthand covers object literals and type literals as well as class and interface bodies. That relies on every brace the frame tracker cannot place being a genuine object literal, which is what the annotation-shape rules in the same release make true.
 
 Under `fidelity: "low"` a key reads as `identifier` rather than `property` — the coarse classification a plain name gets — but never as a keyword. The promotion to `property` is gated with the rest of the property claims.

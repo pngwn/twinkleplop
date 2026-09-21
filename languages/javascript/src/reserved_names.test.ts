@@ -103,11 +103,9 @@ describe("reserved words as method names", () => {
     expect(pick(src, "for")).toBe("function");
   });
 
-  // object literals are deliberately not covered: `object` is the frame
-  // tracker's fallback kind, so claiming `function` there would fire on
-  // every brace it could not classify.
-  it("object method shorthand is left alone", () => {
-    expect(pick("const o = { default() {} };", "default")).toBe("keyword");
+  it("object method shorthand is a function", () => {
+    expect(pick("const o = { default() {} };", "default")).toBe("function");
+    expect(pick("const o = { delete() {} };", "delete")).toBe("function");
   });
 });
 
