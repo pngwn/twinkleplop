@@ -643,6 +643,132 @@ describe("TypeScript parameters — arrows after a ternary colon", () => {
   });
 });
 
+describe("TypeScript reclassifier — tuple labels", () => {
+  function classify(input, options) {
+    const result = make_language(options)(input);
+    const out = [];
+    for (let i = 0; i < result.tokens.length / 3; i++) {
+      const type = result.token_types[result.tokens[i * 3]];
+      if (type === "punctuation" || type === "operator") continue;
+      out.push(`${input.slice(result.tokens[i * 3 + 1], result.tokens[i * 3 + 2])}:${type}`);
+    }
+    return out;
+  }
+
+  it("labels are properties in every form", () => {
+    expect(classify("type Pair = [first: string, second: number];")).toEqual([
+      "type:keyword",
+      "Pair:type",
+      "first:property",
+      "string:type",
+      "second:property",
+      "number:type",
+    ]);
+    expect(classify("type Opt = [a: string, b?: number];")).toEqual([
+      "type:keyword",
+      "Opt:type",
+      "a:property",
+      "string:type",
+      "b:property",
+      "number:type",
+    ]);
+    expect(classify("type Rest = [head: string, ...tail: number[]];")).toEqual([
+      "type:keyword",
+      "Rest:type",
+      "head:property",
+      "string:type",
+      "tail:property",
+      "number:type",
+    ]);
+    expect(classify("interface Span { range: [start: number, end: number]; }")).toEqual([
+      "interface:keyword",
+      "Span:class_name",
+      "range:property",
+      "start:property",
+      "number:type",
+      "end:property",
+      "number:type",
+    ]);
+  });
+
+  it("a rest parameter's tuple labels are properties, the parameter stays a parameter", () => {
+    expect(classify("function f(...args: [name: string, age: number]) {}")).toEqual([
+      "function:keyword",
+      "f:function",
+      "args:parameter",
+      "name:property",
+      "string:type",
+      "age:property",
+      "number:type",
+    ]);
+  });
+
+  it("an unlabelled tuple keeps every element a type", () => {
+    expect(classify("type Plain = [string, number];")).toEqual([
+      "type:keyword",
+      "Plain:type",
+      "string:type",
+      "number:type",
+    ]);
+  });
+
+  it("a tuple inside a function type's parameter list", () => {
+    expect(classify("type Fn = (x: [a: string, b: number]) => void;")).toEqual([
+      "type:keyword",
+      "Fn:function",
+      "x:parameter",
+      "a:property",
+      "string:type",
+      "b:property",
+      "number:type",
+      "void:keyword",
+    ]);
+  });
+
+  it("a function-typed element in an object type is a label, not a method", () => {
+    const tokens = enrich("type X = { x: [a: string, cb: () => void] };");
+    expect(type_of(tokens, "a")).toBe("property");
+    expect(type_of(tokens, "cb")).toBe("property");
+  });
+
+  it("an index signature's key is not a label", () => {
+    expect(type_of(enrich("interface I { [k: string]: V }"), "k")).toBe("identifier");
+    expect(type_of(enrich("interface I {\n  a: string\n  [k: string]: V\n}"), "k")).toBe(
+      "identifier",
+    );
+    expect(type_of(enrich("class C { static [k: string]: V; }"), "k")).toBe("identifier");
+    // but a tuple in its value type has labels.
+    expect(type_of(enrich("type T = { [k: string]: [a: V] };"), "a")).toBe("property");
+    // and a tuple closing onto a conditional type's colon is still a tuple.
+    expect(type_of(enrich("type U = { x: A extends B ? [a: V] : C };"), "a")).toBe("property");
+  });
+
+  it("a conditional type inside a tuple keeps its branches types", () => {
+    expect(classify("type K = [T extends U ? X : Y];")).toEqual([
+      "type:keyword",
+      "K:type",
+      "T:type",
+      "extends:keyword",
+      "U:type",
+      "X:type",
+      "Y:type",
+    ]);
+  });
+
+  it("labels are identifiers when property is not in the fidelity allowlist", () => {
+    const tokens = classify("type P = { k: [a: string, b: number] };", { fidelity: ["type"] });
+    expect(tokens).toEqual([
+      "type:keyword",
+      "P:type",
+      "k:identifier",
+      "a:identifier",
+      "string:type",
+      "b:identifier",
+      "number:type",
+    ]);
+  });
+});
+
 describe("TypeScript reclassifier — parameter properties", () => {
   it("an accessibility modifier leaves the name a parameter", () => {
     const tokens = enrich("class A { constructor(public name: string) {} }");

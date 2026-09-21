@@ -8,13 +8,18 @@
 // types. See the "type position rules" section for the entry catalogue.
 
 import type {
+  ClaimFn,
   ClaimingReclassifier,
+  FrameTable,
   LanguagePipeline,
   Reclassifier,
   RewriteRule,
 } from "@twinkleplop/core";
 import {
+  FRAME_BRACKET_BRACE,
+  FRAME_BRACKET_BRACKET,
   always,
+  as_claim_producer,
   embed_interleaved,
   frame_track,
   make_token_view,
@@ -587,6 +592,174 @@ export const type_position_promoter: ClaimingReclassifier = rewrite_types(type_p
   trivia: ["comment"],
 });
 
+// tuple labels
+// ---------------------------------------------------------------------------
+//
+// `start` in `[start: number]` (and `[b?: T]`, `[...rest: T[]]`) reads as
+// `property`, like the key in `{ start: number }`. type_span() skips
+// labels; this pass claims them, tagged `property` so `fidelity: ["type"]`
+// leaves them as identifiers.
+//
+// a label is an identifier directly inside a bracket frame, first in its
+// element, followed by `:`, `?:` or `?` `:`. the only other code with that
+// shape is an index signature's key (`[k: string]: V`).
+//
+// claims at 35 to beat the method-shorthand `function` claim (30) that
+// claim_property_scope also makes for `[cb: () => void]` in an object type.
+const TUPLE_LABEL_PREC = 35;
+
+const CH_COLON = 0x3a;
+const CH_COMMA = 0x2c;
+const CH_DOT = 0x2e;
+const CH_QMARK = 0x3f;
+const CH_BRACKET_OPEN = 0x5b;
+const CH_BRACKET_CLOSE = 0x5d;
+
+type View = ReturnType<typeof make_token_view>;
+
+// is the token after `idx` a label's separator? the same forms
+// type_span() accepts: a lone `:`, `?:`, or `?` then `:`.
+function label_separator_follows(
+  view: View,
+  idx: number,
+  punctuation_id: number,
+  operator_id: number,
+): boolean {
+  const { input, tokens } = view;
+  const nxt = view.next_non_trivia(idx + 1);
+  if (nxt < 0) return false;
+  const s = tokens[nxt * 3 + 1];
+  const len = tokens[nxt * 3 + 2] - s;
+  const c = input.charCodeAt(s);
+  if (tokens[nxt * 3] === punctuation_id) return len === 1 && c === CH_COLON;
+  if (tokens[nxt * 3] !== operator_id || c !== CH_QMARK) return false;
+  if (len === 2) return input.charCodeAt(s + 1) === CH_COLON;
+  if (len !== 1) return false;
+  const after = view.next_non_trivia(nxt + 1);
+  return (
+    after >= 0 &&
+    tokens[after * 3] === punctuation_id &&
+    input.charCodeAt(tokens[after * 3 + 1]) === CH_COLON
+  );
+}
+
+function ends_with_rest(input: string, s: number, e: number): boolean {
+  return (
+    e - s >= 3 &&
+    input.charCodeAt(e - 1) === CH_DOT &&
+    input.charCodeAt(e - 2) === CH_DOT &&
+    input.charCodeAt(e - 3) === CH_DOT
+  );
+}
+
+// an index signature's bracket sits directly in a brace body and closes
+// onto a colon. a tuple can close onto one too, as a conditional type's
+// true branch (`? [a: T] : U`), so a `?` before the bracket rules that
+// out. `idx` is a token directly inside the bracket.
+function opens_index_signature(
+  view: View,
+  frames: FrameTable,
+  frame_idx: number,
+  idx: number,
+  punctuation_id: number,
+  operator_id: number,
+): boolean {
+  const { input, tokens } = view;
+  const frame = frames.frames[frame_idx];
+  if (frame.parent < 0 || frames.frames[frame.parent].bracket !== FRAME_BRACKET_BRACE) {
+    return false;
+  }
+  const open = frame.enter_idx;
+  if (input.charCodeAt(tokens[open * 3 + 1]) === CH_BRACKET_OPEN) {
+    const before = view.prev_non_trivia(open - 1);
+    if (
+      before >= 0 &&
+      tokens[before * 3] === operator_id &&
+      tokens[before * 3 + 2] - tokens[before * 3 + 1] === 1 &&
+      input.charCodeAt(tokens[before * 3 + 1]) === CH_QMARK
+    ) {
+      return false;
+    }
+  }
+  let depth = 1;
+  for (let j = idx + 1; j < view.count; j++) {
+    if (tokens[j * 3] !== punctuation_id) continue;
+    const e = tokens[j * 3 + 2];
+    for (let p = tokens[j * 3 + 1]; p < e; p++) {
+      const c = input.charCodeAt(p);
+      if (c === CH_BRACKET_OPEN) depth++;
+      else if (c === CH_BRACKET_CLOSE && --depth === 0) {
+        if (p + 1 < e) return input.charCodeAt(p + 1) === CH_COLON;
+        const after = view.next_non_trivia(j + 1);
+        return (
+          after >= 0 &&
+          tokens[after * 3] === punctuation_id &&
+          input.charCodeAt(tokens[after * 3 + 1]) === CH_COLON
+        );
+      }
+    }
+  }
+  return false;
+}
+
+const claim_tuple_labels_fn: ClaimFn = (input, tokens, token_types, sink, frames) => {
+  if (frames === undefined) return;
+  const identifier_id = token_types.indexOf("identifier");
+  const punctuation_id = token_types.indexOf("punctuation");
+  const operator_id = token_types.indexOf("operator");
+  if (identifier_id < 0 || punctuation_id < 0 || operator_id < 0) return;
+  const view = make_token_view(input, tokens, token_types);
+  const n = view.count;
+  const active = frames.active_frame;
+  if (active.length < n) return;
+  let property_id = -1;
+  for (let i = 0; i < n; i++) {
+    if (tokens[i * 3] !== identifier_id) continue;
+    const frame_idx = active[i];
+    if (frames.frames[frame_idx].bracket !== FRAME_BRACKET_BRACKET) continue;
+    if (!label_separator_follows(view, i, punctuation_id, operator_id)) continue;
+    const prev = view.prev_non_trivia(i - 1);
+    if (prev < 0) continue;
+    const ps = tokens[prev * 3 + 1];
+    const pe = tokens[prev * 3 + 2];
+    if (tokens[prev * 3] === punctuation_id) {
+      const last = input.charCodeAt(pe - 1);
+      if (last === CH_BRACKET_OPEN) {
+        // only a first element can be an index signature's key.
+        if (opens_index_signature(view, frames, frame_idx, i, punctuation_id, operator_id)) {
+          continue;
+        }
+      } else if (last !== CH_COMMA && !ends_with_rest(input, ps, pe)) {
+        continue;
+      }
+    } else if (
+      tokens[prev * 3] !== operator_id ||
+      pe - ps !== 3 ||
+      !ends_with_rest(input, ps, pe)
+    ) {
+      continue;
+    }
+    if (property_id < 0) {
+      property_id = token_types.indexOf("property");
+      if (property_id < 0) {
+        property_id = token_types.length;
+        token_types.push("property");
+      }
+    }
+    sink.emit(i, property_id, TUPLE_LABEL_PREC);
+  }
+};
+
+// claim_property_scope plus tuple labels, as one batch member: both are
+// `property` claims, and a separate producer would multiply the claim
+// batch's permutation count in the order-independence test.
+export const claim_ts_property_scope: ClaimingReclassifier = as_claim_producer(
+  (input, tokens, token_types, sink, frames) => {
+    claim_property_scope.__claim(input, tokens, token_types, sink, frames);
+    claim_tuple_labels_fn(input, tokens, token_types, sink, frames);
+  },
+);
+
 // promote_ts_generic_calls
 // ---------------------------------------------------------------------------
 //
@@ -857,7 +1030,7 @@ export const reclassifiers: LanguagePipeline = [
   // function-valued const stays `function`. only rewrites identifiers,
   // so namespaces / builtin-types / function-vars are untouched.
   tag(promote_js_const_bindings, ["constant"]),
-  tag(claim_property_scope, ["property"]),
+  tag(claim_ts_property_scope, ["property"]),
   tag(type_position_promoter, ["type"]),
   // `type Foo = ...`, `import type ...`, `export type ...` — binding-name
   // positions that type_position_promoter doesn't claim. runs before
