@@ -2,20 +2,23 @@
 //
 // The algorithm is a break-point segment walk:
 //
-//   1. Partition twoslash nodes into `wrappers` (hover/error/highlight/
-//      completion — these decorate a range of text) and `lineAnnotations`
+//   1. Partition twoslash nodes into `wrappers` (hover/error/highlight —
+//      these decorate a range of text), `completions` (`^|` — zero-length,
+//      so they anchor to a single offset) and `lineAnnotations`
 //      (query/tag/error — these render as sibling spans after a line ends).
 //   2. Build a sorted set of break points from every token boundary, every
-//      wrapper boundary, every newline, and 0 / input.length. Every
-//      adjacent pair (segStart, segEnd) is a segment that lies entirely
-//      inside at most one token and at most one copy of each wrapper type,
-//      so tag nesting is unambiguous.
+//      wrapper boundary, every completion offset, every newline, and
+//      0 / input.length. Every adjacent pair (segStart, segEnd) is a
+//      segment that lies entirely inside at most one token and at most one
+//      copy of each wrapper type, so tag nesting is unambiguous.
 //   3. Walk segments left-to-right, diffing the active wrapper+token
 //      "stack" against the previously-open stack and emitting open/close
 //      tags for the difference.
 //   4. After any segment whose last char is `\n`, temporarily unwind the
 //      stack, emit queued line annotations for the line we just ended,
 //      then restore the stack for the next segment.
+//   5. Completion lists emit at their offset, between the wrapper stack and
+//      the token span.
 //
 // Output is wrapped in <pre class="twinkleplop twoslash"><code>…</code></pre>.
 // `twinkleplop` is the class the themes bind token colours to (matching
@@ -26,7 +29,13 @@
 // theme supplies the token colours.
 
 import { language } from "./language.js";
-import type { DocTag, Wrapper, LineAnnotation, HighlightOptions } from "./types.js";
+import type {
+  DocTag,
+  Wrapper,
+  CompletionPoint,
+  LineAnnotation,
+  HighlightOptions,
+} from "./types.js";
 
 import { TwoslashOptions, type TwoslashReturn, type NodeError } from "twoslash";
 import type { TokenizeResult } from "@twinkleplop/core";
@@ -229,33 +238,34 @@ function wrapper_tags(w: Wrapper, ctx: RenderContext): { open: string; close: st
         close: `</span>`,
       };
     }
-    case "completion": {
-      const prefix_attr = w.prefix ? ` data-prefix="${escape_html(w.prefix)}"` : "";
-      let inner = "";
-      if (Array.isArray(w.completions) && w.completions.length > 0) {
-        inner =
-          `<span class="twoslash-completions">` +
-          w.completions
-            .map(
-              (c) =>
-                `<span class="twoslash-completion-entry"${
-                  c.kind ? ` data-kind="${escape_html(c.kind)}"` : ""
-                }>${escape_html(c.name)}${
-                  c.docs
-                    ? `<span class="twoslash-completion-docs">${ctx.render_docs(c.docs)}</span>`
-                    : ""
-                }</span>`,
-            )
-            .join("") +
-          `</span>`;
-      }
-      return {
-        open: `<span class="twoslash-completion"${prefix_attr}>`,
-        close: `${inner}</span>`,
-      };
-    }
   }
   return { open: "", close: "" };
+}
+
+/**
+ * Render a completion list as a single self-contained element: an empty
+ * host, which `.twoslash-completion { position: relative }` and the
+ * absolutely positioned `.twoslash-completions` turn into a dropdown at the
+ * caret. A completion the compiler returned nothing for has nothing to
+ * anchor, so it emits nothing at all.
+ */
+function render_completion(point: CompletionPoint, ctx: RenderContext): string {
+  const entries = point.completions;
+  if (!Array.isArray(entries) || entries.length === 0) return "";
+  const prefix_attr = point.prefix ? ` data-prefix="${escape_html(point.prefix)}"` : "";
+  let inner = "";
+  for (const c of entries) {
+    inner += `<span class="twoslash-completion-entry"${
+      c.kind ? ` data-kind="${escape_html(c.kind)}"` : ""
+    }>${escape_html(c.name)}${
+      c.docs ? `<span class="twoslash-completion-docs">${ctx.render_docs(c.docs)}</span>` : ""
+    }</span>`;
+  }
+  return (
+    `<span class="twoslash-completion"${prefix_attr}>` +
+    `<span class="twoslash-completions">${inner}</span>` +
+    `</span>`
+  );
 }
 
 function render_line_annotation(ann: LineAnnotation, ctx: RenderContext) {
@@ -299,6 +309,7 @@ export function render(
 
   // -- Partition nodes --------------------------------------------------
   const wrappers: Wrapper[] = [];
+  const completions: Map<number, CompletionPoint[]> = new Map();
   const line_annotations: Map<number, LineAnnotation[]> = new Map();
 
   for (const node of nodes) {
@@ -338,15 +349,18 @@ export function render(
           text: node.text,
         });
         break;
-      case "completion":
-        wrappers.push({
-          start,
-          end,
-          kind: "completion",
+      case "completion": {
+        // `start` is the caret the `^|` marker points at; `length` is always
+        // 0, so this is a position, not a range.
+        const point: CompletionPoint = {
           prefix: node.completionsPrefix,
           completions: node.completions,
-        });
+        };
+        const at = completions.get(start);
+        if (at) at.push(point);
+        else completions.set(start, [point]);
         break;
+      }
       case "query":
         add_line_annotation(line_annotations, node.line, {
           kind: "query",
@@ -383,6 +397,7 @@ export function render(
     break_set.add(w.start);
     break_set.add(w.end);
   }
+  for (const offset of completions.keys()) break_set.add(offset);
   for (let i = 0; i < input.length; i++) {
     if (input.charCodeAt(i) === 10) break_set.add(i + 1);
   }
@@ -453,6 +468,20 @@ export function render(
       stack.push({ ref: w, close });
     }
 
+    // Emit any completion list anchored here. It goes inside the wrapper
+    // stack — the caret can sit mid-hover, and splitting that hover in two
+    // would give the line two popovers — but outside the token span, so the
+    // list does not inherit the token's colour (the same reason a hover
+    // popover is a sibling of `.twoslash-target` rather than a child).
+    const points = completions.get(seg_start);
+    if (points !== undefined) {
+      if (current_token_type !== null) {
+        out.push("</span>");
+        current_token_type = null;
+      }
+      for (const point of points) out.push(render_completion(point, ctx));
+    }
+
     // Open the token span (if we don't already have one of the same type).
     if (seg_token_type !== null && current_token_type !== seg_token_type) {
       out.push(`<span class="${seg_token_type}">`);
@@ -487,6 +516,17 @@ export function render(
   }
 
   // -- Drain ------------------------------------------------------------
+  // `input.length` is only ever a segment *end*, so a completion anchored
+  // there never reaches the walk above and has to be emitted here.
+  const trailing = completions.get(input.length);
+  if (trailing !== undefined) {
+    if (current_token_type !== null) {
+      out.push("</span>");
+      current_token_type = null;
+    }
+    for (const point of trailing) out.push(render_completion(point, ctx));
+  }
+
   if (current_token_type !== null) out.push("</span>");
   while (stack.length) out.push(stack.pop()!.close);
 

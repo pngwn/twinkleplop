@@ -47,6 +47,25 @@ describe("@twinkleplop/twoslash-svelte", () => {
     expect(html).toMatchSnapshot();
   });
 
+  // `render` is shared with @twinkleplop/twoslash, so what this really pins
+  // is that a zero-length node survives the svelte2tsx round trip — its start
+  // and end map to one offset, which the remap could reject as an empty range.
+  it("renders a ^| completion list inside a script block", () => {
+    const html = highlight(fixture("completions.svelte"));
+    expect(html).toContain(`<span class="twoslash-completions">`);
+    expect(html).toContain(
+      `<span class="twoslash-completion-entry" data-kind="method">find</span>`,
+    );
+    // the caret sits after `fin`, so the host lands between the two halves
+    // of the identifier and wraps no text — it holds only the list.
+    expect(html).toMatch(
+      /fin<\/span><span class="twoslash-completion" data-prefix="fin"><span class="twoslash-completions">.*?<\/span><\/span><span class="identifier">d<\/span>/s,
+    );
+    const opens = (html.match(/<span\b/g) ?? []).length;
+    const closes = (html.match(/<\/span>/g) ?? []).length;
+    expect(opens).toBe(closes);
+  });
+
   it("produces a well-formed <pre><code> wrapper", () => {
     const html = highlight(fixture("hover.svelte"));
     expect(html.startsWith(`<pre class="twinkleplop twoslash"><code>`)).toBe(true);

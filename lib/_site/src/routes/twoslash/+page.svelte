@@ -220,8 +220,9 @@
 		   otherwise land the heading underneath it */
 		scroll-margin-top: 72px;
 	}
-	/* shiki's completion list is absolutely positioned and reserves no space,
-	   so it needs room beneath the block or it lands on the next section. */
+	/* both completion lists are absolutely positioned and reserve no space,
+	   so the section needs room beneath the block or they land on the next
+	   one. twinkleplop's hangs lower than shiki's; this clears both. */
 	.snippet#completions {
 		margin-bottom: 104px;
 	}

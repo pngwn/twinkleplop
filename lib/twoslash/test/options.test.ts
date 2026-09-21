@@ -146,7 +146,7 @@ describe("render_docs", () => {
         {
           type: "completion",
           start: 6,
-          length: 1,
+          length: 0,
           line: 0,
           character: 6,
           completionsPrefix: "a",

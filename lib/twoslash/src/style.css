@@ -127,6 +127,9 @@
 
 /* --- completions -------------------------------------------------------- */
 
+/* the host is an empty inline box at the caret — `position: relative` is
+   all it is there for. The caret can fall inside a hover target, hence the
+   underline reset on the list. */
 .twoslash-completion {
 	position: relative;
 }
@@ -145,6 +148,8 @@
 	background: var(--twp-twoslash-surface);
 	box-shadow: 0 6px 20px rgb(0 0 0 / 0.35);
 	white-space: pre;
+	text-align: left;
+	text-decoration: none;
 }
 
 .twoslash-completion-entry {
