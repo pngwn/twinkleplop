@@ -643,6 +643,56 @@ describe("TypeScript parameters — arrows after a ternary colon", () => {
   });
 });
 
+describe("TypeScript parameters — later parameters inside a member body", () => {
+  // a `,` re-arms member start inside a parameter list too, so the member
+  // key rules must not look through the paren to the enclosing body.
+  it("an object type's function-typed member", () => {
+    const tokens = enrich("type U = { f: (a: string, b: number) => void };");
+    expect(type_of(tokens, "a")).toBe("parameter");
+    expect(type_of(tokens, "b")).toBe("parameter");
+  });
+
+  it("an interface method signature", () => {
+    const tokens = enrich("interface I { f(a: string, b: number): void }");
+    expect(type_of(tokens, "a")).toBe("parameter");
+    expect(type_of(tokens, "b")).toBe("parameter");
+  });
+
+  it("an interface member's function type reads its names alike", () => {
+    const tokens = enrich("interface I { g: (c: string, d: number) => void }");
+    expect(type_of(tokens, "d")).not.toBe("property");
+    expect(type_of(tokens, "d")).toBe(type_of(tokens, "c"));
+  });
+
+  it("call and construct signatures", () => {
+    const tokens = enrich("interface I { new (a: string, b: number): I; (x: A, y: B): void }");
+    expect(type_of(tokens, "b")).not.toBe("property");
+    expect(type_of(tokens, "b")).toBe(type_of(tokens, "a"));
+    expect(type_of(tokens, "y")).not.toBe("property");
+    expect(type_of(tokens, "y")).toBe(type_of(tokens, "x"));
+  });
+
+  it("an object literal's arrow and method shorthand", () => {
+    const tokens = enrich(
+      "const o = { f: (a: string, b: number) => a, g(c: string, d: number) { return c } };",
+    );
+    expect(type_of(tokens, "b")).toBe("parameter");
+    expect(type_of(tokens, "d")).toBe("parameter");
+  });
+
+  it("a function-typed parameter is not read as a method key", () => {
+    const tokens = enrich("const o = { f(a: string, cb: () => void) {} };");
+    expect(type_of(tokens, "cb")).toBe("parameter");
+  });
+
+  it("keys after a member with a parameter list are still keys", () => {
+    const tokens = enrich("const o = { a: 1, f: (x: T, y: U) => x, c: 2 };");
+    expect(type_of(tokens, "a")).toBe("property");
+    expect(type_of(tokens, "f")).toBe("function");
+    expect(type_of(tokens, "c")).toBe("property");
+  });
+});
+
 describe("TypeScript reclassifier — parameter properties", () => {
   it("an accessibility modifier leaves the name a parameter", () => {
     const tokens = enrich("class A { constructor(public name: string) {} }");

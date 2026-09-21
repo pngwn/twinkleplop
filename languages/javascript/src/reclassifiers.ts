@@ -157,6 +157,11 @@ export const function_variable_rules = [
 //   type_literal — `: { ... }` annotation shapes — claim property.
 //   block / paren / bracket — NEVER claim (labeled statements, params,
 //                  arrays, computed keys).
+//
+// every member rule gates on the DIRECT frame. the tracker re-arms at_start
+// after a `,` in any frame, so the `b` in `{ f(a: T, b: U) {} }` is at the
+// start of a paren element. a gate that walked through the paren to the
+// enclosing object would read that parameter as a member key.
 
 // the member separator in all its forms: `x:`, `x?:` (single operator
 // token or split `?` + `:`).
@@ -204,7 +209,12 @@ export const property_scope_rules: RewriteRule[] = [
   // object method shorthand: the key of a function-valued member reads as
   // a function, not a property.
   {
-    anchor: { type_name: "identifier", at_start: true, frame_kinds: ["object"] },
+    anchor: {
+      type_name: "identifier",
+      at_start: true,
+      frame_kinds: ["object"],
+      frame_direct: true,
+    },
     when: seq(member_colon, function_value),
     rewrite: "function",
   },
@@ -216,6 +226,7 @@ export const property_scope_rules: RewriteRule[] = [
       type_name: "identifier",
       at_start: true,
       frame_kinds: ["object", "interface", "type_literal"],
+      frame_direct: true,
     },
     when: seq(
       member_colon,
@@ -260,12 +271,22 @@ export const reserved_name_rules: RewriteRule[] = [
   },
   // `{ default: 1 }`, `interface I { new: number }` — a property key.
   {
-    anchor: { type_name: "keyword", at_start: true, frame_kinds: NAMED_MEMBER_KINDS },
+    anchor: {
+      type_name: "keyword",
+      at_start: true,
+      frame_kinds: NAMED_MEMBER_KINDS,
+      frame_direct: true,
+    },
     when: member_colon,
     rewrite: "identifier",
   },
   {
-    anchor: { type_name: "boolean", at_start: true, frame_kinds: NAMED_MEMBER_KINDS },
+    anchor: {
+      type_name: "boolean",
+      at_start: true,
+      frame_kinds: NAMED_MEMBER_KINDS,
+      frame_direct: true,
+    },
     when: member_colon,
     rewrite: "identifier",
   },

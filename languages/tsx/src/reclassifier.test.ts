@@ -47,3 +47,27 @@ describe("TSX frame kinds — return types", () => {
     expect(brace_kinds(src)).toEqual(["block", "block", "block"]);
   });
 });
+
+describe("TSX parameters — later parameters inside a member body", () => {
+  it("an object type's function-typed member", () => {
+    const src = "type U = { f: (a: string, b: number) => void };";
+    expect(type_of(src, "a")).toBe("parameter");
+    expect(type_of(src, "b")).toBe("parameter");
+  });
+
+  it("an interface method signature", () => {
+    const src = "interface I { f(a: string, b: number): void }";
+    expect(type_of(src, "a")).toBe("parameter");
+    expect(type_of(src, "b")).toBe("parameter");
+  });
+
+  it("an interface member's function type reads its names alike", () => {
+    const src = "interface I { g: (c: string, d: number) => void }";
+    expect(type_of(src, "d")).not.toBe("property");
+    expect(type_of(src, "d")).toBe(type_of(src, "c"));
+  });
+
+  it("an object literal's arrow", () => {
+    expect(type_of("const o = { f: (a: string, b: number) => a };", "b")).toBe("parameter");
+  });
+});
