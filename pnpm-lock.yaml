@@ -97,6 +97,12 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/jsonc:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/markdown:
     dependencies:
       '@twinkleplop/core':
@@ -213,6 +219,9 @@ importers:
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript
+      '@twinkleplop/jsonc':
+        specifier: workspace:*
+        version: link:../../languages/jsonc
       '@twinkleplop/markdown':
         specifier: workspace:*
         version: link:../../languages/markdown

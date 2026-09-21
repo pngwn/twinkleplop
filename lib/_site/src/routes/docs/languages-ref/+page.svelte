@@ -23,6 +23,7 @@ const ts = language();`;
 		{ name: "html", notes: "Embeds css and javascript in style and script elements." },
 		{ name: "javascript", notes: "Regex-vs-division disambiguation, template literals, tagged-template embedding of html and css." },
 		{ name: "json", notes: "RFC 8259. No JSON5 extensions — no comments, trailing commas or single quotes." },
+		{ name: "jsonc", notes: "JSON with Comments: json plus // and /* */ comments, as in tsconfig and VS Code settings. Object keys promoted to property." },
 		{ name: "markdown", notes: "CommonMark constructs, front matter, fenced code containers." },
 		{ name: "python", notes: "F-strings, soft keywords, decorators." },
 		{ name: "rust", notes: "Lifetimes, attributes, generics disambiguation, macros." },

@@ -1,0 +1,22 @@
+{
+  "simple": "hello",
+  "empty": "",
+  "": "empty key",
+  "escapes": "\" \\ \/ \b \f \n \r \t",
+  "unicode": "caf\u00e9 \u00E9 \uD834\uDD1E",
+  "short_unicode": "\u12G",
+  "invalid_escapes": "\x41 \' \0 \a",
+  "backslash_run": "\\\"",
+  "windows": "C:\\Program Files\\app",
+  "url": "https://example.com/path?q=1#frag",
+  "glob": "src/**/*.ts",
+  "comment_like": "/* not a comment */ // nor this",
+  "variables": "${workspaceFolder}/${env:HOME}",
+  "looks_like_literals": ["true", "null", "0.2.0", "-1"],
+  "non_ascii": "日本語 — ünïcödé 🎉",
+  "raw_tab": "a	b",
+  "continued": "line one\
+line two",
+  "unterminated": "no closing quote
+  "next": "back to normal"
+}

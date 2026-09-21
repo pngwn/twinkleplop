@@ -1,0 +1,9 @@
+{"a":/* c */1,"b":"//not a comment","c":"/* nor this */",
+"d": [007, -, 1., .5, 1e, -0, 0x1F, NaN, trueish, true1],
+"e": [+1, -Infinity, 1e5.5, True, NULL, undefined, xtrue, nulltrue, true.],
+"f": /* a /* b */ */ 1,
+"g": 'single', unquoted: 1, # hash
+"h": "unterminated
+}
+/* unterminated block comment runs to EOF
+"i": 2

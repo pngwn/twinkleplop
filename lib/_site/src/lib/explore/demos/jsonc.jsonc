@@ -1,0 +1,18 @@
+// VS Code user settings
+{
+  "editor.fontSize": 14,
+  "editor.lineHeight": 1.5,
+  "editor.rulers": [80, 120],
+  "window.zoomLevel": -0.5,
+  // "editor.minimap.enabled": false,
+  "files.exclude": {
+    "**/.git": true, /* hide git metadata */
+    "**/*.js": { "when": "$(basename).ts" }
+  },
+  "terminal.integrated.env.osx": { "GREETING": "caf\u00e9 \"hi\"" },
+  "http.proxy": null,
+  "launch": {
+    "program": "${workspaceFolder}\\bin\\www",
+    "args": ["--port", "8080"],
+  },
+}

@@ -1,0 +1,11 @@
+{
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "skipFiles": ["<node_internals>/**"],
+            "program": "${workspaceFolder}\\bin\\www",
+            "env": { "GREETING": "caf\u00e9 \"hi\"" }
+        }
+    ]
+}
