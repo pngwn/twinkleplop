@@ -1007,4 +1007,156 @@ describe("non-ascii transitions", () => {
       { type: "rest", value: "λ" },
     ]);
   });
+
+  test("a fallback rule that moves into a probe opens it at that character", () => {
+    const grammar: Grammar = {
+      states: {
+        root: { rules: [{ any: true, state: "check", exit: true }] },
+        check: {
+          mode: "probe",
+          fallback: "plain",
+          rules: [{ match: ":", state: "label", exit: true }, { any: true }],
+        },
+        label: {
+          rules: [
+            { match: ":", token: "punct", state: "root", exit: true },
+            { any: true, token: "label" },
+          ],
+        },
+        plain: { rules: [{ any: true, token: "text" }] },
+      },
+    };
+    const compiled = compile(grammar);
+
+    const input = "λx: y";
+    expect(get_tokens_with_values(tokenize(input, compiled), input)).toEqual([
+      { type: "label", value: "λx" },
+      { type: "punct", value: ":" },
+      { type: "text", value: " y" },
+    ]);
+
+    const eof_input = "λx";
+    expect(get_tokens_with_values(tokenize(eof_input, compiled), eof_input)).toEqual([
+      { type: "text", value: "λx" },
+    ]);
+  });
+
+  test.each([
+    ["goto", true],
+    ["enter", false],
+  ])("a fallback rule that leaves a probe (%s) rewinds to where it opened", (_, exit) => {
+    const grammar: Grammar = {
+      states: {
+        root: { rules: [{ match: "a", state: "check" }] },
+        check: {
+          mode: "probe",
+          fallback: "plain",
+          rules: [{ match: "b" }, { any: true, state: "resolved", exit }],
+        },
+        resolved: {
+          rules: [
+            { match: ["a", "b"], token: "hit" },
+            { any: true, token: "rest" },
+          ],
+        },
+        plain: { rules: [{ any: true, token: "plain" }] },
+      },
+    };
+    const input = "abλ";
+    const result = tokenize(input, compile(grammar));
+    expect(get_tokens_with_values(result, input)).toEqual([
+      { type: "hit", value: "ab" },
+      { type: "rest", value: "λ" },
+    ]);
+  });
+
+  test("a token-less fallback goto leaves the character for the new state", () => {
+    const grammar: Grammar = {
+      states: {
+        root: {
+          rules: [
+            { match: "a", token: "a" },
+            { any: true, state: "other", exit: true },
+          ],
+        },
+        other: { rules: [{ range: [[0x3b0, 0x3ff]], token: "greek" }] },
+      },
+    };
+    const input = "aλ";
+    const result = tokenize(input, compile(grammar));
+    expect(get_tokens_with_values(result, input)).toEqual([
+      { type: "a", value: "a" },
+      { type: "greek", value: "λ" },
+    ]);
+  });
+
+  test("a token-less fallback leave leaves the character for the parent", () => {
+    const grammar: Grammar = {
+      states: {
+        root: {
+          rules: [
+            { match: "(", token: "open", state: "inner" },
+            { range: [[0x3b0, 0x3ff]], token: "greek" },
+          ],
+        },
+        inner: {
+          rules: [
+            { match: "x", token: "x" },
+            { any: true, exit: true },
+          ],
+        },
+      },
+    };
+    const input = "(xλ";
+    const result = tokenize(input, compile(grammar));
+    expect(get_tokens_with_values(result, input)).toEqual([
+      { type: "open", value: "(" },
+      { type: "x", value: "x" },
+      { type: "greek", value: "λ" },
+    ]);
+  });
+
+  test("a run of non-ascii characters after a non-ascii goto keeps the new state's fallback", () => {
+    const grammar: Grammar = {
+      states: {
+        root: {
+          rules: [
+            { match: "=", token: "operator" },
+            { range: [[0x80, 0xffff]], state: "value", exit: true },
+          ],
+        },
+        value: {
+          rules: [
+            { match: "\n", state: "root", exit: true },
+            { match: "#", token: "comment" },
+            { any: true, token: "string" },
+          ],
+        },
+      },
+    };
+    const input = "=значение";
+    const result = tokenize(input, compile(grammar));
+    expect(get_tokens_with_values(result, input)).toEqual([
+      { type: "operator", value: "=" },
+      { type: "string", value: "значение" },
+    ]);
+  });
+
+  test.each([
+    ["a range rule", { range: [[0x3b0, 0x3ff]], state: "check" }],
+    ["a fallback rule", { any: true, state: "check" }],
+  ] as const)("a failed probe opened by %s is not reopened", (_, trigger) => {
+    const grammar: Grammar = {
+      states: {
+        root: { rules: [{ match: "b", token: "b" }, trigger] },
+        check: {
+          mode: "probe",
+          rules: [{ match: ":", state: "root", exit: true }, { any: true }],
+        },
+      },
+    };
+    const input = "λb";
+    const result = tokenize(input, compile(grammar));
+    expect(get_tokens_with_values(result, input)).toEqual([{ type: "b", value: "b" }]);
+  });
 });
