@@ -14,6 +14,10 @@ import {
 	dark as solarized_dark,
 	light as solarized_light
 } from '@twinkleplop/theme-solarized/tokens';
+import {
+	dark as night_owl_dark,
+	light as night_owl_light
+} from '@twinkleplop/theme-night-owl/tokens';
 
 export type theme_variant =
 	| 'github-light'
@@ -21,8 +25,10 @@ export type theme_variant =
 	| 'atom-one-light'
 	| 'atom-one-dark'
 	| 'solarized-light'
-	| 'solarized-dark';
-export type theme_name = 'github' | 'atom-one' | 'solarized';
+	| 'solarized-dark'
+	| 'night-owl-light'
+	| 'night-owl-dark';
+export type theme_name = 'github' | 'atom-one' | 'solarized' | 'night-owl';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
@@ -42,7 +48,9 @@ export const THEMES: Record<theme_variant, theme_def> = {
 	'atom-one-light': { palette: atom_one_light, shiki_id: 'one-light' },
 	'atom-one-dark': { palette: atom_one_dark, shiki_id: 'one-dark-pro' },
 	'solarized-light': { palette: solarized_light, shiki_id: 'solarized-light' },
-	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' }
+	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' },
+	'night-owl-light': { palette: night_owl_light, shiki_id: 'night-owl-light' },
+	'night-owl-dark': { palette: night_owl_dark, shiki_id: 'night-owl' }
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {
@@ -86,7 +94,7 @@ export const FONTS: mono_font[] = [
 	}
 ];
 
-export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized'];
+export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized', 'night-owl'];
 
 export interface lab_view {
 	theme: theme_name;
