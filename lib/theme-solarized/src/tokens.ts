@@ -133,7 +133,10 @@ const palette = (
   // reclassifier placeholders
   raw_code_block: fg,
   raw_front_matter: fg,
+  raw_json: fg,
+  raw_markup: fg,
   raw_script: fg,
+  raw_shell: fg,
   raw_style: fg,
   raw_svelte_expression: fg,
 
@@ -141,6 +144,9 @@ const palette = (
   string_escape: orange, // constant.character.escape via constant.character
   format: storage, // storage.type.format.python via storage
   attr_sigil: fg, // meta.attribute.rust has no rule
+  output: fg, // meta.output.shell-session has no rule
+  prompt: fg, // punctuation.separator.prompt.shell-session has no rule
+  prompt_prefix: fg, // entity.other.prompt-prefix.shell-session has no rule
   bit: cyan, // sql bit literals render as string
   array_table_header: fg, // toml array table headers have no rule
   datetime: orange, // constant.other.datetime via constant.other
