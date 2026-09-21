@@ -16,11 +16,7 @@
 // where the primer theme has no explicit rule for a twinkleplop token the
 // comment marks it as a fallback and names the sibling it was matched to.
 
-// `theme_palette` intentionally duplicated here to avoid cross-package
-// import resolution in tools (svelte-check, vitest) that skip the
-// "source" export condition. the shape is: Record<canonical_token, hex>
-// plus a required `background_color` — enforced by tokens.test.ts.
-type theme_palette = Record<string, string> & { background_color: string };
+import type { theme_palette, theme_styles } from "@twinkleplop/core/types";
 
 export const light: theme_palette = {
   // backgrounds + default foreground
@@ -292,3 +288,17 @@ export const dark: theme_palette = {
   tag: "#ff7b72",
   null: "#79c0ff",
 };
+
+const styles: theme_styles = {
+  autolink: ["underline"], // markup.underline
+  bold: ["bold"], // markup.bold
+  heading: ["bold"], // markup.heading, diff file headers are not bold upstream
+  heading_marker: ["bold"], // markup.heading
+  hr: ["bold"], // meta.separator
+  italic: ["italic"], // markup.italic
+  strike: ["strikethrough"], // markup.strikethrough
+};
+
+export const light_styles: theme_styles = styles;
+
+export const dark_styles: theme_styles = styles;

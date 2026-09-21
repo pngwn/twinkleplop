@@ -22,7 +22,7 @@
 // Dark Pro, so its VS Code theme JSON wins where it differs from Atom's
 // original less variables (notably comments).
 
-import type { theme_palette } from "@twinkleplop/core/types";
+import type { theme_palette, theme_styles } from "@twinkleplop/core/types";
 
 export const light: theme_palette = {
   background_color: "#FAFAFA", // colors.editor.background
@@ -294,4 +294,19 @@ export const dark: theme_palette = {
   plain_scalar: "#abb2bf", // foreground
   tag: "#c678dd", // fallback to keyword for yaml !tag
   null: "#56b6c2", // constant.language.json
+};
+
+export const light_styles: theme_styles = {
+  blockquote_marker: ["italic"], // markup.quote.markdown
+  bold: ["bold"], // markup.bold
+  comment: ["italic"], // comment
+  italic: ["italic"], // markup.italic
+};
+
+// attr_name has no entry, one dark pro italicises jsx attribute names but not html or svelte ones
+export const dark_styles: theme_styles = {
+  autolink: ["underline"], // markup.underline
+  comment: ["italic"], // comment
+  italic: ["italic"], // markup.italic.markdown
+  parameter: ["italic"], // variable.parameter
 };
