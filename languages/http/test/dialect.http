@@ -1,0 +1,49 @@
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
