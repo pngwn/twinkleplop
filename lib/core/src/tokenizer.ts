@@ -24,6 +24,9 @@ declare const INTROSPECTION: boolean;
 // reclaiming from the scan scratch buffer and the copy is pure cost.
 const MIN_RECLAIMED_SLOTS = 1024;
 
+// stands in for the fallback rule index in probe keys, a range rule never matches where the fallback does
+const FALLBACK_RULE = 255;
+
 // helper function to check if a character is an identifier continuation character
 function is_identifier_char(char_code: number): boolean {
   return (
@@ -130,6 +133,76 @@ export function tokenize(
     if (fallback_state !== undefined) enter_probe_fallback(fallback_state);
     else rewind_to_probe_entry();
     return true;
+  }
+
+  // false when the probe already failed here, otherwise it reopens on its own trigger forever
+  function open_probe(rule_idx: number, probe_state: number): boolean {
+    if (has_failed_probes && failed_probes.has((pos << 16) | (current_state << 8) | rule_idx)) {
+      // INTROSPECTION_START
+      if (INTROSPECTION && introspector) {
+        const char = input.charCodeAt(pos);
+        introspector.no_match({
+          char,
+          char_str: String.fromCharCode(char),
+          pos,
+          current_state: current_state,
+          is_non_ascii: true,
+        });
+      }
+      // INTROSPECTION_END
+      return false;
+    }
+    probe_entry = {
+      pos: pos,
+      entry_pos: pos + 1,
+      state: current_state,
+      stack_ptr: stack_ptr,
+      rule_idx: rule_idx,
+      probe_state: probe_state,
+      resolved_state: -1,
+      resolved_pos: -1,
+    };
+    // INTROSPECTION_START
+    if (INTROSPECTION && introspector) {
+      introspector.enter_probe_mode({
+        charClass: rule_idx,
+        pos,
+        current_state: current_state,
+        stackPtr: stack_ptr,
+      });
+    }
+    // INTROSPECTION_END
+    return true;
+  }
+
+  // rewinds to where the probe opened and keeps the state it resolved to
+  function close_probe(stack_op: number): void {
+    if (!probe_entry) return;
+    pos = probe_entry.pos;
+    stack_ptr = probe_entry.stack_ptr;
+    if (stack_op === 1) {
+      state_stack[stack_ptr++] = probe_entry.state;
+    }
+
+    // INTROSPECTION_START
+    if (INTROSPECTION && introspector) {
+      introspector.exit_probe_mode({
+        success: true,
+        reset_pos: probe_entry.pos,
+        current_state: current_state,
+        pos: probe_entry.pos,
+      });
+      if (stack_op === 1 && probe_entry.resolved_state > 0) {
+        introspector.pushed_state({
+          from_state: probe_entry.probe_state ?? probe_entry.state,
+          to_state: probe_entry.resolved_state,
+          stackPtr: stack_ptr,
+          pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
+        });
+      }
+    }
+    // INTROSPECTION_END
+    probe_entry = null;
   }
 
   function rewind_to_probe_entry(): void {
@@ -751,29 +824,13 @@ export function tokenize(
         // INTROSPECTION_END
 
         // handle probe state entry
-        if (!is_in_probe_state && is_target_probe_state) {
-          // calculate where we'll be after consuming the match
-          const probe_entry_pos = pos + 1;
-          probe_entry = {
-            pos: pos, // keep original pos for reset
-            entry_pos: probe_entry_pos, // position where probe is entered
-            state: current_state,
-            stack_ptr: stack_ptr,
-            rule_idx: matched_rule_idx,
-            probe_state: target_state,
-            resolved_state: -1,
-            resolved_pos: -1,
-          };
-          // INTROSPECTION_START
-          if (INTROSPECTION && introspector) {
-            introspector.enter_probe_mode({
-              charClass: matched_rule_idx,
-              pos,
-              current_state: current_state,
-              stackPtr: stack_ptr,
-            });
-          }
-          // INTROSPECTION_END
+        if (
+          !is_in_probe_state &&
+          is_target_probe_state &&
+          !open_probe(matched_rule_idx, target_state)
+        ) {
+          pos++;
+          continue;
         }
 
         // emit token only if not in probe state
@@ -933,33 +990,7 @@ export function tokenize(
         }
 
         // check if exiting probe state
-        if (is_in_probe_state && !is_target_probe_state && probe_entry) {
-          pos = probe_entry.pos;
-          stack_ptr = probe_entry.stack_ptr;
-          if (stack_op === 1) {
-            state_stack[stack_ptr++] = probe_entry.state;
-          }
-
-          // INTROSPECTION_START
-          if (INTROSPECTION && introspector) {
-            introspector.exit_probe_mode({
-              success: true,
-              reset_pos: probe_entry.pos,
-              current_state: current_state,
-              pos: probe_entry.pos,
-            });
-            if (stack_op === 1 && probe_entry.resolved_state > 0) {
-              introspector.pushed_state({
-                from_state: probe_entry.probe_state ?? probe_entry.state,
-                to_state: probe_entry.resolved_state,
-                stackPtr: stack_ptr,
-                pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
-              });
-            }
-          }
-          // INTROSPECTION_END
-          probe_entry = null;
-        }
+        if (is_in_probe_state && !is_target_probe_state && probe_entry) close_probe(stack_op);
         if (pos >= len && settle_probe_at_end()) continue;
       } else if (fallback_transitions) {
         // no specific match, use fallback transitions
@@ -967,6 +998,23 @@ export function tokenize(
         const transition = fallback_transitions[idx];
         const token_type = fallback_transitions[idx + 1];
         const stack_op = fallback_transitions[idx + 2];
+
+        let target_state = current_state;
+        if (stack_op === 1 && transition !== 65535) {
+          target_state = transition;
+        } else if (stack_op === 2 && transition !== 65535) {
+          // sideways, the target is the explicit state not the parent
+          target_state = transition;
+        } else if (stack_op === 2 && stack_ptr > 0) {
+          // pop, the target is the parent
+          target_state = state_stack[stack_ptr - 1];
+        } else if (transition !== 65535) {
+          target_state = transition;
+        }
+
+        const is_target_probe_state = probe_mask
+          ? !!probe_mask[target_state]
+          : !!(probe_states && probe_states.has(target_state));
 
         // INTROSPECTION_START
         if (INTROSPECTION && introspector) {
@@ -977,6 +1025,15 @@ export function tokenize(
           });
         }
         // INTROSPECTION_END
+
+        if (
+          !is_in_probe_state &&
+          is_target_probe_state &&
+          !open_probe(FALLBACK_RULE, target_state)
+        ) {
+          pos++;
+          continue;
+        }
 
         // emit token only if not in probe state
         if (!is_in_probe_state && token_type !== 65535) {
@@ -1025,7 +1082,8 @@ export function tokenize(
           last_token_type = token_type;
           last_token_end = new_end;
           pos = new_end;
-        } else {
+        } else if (stack_op !== 2) {
+          // a tokenless exit leaves the character for the state it lands in
           pos++;
         }
 
@@ -1035,14 +1093,21 @@ export function tokenize(
           const prev_state = current_state;
           current_state = transition;
 
+          if (is_in_probe_state && probe_entry) {
+            probe_entry.resolved_state = current_state;
+            probe_entry.resolved_pos = pos;
+          }
+
           // INTROSPECTION_START
           if (INTROSPECTION && introspector) {
-            introspector.pushed_state({
-              from_state: prev_state,
-              to_state: current_state,
-              stackPtr: stack_ptr,
-              pos,
-            });
+            if (!is_in_probe_state) {
+              introspector.pushed_state({
+                from_state: prev_state,
+                to_state: current_state,
+                stackPtr: stack_ptr,
+                pos,
+              });
+            }
           }
           // INTROSPECTION_END
           // refresh caches
@@ -1059,13 +1124,18 @@ export function tokenize(
             // the stack depth remains the same
             current_state = transition;
 
+            const transition_pos =
+              is_in_probe_state && probe_entry !== null && probe_entry.resolved_pos >= 0
+                ? probe_entry.resolved_pos
+                : pos;
+
             // INTROSPECTION_START
             if (INTROSPECTION && introspector) {
               // report as a transition, not a pop, since stack depth doesn't change
               introspector.transitioned_state({
                 from_state: prev_state,
                 to_state: current_state,
-                pos,
+                pos: transition_pos,
               });
             }
             // INTROSPECTION_END
@@ -1096,12 +1166,16 @@ export function tokenize(
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
+          const transition_pos =
+            is_in_probe_state && probe_entry !== null && probe_entry.resolved_pos >= 0
+              ? probe_entry.resolved_pos
+              : pos;
           // INTROSPECTION_START
           if (INTROSPECTION && introspector) {
             introspector.transitioned_state({
               from_state: prev_state,
               to_state: current_state,
-              pos,
+              pos: transition_pos,
             });
           }
           // INTROSPECTION_END
@@ -1111,6 +1185,8 @@ export function tokenize(
           trans_base3 = current_state * 256 * 3;
           non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
+
+        if (is_in_probe_state && !is_target_probe_state && probe_entry) close_probe(stack_op);
         if (pos >= len && settle_probe_at_end()) continue;
       } else {
         // no match found
