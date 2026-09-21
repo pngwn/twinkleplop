@@ -66,6 +66,8 @@
 .twoslash-popover-type,
 .twoslash-query-type {
 	display: block;
+	/* keeps type line breaks when a site copies the popover out of the pre */
+	white-space: pre-wrap;
 }
 
 .twoslash-popover-docs,
