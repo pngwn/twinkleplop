@@ -25,6 +25,7 @@
     "@twinkleplop/go": "workspace:*",
     "@twinkleplop/html": "workspace:*",
     "@twinkleplop/javascript": "workspace:*",
+    "@twinkleplop/jsonc": "workspace:*",
     "@twinkleplop/markdown": "workspace:*",
     "@twinkleplop/python": "workspace:*",
     "@twinkleplop/rust": "workspace:*",

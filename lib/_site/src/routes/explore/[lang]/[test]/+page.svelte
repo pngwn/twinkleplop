@@ -55,6 +55,7 @@
 		tsx: () => import('@twinkleplop/tsx'),
 		sql: () => import('@twinkleplop/sql'),
 		yaml: () => import('@twinkleplop/yaml'),
+		jsonc: () => import('@twinkleplop/jsonc'),
 		markdown: () => import('@twinkleplop/markdown'),
 		toml: () => import('@twinkleplop/toml'),
 		python: () => import('@twinkleplop/python'),

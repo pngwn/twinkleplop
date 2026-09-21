@@ -210,6 +210,9 @@ importers:
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript
+      '@twinkleplop/jsonc':
+        specifier: workspace:*
+        version: link:../../languages/jsonc
       '@twinkleplop/markdown':
         specifier: workspace:*
         version: link:../../languages/markdown

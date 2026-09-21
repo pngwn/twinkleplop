@@ -15,6 +15,7 @@ export const SHIKI_LANG_MAP: Record<string, string | null> = {
   tsx: "tsx",
   sql: "sql",
   yaml: "yaml",
+  jsonc: "jsonc",
   markdown: "markdown",
   toml: "toml",
   python: "python",
