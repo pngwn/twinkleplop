@@ -465,7 +465,7 @@ export default define_grammar({
         // opening quote
         match("'", TOKENS.string, goto("char_literal_body")),
         // should not reach here, but recover gracefully
-        fallback(goto("main")),
+        fallback(leave()),
       ],
     },
 
@@ -515,7 +515,7 @@ export default define_grammar({
 
     // expect closing `'` and leave to main
     char_literal_close: {
-      rules: [match("'", TOKENS.string, leave()), fallback(goto("main"))],
+      rules: [match("'", TOKENS.string, leave()), fallback(leave())],
     },
 
     // -------------------------------------------------------------------
@@ -526,7 +526,7 @@ export default define_grammar({
     // in `&'a str`), which is why the body itself is kept minimal here.
     // -------------------------------------------------------------------
     lifetime_token: {
-      rules: [match("'", TOKENS.punctuation, goto("lifetime_body")), fallback(goto("main"))],
+      rules: [match("'", TOKENS.punctuation, goto("lifetime_body")), fallback(leave())],
     },
 
     lifetime_body: {

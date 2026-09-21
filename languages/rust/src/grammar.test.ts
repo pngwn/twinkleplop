@@ -68,4 +68,18 @@ describe("stack balance", () => {
       ["punctuation", "{}"],
     ]);
   });
+
+  it("tokenizes the tail after 300 malformed char literals", () => {
+    const input = `${"let c = 'ab';\n".repeat(300)}let s = "after";\nif x {}`;
+    const tail = get_tokens(input)
+      .slice(-5)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["string", '"after"'],
+      ["punctuation", ";"],
+      ["keyword", "if"],
+      ["identifier", "x"],
+      ["punctuation", "{}"],
+    ]);
+  });
 });
