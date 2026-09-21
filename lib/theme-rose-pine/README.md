@@ -19,12 +19,12 @@ import "@twinkleplop/theme-rose-pine/light";
 import "@twinkleplop/theme-rose-pine/dark";
 ```
 
-The palettes are also available as data, keyed by token type:
+The palettes and font styles are also available as data, keyed by token type:
 
 ```ts
-import { light, dark } from "@twinkleplop/theme-rose-pine/tokens";
+import { light, dark, light_styles, dark_styles } from "@twinkleplop/theme-rose-pine/tokens";
 ```
 
 Each stylesheet sets `--twp-background` to the theme's editor background but does not apply it. Use `background: var(--twp-background)` on your code container to opt in.
 
-VS Code renders comments, attribute names, builtin functions and some variables in italics. These stylesheets set colours only, so none of them are italic.
+Comments, parameters, constants, attribute names and CSS class, id and pseudo-class selectors are italic, and markdown headings and bold text are bold, as in VS Code. Each style is a variable too, such as `--twp-comment-font-style`, so you can override it.

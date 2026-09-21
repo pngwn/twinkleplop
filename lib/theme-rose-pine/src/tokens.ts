@@ -5,7 +5,7 @@
 // https://github.com/rose-pine/vscode/blob/d8f5ebe8e096fa833e997c07eb7685ee1677a4ba/themes/rose-pine-color-theme.json
 // https://github.com/rose-pine/vscode/blob/d8f5ebe8e096fa833e997c07eb7685ee1677a4ba/themes/rose-pine-dawn-color-theme.json
 
-import type { theme_palette } from "@twinkleplop/core/types";
+import type { theme_palette, theme_styles } from "@twinkleplop/core/types";
 
 interface roles {
   base: string;
@@ -194,3 +194,27 @@ const palette = ({
 export const light: theme_palette = palette(dawn);
 
 export const dark: theme_palette = palette(main);
+
+// main and dawn share every fontStyle rule
+const styles: theme_styles = {
+  attr_name: ["italic"], // entity.other.attribute-name
+  bold: ["bold"], // markup.bold.markdown
+  bold_open: ["bold"], // punctuation.definition.bold inside markup.bold
+  bold_close: ["bold"], // punctuation.definition.bold inside markup.bold
+  comment: ["italic"], // comment
+  constant: ["italic"], // variable.other.constant keeps the italic from variable
+  css_variable: ["italic"], // variable.css via variable
+  heading: ["bold"], // markup.heading, diff file headers are upright
+  heading_marker: ["bold"], // punctuation.definition.heading inside markup.heading
+  italic: ["italic"], // markup.italic.markdown
+  italic_open: ["italic"], // punctuation.definition.italic inside markup.italic
+  italic_close: ["italic"], // punctuation.definition.italic inside markup.italic
+  parameter: ["italic"], // variable.parameter via variable
+  selector_class: ["italic"], // entity.other.attribute-name.class.css via entity.other.attribute-name
+  selector_id: ["italic"], // entity.other.attribute-name.id.css via entity.other.attribute-name
+  selector_pseudo: ["italic"], // entity.other.attribute-name.pseudo-class.css via entity.other.attribute-name
+};
+
+export const light_styles: theme_styles = styles;
+
+export const dark_styles: theme_styles = styles;

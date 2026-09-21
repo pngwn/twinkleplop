@@ -22,7 +22,9 @@ import {
 } from '@twinkleplop/theme-night-owl/tokens';
 import {
 	dark as rose_pine_dark,
-	light as rose_pine_light
+	dark_styles as rose_pine_dark_styles,
+	light as rose_pine_light,
+	light_styles as rose_pine_light_styles
 } from '@twinkleplop/theme-rose-pine/tokens';
 import type { theme_styles } from '@twinkleplop/core/types';
 
@@ -70,8 +72,16 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		shiki_id: 'night-owl',
 		styles: night_owl_dark_styles
 	},
-	'rose-pine-light': { palette: rose_pine_light, shiki_id: 'rose-pine-dawn' },
-	'rose-pine-dark': { palette: rose_pine_dark, shiki_id: 'rose-pine' }
+	'rose-pine-light': {
+		palette: rose_pine_light,
+		shiki_id: 'rose-pine-dawn',
+		styles: rose_pine_light_styles
+	},
+	'rose-pine-dark': {
+		palette: rose_pine_dark,
+		shiki_id: 'rose-pine',
+		styles: rose_pine_dark_styles
+	}
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {
