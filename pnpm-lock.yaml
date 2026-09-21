@@ -234,6 +234,9 @@ importers:
       '@twinkleplop/html':
         specifier: workspace:*
         version: link:../../languages/html
+      '@twinkleplop/http':
+        specifier: workspace:*
+        version: link:../../languages/http
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript
