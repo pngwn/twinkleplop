@@ -1964,12 +1964,42 @@ function type_span_prev_is_closer(
   return false;
 }
 
+// is `idx` the first token of a bracket element, after `[`, `,` or a
+// `...` rest marker? the marker is an operator token of its own, except
+// where it coalesces with punctuation before it (`(...`).
+function type_span_at_element_start(
+  spec: CompiledTypeSpanSpec,
+  tokens: Uint32Array,
+  idx: number,
+  input: string,
+  trivia: Uint8Array,
+): boolean {
+  const prev = params_prev_non_trivia(tokens, idx - 1, trivia);
+  if (prev < 0) return false;
+  const base = prev * 3;
+  const pt = tokens[base];
+  const ps = tokens[base + 1];
+  const pe = tokens[base + 2];
+  if (pt === spec.punct_id) {
+    const last = input.charCodeAt(pe - 1);
+    if (last === CH_BRACKET_OPEN || last === CH_COMMA) return true;
+    return (
+      pe - ps >= 3 &&
+      last === CH_DOT &&
+      input.charCodeAt(pe - 2) === CH_DOT &&
+      input.charCodeAt(pe - 3) === CH_DOT
+    );
+  }
+  return spec.operator_id >= 0 && pt === spec.operator_id && span_text_is(input, ps, pe, "...");
+}
+
 // OP_TYPE_SPAN entry: walk from `idx` until a terminator. returns the
 // index of the FIRST unconsumed token (the terminator's token, or count
 // for an unterminated span). identifiers in key position -- nested depth,
-// directly followed by `:` or `?:` -- are parameter names / property keys
-// and are not recorded. NO_MATCH only when verify_generic_args rejects
-// the angle group; a verified (or unverified) span always matches.
+// directly followed by `:` or `?:` -- are parameter names, property keys
+// or tuple labels and are not recorded. NO_MATCH only when
+// verify_generic_args rejects the angle group; a verified (or unverified)
+// span always matches.
 function run_type_span(
   spec: CompiledTypeSpanSpec,
   slot: number,
@@ -2124,9 +2154,15 @@ function run_type_span(
       // member rather than referring to one is not a type -- `a: T`,
       // `a?: T`, `m(): T`, `m<T>(): T`. at the span root, `:` is the
       // conditional-type separator and the identifier before it IS a
-      // type.
+      // type. a tuple label (`[a: T]`, `[a?: T]`, `[...a: T[]]`) names an
+      // element the same way, but only at the start of one: inside a
+      // bracket, `? X : Y` is still a conditional type.
       let skip = false;
-      if (paren_rel > 0 || brace_rel > 0) {
+      const in_member = paren_rel > 0 || brace_rel > 0;
+      if (
+        in_member ||
+        (bracket_rel > 0 && type_span_at_element_start(spec, tokens, i, input, trivia))
+      ) {
         const nxt = params_next_non_trivia(tokens, i + 1, count, trivia);
         if (nxt >= 0) {
           const nb = nxt * 3;
@@ -2136,7 +2172,9 @@ function run_type_span(
           if (nt === spec.punct_id) {
             const c = input.charCodeAt(ns);
             // punctuation coalesces, so a `:` run still leads with it.
-            if ((nlen === 1 && c === CH_COLON) || c === CH_PAREN_OPEN) skip = true;
+            if ((nlen === 1 && c === CH_COLON) || (in_member && c === CH_PAREN_OPEN)) {
+              skip = true;
+            }
           } else if (spec.operator_id >= 0 && nt === spec.operator_id) {
             const c = input.charCodeAt(ns);
             if (nlen === 2 && c === CH_QMARK && input.charCodeAt(ns + 1) === CH_COLON) {
@@ -2151,7 +2189,7 @@ function run_type_span(
               ) {
                 skip = true;
               }
-            } else if (nlen === 1 && c === CH_LT) {
+            } else if (in_member && nlen === 1 && c === CH_LT) {
               // a plain reference (`a: Foo<T>`) must still be recorded,
               // so the group has to close straight onto a paren list.
               skip = type_span_generic_call(spec, tokens, nxt, count, input, trivia);

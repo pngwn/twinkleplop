@@ -2203,6 +2203,19 @@ describe("reclassifier — type_span construct", () => {
     expect(srun("x : { a : b } | c ;", span_rule())).toEqual(["b", "c"]);
   });
 
+  test("tuple type: labels skip in every form, unlabelled elements claim", () => {
+    expect(srun("x : [ a : b , c ? : d , e ?: f ] ;", span_rule())).toEqual(["b", "d", "f"]);
+    expect(srun("x : [ a : b , ... c : d ] ;", span_rule())).toEqual(["b", "d"]);
+    expect(srun("x : [ a , b ] ;", span_rule())).toEqual(["a", "b"]);
+  });
+
+  test("tuple type: only an element's first token can be a label", () => {
+    // `? b :` inside a bracket is a conditional type, not a label.
+    expect(srun("x : [ a ? b : c ] ;", span_rule())).toEqual(["a", "b", "c"]);
+    // indexed access: the key is followed by the close, not a colon.
+    expect(srun("x : a [ b ] ;", span_rule())).toEqual(["a", "b"]);
+  });
+
   test("value op terminators end the span", () => {
     expect(srun("x : a + b ;", span_rule({ into: "types", value_op_terminators: ["+"] }))).toEqual([
       "a",
