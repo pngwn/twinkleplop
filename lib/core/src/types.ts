@@ -209,7 +209,8 @@ export interface FrameSpec {
 // live on the frame that saw the qmark, so a ternary inside parens never
 // marks a colon outside them. counting is mode-blind: type-level `? :`
 // pairs (conditional types) are balanced, so the net effect at any later
-// colon matches a type-aware walker.
+// colon matches a type-aware walker. a colon opening the token right
+// after the qmark (`x?: T`) takes the count back unmarked.
 export interface TernarySpec {
   // token type + exact source text that increments the counter. exact
   // matching keeps `?.` `??` `?:` from counting.

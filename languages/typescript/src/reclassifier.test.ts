@@ -65,7 +65,6 @@ describe("TypeScript reclassifier — interface member promotion", () => {
 
   it("optional interface members classify as property", () => {
     const tokens = enrich("interface I { x?: T; }");
-    // `?:` is a single operator token in this grammar.
     expect(type_of(tokens, "x")).toBe("property");
   });
 
@@ -565,6 +564,44 @@ describe("TypeScript reclassifier — ternary colons around casts", () => {
     const tokens = enrich("const z = cond ? x as T : y;");
     expect(type_of(tokens, "T")).toBe("type");
     expect(type_of(tokens, "y")).toBe("type");
+  });
+});
+
+describe("TypeScript reclassifier — optional annotations", () => {
+  // `x?: T` splits into `?` and `:`. the tracker used to count that `?`
+  // as a ternary's, so every annotation rule skipped the colon.
+  it("promotes the return of a function type on an optional member", () => {
+    expect(type_of(enrich("interface I { f: (n: number) => R }"), "R")).toBe("type");
+    expect(type_of(enrich("interface I { f?: (n: number) => R }"), "R")).toBe("type");
+    expect(type_of(enrich("interface I { f?: (n: number) => R | void }"), "R")).toBe("type");
+    expect(type_of(enrich("let f: (n: number) => R | void;"), "R")).toBe("type");
+  });
+
+  it("promotes a hook signature with a union return", () => {
+    const tokens = enrich(
+      "interface Hooks {\n  line?: (n: number, source_line: number) => HookResult | void;\n}",
+    );
+    expect(type_of(tokens, "line")).toBe("property");
+    expect(type_of(tokens, "HookResult")).toBe("type");
+  });
+
+  it("promotes optional members, fields and parameters", () => {
+    expect(type_of(enrich("interface I { f?: T; g: U }"), "T")).toBe("type");
+    expect(type_of(enrich("class C { f?: T; }"), "T")).toBe("type");
+    expect(type_of(enrich("function g(x?: T) {}"), "T")).toBe("type");
+    expect(type_of(enrich("interface I { f?: Map<K, V>[] }"), "Map")).toBe("type");
+  });
+
+  it("still reads a ternary's colon as a ternary", () => {
+    const tokens = enrich("const v = ok ? A : B;");
+    expect(type_of(tokens, "A")).toBe("identifier");
+    expect(type_of(tokens, "B")).toBe("identifier");
+  });
+
+  it("pairs a later ternary on the same frame after an optional parameter", () => {
+    const tokens = enrich("function g(x?: T, y = ok ? a : b) {}");
+    expect(type_of(tokens, "T")).toBe("type");
+    expect(type_of(tokens, "b")).toBe("identifier");
   });
 });
 

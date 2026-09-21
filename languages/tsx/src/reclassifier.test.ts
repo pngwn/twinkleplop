@@ -29,6 +29,18 @@ function type_of(input: string, value: string): string | undefined {
   return undefined;
 }
 
+describe("TSX optional annotations", () => {
+  // the TSX grammar splits `x?:` into `?` and `:` too.
+  it("promotes the return of a function type on an optional member", () => {
+    expect(type_of("interface I { f?: (n: number) => R | void }", "R")).toBe("type");
+    expect(type_of("interface I { f?: (n: number) => R }", "R")).toBe("type");
+  });
+
+  it("promotes an optional parameter's annotation", () => {
+    expect(type_of("function g(props?: Props) {}", "Props")).toBe("type");
+  });
+});
+
 describe("TSX frame kinds — return types", () => {
   // the TSX grammar tags `string` / `number` as `type`, where the
   // TypeScript grammar leaves them identifiers for a later pass. a rule

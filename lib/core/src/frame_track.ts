@@ -833,12 +833,17 @@ function compute_signals(
   // conditions exactly so frame identity lines up between the passes.
   const stack_qmark: number[] = [0];
   const stack_flags: number[] = [0];
+  // the last significant token was a counted qmark. a colon opening the
+  // next one is an optional marker (`x?: T`): a ternary has its
+  // consequent in between.
+  let after_qmark = false;
 
   for (let i = 0; i < n; i++) {
     const base = i * 3;
     const ttype = tokens[base];
     const flags = type_flags[ttype];
     let signal = 0;
+    let qmark = false;
 
     if ((flags & (FLAG_QMARK | FLAG_STMT)) !== 0) {
       if ((flags & FLAG_QMARK) !== 0 && qmark_text !== null) {
@@ -846,6 +851,7 @@ function compute_signals(
         const e = tokens[base + 2];
         if (text_matches(input, s, e, qmark_text)) {
           stack_qmark[stack_qmark.length - 1]++;
+          qmark = true;
         }
       }
       if ((flags & FLAG_STMT) !== 0) {
@@ -891,8 +897,9 @@ function compute_signals(
             stack_flags[stack_flags.length - 1] &= ~brace_close_clear_mask;
           }
         } else if (c === colon_code && stack_qmark[stack_qmark.length - 1] > 0) {
+          // an optional marker's colon still takes back its qmark's count.
           stack_qmark[stack_qmark.length - 1]--;
-          signal |= SIGNAL_TERNARY_COLON;
+          if (!after_qmark || p !== s) signal |= SIGNAL_TERNARY_COLON;
         } else if (clear_count > 0) {
           for (let m = 0; m < clear_count; m++) {
             if (c === clear_codes[m]) {
@@ -905,6 +912,7 @@ function compute_signals(
     }
 
     signals[i] = signal | (stack_flags[stack_flags.length - 1] << 1);
+    if ((flags & FLAG_TRIVIA) === 0) after_qmark = qmark;
   }
 }
 

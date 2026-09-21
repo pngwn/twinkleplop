@@ -276,8 +276,8 @@ export const promote_ts_type_only_bindings: Reclassifier = (input, result) => {
 // entries:
 //   - `): T` return types (coalesced `):`  and spaced `) :` forms)
 //   - `x: T` annotations, gated by position: parameter (paren frame),
-//     field (class / interface frame), variable (top frame + var_decl)
-//   - `x?: T` optional-member annotations (same three position gates)
+//     field (class / interface frame), variable (top frame + var_decl).
+//     an optional `x?: T` is the same colon token behind a `?`
 //   - `as` / `satisfies` casts (end at a ternary `?`)
 //   - `extends` in interface heads (iface_head armed) and type-parameter
 //     constraints (`<T extends` / `, U extends`); class heritage matches
@@ -471,34 +471,6 @@ export const type_position_rules: RewriteRule[] = [
       type_name: "punctuation",
       value_ends_with: ":",
       ternary_colon: false,
-      frame_kinds: ["top"],
-      frame_direct: true,
-      stmt_flags_all: ["var_decl"],
-    },
-    when: annotation_span,
-    rewrite: { types: "type" },
-  },
-  // optional-member annotations: `x?: T` emits a single `?:` operator.
-  // same three position gates as the bare colon.
-  {
-    anchor: { type_name: "operator", value: "?:", frame_kinds: ["paren"], frame_direct: true },
-    when: annotation_span,
-    rewrite: { types: "type" },
-  },
-  {
-    anchor: {
-      type_name: "operator",
-      value: "?:",
-      frame_kinds: ["class", "interface"],
-      frame_direct: true,
-    },
-    when: annotation_span,
-    rewrite: { types: "type" },
-  },
-  {
-    anchor: {
-      type_name: "operator",
-      value: "?:",
       frame_kinds: ["top"],
       frame_direct: true,
       stmt_flags_all: ["var_decl"],
