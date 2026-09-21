@@ -103,6 +103,12 @@ importers:
         specifier: workspace:*
         version: link:../json
 
+  languages/ini:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/javascript:
     dependencies:
       '@twinkleplop/core':
@@ -246,6 +252,9 @@ importers:
       '@twinkleplop/http':
         specifier: workspace:*
         version: link:../../languages/http
+      '@twinkleplop/ini':
+        specifier: workspace:*
+        version: link:../../languages/ini
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript

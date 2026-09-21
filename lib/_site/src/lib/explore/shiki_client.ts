@@ -18,6 +18,7 @@ export const SHIKI_LANG_MAP: Record<string, string | null> = {
   jsonc: "jsonc",
   markdown: "markdown",
   toml: "toml",
+  ini: "ini",
   python: "python",
   bash: "bash",
   shellsession: "shellsession",
