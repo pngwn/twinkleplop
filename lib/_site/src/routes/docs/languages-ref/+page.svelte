@@ -21,6 +21,7 @@ const ts = language();`;
 		{ name: "diff-basic", notes: "Minimal line-level overlay: +/- prefixes, ! changed, @@ hunk headers. Built to compose with another grammar, so file and git headers are deliberately omitted." },
 		{ name: "go", notes: "Predeclared types and builtins at lex time; UPPER_SNAKE constants promoted after." },
 		{ name: "html", notes: "Embeds css and javascript in style and script elements." },
+		{ name: "http", notes: "Raw HTTP/1.x messages and REST Client / JetBrains request files: headers, {{variables}}, ### separators. Embeds json and html bodies, javascript scripts and bash curl requests." },
 		{ name: "javascript", notes: "Regex-vs-division disambiguation, template literals, tagged-template embedding of html and css." },
 		{ name: "json", notes: "RFC 8259. No JSON5 extensions — no comments, trailing commas or single quotes." },
 		{ name: "jsonc", notes: "JSON with Comments: json plus // and /* */ comments, as in tsconfig and VS Code settings. Object keys promoted to property." },
@@ -79,6 +80,14 @@ const ts = language();`;
 					{ kind: "name", value: "svelte" },
 					{ kind: "type", value: "css, javascript" },
 					{ kind: "desc", value: `style and script blocks, and expressions` },
+				],
+				[
+					{ kind: "name", value: "http" },
+					{ kind: "type", value: "json, html, javascript, bash" },
+					{
+						kind: "desc",
+						value: `request and response bodies, <code>{% %}</code> scripts and <code>curl</code> requests`,
+					},
 				],
 				[
 					{ kind: "name", value: "javascript" },
