@@ -339,6 +339,25 @@ const CASE_LABEL_SCAN: BraceKindScan = {
   to: { type: "keyword", texts: ["case", "default"] },
 };
 
+// words that can precede a member name without being the name. shared by
+// the frame table's at_start transparency, the member-method anchor set,
+// and the parameter walk (a TS parameter property carries the same
+// modifiers). the TS-only ones never tokenize as keywords in plain JS.
+const MEMBER_LEADING_KEYWORDS = [
+  "get",
+  "set",
+  "async",
+  "readonly",
+  "public",
+  "private",
+  "protected",
+  "static",
+  "abstract",
+  "override",
+  "accessor",
+  "declare",
+];
+
 // shared frame_track config for JS/TS/TSX/Svelte. the spec object is
 // exported separately so TS-family packages can extend it (ternary and
 // stmt flag tracking for type-position rules) without re-stating the
@@ -440,25 +459,8 @@ export const js_frame_spec: FrameSpec = {
     // closing `}` and the next member name.
     rearm_after_close_kinds: ["class", "interface"],
     transparent_texts_for_type: [
-      {
-        type: "keyword",
-        texts: [
-          "readonly",
-          "public",
-          "private",
-          "protected",
-          "static",
-          "abstract",
-          "override",
-          "accessor",
-          "declare",
-          "class",
-          "interface",
-          "get",
-          "set",
-          "async",
-        ],
-      },
+      // `class` / `interface` arm a body marker, so they can't consume at_start.
+      { type: "keyword", texts: [...MEMBER_LEADING_KEYWORDS, "class", "interface"] },
       // generator marker stays transparent so `*gen() {}` still sees the
       // method name at member start.
       { type: "operator", texts: ["*"] },
@@ -1106,31 +1108,15 @@ export const promote_js_const_bindings: ClaimingReclassifier = as_claim_producer
 //   - single-ident arrows:                   `x => ...`, `async x => ...`
 //   - class methods and accessors:           `class C { m(a){} get p(){} set p(v){} *g(){} }`
 //   - object method shorthand:               `{ m(a){} get p(){} }`
+//   - TS parameter properties:               `constructor(public readonly n: T) {}`
 // strategy: one linear pass with a small brace-scope stack that distinguishes
 // class / interface / object-literal bodies from plain blocks. at each `(`
 // we peek for `=>` after the matching `)` (skipping an optional TS return
 // type) to detect arrow parameter lists; at each identifier in a member-
 // start position we peek for `(` to detect method shorthand. the param
-// walker then tags identifiers at paren-depth 1, transparent to `...rest`,
-// and skips defaults / destructuring sub-trees.
-//
-// keywords that keep the member-start marker live in a class / object /
-// interface body: accessor (`get`, `set`), the async modifier, and the TS
-// member modifiers. a leading `*` for generators is likewise transparent.
-const METHOD_LEADING_KEYWORDS = new Set([
-  "get",
-  "set",
-  "async",
-  "readonly",
-  "public",
-  "private",
-  "protected",
-  "static",
-  "abstract",
-  "override",
-  "accessor",
-  "declare",
-]);
+// walker then tags identifiers at paren-depth 1, transparent to `...rest`
+// and to the member modifiers a parameter property may carry, and skips
+// defaults / destructuring sub-trees.
 
 // promote_js_parameters is the JS family's four canonical param-list opener
 // shapes as rewrite rules over the `params()` walk construct (tag the first
@@ -1142,7 +1128,10 @@ const METHOD_LEADING_KEYWORDS = new Set([
 const JS_PARAM_WALK = {
   into: "p",
   default_introducer: "=",
-  transparent_operators: ["..."],
+  transparent_texts_for_type: [
+    { type: "operator", texts: ["..."] },
+    { type: "keyword", texts: MEMBER_LEADING_KEYWORDS },
+  ],
 };
 const MEMBER_BRACE_KINDS = ["class", "object", "interface"];
 const member_method_rule = (type_name: string, value?: string[]): RewriteRule => ({
@@ -1178,7 +1167,7 @@ export const js_parameter_rules: RewriteRule[] = [
   // names highlight the same way users expect.
   member_method_rule("identifier"),
   member_method_rule("function"),
-  member_method_rule("keyword", Array.from(METHOD_LEADING_KEYWORDS)),
+  member_method_rule("keyword", MEMBER_LEADING_KEYWORDS),
   // arrow function `(...) =>`, including `(x): T => ...` (TS return type).
   // skipped when in type position (`: (x: T) => Y` is a type signature).
   {

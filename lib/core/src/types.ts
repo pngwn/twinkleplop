@@ -902,7 +902,7 @@ export interface ParamsPatternSpec {
   // chunk strategies:
   //  "first_ident"   — tag the first identifier at depth 1 of each chunk;
   //                    `default_introducer` suspends tagging until the
-  //                    next chunk; `transparent_operators` pass through.
+  //                    next chunk; transparent texts pass through.
   //  "carry_pending" — bare single-name chunks pend; a chunk with a type
   //                    after its first name promotes itself and all
   //                    pending names (go's `x, y int`).
@@ -910,7 +910,11 @@ export interface ParamsPatternSpec {
   // single-char chunk separator at top depth. usually ",".
   separator: string;
   default_introducer?: string;
-  transparent_operators?: string[];
+  // token type -> source texts the walk steps over to reach the name behind
+  // them (`...rest`, `public name`), same shape as
+  // `AtStartSpec.transparent_texts_for_type`. a text only steps aside when
+  // an identifier, or another transparent text, follows it.
+  transparent_texts_for_type?: { type: string; texts: string[] }[];
   // skip a leading generics group before locating the paren: token-text
   // angle counting over operator tokens (`<` `>` `>>` `>>>`).
   skip_generics: boolean;

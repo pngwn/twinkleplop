@@ -156,7 +156,7 @@ export function params(options: {
   strategy?: "first_ident" | "carry_pending";
   separator?: string;
   default_introducer?: string;
-  transparent_operators?: string[];
+  transparent_texts_for_type?: { type: string; texts: string[] }[];
   skip_generics?: boolean;
   skip_ts_return_type?: boolean;
   skip_in_type_position?: boolean;
@@ -169,7 +169,7 @@ export function params(options: {
     strategy: options.strategy ?? "first_ident",
     separator: options.separator ?? ",",
     default_introducer: options.default_introducer,
-    transparent_operators: options.transparent_operators,
+    transparent_texts_for_type: options.transparent_texts_for_type,
     skip_generics: options.skip_generics ?? false,
     skip_ts_return_type: options.skip_ts_return_type ?? false,
     skip_in_type_position: options.skip_in_type_position ?? false,
@@ -307,7 +307,8 @@ interface CompiledParamsSpec {
   strategy: number; // PARAMS_STRATEGY_*
   separator_code: number;
   default_introducer: string | null;
-  transparent_operators: string[] | null;
+  // transparent texts indexed by token type id; null when none configured.
+  transparent_by_type: (string[] | null)[] | null;
   skip_generics: boolean;
   skip_ts_return_type: boolean;
   skip_in_type_position: boolean;
@@ -323,6 +324,55 @@ const PARAMS_FIND_SCAN = 1;
 const PARAMS_FIND_ARROW = 2;
 const PARAMS_STRATEGY_FIRST_IDENT = 0;
 const PARAMS_STRATEGY_CARRY_PENDING = 1;
+
+// a type name the vocabulary doesn't carry is dropped: no token can have it.
+function compile_transparent_by_type(
+  spec: ParamsPatternSpec,
+  name_to_id: Map<string, number>,
+): (string[] | null)[] | null {
+  const entries = spec.transparent_texts_for_type;
+  if (entries === undefined || entries.length === 0) return null;
+  let by_type: (string[] | null)[] | null = null;
+  for (const entry of entries) {
+    if (entry.texts.length === 0) continue;
+    const id = name_to_id.get(entry.type);
+    if (id === undefined) continue;
+    if (by_type === null) by_type = [];
+    while (by_type.length <= id) by_type.push(null);
+    const existing = by_type[id];
+    by_type[id] = existing === null ? entry.texts.slice() : existing.concat(entry.texts);
+  }
+  return by_type;
+}
+
+function params_transparent_texts(spec: CompiledParamsSpec, kt: number): string[] | null {
+  const by_type = spec.transparent_by_type;
+  if (by_type === null || kt >= by_type.length) return null;
+  return by_type[kt];
+}
+
+// a transparent text only steps aside when a name follows it: in
+// `f(readonly: T)` the parameter IS `readonly`, and stepping over it would
+// tag the annotation. punctuation ends the search, keeping it in the chunk.
+function params_name_follows(
+  spec: CompiledParamsSpec,
+  tokens: Uint32Array,
+  from: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+): boolean {
+  for (let k = from; k < count; k++) {
+    const base = k * 3;
+    const kt = tokens[base];
+    if (trivia[kt]) continue;
+    if (kt === spec.ident_id) return true;
+    const texts = params_transparent_texts(spec, kt);
+    if (texts === null) return false;
+    if (texts.indexOf(input.slice(tokens[base + 1], tokens[base + 2])) < 0) return false;
+  }
+  return false;
+}
 
 // resolved form of a TypeSpanPatternSpec: per-mode flags plus terminator
 // sets compiled into the shared value pool, referenced from OP_TYPE_SPAN
@@ -659,10 +709,7 @@ function compile_pattern_bytecode(
             : PARAMS_STRATEGY_FIRST_IDENT,
         separator_code: spec.separator.charCodeAt(0),
         default_introducer: spec.default_introducer ?? null,
-        transparent_operators:
-          spec.transparent_operators !== undefined && spec.transparent_operators.length > 0
-            ? spec.transparent_operators
-            : null,
+        transparent_by_type: compile_transparent_by_type(spec, name_to_id),
         skip_generics: spec.skip_generics,
         skip_ts_return_type: spec.skip_ts_return_type,
         skip_in_type_position: spec.skip_in_type_position,
@@ -1493,7 +1540,7 @@ function params_skip_generics(
 
 // first_ident chunk walk (the js-family shape): tag the first identifier
 // at depth 1 of each separator chunk; the default introducer suspends
-// tagging until the next chunk; transparent operators pass through.
+// tagging until the next chunk; transparent texts pass through.
 // returns the token index after the close-carrying token (count when the
 // list is unterminated -- the names reached are still recorded).
 function params_walk_first_ident(
@@ -1551,27 +1598,30 @@ function params_walk_first_ident(
       continue;
     }
     if (depth === 1 && expect_param && !saw_default) {
-      if (kt === spec.operator_id) {
-        const text = input.slice(tokens[base + 1], tokens[base + 2]);
-        if (spec.default_introducer !== null && text === spec.default_introducer) {
-          expect_param = false;
-          saw_default = true;
-          k++;
-          continue;
-        }
-        if (spec.transparent_operators !== null && spec.transparent_operators.indexOf(text) >= 0) {
-          k++;
-          continue;
-        }
-        expect_param = false;
-        k++;
-        continue;
-      }
       if (kt === spec.ident_id) {
         push_cap_log(slot, k, k + 1);
         expect_param = false;
         k++;
         continue;
+      }
+      const transparent = params_transparent_texts(spec, kt);
+      const check_default = kt === spec.operator_id && spec.default_introducer !== null;
+      if (transparent !== null || check_default) {
+        const text = input.slice(tokens[base + 1], tokens[base + 2]);
+        if (check_default && text === spec.default_introducer) {
+          expect_param = false;
+          saw_default = true;
+          k++;
+          continue;
+        }
+        if (
+          transparent !== null &&
+          transparent.indexOf(text) >= 0 &&
+          params_name_follows(spec, tokens, k + 1, count, input, trivia)
+        ) {
+          k++;
+          continue;
+        }
       }
       expect_param = false;
     }

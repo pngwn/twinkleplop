@@ -1920,7 +1920,11 @@ describe("reclassifier — params construct", () => {
     states: {
       root: {
         rules: [
-          { match: ["function", "func", "class"], boundary: true, token: "keyword" },
+          {
+            match: ["function", "func", "class", "pub", "ro"],
+            boundary: true,
+            token: "keyword",
+          },
           { match: "/*", token: "comment", state: "comment" },
           {
             range: [
@@ -1971,7 +1975,11 @@ describe("reclassifier — params construct", () => {
     return types_only(reclassify(passes)(input, raw), input);
   }
 
-  const JS_WALK = { into: "p", default_introducer: "=", transparent_operators: ["..."] };
+  const JS_WALK = {
+    into: "p",
+    default_introducer: "=",
+    transparent_texts_for_type: [{ type: "operator", texts: ["..."] }],
+  };
 
   test("function declaration walk tags first identifier per chunk", () => {
     const rules: RewriteRule[] = [
@@ -2118,6 +2126,70 @@ describe("reclassifier — params construct", () => {
     const src5 = "func(x int) {}";
     const tokens5 = prun(src5, rules);
     expect(tokens5.find((t) => t.value === "x")?.type).toBe("parameter");
+  });
+
+  const MOD_WALK = {
+    into: "p",
+    default_introducer: "=",
+    transparent_texts_for_type: [
+      { type: "operator", texts: ["..."] },
+      { type: "keyword", texts: ["pub", "ro"] },
+    ],
+  };
+
+  const mod_rules: RewriteRule[] = [
+    {
+      anchor: type("keyword", "function"),
+      when: seq(optional(type("identifier")), params(MOD_WALK)),
+      rewrite: { p: "parameter" },
+    },
+  ];
+
+  test("transparent keywords step aside for the name behind them", () => {
+    const tokens = prun("function f(pub a, ro b, pub ro c) {}", mod_rules);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "c")?.type).toBe("parameter");
+    expect(tokens.filter((t) => t.value === "pub").every((t) => t.type === "keyword")).toBe(true);
+    expect(tokens.filter((t) => t.value === "ro").every((t) => t.type === "keyword")).toBe(true);
+  });
+
+  test("a transparent text with no name behind it does not step aside", () => {
+    const tokens = prun("function f(pub: T) {}", mod_rules);
+    expect(tokens.find((t) => t.value === "T")?.type).toBe("identifier");
+  });
+
+  test("transparency still applies per chunk after a separator", () => {
+    const tokens = prun("function f(a, pub b) {}", mod_rules);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "b")?.type).toBe("parameter");
+  });
+
+  test("a transparent keyword before a default keeps the name", () => {
+    const tokens = prun("function f(pub a = 1) {}", mod_rules);
+    expect(tokens.find((t) => t.value === "a")?.type).toBe("parameter");
+    expect(tokens.find((t) => t.value === "1")?.type).toBe("number");
+  });
+
+  test("a transparent type absent from the vocabulary is dropped", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: type("keyword", "function"),
+        when: seq(
+          optional(type("identifier")),
+          params({
+            into: "p",
+            transparent_texts_for_type: [
+              { type: "modifier", texts: ["pub"] },
+              { type: "operator", texts: ["..."] },
+            ],
+          }),
+        ),
+        rewrite: { p: "parameter" },
+      },
+    ];
+    const tokens = prun("function f(...rest) {}", rules);
+    expect(tokens.find((t) => t.value === "rest")?.type).toBe("parameter");
   });
 });
 
