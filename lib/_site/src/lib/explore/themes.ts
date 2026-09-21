@@ -14,6 +14,7 @@ import {
 	dark as solarized_dark,
 	light as solarized_light
 } from '@twinkleplop/theme-solarized/tokens';
+import { dark as ayu_dark, light as ayu_light } from '@twinkleplop/theme-ayu/tokens';
 
 export type theme_variant =
 	| 'github-light'
@@ -21,8 +22,10 @@ export type theme_variant =
 	| 'atom-one-light'
 	| 'atom-one-dark'
 	| 'solarized-light'
-	| 'solarized-dark';
-export type theme_name = 'github' | 'atom-one' | 'solarized';
+	| 'solarized-dark'
+	| 'ayu-light'
+	| 'ayu-dark';
+export type theme_name = 'github' | 'atom-one' | 'solarized' | 'ayu';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
@@ -42,7 +45,9 @@ export const THEMES: Record<theme_variant, theme_def> = {
 	'atom-one-light': { palette: atom_one_light, shiki_id: 'one-light' },
 	'atom-one-dark': { palette: atom_one_dark, shiki_id: 'one-dark-pro' },
 	'solarized-light': { palette: solarized_light, shiki_id: 'solarized-light' },
-	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' }
+	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' },
+	'ayu-light': { palette: ayu_light, shiki_id: 'ayu-light' },
+	'ayu-dark': { palette: ayu_dark, shiki_id: 'ayu-dark' }
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {
@@ -86,7 +91,7 @@ export const FONTS: mono_font[] = [
 	}
 ];
 
-export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized'];
+export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized', 'ayu'];
 
 export interface lab_view {
 	theme: theme_name;
