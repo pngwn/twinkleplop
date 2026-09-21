@@ -50,3 +50,19 @@ describe("SQL Grammar", () => {
     });
   }
 });
+
+describe("stack balance", () => {
+  // raw sql tags keywords as identifiers, so the tail asserts a line comment
+  it("tokenizes the tail after 300 of every number form", () => {
+    const unit = "1, 1.5, 1e5, 1.5e-3, 1_000, 0x1F, 0b101, 0o17, 1e, ";
+    const input = `SELECT ${unit.repeat(300)}'after' -- note\n2.5`;
+    const tail = get_tokens(input)
+      .slice(-3)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["string", "'after'"],
+      ["comment", "-- note\n"],
+      ["number", "2.5"],
+    ]);
+  });
+});

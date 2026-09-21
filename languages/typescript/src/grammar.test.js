@@ -52,3 +52,26 @@ describe("TypeScript Grammar", () => {
     });
   }
 });
+
+describe("stack balance", () => {
+  it("tokenizes the tail after 300 of every number form", () => {
+    const unit =
+      "type T = 1 | 1.5e-3 | 0x1F;\n" +
+      "const x: number[] = [1, 1.5, 1e5, 1.5e-3, 1_000, 0x1F, 0b101, 0o17, 10n, 1e];\n" +
+      "f<number>(1, 1.5, 1e5, 1.5e-3, 0x1F, 10n, 1e);\n" +
+      "`${1.5e-3}`;\n";
+    const input = `${unit.repeat(300)}const s = "after"; if (x) {}`;
+    const tail = get_tokens(input)
+      .slice(-7)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["string", '"after"'],
+      ["punctuation", ";"],
+      ["keyword", "if"],
+      ["punctuation", "("],
+      ["identifier", "x"],
+      ["punctuation", ")"],
+      ["punctuation", "{}"],
+    ]);
+  });
+});

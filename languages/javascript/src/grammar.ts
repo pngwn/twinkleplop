@@ -455,12 +455,13 @@ export default define_grammar({
     // -------------------------------------------------------------------------
     // Number states — argument/group context (pop back on exit)
     // Each continuation accepts `_` as a numeric separator.
+    // the entry pushes the only frame, phases move with goto and every exit pops it with leave
     // -------------------------------------------------------------------------
     number_arg: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        match(".", TOKENS.number, enter("decimal_number_arg")),
-        match(["e", "E"], TOKENS.number, enter("exponent_sign_arg")),
+        match(".", TOKENS.number, goto("decimal_number_arg")),
+        match(["e", "E"], TOKENS.number, goto("exponent_sign_arg")),
         match("n", TOKENS.number, leave()),
         fallback(leave()),
       ],
@@ -469,15 +470,16 @@ export default define_grammar({
     decimal_number_arg: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        match(["e", "E"], TOKENS.number, enter("exponent_sign_arg")),
+        match(["e", "E"], TOKENS.number, goto("exponent_sign_arg")),
         fallback(leave()),
       ],
     },
 
     exponent_sign_arg: {
       rules: [
-        match(["+", "-"], TOKENS.number, enter("exponent_digits_arg")),
-        match(DIGIT, TOKENS.number, enter("exponent_digits_arg")),
+        match(["+", "-"], TOKENS.number, goto("exponent_digits_arg")),
+        match(DIGIT, TOKENS.number, goto("exponent_digits_arg")),
+        fallback(leave()),
       ],
     },
 
@@ -564,12 +566,13 @@ export default define_grammar({
     //
     // Each continuation rule accepts `_` as a numeric separator (ES2021),
     // so literals like `1_000_000` or `0xFF_FF_FF` are one number token.
+    // entered sideways, so phases move with goto too, an enter here leaks a frame per literal
     // -------------------------------------------------------------------------
     number: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        match(".", TOKENS.number, enter("decimal_number")),
-        match(["e", "E"], TOKENS.number, enter("exponent_sign")),
+        match(".", TOKENS.number, goto("decimal_number")),
+        match(["e", "E"], TOKENS.number, goto("exponent_sign")),
         match("n", TOKENS.number, goto("division")),
         fallback(goto("division")),
       ],
@@ -578,15 +581,16 @@ export default define_grammar({
     decimal_number: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        match(["e", "E"], TOKENS.number, enter("exponent_sign")),
+        match(["e", "E"], TOKENS.number, goto("exponent_sign")),
         fallback(goto("division")),
       ],
     },
 
     exponent_sign: {
       rules: [
-        match(["+", "-"], TOKENS.number, enter("exponent_digits")),
-        match(DIGIT, TOKENS.number, enter("exponent_digits")),
+        match(["+", "-"], TOKENS.number, goto("exponent_digits")),
+        match(DIGIT, TOKENS.number, goto("exponent_digits")),
+        fallback(goto("division")),
       ],
     },
 

@@ -50,3 +50,23 @@ describe("Go Grammar", () => {
     });
   }
 });
+
+describe("stack balance", () => {
+  it("tokenizes the tail after 300 of every number form", () => {
+    const unit =
+      "x := []float64{1, 1.5, 1e5, 1.5e-3, .5, 1_000, 0x1F, 0x1.8p3, 0x1p-2, " +
+      "0b101, 0o17, 017, 1i, 1.5i, 1e5i, 0x1p2i, 1e, 0x1p}\n";
+    const input = `${unit.repeat(300)}s := "after"\nif x {}`;
+    const tail = get_tokens(input)
+      .slice(-6)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["identifier", "s"],
+      ["operator", ":="],
+      ["string", '"after"'],
+      ["keyword", "if"],
+      ["identifier", "x"],
+      ["punctuation", "{}"],
+    ]);
+  });
+});

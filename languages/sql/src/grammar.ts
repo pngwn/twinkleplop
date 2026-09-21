@@ -694,16 +694,16 @@ export default define_grammar({
     // -----------------------------------------------------------------
     // numeric sub-states. modelled on the json grammar; each sub-state
     // emits `number` so coalescing fuses the whole literal into one
-    // token. fallback(goto("main")) is a deliberate controlled stack
-    // leak (see json grammar's comment on the same pattern).
+    // token.
+    // main pushes one frame, phases move with goto and every exit pops it with leave
     // -----------------------------------------------------------------
     number: {
       rules: [
         match(DIGIT, TOKENS.number),
         match("_", TOKENS.number),
-        match(".", TOKENS.number, enter("number_decimal")),
-        match(["e", "E"], TOKENS.number, enter("number_exp_sign")),
-        fallback(goto("main")),
+        match(".", TOKENS.number, goto("number_decimal")),
+        match(["e", "E"], TOKENS.number, goto("number_exp_sign")),
+        fallback(leave()),
       ],
     },
 
@@ -711,21 +711,21 @@ export default define_grammar({
       rules: [
         match(DIGIT, TOKENS.number),
         match("_", TOKENS.number),
-        match(["e", "E"], TOKENS.number, enter("number_exp_sign")),
-        fallback(goto("main")),
+        match(["e", "E"], TOKENS.number, goto("number_exp_sign")),
+        fallback(leave()),
       ],
     },
 
     number_exp_sign: {
       rules: [
-        match(["+", "-"], TOKENS.number, enter("number_exp_digits")),
-        match(DIGIT, TOKENS.number, enter("number_exp_digits")),
-        fallback(goto("main")),
+        match(["+", "-"], TOKENS.number, goto("number_exp_digits")),
+        match(DIGIT, TOKENS.number, goto("number_exp_digits")),
+        fallback(leave()),
       ],
     },
 
     number_exp_digits: {
-      rules: [match(DIGIT, TOKENS.number), fallback(goto("main"))],
+      rules: [match(DIGIT, TOKENS.number), fallback(leave())],
     },
 
     hex_number: {
@@ -741,16 +741,16 @@ export default define_grammar({
           ],
           TOKENS.number,
         ),
-        fallback(goto("main")),
+        fallback(leave()),
       ],
     },
 
     bin_number: {
-      rules: [match([range([["0", "1"]]), "_"], TOKENS.number), fallback(goto("main"))],
+      rules: [match([range([["0", "1"]]), "_"], TOKENS.number), fallback(leave())],
     },
 
     oct_number: {
-      rules: [match([range([["0", "7"]]), "_"], TOKENS.number), fallback(goto("main"))],
+      rules: [match([range([["0", "7"]]), "_"], TOKENS.number), fallback(leave())],
     },
   },
 });

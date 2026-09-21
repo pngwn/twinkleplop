@@ -402,10 +402,7 @@ export default define_grammar({
     // each sub-state uses fallback(leave()) so that on a non-numeric
     // terminator, control pops back to whoever called the entry rule
     // — main for top-level numbers, fstring_expr_top / nested for
-    // numbers inside f-string replacement fields. this is the rust /
-    // javascript-arg pattern; the json pattern of fallback(goto("main"))
-    // would skip past the f-string body / expression frames and break
-    // state nesting (numbers inside `f"{5}"` would close the f-string).
+    // numbers inside f-string replacement fields.
     //
     // when number → float_decimal → float_exponent_sign nests via
     // enter(), a single non-numeric char triggers chained
