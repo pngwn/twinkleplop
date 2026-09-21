@@ -58,9 +58,10 @@ for (let i = 0; i < result.tokens.length; i += 3) {
 		</p>
 		<CodeBlock fname="terminal" html={install_code} />
 		<p>
-			There are four theme packages: <code>@twinkleplop/theme-github</code>,
-			<code>@twinkleplop/theme-atom-one</code>, <code>@twinkleplop/theme-solarized</code> and
-			<code>@twinkleplop/theme-catppuccin</code>. Each includes a light and a dark variant. See
+			There are five theme packages: <code>@twinkleplop/theme-github</code>,
+			<code>@twinkleplop/theme-atom-one</code>, <code>@twinkleplop/theme-solarized</code>,
+			<code>@twinkleplop/theme-night-owl</code> and <code>@twinkleplop/theme-catppuccin</code>.
+			Each includes a light and a dark variant. See
 			<a href="/docs/themes">themes</a> for the options.
 		</p>
 	</Section>
