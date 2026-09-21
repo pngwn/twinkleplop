@@ -114,7 +114,6 @@ console.log(msg);`,
 		}
 
 		for (const [type_name, ranges] of by_type) {
-		console.log(type_name)
 			CSS.highlights.set(hl_name(type_name), new Highlight(...ranges));
 		}
 
