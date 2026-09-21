@@ -8,7 +8,7 @@
 // https://equinusocio.vscode-unpkg.net/equinusocio/vsc-material-theme/34.7.16/extension/build/themes/Material-Theme-Lighter.json
 // https://equinusocio.vscode-unpkg.net/equinusocio/vsc-material-theme/34.7.16/extension/build/themes/Material-Theme-Default.json
 
-import type { theme_palette } from "@twinkleplop/core/types";
+import type { theme_palette, theme_styles } from "@twinkleplop/core/types";
 
 type scheme = {
   background: string;
@@ -77,7 +77,7 @@ const palette = ({
   boolean: pink, // constant.language.boolean
   comment: comments,
   identifier: fg, // variable, yaml plain scalars render green
-  keyword: purple, // storage.type on const and function, control keywords render cyan and sql keywords orange
+  keyword: cyan, // keyword, storage keywords like const render purple and sql keywords orange
   number: orange, // constant.numeric
   operator: cyan, // keyword.operator via keyword
   punctuation: cyan, // punctuation
@@ -94,11 +94,11 @@ const palette = ({
   lifetime: yellow, // entity.name.type.lifetime.rust via entity.name.type
   namespace: yellow, // entity.name.namespace via entity.name, js and python imports render fg
   parameter: fg, // variable.parameter sets italic only
-  property: paleblue, // support.type.property-name.css, js and yaml keys render red, json keys purple
+  property: red, // variable.object.property and object keys, css properties render paleblue and toml keys fg
   type: yellow, // support.type and entity.name.type
   variable: fg, // variable
   variant: yellow, // entity.name.type on rust enum variants
-  function: blue, // entity.name.function, method definitions render red
+  function: blue, // entity.name.function, method definitions render red and constructor purple
 
   // markup in html, svelte and tsx
   attr_name: purple, // entity.other.attribute-name
@@ -209,3 +209,23 @@ const palette = ({
 export const light: theme_palette = palette(lighter);
 
 export const dark: theme_palette = palette(material);
+
+const styles: theme_styles = {
+  autolink: ["underline"], // markup.underline
+  block_scalar_header: ["italic"], // keyword.control.flow.block-scalar.yaml via keyword.control
+  blockquote_marker: ["italic"], // markup.quote
+  bold: ["bold"], // markup.bold
+  bold_close: ["bold"], // punctuation.definition.bold inside markup.bold
+  bold_open: ["bold"], // punctuation.definition.bold inside markup.bold
+  comment: ["italic"], // comment
+  italic: ["italic"], // markup.italic
+  italic_close: ["italic"], // punctuation.definition.italic inside markup.italic
+  italic_open: ["italic"], // punctuation.definition.italic inside markup.italic
+  keyword: ["italic"], // keyword.control, storage keywords and new and this are upright
+  parameter: ["italic"], // variable.parameter
+  svelte_block: ["italic"], // keyword.control.svelte via keyword.control
+};
+
+export const light_styles: theme_styles = styles;
+
+export const dark_styles: theme_styles = styles;

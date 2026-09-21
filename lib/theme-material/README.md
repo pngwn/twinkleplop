@@ -19,12 +19,20 @@ import "@twinkleplop/theme-material/light";
 import "@twinkleplop/theme-material/dark";
 ```
 
-The palettes are also available as data, keyed by token type:
+The palettes and font styles are also available as data, keyed by token type:
 
 ```ts
-import { light, dark } from "@twinkleplop/theme-material/tokens";
+import { light, dark, light_styles, dark_styles } from "@twinkleplop/theme-material/tokens";
 ```
 
 Each stylesheet sets `--twp-background` to the theme's editor background but does not apply it. Use `background: var(--twp-background)` on your code container to opt in.
 
-VS Code shows declaration keywords (`const`, `function`, `class`) in purple and control keywords (`import`, `return`, `if`) in cyan. twinkleplop has a single `keyword` type, so every keyword is purple. Property names use the pale blue of CSS properties. VS Code shows object and YAML keys in red, and colours JSON keys by nesting depth.
+Material's italics, bold and underlines come from variables too, so you can turn one off with plain CSS:
+
+```css
+.twinkleplop {
+  --twp-keyword-font-style: normal;
+}
+```
+
+twinkleplop has one type per token, so a few distinctions VS Code makes are merged. Every keyword is cyan italic like `import` and `return`, including declaration keywords such as `const` and `function` that VS Code draws in upright purple. Every function name is blue, including the method definitions VS Code draws in red. Property names are red like object keys and class fields, including the CSS properties VS Code draws in pale blue.

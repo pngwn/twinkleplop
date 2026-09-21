@@ -14,13 +14,18 @@ import {
 	dark as solarized_dark,
 	light as solarized_light
 } from '@twinkleplop/theme-solarized/tokens';
-import { dark as material_dark, light as material_light } from '@twinkleplop/theme-material/tokens';
 import {
 	dark as night_owl_dark,
 	dark_styles as night_owl_dark_styles,
 	light as night_owl_light,
 	light_styles as night_owl_light_styles
 } from '@twinkleplop/theme-night-owl/tokens';
+import {
+	dark as material_dark,
+	dark_styles as material_dark_styles,
+	light as material_light,
+	light_styles as material_light_styles
+} from '@twinkleplop/theme-material/tokens';
 import type { theme_styles } from '@twinkleplop/core/types';
 
 export type theme_variant =
@@ -67,8 +72,16 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		shiki_id: 'night-owl',
 		styles: night_owl_dark_styles
 	},
-	'material-light': { palette: material_light, shiki_id: 'material-theme-lighter' },
-	'material-dark': { palette: material_dark, shiki_id: 'material-theme' }
+	'material-light': {
+		palette: material_light,
+		shiki_id: 'material-theme-lighter',
+		styles: material_light_styles
+	},
+	'material-dark': {
+		palette: material_dark,
+		shiki_id: 'material-theme',
+		styles: material_dark_styles
+	}
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {
@@ -112,7 +125,13 @@ export const FONTS: mono_font[] = [
 	}
 ];
 
-export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized', 'night-owl', 'material'];
+export const THEME_NAMES: theme_name[] = [
+	'github',
+	'atom-one',
+	'solarized',
+	'night-owl',
+	'material'
+];
 
 export interface lab_view {
 	theme: theme_name;
