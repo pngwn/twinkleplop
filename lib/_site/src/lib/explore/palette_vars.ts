@@ -19,9 +19,9 @@ export function palette_to_vars(palette: token_palette): string {
   return parts.join(";");
 }
 
-// the first rule outranks the italic comments and bold markdown explore.css gives every theme
+// explore.css sets no font styles, so these rules are the only ones tokens get
 export function styles_to_css(styles: theme_styles, scope: string): string {
-  const rules = [`${scope} .tok.tok{font-style:normal;font-weight:normal;text-decoration:none}`];
+  const rules: string[] = [];
   for (const [key, style = []] of Object.entries(styles)) {
     const decorations = [
       style.includes("underline") && "underline",
