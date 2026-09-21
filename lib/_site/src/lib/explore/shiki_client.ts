@@ -22,6 +22,7 @@ export const SHIKI_LANG_MAP: Record<string, string | null> = {
   bash: "bash",
   shellsession: "shellsession",
   go: "go",
+  http: "http",
   diff: "diff",
   "diff-basic": null,
 };

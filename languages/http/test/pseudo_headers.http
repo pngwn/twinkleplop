@@ -1,0 +1,5 @@
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9

@@ -1,0 +1,21 @@
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json

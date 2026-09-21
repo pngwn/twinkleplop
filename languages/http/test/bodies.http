@@ -1,0 +1,30 @@
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated

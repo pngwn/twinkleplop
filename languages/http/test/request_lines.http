@@ -1,0 +1,31 @@
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5

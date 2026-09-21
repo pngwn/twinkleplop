@@ -151,6 +151,8 @@ export const tab = "tab";
 
 export const raw_code_block = "raw_code_block";
 export const raw_front_matter = "raw_front_matter";
+export const raw_json = "raw_json";
+export const raw_markup = "raw_markup";
 export const raw_script = "raw_script";
 export const raw_shell = "raw_shell";
 export const raw_style = "raw_style";

@@ -138,6 +138,8 @@ export const light: theme_palette = {
   // raw containers (reclassifier placeholders)
   raw_code_block: "#383A42", // fallback to foreground
   raw_front_matter: "#383A42", // fallback to foreground
+  raw_json: "#383A42",
+  raw_markup: "#383A42",
   raw_script: "#383A42", // fallback to foreground
   raw_shell: "#383A42",
   raw_style: "#383A42", // fallback to foreground
@@ -272,6 +274,8 @@ export const dark: theme_palette = {
   // raw containers (reclassifier placeholders)
   raw_code_block: "#abb2bf", // foreground
   raw_front_matter: "#abb2bf", // foreground
+  raw_json: "#abb2bf",
+  raw_markup: "#abb2bf",
   raw_script: "#abb2bf", // foreground
   raw_shell: "#abb2bf",
   raw_style: "#abb2bf", // foreground

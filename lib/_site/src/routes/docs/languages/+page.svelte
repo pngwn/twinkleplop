@@ -74,9 +74,9 @@ const html = await get_lang("html");`;
 		<p>Install and import a package for each language you need.</p>
 		<CodeBlock fname="html.ts" html={html_usage} />
 		<p>
-			Some languages embed others. HTML and Svelte include CSS and JavaScript, and JavaScript
-			includes HTML and CSS in tagged templates. Embedded languages are dependencies of the parent
-			package and are installed automatically.
+			Some languages embed others. HTML and Svelte include CSS and JavaScript, JavaScript
+			includes HTML and CSS in tagged templates, and HTTP highlights JSON and HTML bodies.
+			Embedded languages are dependencies of the parent package and are installed automatically.
 		</p>
 	</Section>
 

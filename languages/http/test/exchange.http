@@ -1,0 +1,15 @@
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
