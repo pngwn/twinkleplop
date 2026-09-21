@@ -56,6 +56,7 @@ export default define_grammar({
     },
 
     // @@ -N,N +N,N @@ optional context text
+    // hunk_context shares the frame main pushed, so both exit with leave
     hunk_range: {
       rules: [
         // closing delimiter. @@@ before @@ for correct length priority.
@@ -67,14 +68,14 @@ export default define_grammar({
         match(",", TOKENS.punctuation),
         match(["+", "-"], TOKENS.punctuation),
         on(" "),
-        on("\n", goto("main")),
+        on("\n", leave()),
         fallback({ token: TOKENS.label }),
       ],
     },
 
     // function context text after closing @@
     hunk_context: {
-      rules: [on("\n", goto("main")), fallback({ token: TOKENS.comment })],
+      rules: [on("\n", leave()), fallback({ token: TOKENS.comment })],
     },
 
     inserted_line: {

@@ -115,6 +115,9 @@ const ESCAPE_RULE = match(ESCAPE_CHARS, TOKENS.escape);
 // the `\` + `\n` pair wins over the literal escape patterns.
 const HARD_BREAK_BACKSLASH = match("\\\n", TOKENS.hard_break, goto("block_start"));
 
+// a tokenless pop never consumes, so a nested body unwinds and the line state emits the break
+const HARD_BREAK_UNWIND = on("\\\n", leave());
+
 // opener rules shared across every state that accepts arbitrary inline
 // content (inline_content, heading_body, link_text, every emphasis body
 // state). ordering matters within the array — longer patterns first.
@@ -139,8 +142,9 @@ const EMPH_OPENERS = [
   match("_", TOKENS.italic_open, enter("italic_under_body")),
 ];
 
-// rules shared by every emphasis / code / link body state.
-const INLINE_SUB_RULES = [HARD_BREAK_BACKSLASH, ESCAPE_RULE];
+const LINE_SUB_RULES = [HARD_BREAK_BACKSLASH, ESCAPE_RULE];
+
+const NESTED_SUB_RULES = [HARD_BREAK_UNWIND, ESCAPE_RULE];
 
 export default define_grammar({
   name: "markdown",
@@ -174,6 +178,7 @@ export default define_grammar({
     // -------------------------------------------------------------------
     // block_start — entered at the beginning of every line (including
     // blank lines). the state machine "resets" here between blocks.
+    // block_start stays at stack depth 0, line states that pick the next state are reached with goto
     //
     // ordering matters. longer / more-specific block prefixes come first.
     // -------------------------------------------------------------------
@@ -187,18 +192,18 @@ export default define_grammar({
 
         // fenced code blocks. backtick and tilde fences are separate
         // states so the close must match the open character.
-        match(["``````", "`````", "````", "```"], TOKENS.code_fence, enter("fence_info_btick")),
-        match(["~~~~~~", "~~~~~", "~~~~", "~~~"], TOKENS.code_fence, enter("fence_info_tilde")),
+        match(["``````", "`````", "````", "```"], TOKENS.code_fence, goto("fence_info_btick")),
+        match(["~~~~~~", "~~~~~", "~~~~", "~~~"], TOKENS.code_fence, goto("fence_info_tilde")),
 
         // atx heading markers — 1 to 6 hashes followed by space/eol.
         match(
           ["######", "#####", "####", "###", "##", "#"],
           TOKENS.heading_marker,
-          enter("heading_space"),
+          goto("heading_space"),
         ),
 
         // thematic break: ---, ***, ___. three or more chars.
-        match(["---", "***", "___"], TOKENS.hr, enter("thematic_break_tail")),
+        match(["---", "***", "___"], TOKENS.hr, goto("thematic_break_tail")),
 
         // blockquote marker. stays in block_start so `> > foo` dispatches
         // recursively: two markers, then the inner content is block-start
@@ -206,7 +211,7 @@ export default define_grammar({
         match(">", TOKENS.blockquote_marker),
 
         // bullet list marker. `- `, `* `, `+ ` (marker + space).
-        match(["- ", "* ", "+ "], TOKENS.list_marker, enter("list_body_probe")),
+        match(["- ", "* ", "+ "], TOKENS.list_marker, goto("list_body_probe")),
 
         // leading whitespace (1-3 spaces or a tab) — consume without
         // emitting so the block dispatch continues correctly for
@@ -237,7 +242,7 @@ export default define_grammar({
     heading_body: {
       rules: [
         on("\n", goto("block_start")),
-        ...INLINE_SUB_RULES,
+        ...LINE_SUB_RULES,
         ...LINK_OPENERS,
         ...EMPH_OPENERS,
         fallback({ token: TOKENS.heading }),
@@ -252,7 +257,7 @@ export default define_grammar({
     inline_content: {
       rules: [
         on("\n", goto("block_start")),
-        ...INLINE_SUB_RULES,
+        ...LINE_SUB_RULES,
         ...LINK_OPENERS,
         ...EMPH_OPENERS,
         // paragraph text is untokenized — the generator copies it verbatim.
@@ -272,12 +277,13 @@ export default define_grammar({
     // differs is the close delimiter pattern. sibling emphasis kinds
     // are allowed as openers because the reclassifier handles nested
     // composition without any state-machine work.
+    // every body below exits with leave, at a newline it pops without consuming so open spans unwind
     // -------------------------------------------------------------------
     bold_star_body: {
       rules: [
         match("**", TOKENS.bold_close, leave()),
-        on("\n", goto("block_start")),
-        ...INLINE_SUB_RULES,
+        on("\n", leave()),
+        ...NESTED_SUB_RULES,
         ...LINK_OPENERS,
         match("__", TOKENS.bold_open, enter("bold_under_body")),
         match("~~", TOKENS.strike_open, enter("strike_body")),
@@ -290,8 +296,8 @@ export default define_grammar({
     bold_under_body: {
       rules: [
         match("__", TOKENS.bold_close, leave()),
-        on("\n", goto("block_start")),
-        ...INLINE_SUB_RULES,
+        on("\n", leave()),
+        ...NESTED_SUB_RULES,
         ...LINK_OPENERS,
         match("**", TOKENS.bold_open, enter("bold_star_body")),
         match("~~", TOKENS.strike_open, enter("strike_body")),
@@ -304,8 +310,8 @@ export default define_grammar({
     italic_star_body: {
       rules: [
         match("*", TOKENS.italic_close, leave()),
-        on("\n", goto("block_start")),
-        ...INLINE_SUB_RULES,
+        on("\n", leave()),
+        ...NESTED_SUB_RULES,
         ...LINK_OPENERS,
         match("**", TOKENS.bold_open, enter("bold_star_body")),
         match("__", TOKENS.bold_open, enter("bold_under_body")),
@@ -318,8 +324,8 @@ export default define_grammar({
     italic_under_body: {
       rules: [
         match("_", TOKENS.italic_close, leave()),
-        on("\n", goto("block_start")),
-        ...INLINE_SUB_RULES,
+        on("\n", leave()),
+        ...NESTED_SUB_RULES,
         ...LINK_OPENERS,
         match("**", TOKENS.bold_open, enter("bold_star_body")),
         match("__", TOKENS.bold_open, enter("bold_under_body")),
@@ -332,8 +338,8 @@ export default define_grammar({
     strike_body: {
       rules: [
         match("~~", TOKENS.strike_close, leave()),
-        on("\n", goto("block_start")),
-        ...INLINE_SUB_RULES,
+        on("\n", leave()),
+        ...NESTED_SUB_RULES,
         ...LINK_OPENERS,
         match("**", TOKENS.bold_open, enter("bold_star_body")),
         match("__", TOKENS.bold_open, enter("bold_under_body")),
@@ -351,7 +357,7 @@ export default define_grammar({
     code_body: {
       rules: [
         match("`", TOKENS.code_close, leave()),
-        on("\n", goto("block_start")),
+        on("\n", leave()),
         fallback({ token: TOKENS.code }),
       ],
     },
@@ -368,8 +374,8 @@ export default define_grammar({
     link_text: {
       rules: [
         match("]", TOKENS.link_text_close, goto("link_after_close")),
-        on("\n", goto("block_start")),
-        ...INLINE_SUB_RULES,
+        on("\n", leave()),
+        ...NESTED_SUB_RULES,
         match("<", TOKENS.autolink_open, enter("autolink_body")),
         match("&", TOKENS.entity, enter("entity_body")),
         match("`", TOKENS.code_open, enter("code_body")),
@@ -382,10 +388,7 @@ export default define_grammar({
       rules: [
         match("(", TOKENS.url_link, goto("link_destination")),
         match("[", TOKENS.url_link, goto("link_reference_label")),
-        // no extra bracket — shortcut reference shape `[label]` or
-        // plain `[text]` not followed by a link tail. re-process
-        // the current char in inline_content (no-consume goto).
-        fallback(goto("inline_content")),
+        fallback(leave()),
       ],
     },
 
@@ -398,7 +401,7 @@ export default define_grammar({
         // current frame and leak the intervening emphasis frames,
         // breaking the reclassifier's style stack.
         match(")", TOKENS.url_link, leave()),
-        on("\n", goto("block_start")),
+        on("\n", leave()),
         within('"', '"', TOKENS.url_title, { escape: "\\", multiline: false }),
         within("'", "'", TOKENS.url_title, { escape: "\\", multiline: false }),
         fallback({ token: TOKENS.url }),
@@ -409,7 +412,7 @@ export default define_grammar({
       rules: [
         // leave() for the same reason as link_destination above.
         match("]", TOKENS.url_link, leave()),
-        on("\n", goto("block_start")),
+        on("\n", leave()),
         fallback({ token: TOKENS.property }),
       ],
     },
@@ -421,18 +424,17 @@ export default define_grammar({
     autolink_body: {
       rules: [
         match(">", TOKENS.autolink_close, leave()),
-        on("\n", goto("block_start")),
+        on("\n", leave()),
         fallback({ token: TOKENS.autolink }),
       ],
     },
 
     // entity_body — after `&`, scan ascii alnum / `#` / `x` until `;`.
-    // any other character bails out to inline_content (no-consume).
     entity_body: {
       rules: [
         match(";", TOKENS.entity, leave()),
         match([LETTER, DIGIT, "#", "x"], TOKENS.entity),
-        fallback(goto("inline_content")),
+        fallback(leave()),
       ],
     },
 
@@ -462,7 +464,7 @@ export default define_grammar({
     // characters on the same line, then returns to block_start.
     thematic_break_tail: {
       rules: [
-        match("\n", TOKENS.hr, leave()),
+        match("\n", TOKENS.hr, goto("block_start")),
         match(["-", "*", "_", " ", "\t"], TOKENS.hr),
         fallback(goto("inline_content")),
       ],

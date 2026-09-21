@@ -31,6 +31,7 @@ export default define_grammar({
   states: {
     // top-level state: classifies each line by its leading characters.
     // once a hunk header (@@ line) is seen, transitions to the hunk state.
+    // main and hunk stay at stack depth 0, lines that choose between them are reached with goto
     main: {
       rules: [
         NEWLINE,
@@ -40,16 +41,16 @@ export default define_grammar({
 
         // "--- " could be a unified file header or a context range.
         // compiler tries longer "--- " before shorter "-".
-        match("--- ", TOKENS.heading, enter("dash_line")),
-        match("+++ ", TOKENS.heading, enter("file_header_path")),
+        match("--- ", TOKENS.heading, goto("dash_line")),
+        match("+++ ", TOKENS.heading, goto("file_header_path")),
 
         // "*** " for context file header/range, "***" (no space) for
         // separator line. compiler tries 4-char "*** " before 3-char "***".
-        match("*** ", TOKENS.heading, enter("context_star_line")),
+        match("*** ", TOKENS.heading, goto("context_star_line")),
         match("***", TOKENS.label, enter("star_separator")),
 
-        match("@@@ ", TOKENS.label, enter("hunk_range")),
-        match("@@ ", TOKENS.label, enter("hunk_range")),
+        match("@@@ ", TOKENS.label, goto("hunk_range")),
+        match("@@ ", TOKENS.label, goto("hunk_range")),
 
         on("index ", enter("index_line")),
         on("old mode ", enter("mode_line")),
@@ -74,7 +75,7 @@ export default define_grammar({
         match("\\ ", TOKENS.comment, enter("consume_rest_comment")),
         match("#", TOKENS.comment, enter("consume_rest_comment")),
 
-        match(DIGIT, TOKENS.number, enter("normal_command")),
+        match(DIGIT, TOKENS.number, goto("normal_command")),
 
         fallback(),
       ],
@@ -94,17 +95,18 @@ export default define_grammar({
     // (--- 1,5 ----). otherwise it is a file path.
     dash_line: {
       rules: [
-        on("\n", leave()),
+        on("\n", goto("main")),
         match(DIGIT, TOKENS.number, goto("context_range")),
-        match("\t", TOKENS.punctuation, enter("file_header_timestamp")),
+        match("\t", TOKENS.punctuation, goto("file_header_timestamp")),
         fallback({ token: TOKENS.string }),
       ],
     },
 
+    // the line after a file header is read in main, even when the header came from a hunk
     file_header_path: {
       rules: [
-        on("\n", leave()),
-        match("\t", TOKENS.punctuation, enter("file_header_timestamp")),
+        on("\n", goto("main")),
+        match("\t", TOKENS.punctuation, goto("file_header_timestamp")),
         fallback({ token: TOKENS.string }),
       ],
     },
@@ -117,9 +119,9 @@ export default define_grammar({
     // range (*** 1,5 ****). digit means range, else path.
     context_star_line: {
       rules: [
-        on("\n", leave()),
-        match(DIGIT, TOKENS.number, enter("context_range")),
-        match("\t", TOKENS.punctuation, enter("file_header_timestamp")),
+        on("\n", goto("main")),
+        match(DIGIT, TOKENS.number, goto("context_range")),
+        match("\t", TOKENS.punctuation, goto("file_header_timestamp")),
         fallback({ token: TOKENS.string }),
       ],
     },
@@ -166,8 +168,8 @@ export default define_grammar({
         NEWLINE,
         on(" ", enter("context_line")),
 
-        match("@@@ ", TOKENS.label, enter("hunk_range")),
-        match("@@ ", TOKENS.label, enter("hunk_range")),
+        match("@@@ ", TOKENS.label, goto("hunk_range")),
+        match("@@ ", TOKENS.label, goto("hunk_range")),
 
         match("diff ", TOKENS.keyword, goto("diff_command_from_hunk")),
         match("--- ", TOKENS.heading, goto("hunk_dash_line")),
@@ -197,7 +199,7 @@ export default define_grammar({
       rules: [
         on("\n", goto("hunk")),
         match(DIGIT, TOKENS.number, goto("context_range_in_hunk")),
-        match("\t", TOKENS.punctuation, enter("file_header_timestamp")),
+        match("\t", TOKENS.punctuation, goto("file_header_timestamp")),
         fallback({ token: TOKENS.string }),
       ],
     },
@@ -224,20 +226,24 @@ export default define_grammar({
 
     // index TOKENS.hash..TOKENS.hash [MODE]
     // HEX includes digits, so all hash chars (0-9, a-f) match as hash.
-    // after a space, enter index_mode for the file mode number.
     index_line: {
       rules: [
         on("\n", leave()),
         match("..", TOKENS.punctuation),
-        on(" ", enter("index_mode")),
+        on(" ", goto("index_mode_space")),
         match(HEX, TOKENS.hash),
         fallback({}),
       ],
     },
 
+    // index_mode pops back here, then the fallback pops main and main rereads the char
+    index_mode_space: {
+      rules: [on(" ", enter("index_mode")), fallback(leave())],
+    },
+
     // file mode digits after the hash portion of an index line
     index_mode: {
-      rules: [on("\n", goto("main")), match(DIGIT, TOKENS.number), fallback(goto("main"))],
+      rules: [on("\n", leave()), match(DIGIT, TOKENS.number), fallback(leave())],
     },
 
     mode_line: {

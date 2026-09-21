@@ -67,6 +67,8 @@ A grammar is a set of named states. Each state has an ordered list of rules. Rul
 
 Stack leak = enter() without a matching leave() on every exit path. A leak is never harmless: the tokenizer's stack has 256 slots, and once a leaking construct repeats past that, pushes are dropped and a later leave() reads garbage, corrupting every token after it. The classic case is a multi-phase construct (a number with decimal and exponent phases) whose phases are entered with enter() and exit with `fallback(goto("main"))`, leaving frames behind on every literal. Enter the construct once, move between phases with goto(), and exit every phase with leave() (see the JSON number states). Stress-test each construct: repeat it well past 256 times, then assert the tokens that follow.
 
+Two shapes come up in line-oriented grammars. First, sibling top-level states (diff's `main` and `hunk`, markdown's `block_start`) stay at the bottom of the stack. A line state that picks which top-level state reads the next line is reached with goto() and exits with goto(). Only a line state that returns to the state that started it is entered and exits with leave(). Second, a nested span that ends at a terminator it does not own, such as emphasis left open at `\n`, unwinds with a token-less `on("\n", leave())` in every nested state. A token-less pop never consumes, even for a multi-char pattern like `on("\\\n", leave())`, so the terminator re-runs in each parent until the bottom state handles it.
+
 Infinite loop = a cycle of goto() transitions where no character is consumed.
 
 ### 2.2 Rule ordering and precedence
