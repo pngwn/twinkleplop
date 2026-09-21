@@ -14,6 +14,10 @@ import {
 	dark as solarized_dark,
 	light as solarized_light
 } from '@twinkleplop/theme-solarized/tokens';
+import {
+	dark as rose_pine_dark,
+	light as rose_pine_light
+} from '@twinkleplop/theme-rose-pine/tokens';
 
 export type theme_variant =
 	| 'github-light'
@@ -21,8 +25,10 @@ export type theme_variant =
 	| 'atom-one-light'
 	| 'atom-one-dark'
 	| 'solarized-light'
-	| 'solarized-dark';
-export type theme_name = 'github' | 'atom-one' | 'solarized';
+	| 'solarized-dark'
+	| 'rose-pine-light'
+	| 'rose-pine-dark';
+export type theme_name = 'github' | 'atom-one' | 'solarized' | 'rose-pine';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
@@ -42,7 +48,9 @@ export const THEMES: Record<theme_variant, theme_def> = {
 	'atom-one-light': { palette: atom_one_light, shiki_id: 'one-light' },
 	'atom-one-dark': { palette: atom_one_dark, shiki_id: 'one-dark-pro' },
 	'solarized-light': { palette: solarized_light, shiki_id: 'solarized-light' },
-	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' }
+	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' },
+	'rose-pine-light': { palette: rose_pine_light, shiki_id: 'rose-pine-dawn' },
+	'rose-pine-dark': { palette: rose_pine_dark, shiki_id: 'rose-pine' }
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {
@@ -86,7 +94,7 @@ export const FONTS: mono_font[] = [
 	}
 ];
 
-export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized'];
+export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized', 'rose-pine'];
 
 export interface lab_view {
 	theme: theme_name;
