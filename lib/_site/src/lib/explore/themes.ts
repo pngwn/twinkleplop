@@ -10,9 +10,19 @@ export type token_palette = Record<string, string>;
 // explicit mapping rather than a blind string reuse.
 import { dark as github_dark, light as github_light } from '@twinkleplop/theme-github/tokens';
 import { dark as atom_one_dark, light as atom_one_light } from '@twinkleplop/theme-atom-one/tokens';
+import {
+	dark as solarized_dark,
+	light as solarized_light
+} from '@twinkleplop/theme-solarized/tokens';
 
-export type theme_variant = 'github-light' | 'github-dark' | 'atom-one-light' | 'atom-one-dark';
-export type theme_name = 'github' | 'atom-one';
+export type theme_variant =
+	| 'github-light'
+	| 'github-dark'
+	| 'atom-one-light'
+	| 'atom-one-dark'
+	| 'solarized-light'
+	| 'solarized-dark';
+export type theme_name = 'github' | 'atom-one' | 'solarized';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
@@ -30,7 +40,9 @@ export const THEMES: Record<theme_variant, theme_def> = {
 	'github-light': { palette: github_light, shiki_id: 'github-light-default' },
 	'github-dark': { palette: github_dark, shiki_id: 'github-dark-default' },
 	'atom-one-light': { palette: atom_one_light, shiki_id: 'one-light' },
-	'atom-one-dark': { palette: atom_one_dark, shiki_id: 'one-dark-pro' }
+	'atom-one-dark': { palette: atom_one_dark, shiki_id: 'one-dark-pro' },
+	'solarized-light': { palette: solarized_light, shiki_id: 'solarized-light' },
+	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' }
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {
@@ -74,7 +86,7 @@ export const FONTS: mono_font[] = [
 	}
 ];
 
-export const THEME_NAMES: theme_name[] = ['github', 'atom-one'];
+export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized'];
 
 export interface lab_view {
 	theme: theme_name;
