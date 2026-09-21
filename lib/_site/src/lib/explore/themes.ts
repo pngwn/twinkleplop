@@ -44,6 +44,12 @@ import {
 	light as ayu_light,
 	light_styles as ayu_light_styles
 } from '@twinkleplop/theme-ayu/tokens';
+import {
+	dark as catppuccin_dark,
+	dark_styles as catppuccin_dark_styles,
+	light as catppuccin_light,
+	light_styles as catppuccin_light_styles
+} from '@twinkleplop/theme-catppuccin/tokens';
 import type { theme_styles } from '@twinkleplop/core/types';
 
 export type theme_variant =
@@ -58,8 +64,17 @@ export type theme_variant =
 	| 'rose-pine-light'
 	| 'rose-pine-dark'
 	| 'ayu-light'
-	| 'ayu-dark';
-export type theme_name = 'github' | 'atom-one' | 'solarized' | 'night-owl' | 'rose-pine' | 'ayu';
+	| 'ayu-dark'
+	| 'catppuccin-light'
+	| 'catppuccin-dark';
+export type theme_name =
+	| 'github'
+	| 'atom-one'
+	| 'solarized'
+	| 'night-owl'
+	| 'rose-pine'
+	| 'ayu'
+	| 'catppuccin';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
@@ -126,7 +141,17 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		styles: rose_pine_dark_styles
 	},
 	'ayu-light': { palette: ayu_light, shiki_id: 'ayu-light', styles: ayu_light_styles },
-	'ayu-dark': { palette: ayu_dark, shiki_id: 'ayu-dark', styles: ayu_dark_styles }
+	'ayu-dark': { palette: ayu_dark, shiki_id: 'ayu-dark', styles: ayu_dark_styles },
+	'catppuccin-light': {
+		palette: catppuccin_light,
+		shiki_id: 'catppuccin-latte',
+		styles: catppuccin_light_styles
+	},
+	'catppuccin-dark': {
+		palette: catppuccin_dark,
+		shiki_id: 'catppuccin-mocha',
+		styles: catppuccin_dark_styles
+	}
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {
@@ -176,7 +201,8 @@ export const THEME_NAMES: theme_name[] = [
 	'solarized',
 	'night-owl',
 	'rose-pine',
-	'ayu'
+	'ayu',
+	'catppuccin'
 ];
 
 export interface lab_view {
