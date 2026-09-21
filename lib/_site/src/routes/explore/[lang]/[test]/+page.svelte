@@ -602,10 +602,12 @@
 		palette_to_vars(resolve_theme(view.theme, theme_mode.resolved).palette)
 	);
 
-	let theme_style_css = $derived.by(() => {
-		const styles = resolve_theme(view.theme, theme_mode.resolved).styles;
-		return styles ? styles_to_css(styles, '.explore-app [data-pane="plop"]') : '';
-	});
+	let theme_style_css = $derived(
+		styles_to_css(
+			resolve_theme(view.theme, theme_mode.resolved).styles,
+			'.explore-app [data-pane="plop"]'
+		)
+	);
 
 	function handle_lang(next: string) {
 		if (next === data.lang) return;
