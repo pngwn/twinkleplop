@@ -642,3 +642,54 @@ describe("TypeScript parameters — arrows after a ternary colon", () => {
     expect(type_of(tokens, "index")).not.toBe("parameter");
   });
 });
+
+describe("TypeScript reclassifier — parameter properties", () => {
+  it("an accessibility modifier leaves the name a parameter", () => {
+    const tokens = enrich("class A { constructor(public name: string) {} }");
+    expect(type_of(tokens, "public")).toBe("keyword");
+    expect(type_of(tokens, "name")).toBe("parameter");
+  });
+
+  it("stacked modifiers are stepped over together", () => {
+    const tokens = enrich("class A { constructor(private readonly id: number) {} }");
+    expect(type_of(tokens, "private")).toBe("keyword");
+    expect(type_of(tokens, "readonly")).toBe("keyword");
+    expect(type_of(tokens, "id")).toBe("parameter");
+  });
+
+  it("override and protected reach the name", () => {
+    const tokens = enrich("class A { constructor(protected override x: T) {} }");
+    expect(type_of(tokens, "x")).toBe("parameter");
+  });
+
+  it("mixes with plain parameters and rest elements across chunks", () => {
+    const tokens = enrich(
+      "class A { constructor(public readonly a: string, b: number, ...rest: T[]) {} }",
+    );
+    expect(type_of(tokens, "a")).toBe("parameter");
+    expect(type_of(tokens, "b")).toBe("parameter");
+    expect(type_of(tokens, "rest")).toBe("parameter");
+  });
+
+  it("a modifier on a defaulted parameter property still reaches the name", () => {
+    const tokens = enrich('class A { constructor(public greeting: string = "hi") {} }');
+    expect(type_of(tokens, "greeting")).toBe("parameter");
+  });
+
+  it("a parameter named after a modifier does not promote its annotation", () => {
+    const tokens = enrich("function f(readonly: string) {}");
+    expect(type_of(tokens, "readonly")).toBe("keyword");
+    expect(type_of(tokens, "string")).toBe("type");
+  });
+
+  it("accessor words as parameter names leave their annotations alone", () => {
+    const tokens = enrich("function f(get: string, set: number) {}");
+    expect(type_of(tokens, "string")).toBe("type");
+    expect(type_of(tokens, "number")).toBe("type");
+  });
+
+  it("modifiers on a method parameter reach the name too", () => {
+    const tokens = enrich("class A { m(public x: T) {} }");
+    expect(type_of(tokens, "x")).toBe("parameter");
+  });
+});
