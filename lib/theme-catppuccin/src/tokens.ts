@@ -4,7 +4,7 @@
 // https://github.com/catppuccin/vscode/tree/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/src/theme/tokens
 // https://github.com/catppuccin/vscode/blob/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/src/theme/ui/workbench.ts
 
-import type { theme_palette } from "@twinkleplop/core/types";
+import type { theme_palette, theme_styles } from "@twinkleplop/core/types";
 
 const latte = {
   base: "#eff1f5",
@@ -179,3 +179,22 @@ const palette = (c: typeof latte): theme_palette => ({
 export const light: theme_palette = palette(latte);
 
 export const dark: theme_palette = palette(mocha);
+
+const styles: theme_styles = {
+  attr_sigil: ["italic"], // meta.attribute.rust
+  attribute: ["italic"], // meta.attribute.rust
+  bold: ["bold"], // markup.bold
+  builtin: ["italic"], // support.function via support.function.builtin
+  class_name: ["italic"], // entity.name.class
+  comment: ["italic"], // comment
+  decorator: ["italic"], // punctuation.decorator.ts and the decorator call
+  function: ["italic"], // entity.name.function
+  italic: ["italic"], // markup.italic
+  lifetime: ["italic"], // storage.modifier.lifetime.rust
+  parameter: ["italic"], // variable.parameter
+  strike: ["strikethrough"], // markup.strikethrough
+};
+
+export const light_styles: theme_styles = styles;
+
+export const dark_styles: theme_styles = styles;

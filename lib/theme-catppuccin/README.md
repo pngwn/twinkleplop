@@ -19,12 +19,20 @@ import "@twinkleplop/theme-catppuccin/light";
 import "@twinkleplop/theme-catppuccin/dark";
 ```
 
-The palettes are also available as data, keyed by token type:
+The palettes and font styles are also available as data, keyed by token type:
 
 ```ts
-import { light, dark } from "@twinkleplop/theme-catppuccin/tokens";
+import { light, dark, light_styles, dark_styles } from "@twinkleplop/theme-catppuccin/tokens";
 ```
 
 Each stylesheet sets `--twp-background` to the theme's editor background but does not apply it. Use `background: var(--twp-background)` on your code container to opt in.
 
-VS Code gives each markdown heading level its own colour. twinkleplop has a single `heading` type, so every heading uses the level 1 red. The stylesheets set colours only, not the italics the VS Code theme uses for functions, types and parameters.
+Catppuccin's italics, bold and strikethrough come from variables too, so you can turn one off with plain CSS:
+
+```css
+.twinkleplop {
+  --twp-comment-font-style: normal;
+}
+```
+
+VS Code gives each markdown heading level its own colour. twinkleplop has a single `heading` type, so every heading uses the level 1 red.

@@ -22,7 +22,9 @@ import {
 } from '@twinkleplop/theme-night-owl/tokens';
 import {
 	dark as catppuccin_dark,
-	light as catppuccin_light
+	dark_styles as catppuccin_dark_styles,
+	light as catppuccin_light,
+	light_styles as catppuccin_light_styles
 } from '@twinkleplop/theme-catppuccin/tokens';
 import type { theme_styles } from '@twinkleplop/core/types';
 
@@ -70,8 +72,16 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		shiki_id: 'night-owl',
 		styles: night_owl_dark_styles
 	},
-	'catppuccin-light': { palette: catppuccin_light, shiki_id: 'catppuccin-latte' },
-	'catppuccin-dark': { palette: catppuccin_dark, shiki_id: 'catppuccin-mocha' }
+	'catppuccin-light': {
+		palette: catppuccin_light,
+		shiki_id: 'catppuccin-latte',
+		styles: catppuccin_light_styles
+	},
+	'catppuccin-dark': {
+		palette: catppuccin_dark,
+		shiki_id: 'catppuccin-mocha',
+		styles: catppuccin_dark_styles
+	}
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {
