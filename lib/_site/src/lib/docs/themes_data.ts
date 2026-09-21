@@ -107,6 +107,33 @@ export const THEMES: swatch[] = [
     chips: ["#859900", "#2aa198", "#268bd2", "#d33682"],
   },
   {
+    name: "night owl",
+    package_name: "@twinkleplop/theme-night-owl",
+    dark: {
+      bg: "#011627",
+      fg: "#d6deeb",
+      com: "#637777",
+      kw: "#c792ea",
+      str: "#ecc48d",
+      fn: "#82aaff",
+      param: "#d7dbe0",
+      type: "#c5e478",
+      num: "#f78c6c",
+    },
+    light: {
+      bg: "#fbfbfb",
+      fg: "#403f53",
+      com: "#989fb1",
+      kw: "#994cc3",
+      str: "#c96765",
+      fn: "#4876d6",
+      param: "#403f53",
+      type: "#4876d6",
+      num: "#aa0982",
+    },
+    chips: ["#c792ea", "#ecc48d", "#82aaff", "#c5e478"],
+  },
+  {
     name: "material",
     package_name: "@twinkleplop/theme-material",
     dark: {

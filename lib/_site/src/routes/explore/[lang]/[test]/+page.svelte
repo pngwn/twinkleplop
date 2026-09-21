@@ -30,7 +30,7 @@
 	// annotation plugins are always on in the lab. defining the array once
 	// keeps the factory call cheap (no new array every reactive update).
 	const annotation_plugins = [em, hl, dim, add, del, mod, err, warn, info];
-	import { palette_to_vars } from '$lib/explore/palette_vars';
+	import { palette_to_vars, styles_to_css } from '$lib/explore/palette_vars';
 	import { measure } from '$lib/explore/measure';
 	import {
 		get_highlighter,
@@ -600,6 +600,11 @@
 		palette_to_vars(resolve_theme(view.theme, theme_mode.resolved).palette)
 	);
 
+	let theme_style_css = $derived.by(() => {
+		const styles = resolve_theme(view.theme, theme_mode.resolved).styles;
+		return styles ? styles_to_css(styles, '.explore-app [data-pane="plop"]') : '';
+	});
+
 	function handle_lang(next: string) {
 		if (next === data.lang) return;
 		// keep the sample when the next language has one of the same name
@@ -612,6 +617,12 @@
 		goto(`/explore/${data.lang}/${next}`);
 	}
 </script>
+
+<svelte:head>
+	{#if theme_style_css}
+		{@html `<style>${theme_style_css}</style>`}
+	{/if}
+</svelte:head>
 
 <div class="explore-app">
 	<TopBar

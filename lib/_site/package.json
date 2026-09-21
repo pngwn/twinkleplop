@@ -36,6 +36,7 @@
     "@twinkleplop/theme-atom-one": "workspace:*",
     "@twinkleplop/theme-github": "workspace:*",
     "@twinkleplop/theme-material": "workspace:*",
+    "@twinkleplop/theme-night-owl": "workspace:*",
     "@twinkleplop/theme-solarized": "workspace:*",
     "@twinkleplop/toml": "workspace:*",
     "@twinkleplop/tsx": "workspace:*",

@@ -7,6 +7,12 @@ export type theme_palette = Record<string, string> & {
   background_color: string;
 };
 
+// the vs code fontStyle keywords a theme can set on a token
+export type font_style = "italic" | "bold" | "underline" | "strikethrough";
+
+// per variant font styles keyed by token name, tokens without an entry stay plain
+export type theme_styles = Partial<Record<string, readonly font_style[]>>;
+
 // Character class symbol types
 export type CharacterClassSymbol = symbol;
 

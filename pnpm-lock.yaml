@@ -270,6 +270,9 @@ importers:
       '@twinkleplop/theme-material':
         specifier: workspace:*
         version: link:../theme-material
+      '@twinkleplop/theme-night-owl':
+        specifier: workspace:*
+        version: link:../theme-night-owl
       '@twinkleplop/theme-solarized':
         specifier: workspace:*
         version: link:../theme-solarized
@@ -605,6 +608,22 @@ importers:
         version: 2.1.9(@types/node@20.19.17)(@vitest/ui@2.1.9)(lightningcss@1.32.0)(terser@5.44.0)
 
   lib/theme-material:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@20.19.17)(@vitest/ui@2.1.9)(lightningcss@1.32.0)(terser@5.44.0)
+
+  lib/theme-night-owl:
     dependencies:
       '@twinkleplop/core':
         specifier: workspace:*
