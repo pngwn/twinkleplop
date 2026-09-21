@@ -121,7 +121,7 @@ const timeout = config.timeout;
     id: "completions",
     title: "Completions (^|)",
     blurb:
-      "A // ^| comment asks for the completion list at that position. shiki renders the list; twinkleplop currently drops it, because twoslash reports a completion as a zero-length node and the renderer only opens spans that cover at least one character.",
+      "A // ^| comment asks for the completion list at that position. Both render it as a dropdown anchored to the caret. shiki splits each entry into the typed prefix and the rest, and draws an icon for the member kind; twinkleplop emits the name whole, with the kind on data-kind and the typed prefix on the host's data-prefix, so either is there to style.",
     code: `// @errors: 2339
 const users = ["ada", "grace"];
 users.fi
