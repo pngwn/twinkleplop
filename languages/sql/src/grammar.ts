@@ -542,12 +542,13 @@ export default define_grammar({
       rules: [match("$", TOKENS.operator, leave())],
     },
 
+    // a probe that exits with enter pushes main, so the states below pop it with leave
     pg_param_start: {
       rules: [match("$", TOKENS.variable, goto("pg_param_body"))],
     },
 
     pg_param_body: {
-      rules: [match(DIGIT, TOKENS.variable), fallback(goto("main"))],
+      rules: [match(DIGIT, TOKENS.variable), fallback(leave())],
     },
 
     // @@ probe: if followed by an identifier start char, treat as a
@@ -673,7 +674,7 @@ export default define_grammar({
     // shared tail: consume identifier chars as the variable name so
     // the sigil and the body coalesce into one `variable` token.
     var_name_body: {
-      rules: [match(ID_CONT, TOKENS.variable), fallback(goto("main"))],
+      rules: [match(ID_CONT, TOKENS.variable), fallback(leave())],
     },
 
     // -----------------------------------------------------------------
@@ -682,13 +683,13 @@ export default define_grammar({
     // rule in main.
     // -----------------------------------------------------------------
     colon_var_body: {
-      rules: [match(ID_CONT, TOKENS.variable), fallback(goto("main"))],
+      rules: [match(ID_CONT, TOKENS.variable), fallback(leave())],
     },
 
     // jdbc `?` parameter and sqlite `?nnn` numbered parameter. emits
     // `identifier` so the sigil and the digits coalesce into one token.
     qmark_body: {
-      rules: [match(DIGIT, TOKENS.identifier), fallback(goto("main"))],
+      rules: [match(DIGIT, TOKENS.identifier), fallback(leave())],
     },
 
     // -----------------------------------------------------------------
