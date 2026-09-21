@@ -234,6 +234,9 @@ importers:
       '@twinkleplop/diff-basic':
         specifier: workspace:*
         version: link:../../languages/diff-basic
+      '@twinkleplop/dotenv':
+        specifier: workspace:*
+        version: link:../../languages/dotenv
       '@twinkleplop/go':
         specifier: workspace:*
         version: link:../../languages/go

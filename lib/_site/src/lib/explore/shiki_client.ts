@@ -25,6 +25,7 @@ export const SHIKI_LANG_MAP: Record<string, string | null> = {
   http: "http",
   diff: "diff",
   "diff-basic": null,
+  dotenv: "dotenv",
 };
 
 let highlighter_promise: Promise<Highlighter> | null = null;

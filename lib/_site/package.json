@@ -22,6 +22,7 @@
     "@twinkleplop/css": "workspace:*",
     "@twinkleplop/diff": "workspace:*",
     "@twinkleplop/diff-basic": "workspace:*",
+    "@twinkleplop/dotenv": "workspace:*",
     "@twinkleplop/go": "workspace:*",
     "@twinkleplop/html": "workspace:*",
     "@twinkleplop/http": "workspace:*",
