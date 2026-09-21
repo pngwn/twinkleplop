@@ -27,6 +27,8 @@ const INHERITED_TOKENS = new Set([
   // not style them.
   "raw_code_block",
   "raw_front_matter",
+  "raw_json",
+  "raw_markup",
   "raw_script",
   "raw_shell",
   "raw_style",
