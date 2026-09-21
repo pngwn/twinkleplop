@@ -721,6 +721,24 @@ describe("frame_track — ternary and stmt flag signals", () => {
     expect(table.signals[colon] & SIGNAL_TERNARY_COLON).toBe(0);
   });
 
+  test("a colon directly after the qmark is an optional marker, not a ternary", () => {
+    // the colon takes the qmark's count back, so a later ternary on the
+    // same frame still pairs.
+    const { table, toks } = run_signals("x ? : T ; a ? b : c");
+    const optional = find_tok(toks, ":", 0);
+    const ternary = find_tok(toks, ":", 1);
+    expect(table.signals[optional] & SIGNAL_TERNARY_COLON).toBe(0);
+    expect(table.signals[ternary] & SIGNAL_TERNARY_COLON).toBe(SIGNAL_TERNARY_COLON);
+  });
+
+  test("a colon behind anything else after the qmark still pairs with it", () => {
+    // the parens hide an optional method's `?():` from the tracker: a
+    // ternary can put the same shape there (`c ? (a): b`).
+    const { table, toks } = run_signals("x ? ( ): T");
+    const colon = find_tok(toks, ":");
+    expect(table.signals[colon] & SIGNAL_TERNARY_COLON).toBe(SIGNAL_TERNARY_COLON);
+  });
+
   test("chars in a coalesced punctuation token process in order", () => {
     // the close pops the paren frame before the colon is tested against
     // the top frame's pending qmark, even when both share one token.

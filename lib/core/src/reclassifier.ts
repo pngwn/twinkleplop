@@ -1409,9 +1409,9 @@ function params_detect_arrow(
   );
 }
 
-// is the token directly before `idx` a bare "?" operator? distinguishes
-// an optional member's `?:` from a ternary's colon, which the frame
-// tracker's mode-blind qmark counting cannot tell apart on its own.
+// is the token directly before `idx` a bare "?" operator? catches an
+// optional method's `?():`, whose parens hide the qmark from the frame
+// tracker (`c ? (a): b` has the same shape there).
 function params_qmark_before(
   spec: CompiledParamsSpec,
   tokens: Uint32Array,
@@ -1475,12 +1475,8 @@ function params_find_arrow(
           let ternary_colon =
             prev < frames.signals.length && (frames.signals[prev] & SIGNAL_TERNARY_COLON) !== 0;
           if (ternary_colon && params_qmark_before(spec, tokens, prev, input, trivia)) {
-            // an optional member writes `?` directly before the colon
-            // (`onHover?: (i) => void`), and qmark counting is
-            // mode-blind, so it consumed that `?` as if it opened a
-            // ternary. a real ternary always has its consequent in
-            // between, so an adjacent qmark means this colon is a
-            // member separator and what follows is a type.
+            // `onHover?(): (i) => void`: the colon consumed the optional
+            // method's `?` as a ternary's, but a return type follows.
             ternary_colon = false;
           }
           if (!in_object && !ternary_colon) continue;
