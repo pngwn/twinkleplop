@@ -128,163 +128,223 @@ export const test = [
 	{
 		"type": "plain_scalar",
 		"start": 272,
-		"end": 281,
-		"match": "value;not"
+		"end": 277,
+		"match": "value"
 	},
 	{
-		"type": "plain_scalar",
-		"start": 282,
-		"end": 283,
-		"match": "a"
-	},
-	{
-		"type": "plain_scalar",
-		"start": 284,
-		"end": 291,
-		"match": "comment"
+		"type": "comment",
+		"start": 277,
+		"end": 301,
+		"match": ";comment without a space"
 	},
 	{
 		"type": "property",
-		"start": 292,
-		"end": 295,
+		"start": 302,
+		"end": 305,
 		"match": "key"
 	},
 	{
 		"type": "operator",
-		"start": 296,
-		"end": 297,
-		"match": "="
-	},
-	{
-		"type": "plain_scalar",
-		"start": 298,
+		"start": 306,
 		"end": 307,
-		"match": "value#not"
+		"match": "="
 	},
 	{
 		"type": "plain_scalar",
 		"start": 308,
-		"end": 309,
-		"match": "a"
-	},
-	{
-		"type": "plain_scalar",
-		"start": 310,
 		"end": 317,
-		"match": "comment"
+		"match": "value#not"
 	},
 	{
 		"type": "plain_scalar",
 		"start": 318,
-		"end": 324,
-		"match": "either"
+		"end": 319,
+		"match": "a"
+	},
+	{
+		"type": "plain_scalar",
+		"start": 320,
+		"end": 327,
+		"match": "comment"
 	},
 	{
 		"type": "property",
-		"start": 325,
-		"end": 333,
+		"start": 328,
+		"end": 336,
 		"match": "Keywords"
 	},
 	{
 		"type": "operator",
-		"start": 333,
-		"end": 334,
+		"start": 336,
+		"end": 337,
 		"match": "="
 	},
 	{
 		"type": "plain_scalar",
-		"start": 334,
-		"end": 355,
-		"match": "shell;prompt;command;"
+		"start": 337,
+		"end": 342,
+		"match": "shell"
+	},
+	{
+		"type": "comment",
+		"start": 342,
+		"end": 358,
+		"match": ";prompt;command;"
 	},
 	{
 		"type": "property",
-		"start": 356,
-		"end": 359,
+		"start": 359,
+		"end": 366,
+		"match": "escaped"
+	},
+	{
+		"type": "operator",
+		"start": 367,
+		"end": 368,
+		"match": "="
+	},
+	{
+		"type": "plain_scalar",
+		"start": 369,
+		"end": 391,
+		"match": "shell\\;prompt\\;command"
+	},
+	{
+		"type": "property",
+		"start": 392,
+		"end": 395,
+		"match": "tox"
+	},
+	{
+		"type": "operator",
+		"start": 396,
+		"end": 397,
+		"match": "="
+	},
+	{
+		"type": "plain_scalar",
+		"start": 398,
+		"end": 399,
+		"match": "a"
+	},
+	{
+		"type": "plain_scalar",
+		"start": 400,
+		"end": 405,
+		"match": "\\#not"
+	},
+	{
+		"type": "plain_scalar",
+		"start": 406,
+		"end": 407,
+		"match": "a"
+	},
+	{
+		"type": "plain_scalar",
+		"start": 408,
+		"end": 415,
+		"match": "comment"
+	},
+	{
+		"type": "property",
+		"start": 416,
+		"end": 419,
 		"match": "url"
 	},
 	{
 		"type": "operator",
-		"start": 360,
-		"end": 361,
+		"start": 420,
+		"end": 421,
 		"match": "="
 	},
 	{
 		"type": "plain_scalar",
-		"start": 362,
-		"end": 394,
+		"start": 422,
+		"end": 454,
 		"match": "http://example.com/?a=b#fragment"
 	},
 	{
 		"type": "property",
-		"start": 395,
-		"end": 400,
+		"start": 455,
+		"end": 460,
 		"match": "color"
 	},
 	{
 		"type": "operator",
-		"start": 401,
-		"end": 402,
+		"start": 461,
+		"end": 462,
 		"match": "="
 	},
 	{
 		"type": "comment",
-		"start": 403,
-		"end": 407,
+		"start": 463,
+		"end": 467,
 		"match": "#fff"
 	},
 	{
 		"type": "property",
-		"start": 408,
-		"end": 411,
+		"start": 468,
+		"end": 471,
 		"match": "sem"
 	},
 	{
 		"type": "operator",
-		"start": 411,
-		"end": 412,
+		"start": 471,
+		"end": 472,
 		"match": "="
 	},
 	{
-		"type": "plain_scalar",
-		"start": 412,
-		"end": 413,
+		"type": "comment",
+		"start": 472,
+		"end": 473,
 		"match": ";"
 	},
 	{
 		"type": "property",
-		"start": 414,
-		"end": 418,
+		"start": 474,
+		"end": 478,
 		"match": "bare"
 	},
 	{
 		"type": "comment",
-		"start": 419,
-		"end": 445,
+		"start": 478,
+		"end": 503,
+		"match": ";comment after a bare key"
+	},
+	{
+		"type": "property",
+		"start": 504,
+		"end": 508,
+		"match": "bare"
+	},
+	{
+		"type": "comment",
+		"start": 509,
+		"end": 535,
 		"match": "; comment after a bare key"
 	},
 	{
 		"type": "property",
-		"start": 446,
-		"end": 452,
+		"start": 536,
+		"end": 542,
 		"match": "quoted"
 	},
 	{
 		"type": "operator",
-		"start": 453,
-		"end": 454,
+		"start": 543,
+		"end": 544,
 		"match": "="
 	},
 	{
 		"type": "string",
-		"start": 455,
-		"end": 466,
+		"start": 545,
+		"end": 556,
 		"match": "\"a ; b # c\""
 	},
 	{
 		"type": "comment",
-		"start": 467,
-		"end": 491,
+		"start": 557,
+		"end": 581,
 		"match": "; comment after a string"
 	}
 ];

@@ -9,8 +9,10 @@
 // key indents above MAX_INDENT are stored as MAX_INDENT
 // a trailing backslash is only marked, the next line continues by indent alone,
 // so a windows path ending in a backslash cannot swallow the next key
-// whitespace before a comment marker always starts a comment, so color = #fff
-// is a comment as git reads it, and so is foo = bar ;) in editorconfig
+// a ; starts a comment anywhere outside quotes, as git and php read it, so a
+// desktop list like Keywords=a;b keeps only its first item unless written a\;b
+// a # mid line needs whitespace before it, so url fragments stay values but
+// color = #fff is a comment
 // a single quote opens a string only at a value start or after whitespace, so
 // format:'%h %s' stays text
 // quoted strings end at the line ending, php lets them span lines
@@ -174,6 +176,7 @@ export default define_grammar({
         on(WS, goto("key_ws")),
         match("=", DELIMITER, goto("value_lead")),
         on(":", enter("colon_probe")),
+        match(";", TOKENS.comment, goto("comment")),
         match(["[", "]"], TOKENS.punctuation),
         fallback({ token: KEY }),
       ],
@@ -205,8 +208,8 @@ export default define_grammar({
       rules: [match(":", KEY, goto("key"))],
     },
 
-    // comment markers count only after a blank and a single quote opens only at
-    // a value start or after a blank, hence three value states
+    // a # counts only after a blank and a single quote opens only at a value
+    // start or after a blank, hence three value states
     value_lead: {
       rules: [
         on(EOL, leave()),
@@ -231,6 +234,7 @@ export default define_grammar({
         on(EOL, leave()),
         on(WS, goto("value_ws")),
         match('"', TOKENS.string, goto("dq_string")),
+        match(";", TOKENS.comment, goto("comment")),
         on("\\", enter("backslash_probe")),
         fallback({ token: VALUE }),
       ],
@@ -271,13 +275,13 @@ export default define_grammar({
       rules: [match("\\", TOKENS.punctuation, leave())],
     },
 
-    // an even run of backslashes is literal
+    // a backslash escapes another backslash or a comment marker
     backslash_text: {
       rules: [match("\\", VALUE, goto("backslash_pair"))],
     },
 
     backslash_pair: {
-      rules: [match("\\", VALUE, leave()), fallback(leave())],
+      rules: [match(["\\", ";", "#"], VALUE, leave()), fallback(leave())],
     },
   },
 });

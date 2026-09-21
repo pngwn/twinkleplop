@@ -182,8 +182,14 @@ export const test = [
 	{
 		"type": "plain_scalar",
 		"start": 141,
+		"end": 146,
+		"match": "shell"
+	},
+	{
+		"type": "comment",
+		"start": 146,
 		"end": 178,
-		"match": "shell;prompt;command;commandline;cmd;"
+		"match": ";prompt;command;commandline;cmd;"
 	},
 	{
 		"type": "property",
@@ -242,8 +248,14 @@ export const test = [
 	{
 		"type": "plain_scalar",
 		"start": 241,
+		"end": 246,
+		"match": "GNOME"
+	},
+	{
+		"type": "comment",
+		"start": 246,
 		"end": 275,
-		"match": "GNOME;GTK;System;TerminalEmulator;"
+		"match": ";GTK;System;TerminalEmulator;"
 	},
 	{
 		"type": "property",
@@ -278,8 +290,14 @@ export const test = [
 	{
 		"type": "plain_scalar",
 		"start": 303,
+		"end": 313,
+		"match": "new-window"
+	},
+	{
+		"type": "comment",
+		"start": 313,
 		"end": 326,
-		"match": "new-window;preferences;"
+		"match": ";preferences;"
 	},
 	{
 		"type": "punctuation",
