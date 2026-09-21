@@ -65,4 +65,17 @@ describe("stack balance", () => {
       ["number", "2.5"],
     ]);
   });
+
+  it("tokenizes the tail after 300 of every parameter and variable form", () => {
+    const unit = "SELECT @a, @@b, $1, :name, ?1, ? FROM t;\n";
+    const input = `${unit.repeat(300)}SELECT 'after' -- note\n2.5`;
+    const tail = get_tokens(input)
+      .slice(-3)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["string", "'after'"],
+      ["comment", "-- note\n"],
+      ["number", "2.5"],
+    ]);
+  });
 });
