@@ -6,6 +6,10 @@ import type { Handle } from "@sveltejs/kit";
 // twinkleplop tokenize time that isn't stuck at 0. the explore route has
 // no cross-origin assets (shiki bundles its wasm from the same origin),
 // so the stricter embedder policy is safe.
+//
+// this only reaches `vite dev`. the site is prerendered, so adapter-static
+// throws away whatever a hook sets at build time; in production the same two
+// headers come from worker/index.ts. change both or neither.
 export const handle: Handle = async ({ event, resolve }) => {
   const response = await resolve(event);
   if (event.url.pathname.startsWith("/explore")) {

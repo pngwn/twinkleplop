@@ -13,9 +13,9 @@
 </script>
 
 <h2 class="sec" {id}>
-	<span class="hash">#</span>
+	<span class="hash" aria-hidden="true">#</span>
 	<span>{title}</span>
-	<span class="num">{num}</span>
+	<span class="num" aria-hidden="true">{num}</span>
 </h2>
 {@render children()}
 

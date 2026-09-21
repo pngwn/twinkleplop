@@ -41,7 +41,7 @@
 
 				<PixelTitle text={title} />
 				{#if subtitle}
-					<p class="subtitle">{@html subtitle}<span class="cursor-block"></span></p>
+					<p class="subtitle">{@html subtitle}<span class="cursor-block" aria-hidden="true"></span></p>
 				{/if}
 			</div>
 		{/if}

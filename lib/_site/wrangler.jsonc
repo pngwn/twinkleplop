@@ -9,8 +9,14 @@
   // .github/workflows/preview-site.yml). that only works while preview urls
   // are on, so say so here instead of relying on the account default.
   "preview_urls": true,
+  "main": "worker/index.ts",
   "assets": {
     "directory": "build",
+    "binding": "ASSETS",
     "not_found_handling": "404-page",
+    // otherwise the assets store answers `/docs/migration` itself and the
+    // worker never gets to negotiate. files with an extension pass straight
+    // back to the binding.
+    "run_worker_first": true,
   },
 }
