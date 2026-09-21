@@ -19,6 +19,7 @@ export const SHIKI_LANG_MAP: Record<string, string | null> = {
   toml: "toml",
   python: "python",
   bash: "bash",
+  shellsession: "shellsession",
   go: "go",
   diff: "diff",
   "diff-basic": null,

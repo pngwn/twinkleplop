@@ -1,0 +1,37 @@
+{
+  "name": "@twinkleplop/shellsession",
+  "version": "0.0.0",
+  "homepage": "https://twinkleplop.pngwn.at",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues",
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pngwn/twinkleplop",
+    "directory": "languages/shellsession"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/types.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./test": "./test/index.js"
+  },
+  "scripts": {
+    "test": "vitest",
+    "gen_test": "node generate-snapshots.js",
+    "types": "node ../../build/dts.mjs"
+  },
+  "dependencies": {
+    "@twinkleplop/bash": "workspace:*",
+    "@twinkleplop/core": "workspace:*"
+  }
+}

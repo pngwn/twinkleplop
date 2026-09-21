@@ -26,6 +26,7 @@ const ts = language();`;
 		{ name: "markdown", notes: "CommonMark constructs, front matter, fenced code containers." },
 		{ name: "python", notes: "F-strings, soft keywords, decorators." },
 		{ name: "rust", notes: "Lifetimes, attributes, generics disambiguation, macros." },
+		{ name: "shellsession", notes: "Terminal transcripts: prompts, prefixes and output. Embeds bash, joining continuation lines into one command." },
 		{ name: "sql", notes: "Case-insensitive keywords resolved in the reclassifier." },
 		{ name: "svelte", notes: "Blocks, directives and expressions. Embeds css and javascript." },
 		{ name: "toml", notes: "Tables, array tables, datetimes." },

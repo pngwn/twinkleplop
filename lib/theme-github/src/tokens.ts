@@ -123,6 +123,11 @@ export const light: theme_palette = {
   svelte_block: "#cf222e", // red[5] — keyword-like block tag
   svelte_directive: "#0550ae", // blue[6] — support-like
 
+  // shell sessions
+  output: "#0550ae", // scale.blue[6] meta.output
+  prompt: "#1f2328", // fg.default, no rule for punctuation.separator.prompt
+  prompt_prefix: "#0550ae", // scale.blue[6] entity
+
   // whitespace — never colored
   carriage_return: "inherit",
   newline: "inherit",
@@ -133,6 +138,7 @@ export const light: theme_palette = {
   raw_code_block: "#1f2328",
   raw_front_matter: "#1f2328",
   raw_script: "#1f2328",
+  raw_shell: "#1f2328",
   raw_style: "#1f2328",
   raw_svelte_expression: "#1f2328",
 
@@ -249,6 +255,11 @@ export const dark: theme_palette = {
   svelte_block: "#ff7b72",
   svelte_directive: "#79c0ff",
 
+  // shell sessions
+  output: "#79c0ff", // blue[2] meta.output
+  prompt: "#e6edf3", // fg.default, no rule for punctuation.separator.prompt
+  prompt_prefix: "#79c0ff", // blue[2] entity
+
   // whitespace
   carriage_return: "inherit",
   newline: "inherit",
@@ -259,6 +270,7 @@ export const dark: theme_palette = {
   raw_code_block: "#e6edf3",
   raw_front_matter: "#e6edf3",
   raw_script: "#e6edf3",
+  raw_shell: "#e6edf3",
   raw_style: "#e6edf3",
   raw_svelte_expression: "#e6edf3",
 
