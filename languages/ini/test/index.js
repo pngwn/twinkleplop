@@ -1,0 +1,11 @@
+export { test as comments } from "./comments.output.js";
+export { test as continuations } from "./continuations.output.js";
+export { test as dialect_desktop } from "./dialect_desktop.output.js";
+export { test as dialect_editorconfig } from "./dialect_editorconfig.output.js";
+export { test as dialect_git } from "./dialect_git.output.js";
+export { test as dialect_php } from "./dialect_php.output.js";
+export { test as dialect_python } from "./dialect_python.output.js";
+export { test as dialect_systemd } from "./dialect_systemd.output.js";
+export { test as keys_values } from "./keys_values.output.js";
+export { test as sections } from "./sections.output.js";
+export { test as strings } from "./strings.output.js";

@@ -97,6 +97,12 @@ importers:
         specifier: workspace:*
         version: link:../json
 
+  languages/ini:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/javascript:
     dependencies:
       '@twinkleplop/core':
