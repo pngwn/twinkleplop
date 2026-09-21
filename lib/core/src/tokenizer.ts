@@ -110,7 +110,7 @@ export function tokenize(
       introspector.pushed_state({
         from_state: probe_entry.state,
         to_state: fallback_state,
-        stackPtr: stack_ptr,
+        stack_ptr,
         pos: probe_entry.entry_pos,
       });
     }
@@ -165,10 +165,10 @@ export function tokenize(
     // INTROSPECTION_START
     if (INTROSPECTION && introspector) {
       introspector.enter_probe_mode({
-        charClass: rule_idx,
+        char_class: rule_idx,
         pos,
         current_state: current_state,
-        stackPtr: stack_ptr,
+        stack_ptr,
       });
     }
     // INTROSPECTION_END
@@ -196,7 +196,7 @@ export function tokenize(
         introspector.pushed_state({
           from_state: probe_entry.probe_state ?? probe_entry.state,
           to_state: probe_entry.resolved_state,
-          stackPtr: stack_ptr,
+          stack_ptr,
           pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
         });
       }
@@ -259,7 +259,7 @@ export function tokenize(
         char,
         char_str: String.fromCharCode(char),
         current_state: current_state,
-        stackPtr: stack_ptr,
+        stack_ptr,
         state_stack: state_stack.slice(0, stack_ptr),
         probe_mode: is_in_probe_state,
       });
@@ -482,8 +482,8 @@ export function tokenize(
             introspector.enter_probe_mode({
               pos,
               current_state: current_state,
-              stackPtr: stack_ptr,
-              charClass: char_class,
+              stack_ptr,
+              char_class,
             });
           }
           // INTROSPECTION_END
@@ -580,7 +580,7 @@ export function tokenize(
               introspector.pushed_state({
                 from_state: prev_state,
                 to_state: current_state,
-                stackPtr: stack_ptr,
+                stack_ptr,
                 pos: pos, // this is already the position after the matched character
               });
             }
@@ -624,7 +624,7 @@ export function tokenize(
               introspector.popped_state({
                 from_state: prev_state,
                 to_state: current_state,
-                stackPtr: stack_ptr,
+                stack_ptr,
                 pos,
               });
             }
@@ -689,7 +689,7 @@ export function tokenize(
               introspector.pushed_state({
                 from_state: probe_entry.probe_state ?? probe_entry.state,
                 to_state: probe_entry.resolved_state,
-                stackPtr: stack_ptr,
+                stack_ptr,
                 pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
               });
             }
@@ -907,7 +907,7 @@ export function tokenize(
               introspector.pushed_state({
                 from_state: prev_state,
                 to_state: current_state,
-                stackPtr: stack_ptr,
+                stack_ptr,
                 pos,
               });
             }
@@ -951,7 +951,7 @@ export function tokenize(
               introspector.popped_state({
                 from_state: prev_state,
                 to_state: current_state,
-                stackPtr: stack_ptr,
+                stack_ptr,
                 pos,
               });
             }
@@ -1104,7 +1104,7 @@ export function tokenize(
               introspector.pushed_state({
                 from_state: prev_state,
                 to_state: current_state,
-                stackPtr: stack_ptr,
+                stack_ptr,
                 pos,
               });
             }
@@ -1148,7 +1148,7 @@ export function tokenize(
               introspector.popped_state({
                 from_state: prev_state,
                 to_state: current_state,
-                stackPtr: stack_ptr,
+                stack_ptr,
                 pos,
               });
             }
@@ -1237,7 +1237,7 @@ export function tokenize(
     introspector.complete({
       token_count: token_count,
       final_state: current_state,
-      finalStackPtr: stack_ptr,
+      final_stack_ptr: stack_ptr,
     });
   }
   // INTROSPECTION_END
