@@ -52,3 +52,19 @@ describe("JSON Grammar", () => {
     });
   }
 });
+
+describe("stack balance", () => {
+  it("tokenizes the tail after 300 of every number form", () => {
+    const unit = "0, -1, 1.5, -1.5e+3, 1E5, 2e-1, 1e, -, ";
+    const input = `[${unit.repeat(300)}"after", true]`;
+    const tail = get_tokens(input)
+      .slice(-4)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["string", '"after"'],
+      ["punctuation", ","],
+      ["boolean", "true"],
+      ["punctuation", "]"],
+    ]);
+  });
+});

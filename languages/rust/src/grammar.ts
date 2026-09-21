@@ -594,6 +594,7 @@ export default define_grammar({
 
     // -------------------------------------------------------------------
     // number states — decimal integers and floats
+    // main pushes one frame, phases move with goto and every exit pops it with leave
     // -------------------------------------------------------------------
     number: {
       rules: [
@@ -602,61 +603,61 @@ export default define_grammar({
         // dot followed by dot is the range operator (..)
         // dot alone could be method call — leave for main
         match("..", TOKENS.operator, leave()),
-        match(".", TOKENS.number, enter("decimal")),
+        match(".", TOKENS.number, goto("decimal")),
         // the exponent indicator splits out as its own operator token
-        match(["e", "E"], TOKENS.operator, enter("exponent_sign")),
+        match(["e", "E"], TOKENS.operator, goto("exponent_sign")),
         // type suffixes
-        keyword(ALL_SUFFIXES, goto("main"), TOKENS.class_name),
-        fallback(goto("main")),
+        keyword(ALL_SUFFIXES, leave(), TOKENS.class_name),
+        fallback(leave()),
       ],
     },
 
     decimal: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        match(["e", "E"], TOKENS.operator, enter("exponent_sign")),
-        keyword(FLOAT_SUFFIXES, goto("main"), TOKENS.class_name),
-        fallback(goto("main")),
+        match(["e", "E"], TOKENS.operator, goto("exponent_sign")),
+        keyword(FLOAT_SUFFIXES, leave(), TOKENS.class_name),
+        fallback(leave()),
       ],
     },
 
     exponent_sign: {
       rules: [
-        match(["+", "-"], TOKENS.number, enter("exponent_digits")),
-        match(DIGIT, TOKENS.number, enter("exponent_digits")),
-        fallback(goto("main")),
+        match(["+", "-"], TOKENS.number, goto("exponent_digits")),
+        match(DIGIT, TOKENS.number, goto("exponent_digits")),
+        fallback(leave()),
       ],
     },
 
     exponent_digits: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        keyword(FLOAT_SUFFIXES, goto("main"), TOKENS.class_name),
-        fallback(goto("main")),
+        keyword(FLOAT_SUFFIXES, leave(), TOKENS.class_name),
+        fallback(leave()),
       ],
     },
 
     hex_number: {
       rules: [
         match(["_", HEX], TOKENS.number),
-        keyword(INT_SUFFIXES, goto("main"), TOKENS.class_name),
-        fallback(goto("main")),
+        keyword(INT_SUFFIXES, leave(), TOKENS.class_name),
+        fallback(leave()),
       ],
     },
 
     octal_number: {
       rules: [
         match(["_", range([["0", "7"]])], TOKENS.number),
-        keyword(INT_SUFFIXES, goto("main"), TOKENS.class_name),
-        fallback(goto("main")),
+        keyword(INT_SUFFIXES, leave(), TOKENS.class_name),
+        fallback(leave()),
       ],
     },
 
     binary_number: {
       rules: [
         match(["_", "0", "1"], TOKENS.number),
-        keyword(INT_SUFFIXES, goto("main"), TOKENS.class_name),
-        fallback(goto("main")),
+        keyword(INT_SUFFIXES, leave(), TOKENS.class_name),
+        fallback(leave()),
       ],
     },
   },

@@ -83,41 +83,27 @@ export default define_grammar({
     negative_number: {
       rules: [
         match(DIGIT, TOKENS.number, goto("number")),
-        // no digit after minus — hand character back to main.
-        // fallback(goto(...)) does NOT consume the character. this is
-        // how you "hand back" a character when you realize you are in
-        // the wrong context. a plain fallback(leave()) WOULD consume.
-        fallback(goto("main")),
+        // a fallback without a token does not consume, so main rereads the character
+        fallback(leave()),
       ],
     },
 
     // -----------------------------------------------------------------
     // number — integer digits, with optional decimal and exponent.
     //
-    // sub-states (decimal, exponent) are entered with enter() so the
-    // token coalescing chain is maintained (each emits the same "number"
-    // type and the tokenizer fuses adjacent same-type tokens into one).
-    //
-    // exit strategy: every number sub-state uses fallback(goto("main"))
-    // to return control to the main state without consuming the
-    // terminating character. this is simpler and more robust than trying
-    // to unwind a deep enter/leave chain: each fallback(goto("main"))
-    // pops one stack frame and jumps directly to main. the remaining
-    // stack entries from intermediate enter() calls are harmlessly
-    // leaked — they have no effect because main never calls leave().
-    // this is the same pattern the JavaScript grammar uses for its
-    // number states.
+    // main pushes one frame, phases move with goto and every exit pops it with leave
+    // exiting with goto main leaks the frame, and past 256 frames every later token is corrupt
     // -----------------------------------------------------------------
     number: {
       rules: [
         // continue consuming digits (coalesced into one number token).
         match(DIGIT, TOKENS.number),
         // decimal point transitions to the decimal state.
-        match(".", TOKENS.number, enter("decimal")),
+        match(".", TOKENS.number, goto("decimal")),
         // exponent marker transitions to the exponent sign state.
-        match(["e", "E"], TOKENS.number, enter("exponent_sign")),
+        match(["e", "E"], TOKENS.number, goto("exponent_sign")),
         // anything else means the number is complete — go back to main.
-        fallback(goto("main")),
+        fallback(leave()),
       ],
     },
 
@@ -127,8 +113,8 @@ export default define_grammar({
     decimal: {
       rules: [
         match(DIGIT, TOKENS.number),
-        match(["e", "E"], TOKENS.number, enter("exponent_sign")),
-        fallback(goto("main")),
+        match(["e", "E"], TOKENS.number, goto("exponent_sign")),
+        fallback(leave()),
       ],
     },
 
@@ -141,9 +127,9 @@ export default define_grammar({
     // -----------------------------------------------------------------
     exponent_sign: {
       rules: [
-        match(["+", "-"], TOKENS.number, enter("exponent_digits")),
-        match(DIGIT, TOKENS.number, enter("exponent_digits")),
-        fallback(goto("main")),
+        match(["+", "-"], TOKENS.number, goto("exponent_digits")),
+        match(DIGIT, TOKENS.number, goto("exponent_digits")),
+        fallback(leave()),
       ],
     },
 
@@ -151,7 +137,7 @@ export default define_grammar({
     // exponent_digits — digits of the exponent value.
     // -----------------------------------------------------------------
     exponent_digits: {
-      rules: [match(DIGIT, TOKENS.number), fallback(goto("main"))],
+      rules: [match(DIGIT, TOKENS.number), fallback(leave())],
     },
 
     // -----------------------------------------------------------------

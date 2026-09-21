@@ -50,3 +50,22 @@ describe("Rust Grammar", () => {
     });
   }
 });
+
+describe("stack balance", () => {
+  it("tokenizes the tail after 300 of every number form", () => {
+    const unit =
+      "let x = [1, 1.5, 1e5, 1.5e-3, 1_000, 0x1F, 0o17, 0b101, " +
+      "1u8, 1.5f32, 1e5f64, 0xFFu16, 1e];\nlet r = 1..2;\n";
+    const input = `${unit.repeat(300)}let s = "after";\nif x {}`;
+    const tail = get_tokens(input)
+      .slice(-5)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["string", '"after"'],
+      ["punctuation", ";"],
+      ["keyword", "if"],
+      ["identifier", "x"],
+      ["punctuation", "{}"],
+    ]);
+  });
+});

@@ -62,10 +62,12 @@ What follows is a concise reference of the patterns and idioms you need. It is n
 A grammar is a set of named states. Each state has an ordered list of rules. Rules either consume characters and emit tokens, change state, or both. Three stack operations:
 
 - **enter(state)** — push current state onto the stack, move to new state. Use for nested contexts you will return from (string body, parenthesised expression, regex pattern).
-- **goto(state)** — pop one stack frame and move to new state. Use for context switches without nesting (flipping between regex_allow and division in JS). The parent state is dropped.
+- **goto(state)** — replace the current state without touching the stack. Use for context switches without nesting (flipping between regex_allow and division in JS) and for moving between the phases of one construct. The stack depth is unchanged, so a frame pushed by an earlier enter() is still there.
 - **leave()** — pop back to the parent state. Use to exit a nested context entered with enter().
 
-Stack leak = enter() without a matching leave() path. This is sometimes intentional and harmless (see the JSON number states) but should be documented when deliberate. Infinite loop = a cycle of goto() transitions where no character is consumed.
+Stack leak = enter() without a matching leave() on every exit path. A leak is never harmless: the tokenizer's stack has 256 slots, and once a leaking construct repeats past that, pushes are dropped and a later leave() reads garbage, corrupting every token after it. The classic case is a multi-phase construct (a number with decimal and exponent phases) whose phases are entered with enter() and exit with `fallback(goto("main"))`, leaving frames behind on every literal. Enter the construct once, move between phases with goto(), and exit every phase with leave() (see the JSON number states). Stress-test each construct: repeat it well past 256 times, then assert the tokens that follow.
+
+Infinite loop = a cycle of goto() transitions where no character is consumed.
 
 ### 2.2 Rule ordering and precedence
 
@@ -89,7 +91,7 @@ script_content: {
 }
 ```
 
-Critical distinction: `fallback(goto("state"))` does NOT consume the character — it re-processes it in the destination state. This is how you hand back a character when you realize you are in the wrong context. A plain `fallback(leave())` DOES consume one character before popping.
+Critical distinction: a fallback that emits no token does NOT consume the character. `fallback(goto("state"))` re-processes it in the destination state, and `fallback(leave())` re-processes it in the parent. This is how you hand back a character when you realize you are in the wrong context. A fallback that emits a token, such as `fallback({ token, ...goto("state") })`, always consumes.
 
 ### 2.4 Shared rules
 
@@ -227,7 +229,7 @@ This is not a postmortem — it is a plan. Write it before the grammar, update i
 ### 2.10 Anti-patterns
 
 - **enter() where goto() is correct**: leaks stack frames. Use goto when the source state should not stay on the stack (context switches, not nesting). Use enter only when you need leave() to return to the current state.
-- **Missing leave() path**: every enter() must have a reachable leave() (or a goto that escapes the chain). Trace your state graph to verify.
+- **Missing leave() path**: every enter() must reach a leave() on every exit path. goto() does not pop, so leaving an entered state with `goto("main")` strands the frame. Trace your state graph to verify.
 - **Broad match before specific**: fallback must come AFTER delimiter rules. The first matching rule wins.
 - **match() for reserved words**: use keyword() to get boundary checking. match("if", ...) matches inside "iffy".
 - **No-consume goto loops**: two states that goto each other without consuming a character = infinite loop. Every cycle must advance the position.
@@ -301,14 +303,14 @@ quote_probe_ident: {
 char_literal: {
   rules: [
     match("'", TOKENS.string, goto("char_literal_body")),
-    fallback(goto("main")),
+    fallback(leave()),
   ],
 },
 
 lifetime_token: {
   rules: [
     match("'", LIFETIME, goto("lifetime_body")),
-    fallback(goto("main")),
+    fallback(leave()),
   ],
 },
 ```

@@ -442,14 +442,7 @@ export default define_grammar({
     // -------------------------------------------------------------------
     // numeric states.
     //
-    // every numeric sub-state falls back with `goto("main")` rather than
-    // `leave()`. this is intentional: because sub-states chain via
-    // enter() (decimal_number -> decimal_fraction -> exponent_sign ->
-    // exponent_digits), a deep leave() would stop at the first parent,
-    // not jump back to main. going directly to main with goto() drops
-    // whatever intermediate frames remain on the stack; those frames are
-    // harmlessly leaked because main never calls leave().
-    // this matches the pattern used by the JSON and JavaScript grammars.
+    // main pushes one frame, phases move with goto and every exit pops it with leave
     // -------------------------------------------------------------------
 
     // decimal number after the leading digit. covers:
@@ -460,10 +453,10 @@ export default define_grammar({
     decimal_number: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        match(".", TOKENS.number, enter("decimal_fraction")),
-        match(["e", "E"], TOKENS.number, enter("exponent_sign")),
-        match("i", TOKENS.number, goto("main")),
-        fallback(goto("main")),
+        match(".", TOKENS.number, goto("decimal_fraction")),
+        match(["e", "E"], TOKENS.number, goto("exponent_sign")),
+        match("i", TOKENS.number, leave()),
+        fallback(leave()),
       ],
     },
 
@@ -472,26 +465,26 @@ export default define_grammar({
     decimal_fraction: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        match(["e", "E"], TOKENS.number, enter("exponent_sign")),
-        match("i", TOKENS.number, goto("main")),
-        fallback(goto("main")),
+        match(["e", "E"], TOKENS.number, goto("exponent_sign")),
+        match("i", TOKENS.number, leave()),
+        fallback(leave()),
       ],
     },
 
     // right after `e`/`E` in a decimal float — optional sign then digits.
     exponent_sign: {
       rules: [
-        match(["+", "-"], TOKENS.number, enter("exponent_digits")),
-        match(DIGIT, TOKENS.number, enter("exponent_digits")),
-        fallback(goto("main")),
+        match(["+", "-"], TOKENS.number, goto("exponent_digits")),
+        match(DIGIT, TOKENS.number, goto("exponent_digits")),
+        fallback(leave()),
       ],
     },
 
     exponent_digits: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        match("i", TOKENS.number, goto("main")),
-        fallback(goto("main")),
+        match("i", TOKENS.number, leave()),
+        fallback(leave()),
       ],
     },
 
@@ -502,19 +495,19 @@ export default define_grammar({
     hex_number: {
       rules: [
         match(["_", HEX], TOKENS.number),
-        match(".", TOKENS.number, enter("hex_fraction")),
-        match(["p", "P"], TOKENS.number, enter("hex_exponent_sign")),
-        match("i", TOKENS.number, goto("main")),
-        fallback(goto("main")),
+        match(".", TOKENS.number, goto("hex_fraction")),
+        match(["p", "P"], TOKENS.number, goto("hex_exponent_sign")),
+        match("i", TOKENS.number, leave()),
+        fallback(leave()),
       ],
     },
 
     hex_fraction: {
       rules: [
         match(["_", HEX], TOKENS.number),
-        match(["p", "P"], TOKENS.number, enter("hex_exponent_sign")),
-        match("i", TOKENS.number, goto("main")),
-        fallback(goto("main")),
+        match(["p", "P"], TOKENS.number, goto("hex_exponent_sign")),
+        match("i", TOKENS.number, leave()),
+        fallback(leave()),
       ],
     },
 
@@ -522,17 +515,17 @@ export default define_grammar({
     // is hex (p-exponent scales by powers of 2).
     hex_exponent_sign: {
       rules: [
-        match(["+", "-"], TOKENS.number, enter("hex_exponent_digits")),
-        match(DIGIT, TOKENS.number, enter("hex_exponent_digits")),
-        fallback(goto("main")),
+        match(["+", "-"], TOKENS.number, goto("hex_exponent_digits")),
+        match(DIGIT, TOKENS.number, goto("hex_exponent_digits")),
+        fallback(leave()),
       ],
     },
 
     hex_exponent_digits: {
       rules: [
         match(["_", DIGIT], TOKENS.number),
-        match("i", TOKENS.number, goto("main")),
-        fallback(goto("main")),
+        match("i", TOKENS.number, leave()),
+        fallback(leave()),
       ],
     },
 
@@ -540,8 +533,8 @@ export default define_grammar({
     binary_number: {
       rules: [
         match(["_", "0", "1"], TOKENS.number),
-        match("i", TOKENS.number, goto("main")),
-        fallback(goto("main")),
+        match("i", TOKENS.number, leave()),
+        fallback(leave()),
       ],
     },
 
@@ -552,8 +545,8 @@ export default define_grammar({
     octal_number: {
       rules: [
         match(["_", range([["0", "7"]])], TOKENS.number),
-        match("i", TOKENS.number, goto("main")),
-        fallback(goto("main")),
+        match("i", TOKENS.number, leave()),
+        fallback(leave()),
       ],
     },
   },
