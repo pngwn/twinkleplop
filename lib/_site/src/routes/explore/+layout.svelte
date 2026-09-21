@@ -1,6 +1,5 @@
 <script lang="ts">
 	import "../../app.css";
-	import "../../highlight-styles.css";
 	import Seo from "$lib/components/Seo.svelte";
 	import { page } from "$app/state";
 

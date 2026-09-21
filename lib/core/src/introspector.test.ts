@@ -93,6 +93,73 @@ describe("TokenizerIntrospector", () => {
     expect(has_push || has_pop).toBe(true);
   });
 
+  it("should report stack depth on every event that carries it", () => {
+    const grammar: Grammar = {
+      name: "nested",
+      states: {
+        main: { rules: [{ match: "{", token: "brace", state: "inside" }] },
+        inside: {
+          rules: [
+            { match: "{", token: "brace", state: "inside" },
+            { match: "}", token: "brace", exit: true },
+            { range: ["a", "z"], token: "word" },
+          ],
+        },
+      },
+    };
+
+    const introspector = new TokenizerIntrospector();
+    tokenize("{a{b}c", compile(grammar), introspector);
+
+    const depths = (type: string) =>
+      introspector.history.filter((e) => e.type === type).map((e) => e.stack_depth);
+    expect(depths("PUSHED_STATE")).toEqual([1, 2]);
+    expect(depths("POPPED_STATE")).toEqual([1]);
+
+    const before_b = introspector.history.find((e) => e.type === "BEFORE_CHAR" && e.pos === 3);
+    expect(before_b?.stack_depth).toBe(2);
+    expect(before_b?.full_state_path).toEqual(["main", "inside", "inside"]);
+
+    const complete = introspector.history.find((e) => e.type === "COMPLETE");
+    expect(complete?.final_stack_depth).toBe(1);
+
+    expect(introspector.state_sessions.map((s) => s.depth)).toEqual([0, 1, 2]);
+  });
+
+  it("should report rule index and stack depth when entering a probe", () => {
+    const grammar: Grammar = {
+      name: "probe",
+      states: {
+        main: { rules: [{ match: "{", token: "brace", state: "inside" }] },
+        inside: { rules: [{ range: ["a", "z"], state: "identifier_probe" }] },
+        identifier_probe: {
+          mode: "probe",
+          fallback: "identifier",
+          rules: [{ match: "(", state: "function_name" }],
+        },
+        identifier: {
+          rules: [
+            { range: ["a", "z"], token: "identifier" },
+            { any: true, exit: true },
+          ],
+        },
+        function_name: {
+          rules: [
+            { range: ["a", "z"], token: "function" },
+            { match: "(", token: "punctuation", exit: true },
+          ],
+        },
+      },
+    };
+
+    const introspector = new TokenizerIntrospector();
+    tokenize("{foo(", compile(grammar), introspector);
+
+    const enter = introspector.probe_history.find((e) => e.type === "ENTER_PROBE");
+    expect(enter?.rule_index).toBe(0);
+    expect(enter?.stack_depth).toBe(1);
+  });
+
   it("should provide token history", async () => {
     const input = "test";
     const grammar: Grammar = {
