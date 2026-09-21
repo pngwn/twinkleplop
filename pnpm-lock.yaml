@@ -61,6 +61,12 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/dotenv:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/go:
     dependencies:
       '@twinkleplop/core':
@@ -228,6 +234,9 @@ importers:
       '@twinkleplop/diff-basic':
         specifier: workspace:*
         version: link:../../languages/diff-basic
+      '@twinkleplop/dotenv':
+        specifier: workspace:*
+        version: link:../../languages/dotenv
       '@twinkleplop/go':
         specifier: workspace:*
         version: link:../../languages/go
