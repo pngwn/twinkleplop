@@ -1,345 +1,297 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import { onMount } from 'svelte';
+
 	import Seo from '$lib/components/Seo.svelte';
+	import SiteHeader from '$lib/components/SiteHeader.svelte';
+	import PixelTitle from '$lib/docs/components/PixelTitle.svelte';
+	import ComparePane from '$lib/twoslash/ComparePane.svelte';
+	import { hydrate_mode } from '$lib/theme_mode.svelte';
+	import type { PageData } from './$types';
+
+	import '$lib/styles/docs.css';
+	// token colours, then each package's own twoslash stylesheet. loading both
+	// is the point of the page; ComparePane keeps them out of each other's pane.
+	import '@twinkleplop/theme-github';
+	import '@twinkleplop/twoslash/style.css';
+	import '@shikijs/twoslash/style-rich.css';
 
 	let { data }: { data: PageData } = $props();
+
+	onMount(() => {
+		hydrate_mode();
+	});
 </script>
 
 <Seo
-	title="twinkleplop · twoslash demo"
-	description="A live demo of twoslash: TypeScript type information rendered into the highlighted output."
+	title="twinkleplop · twoslash vs shiki"
+	description="The same twoslash snippets rendered by @twinkleplop/twoslash and @shikijs/twoslash, side by side."
 />
 
-<div class="page">
-	<header class="hero">
-		<h1>twinkleplop × twoslash</h1>
-		<p>
-			TypeScript snippets below are rendered at build time by
-			<code>@twinkleplop/twoslash</code>: twoslash collects hover types,
-			queries and errors from the TypeScript language service, and
-			twinkleplop does the syntax highlighting. Hover an identifier to
-			see its inferred type.
-		</p>
-	</header>
+<div class="ts-root">
+	<SiteHeader />
 
-	<h2 class="group-heading">TypeScript</h2>
-	{#each data.ts_snippets as snippet (snippet.id)}
-		<section class="snippet" id={snippet.id}>
-			<h2>{snippet.title}</h2>
-			<p class="blurb">{snippet.blurb}</p>
-			<div class="code-wrap">
-				{@html snippet.html}
-			</div>
-		</section>
-	{/each}
+	<main class="content">
+		<header class="intro">
+			<PixelTitle text="twoslash" />
+			<p class="lede">
+				The same snippets, rendered twice: once by <code>@twinkleplop/twoslash</code>, once by
+				<code>@shikijs/twoslash</code> with its rich renderer. Hover a marked identifier in either pane.
+			</p>
+			<p>
+				Both sides run the same twoslash — same compiler options, same vfs root, same custom tags —
+				so the type information behind the two panes is identical and what differs is the markup and
+				the stylesheet each package ships. Each pane is styled by its own package's CSS, unmodified
+				apart from dark-mode popup colours for shiki, which <code>style-rich.css</code> leaves to the
+				host. The light/dark switch in the header repaints both.
+			</p>
+			<ul class="diffs">
+				<li>
+					twinkleplop nests <code>.twoslash-popover</code> inside the hover target; shiki nests
+					<code>.twoslash-popup-container</code>, and re-highlights the type string with the
+					TypeScript grammar rather than tokenizing it directly.
+				</li>
+				<li>
+					Queries are a block annotation after the line (<code>.twoslash-query</code>) against a
+					popup pinned open (<code>.twoslash-query-persisted</code>).
+				</li>
+				<li>
+					shiki's rich renderer draws icons for custom tags and completions; twinkleplop emits the
+					tag name from CSS and no icons.
+				</li>
+				<li>
+					Neither block scrolls here, because an <code>overflow</code> on an ancestor clips the popovers
+					in both. On phones they scroll, and the popovers do get cut off.
+				</li>
+			</ul>
+			<p class="jump">
+				<span class="jump-label">jump</span>
+				{#each data.ts_snippets as snippet, i (snippet.id)}
+					{#if i > 0}<span class="sep">·</span>{/if}<a href="#{snippet.id}">{snippet.title}</a>
+				{/each}
+				<span class="sep">·</span><a href="#svelte">Svelte</a>
+			</p>
+		</header>
 
-	<h2 class="group-heading">Svelte</h2>
-	<p class="group-blurb">
-		<code>@twinkleplop/twoslash-svelte</code> runs Svelte components through
-		<code>svelte2tsx</code>, hands the generated TSX to the same TypeScript
-		language service, and maps hover / query / error positions back onto the
-		original Svelte source. Runes like <code>$state</code> resolve against
-		Svelte's own type declarations.
-	</p>
-	{#each data.svelte_snippets as snippet (snippet.id)}
-		<section class="snippet" id={snippet.id}>
-			<h2>{snippet.title}</h2>
-			<p class="blurb">{snippet.blurb}</p>
-			<div class="code-wrap">
-				{@html snippet.html}
-			</div>
+		{#each data.ts_snippets as snippet (snippet.id)}
+			<section class="snippet" id={snippet.id}>
+				<h2>{snippet.title}</h2>
+				<p class="blurb">{snippet.blurb}</p>
+				<div class="panes">
+					<ComparePane
+						variant="twinkleplop"
+						label="twinkleplop"
+						note="@twinkleplop/twoslash"
+						html={snippet.twinkleplop.html}
+						error={snippet.twinkleplop.error}
+					/>
+					<ComparePane
+						variant="shiki"
+						label="shiki"
+						note="@shikijs/twoslash · rendererRich"
+						html={snippet.shiki.html}
+						error={snippet.shiki.error}
+					/>
+				</div>
+			</section>
+		{/each}
+
+		<section class="snippet" id="svelte">
+			<h2>Svelte</h2>
+			<p class="blurb">
+				<code>@twinkleplop/twoslash-svelte</code> runs components through
+				<code>svelte2tsx</code>, hands the generated TSX to the same TypeScript language service,
+				and maps hover, query and error positions back onto the original Svelte source. There is no
+				shiki counterpart to put beside it, so these are one pane wide.
+			</p>
 		</section>
-	{/each}
+
+		{#each data.svelte_snippets as snippet (snippet.id)}
+			<section class="snippet" id={snippet.id}>
+				<h3>{snippet.title}</h3>
+				<p class="blurb">{snippet.blurb}</p>
+				<div class="panes panes--single">
+					<ComparePane
+						variant="twinkleplop"
+						label="twinkleplop"
+						note="@twinkleplop/twoslash-svelte"
+						html={snippet.twinkleplop.html}
+						error={snippet.twinkleplop.error}
+					/>
+				</div>
+			</section>
+		{/each}
+
+		<footer class="outro">
+			<p>
+				<a href="/docs/twoslash">docs / twoslash</a> documents the API these panes exercise. For
+				token-level highlighting against shiki — live, editable, timed — see
+				<a href="/explore">explore</a>.
+			</p>
+		</footer>
+	</main>
 </div>
 
 <style>
-	.page {
-		max-width: 960px;
+	/* the docs design system without the docs shell: this page scrolls the
+	   document instead of an inner pane, so it does not use `.docs-root`. */
+	.ts-root {
+		--hdr-bg: var(--docs-bg);
+		--hdr-bg-plain: var(--docs-bg);
+		--hdr-bg-2: var(--docs-bg-2);
+		--hdr-line: var(--docs-line);
+		--hdr-line-2: var(--docs-line);
+		--hdr-fg: var(--docs-fg);
+		--hdr-fg-dim: var(--docs-fg-dim);
+		--hdr-fg-ghost: var(--docs-fg-ghost);
+		--hdr-accent: var(--docs-accent);
+
+		min-height: 100svh;
+		background: var(--docs-bg);
+		color: var(--docs-fg);
+		font-family: var(--docs-mono);
+		font-size: var(--docs-fs-body);
+		line-height: var(--docs-line-height);
+		font-feature-settings:
+			'calt' 1,
+			'liga' 1;
+		/* the panes do not scroll (see ComparePane), so a popover wider than
+		   its pane would push the document sideways. clipping this axis alone
+		   leaves `overflow-y` visible, so the header still sticks. */
+		overflow-x: clip;
+	}
+	/* the ua stylesheet gives pre/code a bare `monospace` (courier on macos),
+	   which beats inheritance */
+	.ts-root :global(:where(pre, code, kbd, samp)) {
+		font-family: inherit;
+	}
+	:global(html:not([data-mode='light'])) .ts-root {
+		-webkit-font-smoothing: antialiased;
+	}
+
+	.content {
+		max-width: 1320px;
 		margin: 0 auto;
-		padding: 3rem 2rem 6rem;
-		font-family: var(--font-mono);
-		color: #e4e4e7;
+		padding: 30px 28px 120px;
 	}
 
-	.hero {
-		margin-bottom: 3rem;
-		border-bottom: 2px solid #333;
-		padding-bottom: 2rem;
+	.intro {
+		max-width: 780px;
+		margin-bottom: 44px;
+	}
+	.intro p {
+		margin: 0 0 16px;
+		color: var(--docs-fg-dim);
+	}
+	.lede {
+		font-size: var(--docs-fs-body);
+	}
+	.diffs {
+		margin: 0 0 18px;
+		padding-left: 20px;
+		color: var(--docs-fg-dim);
+	}
+	.diffs li + li {
+		margin-top: 8px;
+	}
+	.diffs li::marker {
+		color: var(--docs-fg-mute);
+		content: '› ';
 	}
 
-	.hero h1 {
-		font-family: var(--font-grid, 'VT323', monospace);
-		font-size: 3rem;
-		margin: 0 0 1rem;
-		background: linear-gradient(
-			90deg,
-			#ff6b6b 0%,
-			#ffb86b 14%,
-			#ffeb6b 28%,
-			#6bffb8 42%,
-			#6bebff 57%,
-			#6b8eff 71%,
-			#b86bff 85%,
-			#ff6beb 100%
-		);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+	.jump {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 6px;
+		font-size: var(--docs-fs-xs);
+		letter-spacing: 0.4px;
 	}
-
-	.hero p {
-		font-size: 1rem;
-		line-height: 1.5;
-		color: #bfbdb6;
-	}
-
-	.hero code {
-		background: #0d0d0d;
-		border: 1px solid #333;
-		padding: 0.1rem 0.4rem;
-		color: #ffb86b;
-		font-size: 1rem;
-	}
-
-	.group-heading {
-		font-family: var(--font-grid, 'VT323', monospace);
-		font-size: 2rem;
-		margin: 3rem 0 0.5rem;
-		padding-top: 2rem;
-		border-top: 2px solid #333;
-		color: #6bebff;
+	.jump-label {
+		color: var(--docs-fg-mute);
 		text-transform: uppercase;
-		letter-spacing: 2px;
 	}
-
-	.group-blurb {
-		font-size: 1.1rem;
-		line-height: 1.5;
-		color: #bfbdb6;
-		margin: 0 0 2rem;
-	}
-
-	.group-blurb code {
-		background: #0d0d0d;
-		border: 1px solid #333;
-		padding: 0.1rem 0.4rem;
-		color: #ffb86b;
-		font-size: 0.95rem;
+	.sep {
+		color: var(--docs-fg-ghost);
 	}
 
 	.snippet {
-		margin-bottom: 3rem;
+		margin-bottom: 40px;
+		/* the site header is sticky and 56px tall, so a jump link would
+		   otherwise land the heading underneath it */
+		scroll-margin-top: 72px;
 	}
-
+	/* shiki's completion list is absolutely positioned and reserves no space,
+	   so it needs room beneath the block or it lands on the next section. */
+	.snippet#completions {
+		margin-bottom: 104px;
+	}
 	.snippet h2 {
-		font-family: var(--font-pixel, 'Silkscreen', monospace);
-		font-size: 1rem;
-		letter-spacing: 1px;
-		text-transform: uppercase;
-		color: #ffb86b;
-		margin: 0 0 0.5rem;
+		font-size: 22px;
+		font-weight: 500;
+		margin: 0 0 6px;
+		color: var(--docs-fg);
 	}
-
+	.snippet h3 {
+		font-size: 17px;
+		font-weight: 500;
+		margin: 0 0 6px;
+		color: var(--docs-fg);
+	}
 	.blurb {
-		font-size: 1.1rem;
-		line-height: 1.5;
-		color: #bfbdb6;
-		margin: 0 0 1rem;
+		max-width: 780px;
+		margin: 0 0 14px;
+		color: var(--docs-fg-dim);
+		font-size: var(--docs-fs-sm);
 	}
 
-	.code-wrap {
-		position: relative;
+	.panes {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 16px;
+		align-items: start;
+	}
+	.panes--single {
+		grid-template-columns: minmax(0, 1fr);
+		max-width: 780px;
 	}
 
-	/* --- rendered highlight ----------------------------------------- */
-	/*
-	 * The twoslash package emits a single <pre class="twinkleplop twoslash">
-	 * with nested <span class="keyword">…</span> etc. tokens. The default
-	 * highlight-styles.css in the site uses the CSS Custom Highlight API
-	 * (::highlight(keyword)) which only applies to ranges registered by
-	 * JS — it has no effect on real <span> elements. So this page ships
-	 * its own span-based palette.
-	 */
-	.code-wrap :global(pre.twinkleplop.twoslash) {
-		background: #0d0d0d;
-		border: 2px solid #333;
-		padding: 1.25rem 1.5rem;
-		/*overflow-x: auto;*/
-		font-family: var(--font-mono);
-		font-size: 1.15rem;
-		line-height: 1.6;
-		box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+	.outro {
+		max-width: 780px;
+		padding-top: 24px;
+		border-top: 1px solid var(--docs-line);
+		color: var(--docs-fg-dim);
+	}
+	.outro p {
+		margin: 0;
 	}
 
-	.code-wrap :global(pre.twinkleplop.twoslash code) {
-		background: none;
-		border: none;
-		padding: 0;
-		font-family: inherit;
-		font-size: inherit;
-		color: #e4e4e7;
-	}
-
-	.code-wrap :global(.keyword) { color: #ff7733; }
-	.code-wrap :global(.operator) { color: #f29668; }
-	.code-wrap :global(.string) { color: #b8cc52; }
-	.code-wrap :global(.number) { color: #d2a6ff; }
-	.code-wrap :global(.comment) { color: #5c6773; font-style: italic; }
-	/* Svelte-specific tokens from @twinkleplop/svelte grammar */
-	.code-wrap :global(.tag_name) { color: #6bebff; }
-	.code-wrap :global(.attr_name) { color: #ffb86b; }
-	.code-wrap :global(.template) { color: #b8cc52; }
-	.code-wrap :global(.boolean) { color: #d2a6ff; }
-	.code-wrap :global(.svelte_block) { color: #ff6beb; }
-	.code-wrap :global(.svelte_directive) { color: #b86bff; }
-	.code-wrap :global(.punctuation) { color: #888; }
-	.code-wrap :global(.function) { color: #22d3ee; }
-	.code-wrap :global(.identifier) { color: #bfbdb6; }
-	.code-wrap :global(.regex) { color: #95e6cb; }
-	.code-wrap :global(.selector_class) { color: #22d3ee; }
-	.code-wrap :global(.builtin) { color: #c084fc; }
-
-	/* --- twoslash hover tooltips ------------------------------------ */
-	/*
-	 * The hover wrapper is:
-	 *   <span class="twoslash-hover">
-	 *     <span class="twoslash-target">…code…</span>
-	 *     <span class="twoslash-popover">
-	 *       <span class="twoslash-popover-type">…</span>
-	 *     </span>
-	 *   </span>
-	 *
-	 * The popover is hidden by default and revealed on hover. Absolute
-	 * positioning means it floats above surrounding code. CSS-only.
-	 */
-	.code-wrap :global(.twoslash-hover) {
-		position: relative;
-		border-bottom: 1px dotted #555;
-	}
-
-	.code-wrap :global(.twoslash-hover:hover) {
-		border-bottom-color: #ffb86b;
-	}
-
-	.code-wrap :global(.twoslash-popover) {
-		display: none;
-		position: absolute;
-
-		top: 100%;
-		left: 0;
-		margin-top: 0.35rem;
-		padding: 0.5rem 0.75rem;
-		background: #1a1a1a;
-		border: 1px solid #ffb86b;
-		box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
-		color: #e4e4e7;
-		font-family: var(--font-mono);
-		font-size: 1rem;
-		white-space: pre;
-		z-index: 20;
-		max-width: min(80ch, 90vw);
-	}
-
-	.code-wrap :global(.twoslash-hover:hover .twoslash-popover) {
-		display: block;
-	}
-
-	.code-wrap :global(.twoslash-popover-type) {
-		color: #ffeb6b;
-	}
-
-	.code-wrap :global(.twoslash-popover-docs) {
-		display: block;
-		margin-top: 0.5rem;
-		padding-top: 0.5rem;
-		border-top: 1px solid #333;
-		color: #bfbdb6;
-		white-space: pre-wrap;
-	}
-
-	/* --- query (^?) annotation -------------------------------------- */
-	.code-wrap :global(.twoslash-query) {
-		display: block;
-		margin: 0.25rem 0 0.25rem 0;
-		padding: 0.5rem 0.75rem;
-		border-left: 3px solid #6bebff;
-		background: rgba(107, 235, 255, 0.06);
-		color: #6bebff;
-		white-space: pre;
-	}
-
-	.code-wrap :global(.twoslash-query-type) {
-		color: #6bebff;
-	}
-
-	.code-wrap :global(.twoslash-query-docs) {
-		display: block;
-		margin-top: 0.25rem;
-		color: #bfbdb6;
-	}
-
-	/* --- error decoration + message --------------------------------- */
-	.code-wrap :global(.twoslash-error) {
-		border-bottom: 2px dotted #ff6b6b;
-		background: rgba(255, 107, 107, 0.1);
-	}
-
-	.code-wrap :global(.twoslash-error-line) {
-		display: block;
-		margin: 0.25rem 0;
-		padding: 0.5rem 0.75rem;
-		border-left: 3px solid #ff6b6b;
-		background: rgba(255, 107, 107, 0.08);
-		color: #ff9b9b;
-		white-space: pre-wrap;
-	}
-
-	/* --- highlight / tag / completion (minimal) --------------------- */
-	.code-wrap :global(.twoslash-highlight) {
-		background: rgba(255, 235, 107, 0.15);
-		border-bottom: 1px solid #ffeb6b;
-	}
-
-	.code-wrap :global(.twoslash-tag) {
-		display: block;
-		margin: 0.25rem 0;
-		padding: 0.35rem 0.6rem;
-		border-left: 3px solid #b86bff;
-		background: rgba(184, 107, 255, 0.08);
-		color: #d2a6ff;
-	}
-
-	/* the host is an empty span at the caret; the list hangs off it. Unlike
-	   the hover popover it is always visible — it stands in for an editor's
-	   completion popup — so it overflows the <pre>. */
-	.code-wrap :global(.twoslash-completion) {
-		position: relative;
-	}
-
-	.code-wrap :global(.twoslash-completions) {
-		display: block;
-		position: absolute;
-		top: calc(100% + 0.25rem);
-		left: 0;
-		z-index: 15;
-		width: max-content;
-		padding: 0.25rem 0;
-		border: 1px solid #6bffb8;
-		background: #1a1a1a;
-		box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
-		color: #6bffb8;
-		text-align: left;
+	.ts-root :global(a) {
+		color: var(--docs-accent);
 		text-decoration: none;
 	}
-
-	.code-wrap :global(.twoslash-completion-entry) {
-		display: block;
-		padding: 0 0.75rem;
+	.ts-root :global(a:hover) {
+		text-shadow: 0 0 8px color-mix(in oklch, var(--docs-accent) 60%, transparent);
+	}
+	/* inline code in the prose only; the panes style their own. */
+	.intro :global(code),
+	.blurb :global(code),
+	.outro :global(code) {
+		background: var(--docs-bg-2);
+		border: 1px solid var(--docs-line-2);
+		padding: 1px 5px;
+		border-radius: 2px;
+		color: var(--docs-fg);
+		font-size: 0.92em;
 	}
 
-	/* the dropdown escapes the code block, so a snippet carrying one needs
-	   room below or the next section sits underneath it. */
-	.code-wrap:has(:global(.twoslash-completions)) {
-		margin-bottom: 9rem;
+	@media (max-width: 1000px) {
+		.panes {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+	@media (max-width: 760px) {
+		.content {
+			padding: 20px 16px 60px;
+		}
 	}
 </style>
