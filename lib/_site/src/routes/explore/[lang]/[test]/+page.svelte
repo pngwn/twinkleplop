@@ -58,6 +58,7 @@
 		jsonc: () => import('@twinkleplop/jsonc'),
 		markdown: () => import('@twinkleplop/markdown'),
 		toml: () => import('@twinkleplop/toml'),
+		ini: () => import('@twinkleplop/ini'),
 		python: () => import('@twinkleplop/python'),
 		bash: () => import('@twinkleplop/bash'),
 		shellsession: () => import('@twinkleplop/shellsession'),

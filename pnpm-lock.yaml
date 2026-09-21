@@ -243,6 +243,9 @@ importers:
       '@twinkleplop/http':
         specifier: workspace:*
         version: link:../../languages/http
+      '@twinkleplop/ini':
+        specifier: workspace:*
+        version: link:../../languages/ini
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript
