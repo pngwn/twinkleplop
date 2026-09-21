@@ -16,7 +16,9 @@ import {
 } from '@twinkleplop/theme-solarized/tokens';
 import {
 	dark as night_owl_dark,
-	light as night_owl_light
+	dark_styles as night_owl_dark_styles,
+	light as night_owl_light,
+	light_styles as night_owl_light_styles
 } from '@twinkleplop/theme-night-owl/tokens';
 import type { theme_styles } from '@twinkleplop/core/types';
 
@@ -52,8 +54,16 @@ export const THEMES: Record<theme_variant, theme_def> = {
 	'atom-one-dark': { palette: atom_one_dark, shiki_id: 'one-dark-pro' },
 	'solarized-light': { palette: solarized_light, shiki_id: 'solarized-light' },
 	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' },
-	'night-owl-light': { palette: night_owl_light, shiki_id: 'night-owl-light' },
-	'night-owl-dark': { palette: night_owl_dark, shiki_id: 'night-owl' }
+	'night-owl-light': {
+		palette: night_owl_light,
+		shiki_id: 'night-owl-light',
+		styles: night_owl_light_styles
+	},
+	'night-owl-dark': {
+		palette: night_owl_dark,
+		shiki_id: 'night-owl',
+		styles: night_owl_dark_styles
+	}
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {
