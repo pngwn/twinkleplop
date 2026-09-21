@@ -67,7 +67,7 @@ export const light: theme_palette = {
 >
 	<Section id="builtin" title="built-in themes" num="§ 01">
 		<p>
-			Three theme packages are available. Each includes light and dark variants in one stylesheet.
+			Four theme packages are available. Each includes light and dark variants in one stylesheet.
 			Add a <code>.dark</code> class to an ancestor to use dark colours.
 		</p>
 		<CardGrid cols={2}>
@@ -114,6 +114,12 @@ export const light: theme_palette = {
 		<p>
 			Use the names from <code>@twinkleplop/core/tokens</code> as palette keys. Tokens without a theme
 			colour inherit their parent's colour.
+		</p>
+		<p>
+			To make tokens italic, bold, underlined or struck through, also export
+			<code>light_styles</code> and <code>dark_styles</code>, typed as <code>theme_styles</code>.
+			Each maps a token name to a list such as <code>["italic"]</code>. Tokens without an entry stay
+			plain.
 		</p>
 	</Section>
 </ArticleMain>
