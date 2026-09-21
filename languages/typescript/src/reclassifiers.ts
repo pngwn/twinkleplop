@@ -29,6 +29,7 @@ import {
 import {
   claim_property_scope,
   class_name_promoter,
+  classify_reserved_names,
   function_variable_rules,
   js_frame_spec,
   promote_boolean_literals,
@@ -37,6 +38,8 @@ import {
   promote_js_constants,
   promote_js_namespaces,
   promote_js_parameters,
+  scan_embedded_groups,
+  scan_jsdoc,
   scan_tagged_template,
 } from "@twinkleplop/javascript";
 
@@ -45,9 +48,12 @@ import { BUILTIN_TYPES } from "./grammar.js";
 export {
   claim_property_scope,
   class_name_promoter,
+  classify_reserved_names,
   function_variable_rules,
   promote_boolean_literals,
   promote_call_site_functions,
+  scan_embedded_groups,
+  scan_jsdoc,
   scan_tagged_template,
 };
 
@@ -630,13 +636,14 @@ export const promote_ts_generic_calls: Reclassifier = (input, result) => {
       if (kk === operator_id) {
         if (tt === "<") {
           depth++;
-        } else if (tt === ">") {
-          if (brace_depth === 0) {
-            depth--;
-            if (depth === 0) {
-              matched_close = j;
-              break;
-            }
+        } else if (brace_depth === 0 && (tt === ">" || tt === ">>" || tt === ">>>")) {
+          // a run of `>` coalesces into one right-shift operator, so
+          // `make<T extends Record<string, unknown>>(` closes both
+          // groups on a single token.
+          depth -= tt.length;
+          if (depth <= 0) {
+            matched_close = j;
+            break;
           }
         }
       } else if (kk === punctuation_id) {
@@ -821,6 +828,9 @@ export const reclassifiers: LanguagePipeline = [
   // tracker extends the js spec with ternary / var_decl signals for the
   // type-position rules.
   always(ts_frame_track, "type_claim"),
+  // see the note in the javascript package: correctness rather than
+  // enrichment, and a barrier so the claim batch sees its output.
+  always(classify_reserved_names, "shape"),
   // constant promotion first: UPPER_SNAKE_CASE identifiers become `constant`
   // so subsequent passes see the promoted stream (same ordering as JS).
   tag(promote_js_constants, ["constant"]),
@@ -877,5 +887,7 @@ export const reclassifiers: LanguagePipeline = [
   // walker) need the original operator tokens, so this MUST stay at the
   // tail of the identifier rewriters.
   always(retag_generic_angles, "shape"),
-  always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
+  // tagged templates and doc comments are both embeds, so they run at
+  // every fidelity setting -- same rule as CSS inside a `<style>` tag.
+  always(embed_interleaved({ scan: scan_embedded_groups }), "embed"),
 ];

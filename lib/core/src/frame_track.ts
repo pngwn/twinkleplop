@@ -35,6 +35,9 @@ import {
 // the consumer doesn't need at_start.
 const EMPTY_U8 = new Uint8Array(0);
 
+// shared empty table so a spec without reset chars allocates nothing.
+const EMPTY_CODES: number[] = [];
+
 // built-in kind names occupying ids 0..2. language-defined kinds from
 // BraceKindSpec are interned after these.
 const BUILTIN_KIND_NAMES = ["top", "paren", "bracket"];
@@ -83,6 +86,8 @@ interface CompiledBraceKinds {
   angle_type: string | null;
   angle_open: CompiledText | null;
   angle_closes: { text: CompiledText; pops: number }[];
+  angle_reset_chars: number[];
+  marker_reset_chars: number[];
   prev_rules: {
     type: string;
     texts: Set<string> | null;
@@ -91,6 +96,13 @@ interface CompiledBraceKinds {
   }[];
   default_kind: number;
   start_kind: number;
+}
+
+function char_codes(text: string | undefined): number[] {
+  if (text === undefined) return [];
+  const out: number[] = [];
+  for (let i = 0; i < text.length; i++) out.push(text.charCodeAt(i));
+  return out;
 }
 
 function compile_brace_kinds(spec: BraceKindSpec): CompiledBraceKinds {
@@ -133,6 +145,8 @@ function compile_brace_kinds(spec: BraceKindSpec): CompiledBraceKinds {
       text: compile_text(c.text),
       pops: c.pops,
     })),
+    angle_reset_chars: char_codes(spec.angles?.reset_chars),
+    marker_reset_chars: char_codes(spec.marker_reset_chars),
     prev_rules,
     default_kind: intern(spec.default_kind),
     start_kind: spec.start_kind !== undefined ? intern(spec.start_kind) : intern(spec.default_kind),
@@ -284,7 +298,31 @@ function classify_by_prev(
   kinds: CompiledBraceKinds,
   kind_tables: ResolvedKindTables,
   prev_significant: number,
+  punct_id: number,
+  prev_char: number,
 ): number {
+  // a brace that is not the first character of its own token: grammars
+  // coalesce adjacent punctuation, so `) {` is two tokens and `){` is
+  // one. the character before it stands in for the previous token.
+  if (prev_char >= 0) {
+    const rules = kind_tables.prev_rules;
+    for (let r = 0; r < rules.length; r++) {
+      const rule = rules[r];
+      if (rule.type_id !== punct_id) continue;
+      if (rule.last_chars !== null) {
+        for (let c = 0; c < rule.last_chars.length; c++) {
+          if (prev_char === rule.last_chars[c]) return rule.kind_id;
+        }
+        continue;
+      }
+      if (rule.texts !== null) {
+        if (rule.texts.has(String.fromCharCode(prev_char))) return rule.kind_id;
+        continue;
+      }
+      return rule.kind_id;
+    }
+    return kinds.default_kind;
+  }
   if (prev_significant < 0) return kinds.start_kind;
   const pbase = prev_significant * 3;
   const ptype = tokens[pbase];
@@ -729,9 +767,19 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     let brace_depth = 0;
     let bracket_depth = 0;
     let angle_depth = 0;
+    // see `angles.reset_chars`: `i < 3` leaks a level that never closes,
+    // and a type-argument list never crosses a separator or a closing
+    // brace at its own nesting level, so both resynchronise.
+    const angle_reset = kinds !== null ? kinds.angle_reset_chars : EMPTY_CODES;
+    const angle_reset_len = angle_reset.length;
     // pending body-marker kind, -1 when none armed. last writer wins --
     // two markers cannot legitimately be pending at once in real code.
     let pending_kind = -1;
+    // depth the pending marker was armed at, so a separator at that same
+    // depth can discard it -- see `marker_reset_chars`.
+    let pending_depth = -1;
+    const marker_reset = kinds !== null ? kinds.marker_reset_chars : EMPTY_CODES;
+    const marker_reset_len = marker_reset.length;
 
     // previous non-trivia token index for prev-rule classification.
     // maintained incrementally so classification never re-scans.
@@ -783,6 +831,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
             for (let m = 0; m < candidates.length; m++) {
               if (text_matches(input, s, e, candidates[m].text)) {
                 pending_kind = candidates[m].kind_id;
+                pending_depth = brace_depth;
                 break;
               }
             }
@@ -851,7 +900,15 @@ export function frame_track(spec: FrameSpec): Reclassifier {
                     ? kinds.pending_in_angles_kind
                     : kinds.default_kind;
               } else {
-                kind = classify_by_prev(input, tokens, kinds, kind_tables, prev_significant);
+                kind = classify_by_prev(
+                  input,
+                  tokens,
+                  kinds,
+                  kind_tables,
+                  prev_significant,
+                  punct_id,
+                  p > s ? input.charCodeAt(p - 1) : -1,
+                );
               }
             }
             const idx = frames.length;
@@ -865,6 +922,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
             stack_at_start.push(1);
             brace_depth++;
           } else if (c === brace_close) {
+            angle_depth = 0;
             let popped = false;
             if (stack.length > 1) {
               stack.pop();
@@ -902,15 +960,32 @@ export function frame_track(spec: FrameSpec): Reclassifier {
             }
             if (bracket_depth > 0) bracket_depth--;
             if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
-          } else if (at_start_enabled) {
-            let is_reset = false;
-            for (let r = 0; r < reset_chars_len; r++) {
-              if (c === reset_chars[r]) {
-                is_reset = true;
+          } else {
+            for (let r = 0; r < angle_reset_len; r++) {
+              if (c === angle_reset[r]) {
+                angle_depth = 0;
                 break;
               }
             }
-            stack_at_start[stack_at_start.length - 1] = is_reset ? 1 : 0;
+            if (pending_kind >= 0 && brace_depth === pending_depth) {
+              for (let r = 0; r < marker_reset_len; r++) {
+                if (c === marker_reset[r]) {
+                  pending_kind = -1;
+                  pending_depth = -1;
+                  break;
+                }
+              }
+            }
+            if (at_start_enabled) {
+              let is_reset = false;
+              for (let r = 0; r < reset_chars_len; r++) {
+                if (c === reset_chars[r]) {
+                  is_reset = true;
+                  break;
+                }
+              }
+              stack_at_start[stack_at_start.length - 1] = is_reset ? 1 : 0;
+            }
           }
         }
       } else if (at_start_enabled && !is_trivia && !is_transparent) {

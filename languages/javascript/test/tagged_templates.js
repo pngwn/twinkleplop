@@ -1150,7 +1150,7 @@ export default [
 		"end": 3173
 	},
 	{
-		"type": "identifier",
+		"type": "keyword",
 		"start": 3173,
 		"end": 3178
 	},

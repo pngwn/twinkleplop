@@ -5,6 +5,7 @@ import { default as raw_grammar } from "./grammar.js";
 import {
   claim_property_scope,
   class_name_promoter,
+  classify_reserved_names,
   function_variable_rules,
   js_frame_spec,
   js_frame_track,
@@ -15,6 +16,8 @@ import {
   promote_js_namespaces,
   promote_js_parameters,
   reclassifiers,
+  scan_embedded_groups,
+  scan_jsdoc,
   scan_tagged_template,
 } from "./reclassifiers.js";
 
@@ -50,6 +53,7 @@ export {
   reclassifiers,
   claim_property_scope,
   class_name_promoter,
+  classify_reserved_names,
   function_variable_rules,
   js_frame_spec,
   js_frame_track,
@@ -59,6 +63,8 @@ export {
   promote_js_constants,
   promote_js_namespaces,
   promote_js_parameters,
+  scan_embedded_groups,
+  scan_jsdoc,
   scan_tagged_template,
 };
 
@@ -75,6 +81,7 @@ export {
   OP_2CHAR,
   OP_1CHAR,
   OP_ALL,
+  OP_ALL_OUTSIDE_MEMBER,
   PROBE_OPERATORS,
   IDENTIFIER_TERMINATORS,
   SINGLE_LINE_COMMENT,
@@ -82,7 +89,12 @@ export {
   STRING_DOUBLE,
   STRING_SINGLE,
   TEMPLATE_LITERAL,
+  function_body_state,
   js_comments,
+  member_access,
+  member_access_entry,
+  member_access_paren,
+  paren_group_state,
   js_strings,
   js_whitespace,
   js_numbers_top,

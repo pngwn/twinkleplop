@@ -280,7 +280,18 @@ export interface BraceKindSpec {
     type: string;
     open: string;
     closes: { text: string; pops: number }[];
+    // punctuation that forces the angle counter back to zero. an opener
+    // that doubles as a comparison operator (`a < b`) otherwise leaks a
+    // level on every unbalanced comparison, and a stuck counter
+    // reclassifies every later brace. a closing brace resets it too.
+    reset_chars?: string;
   };
+  // punctuation that discards a pending body marker when it appears at
+  // the depth the marker was armed at. `{ class: 1 }` arms one that no
+  // brace of its own consumes, and the next unrelated `{` claims it. a
+  // class head has none of these at its own depth; a generic constraint's
+  // `{ a: string; b: X }` sits a level deeper and is untouched.
+  marker_reset_chars?: string;
   prev_rules?: BraceKindRule[];
   // fallback kind when no rule matches.
   default_kind: string;

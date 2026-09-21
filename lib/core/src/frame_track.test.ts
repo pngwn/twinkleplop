@@ -317,6 +317,7 @@ describe("frame_track — declarative brace kinds", () => {
         { type: "keyword", text: "interface", kind: "interface" },
       ],
       pending_in_angles_kind: "type_literal",
+      marker_reset_chars: ";,:",
       angles: {
         type: "operator",
         open: "<",
@@ -324,6 +325,7 @@ describe("frame_track — declarative brace kinds", () => {
           { text: ">", pops: 1 },
           { text: ">>", pops: 2 },
         ],
+        reset_chars: ";",
       },
       prev_rules: [
         { prev_type: "operator", prev_texts: ["=>"], kind: "block" },
@@ -417,6 +419,44 @@ describe("frame_track — declarative brace kinds", () => {
     const f = run_frames("a { b }");
     expect(f.frames[1].kind).toBe(FRAME_KIND_TOP);
     expect(f.kind_names).toEqual(["top", "paren", "bracket"]);
+  });
+
+  // `<` is also less-than in the C family, so an unbalanced comparison
+  // leaves the angle counter armed. Left alone it never comes back down,
+  // and every later brace classifies as if it were inside a generic.
+  test("an unbalanced comparison does not leak into the next brace", () => {
+    const f = run_kinds("f ( a < b ; ) class C { x }");
+    expect(kind_of(f, 2)).toBe("class");
+  });
+
+  test("a closing brace resynchronises the angle counter", () => {
+    const f = run_kinds("do { a < b } class C { x }");
+    expect(kind_of(f, 1)).toBe("block");
+    expect(kind_of(f, 2)).toBe("class");
+  });
+
+  test("resync does not disturb a real generic constraint", () => {
+    const f = run_kinds("class C < T extends { x ; y } > { z }");
+    expect(kind_of(f, 1)).toBe("type_literal");
+    expect(kind_of(f, 2)).toBe("class");
+  });
+
+  // a body marker's text is also a legal property name, so a key arms a
+  // marker that no brace of its own ever consumes.
+  test("a body marker used as a key does not claim the next brace", () => {
+    const f = run_kinds("a = { class : b } c = { d : e }");
+    expect(kind_of(f, 1)).toBe("object");
+    expect(kind_of(f, 2)).toBe("object");
+  });
+
+  test("a marker survives separators nested below its own depth", () => {
+    const f = run_kinds("class C < T extends { x ; y } > { z }");
+    expect(kind_of(f, 2)).toBe("class");
+  });
+
+  test("a marker still reaches a brace with no separator between", () => {
+    expect(kind_of(run_kinds("class C extends D { x }"), 1)).toBe("class");
+    expect(kind_of(run_kinds("a = class { x }"), 1)).toBe("class");
   });
 });
 

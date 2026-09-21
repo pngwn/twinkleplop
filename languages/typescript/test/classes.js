@@ -25,7 +25,7 @@ export default [
 		"end": 29
 	},
 	{
-		"type": "identifier",
+		"type": "keyword",
 		"start": 29,
 		"end": 35
 	},

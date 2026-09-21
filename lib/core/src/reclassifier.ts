@@ -1728,6 +1728,71 @@ function span_text_is(input: string, s: number, e: number, text: string): boolea
 // with type arguments finishing. mirrors the imperative looks_like
 // detector, including its ts-shaped follower lists (the same shape
 // params() encodes for skip_ts_return_type).
+// how many angle groups a `>` token closes. the tokenizer coalesces a run
+// of `>` into one right-shift operator, so `Map<K, Set<V>>` ends both
+// groups on a single token; anything else beginning with `>` (`>=`,
+// `>>=`) closes none.
+function angle_pops(input: string, s: number, e: number): number {
+  const len = e - s;
+  if (len < 1 || len > 3) return 0;
+  for (let p = s; p < e; p++) {
+    if (input.charCodeAt(p) !== CH_GT) return 0;
+  }
+  return len;
+}
+
+// does the angle group opening at `idx` close and hand straight over to a
+// parameter list? that is a method signature's type parameters --
+// `{ make<T>(base: T): T }` -- and the name before it is not a type.
+function type_span_generic_call(
+  spec: CompiledTypeSpanSpec,
+  tokens: Uint32Array,
+  idx: number,
+  count: number,
+  input: string,
+  trivia: Uint8Array,
+): boolean {
+  if (spec.operator_id < 0) return false;
+  let depth = 1;
+  let j = idx + 1;
+  while (j < count) {
+    const base = j * 3;
+    const t = tokens[base];
+    if (trivia[t]) {
+      j++;
+      continue;
+    }
+    const s = tokens[base + 1];
+    const e = tokens[base + 2];
+    if (t === spec.operator_id) {
+      if (e - s === 1 && input.charCodeAt(s) === CH_LT) {
+        depth++;
+      } else {
+        const pops = angle_pops(input, s, e);
+        if (pops > 0) {
+          depth -= pops;
+          if (depth <= 0) {
+            const after = params_next_non_trivia(tokens, j + 1, count, trivia);
+            return (
+              after >= 0 &&
+              tokens[after * 3] === spec.punct_id &&
+              input.charCodeAt(tokens[after * 3 + 1]) === CH_PAREN_OPEN
+            );
+          }
+        }
+      }
+    } else if (t === spec.punct_id) {
+      // a type-argument list never crosses a member or statement end.
+      for (let p = s; p < e; p++) {
+        const c = input.charCodeAt(p);
+        if (c === CH_SEMI || c === CH_BRACE_CLOSE) return false;
+      }
+    }
+    j++;
+  }
+  return false;
+}
+
 function type_span_verify_angle(
   spec: CompiledTypeSpanSpec,
   tokens: Uint32Array,
@@ -1750,12 +1815,13 @@ function type_span_verify_angle(
     const s = tokens[base + 1];
     const e = tokens[base + 2];
     if (spec.operator_id >= 0 && t === spec.operator_id) {
-      if (e - s === 1) {
-        const c = input.charCodeAt(s);
-        if (c === CH_LT) depth++;
-        else if (c === CH_GT && brace_depth === 0) {
-          depth--;
-          if (depth === 0) {
+      if (e - s === 1 && input.charCodeAt(s) === CH_LT) {
+        depth++;
+      } else if (brace_depth === 0) {
+        const pops = angle_pops(input, s, e);
+        if (pops > 0) {
+          depth -= pops;
+          if (depth <= 0) {
             matched_close = j;
             break;
           }
@@ -1951,12 +2017,16 @@ function run_type_span(
         i++;
         continue;
       }
-      if (len === 1 && input.charCodeAt(s) === CH_GT) {
-        if (angle_rel > 0) {
-          angle_rel--;
+      const pops = angle_pops(input, s, e);
+      if (pops > 0) {
+        if (angle_rel >= pops) {
+          angle_rel -= pops;
           i++;
           continue;
         }
+        // the run closes more groups than this span opened, so the
+        // surplus closes the span's own group.
+        angle_rel = 0;
         if (spec.enter_angle) return i;
       }
       if (paren_rel === 0 && brace_rel === 0 && bracket_rel === 0 && angle_rel === 0) {
@@ -2009,11 +2079,11 @@ function run_type_span(
     }
 
     if (t === spec.ident_id) {
-      // key position: at nested paren / brace depth an identifier
-      // directly followed by `:` or `?:` is a parameter name or
-      // property key in a function / object type, not a type reference.
-      // at the span root, `:` is the conditional-type separator and the
-      // identifier before it is a real type.
+      // member position: at nested depth, an identifier that NAMES a
+      // member rather than referring to one is not a type -- `a: T`,
+      // `a?: T`, `m(): T`, `m<T>(): T`. at the span root, `:` is the
+      // conditional-type separator and the identifier before it IS a
+      // type.
       let skip = false;
       if (paren_rel > 0 || brace_rel > 0) {
         const nxt = params_next_non_trivia(tokens, i + 1, count, trivia);
@@ -2021,16 +2091,30 @@ function run_type_span(
           const nb = nxt * 3;
           const ns = tokens[nb + 1];
           const nlen = tokens[nb + 2] - ns;
-          if (tokens[nb] === spec.punct_id && nlen === 1 && input.charCodeAt(ns) === CH_COLON) {
-            skip = true;
-          } else if (
-            spec.operator_id >= 0 &&
-            tokens[nb] === spec.operator_id &&
-            nlen === 2 &&
-            input.charCodeAt(ns) === CH_QMARK &&
-            input.charCodeAt(ns + 1) === CH_COLON
-          ) {
-            skip = true;
+          const nt = tokens[nb];
+          if (nt === spec.punct_id) {
+            const c = input.charCodeAt(ns);
+            // punctuation coalesces, so a `:` run still leads with it.
+            if ((nlen === 1 && c === CH_COLON) || c === CH_PAREN_OPEN) skip = true;
+          } else if (spec.operator_id >= 0 && nt === spec.operator_id) {
+            const c = input.charCodeAt(ns);
+            if (nlen === 2 && c === CH_QMARK && input.charCodeAt(ns + 1) === CH_COLON) {
+              skip = true;
+            } else if (nlen === 1 && c === CH_QMARK) {
+              // `a?:` split in two, which is what the JS family emits.
+              const after = params_next_non_trivia(tokens, nxt + 1, count, trivia);
+              if (
+                after >= 0 &&
+                tokens[after * 3] === spec.punct_id &&
+                input.charCodeAt(tokens[after * 3 + 1]) === CH_COLON
+              ) {
+                skip = true;
+              }
+            } else if (nlen === 1 && c === CH_LT) {
+              // a plain reference (`a: Foo<T>`) must still be recorded,
+              // so the group has to close straight onto a paren list.
+              skip = type_span_generic_call(spec, tokens, nxt, count, input, trivia);
+            }
           }
         }
       }
@@ -3078,10 +3162,7 @@ function compile_rewrite(
 // resolve each gated rule's frame-kind names against one frame table's
 // vocabulary, aligned with rule_table. unknown names resolve to -1 and never
 // equal a real kind -- the gate (and so the rule) fails closed.
-function build_kind_gates(
-  rule_table: CompiledRule[],
-  kind_names: string[],
-): (Int32Array | null)[] {
+function build_kind_gates(rule_table: CompiledRule[], kind_names: string[]): (Int32Array | null)[] {
   return rule_table.map((r) => {
     if (r.anchor_frame_kinds === null) return null;
     const out = new Int32Array(r.anchor_frame_kinds.length);
