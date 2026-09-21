@@ -113,6 +113,14 @@ For each token, pick the upstream theme color that semantically matches. VSCode 
 
 When the upstream theme does not define a scope for a token, fall back to the most visually appropriate sibling color. Record every fallback as an inline comment on the palette line so reviewers can see the provenance. When in doubt between two plausible mappings, prefer the one that preserves the palette's color balance on a realistic sample (render the sample with the grammar-researcher's manual traces open, not a one-liner).
 
+### Font styles
+
+Upstream rules also carry `fontStyle` (`italic`, `bold`, `underline`, `strikethrough`). Port these as well. Night Owl italicises functions, constants and attribute names, and a port without them looks wrong even when every colour matches.
+
+Decide each token's style the way you decide its colour: the style shiki renders on most of that token's characters, checked against the scope rule that sets it. Shiki's `codeToTokens` reports it per token as the `fontStyle` bit mask (1 italic, 2 bold, 4 underline, 8 strikethrough). A token with no majority style gets no entry. Read the rendered style rather than the first rule that mentions the scope, because `fontStyle` resolves by scope specificity and many themes end with a catch-all rule that resets it to `""` for `punctuation`, `keyword` and similar scopes.
+
+Settle each variant separately. Upstream light and dark files do not always carry the same `fontStyle` rules: Night Owl underlines markdown links and Light Owl does not. Give every style line a scope-provenance comment, like the palette lines.
+
 ---
 
 ## Phase 3: Package scaffold
@@ -123,7 +131,7 @@ Each theme is its own package. Create `lib/theme-<name>/`:
 lib/theme-<name>/
   package.json          — name: "@twinkleplop/theme-<name>"
   src/
-    tokens.ts           — light + dark palettes as named exports (Phase 4)
+    tokens.ts           — light + dark palettes and font styles as named exports (Phase 4)
     tokens.test.ts      — palette completeness validation (Phase 5)
     build.ts            — generates the three .css files and their .d.ts stubs from tokens.ts (Phase 6)
   dist/
@@ -180,10 +188,11 @@ Do NOT add a JS default export — the default (`.`) is the combined stylesheet.
 Write `lib/theme-<name>/src/tokens.ts` in this order:
 
 1. Source-citation header (URLs consulted for both variants, upstream commits/tags if available)
-2. `import type { theme_palette } from "@twinkleplop/core/types"` (one-time migration: define the `theme_palette` type in `@twinkleplop/core/types` so every theme package can import it without depending on the site)
+2. `import type { theme_palette, theme_styles } from "@twinkleplop/core/types"` (one-time migration: define the `theme_palette` type in `@twinkleplop/core/types` so every theme package can import it without depending on the site)
 3. Named export for light: `export const light: theme_palette = { ... }`
 4. Named export for dark: `export const dark: theme_palette = { ... }`
-5. No default export
+5. Named exports for the font styles: `export const light_styles: theme_styles = { ... }` and `export const dark_styles: theme_styles = { ... }`. Export `{}` when upstream sets no font styles. When both variants agree, point both exports at one object.
+6. No default export
 
 The variants are simply named `light` and `dark` — the package name already carries the theme family, so `import { light, dark } from "@twinkleplop/theme-ayu/tokens"` reads naturally.
 
@@ -206,6 +215,20 @@ Each variant specifies a background as an explicit palette key. This is the page
 - `"inherit"` is valid and common for whitespace tokens (`space`, `tab`, `newline`, `carriage_return`). Do not color whitespace unless the source theme specifically does.
 - Every other value must be a hex color (e.g. `"#ff7b72"`). Do not use shorthand or named colors.
 - Every color MUST be copied verbatim from the source, not eyeballed. Paste the hex, do not transcribe it.
+
+### Font styles shape
+
+`theme_styles` maps a canonical token name to a non-empty list of `font_style` keywords, the same words VS Code uses in `fontStyle`:
+
+```ts
+export const dark_styles: theme_styles = {
+  comment: ["italic"], // comment
+  bold: ["bold"], // markup.bold
+  autolink: ["underline"], // markup.underline
+};
+```
+
+Keys must be canonical token names, never `background_color` or whitespace. Tokens without an entry render plain.
 
 ### Borrowed variant
 
@@ -235,9 +258,10 @@ The test is identical across themes — only the import path of the local tokens
 ```ts
 import { describe, expect, it } from "vitest";
 import * as TOKENS from "@twinkleplop/core/tokens";
-import { dark, light } from "./tokens.ts";
+import { dark, dark_styles, light, light_styles } from "./tokens.ts";
 
 const EXTRA_KEYS = ["background_color"] as const;
+const FONT_STYLES = new Set(["italic", "bold", "underline", "strikethrough"]);
 
 const canonical_token_names = (): Set<string> => {
   const names = new Set<string>();
@@ -271,6 +295,27 @@ const describe_variant = (name: string, palette: Record<string, string>) => {
 
 describe_variant("light", light);
 describe_variant("dark", dark);
+
+const describe_styles = (name: string, styles: Record<string, readonly string[] | undefined>) => {
+  describe(name, () => {
+    const tokens = canonical_token_names();
+
+    it("styles only canonical tokens", () => {
+      const unknown = Object.keys(styles).filter((k) => !tokens.has(k) || k === "background_color");
+      expect(unknown).toEqual([]);
+    });
+
+    it("uses only vs code font style keywords", () => {
+      const bad = Object.entries(styles).filter(
+        ([, style]) => !style?.length || !style.every((s) => FONT_STYLES.has(s)),
+      );
+      expect(bad).toEqual([]);
+    });
+  });
+};
+
+describe_styles("light_styles", light_styles);
+describe_styles("dark_styles", dark_styles);
 ```
 
 Why the test runs per-variant rather than as a single assertion: when light and dark drift independently (common when a port was copied from only one variant), per-variant failures tell you exactly which palette to fix. A single combined assertion only tells you something is wrong somewhere.
@@ -428,6 +473,33 @@ for (const name of ["index", "light", "dark"]) {
 
 Key rule: `background_color` MUST appear in every `:root { ... }` and `.dark { ... }` block as `--twp-background`, but MUST NOT appear in any binding selector. The variable is the theme's offer; the consumer decides where (if anywhere) to apply it.
 
+### Font style variables
+
+The sketch above leaves out font styles and the `dist/tokens.js` copy. Start from `lib/theme-night-owl/src/build.ts`, which handles both.
+
+Font styles are variables too, so `.dark` can switch them and consumers can override them. For every token that either variant styles, each variable block declares only the properties either variant sets, with the plain value where that variant leaves the token alone:
+
+```css
+:root {
+  --twp-comment-font-style: italic;
+  --twp-autolink-text-decoration: none;
+}
+.dark {
+  --twp-comment-font-style: italic;
+  --twp-autolink-text-decoration: underline;
+}
+.twinkleplop .comment {
+  color: var(--twp-comment);
+  font-style: var(--twp-comment-font-style);
+}
+.twinkleplop .autolink {
+  color: var(--twp-autolink);
+  text-decoration: var(--twp-autolink-text-decoration);
+}
+```
+
+`italic` sets `font-style`, `bold` sets `font-weight`, and `underline` and `strikethrough` share `text-decoration` (`underline line-through` when both apply). The plain values are `normal`, `normal` and `none`. `dist/tokens.js` and `dist/tokens.d.ts` export `light_styles` and `dark_styles` beside the palettes.
+
 Follow project conventions from `AGENTS.md` (tabs, double quotes, snake_case identifiers).
 
 ### One-time migration: align the site with the new prefix
@@ -453,6 +525,7 @@ Wire the theme pair into the lab (`/explore`) theme picker so both variants are 
      ```
    - Add the family to `theme_name` (e.g. `"ayu"`), both variants to `theme_variant` (`"ayu-light" | "ayu-dark"`), and both entries to `THEMES` with the matching shiki theme id for each (check the id exists in shiki's bundled themes; the mapping is explicit because upstream names diverge). For a borrowed variant, use the partner's shiki id (`"nord-light"` maps to `"solarized-light"`) so both panes render the same colours.
    - Append the family to `THEME_NAMES` — that array is the picker's option list.
+   - Import `light_styles` and `dark_styles` too, and set `styles` on both `THEMES` entries. The lab turns them into rules with `styles_to_css()`, which also clears the italic comments and bold markdown `explore.css` gives themes without `styles`.
 2. In `lib/_site/src/lib/docs/themes_data.ts`, add a swatch entry to `THEMES` for the docs theme reference page (`/docs/themes-ref`). Copy the preview values from `tokens.ts`, as the file's header comment says. Update the package count in the intro sentence of `lib/_site/src/routes/docs/themes-ref/+page.svelte`, and the list of theme packages in `lib/_site/src/routes/docs/getting_started/+page.svelte`. Add the package to `lib/_site/package.json` dependencies (`"workspace:*"`) and run `pnpm install` so the site can import its tokens.
    - For a borrowed pair, the card must say which variant is borrowed and from where, e.g. "light: Solarized Light". If the `swatch` type has no field for this yet, add an optional one and render it in `lib/_site/src/lib/docs/components/ThemeSwatch.svelte` in place of the plain "light + dark" label.
 3. Write `lib/theme-<name>/README.md` if the package does not have one: the install line, the three stylesheet imports, and the `./tokens` import. npm always publishes the README, whatever `files` says. For a borrowed pair, say near the top that upstream publishes no variant for that mode and name the partner the package uses instead.
@@ -472,6 +545,7 @@ Run in order:
 4. Sanity-check the three generated files: `index.css` must contain BOTH a `:root { ... }` block and a `.dark { ... }` block, with the same set of `--twp-*` keys in each. Both must include `--twp-background` but NO binding rule referencing `--twp-background`. `light.css` and `dark.css` must each contain exactly one `:root { ... }` block.
 5. `pnpm --dir lib/_site exec vite dev` — open the lab, pick the new theme, and flip the mode switch so you see BOTH variants
 6. Visual check: for each variant, view at least three languages with very different token vocabularies (e.g. rust, css, markdown). Token colors you picked for `lifetime`, `macro`, `property`, `selector`, markdown-only tokens only light up under the right language — do not skip this step because javascript looks fine.
+7. Compare italics, bold and underlines against the shiki pane as well as colours, in both variants.
 
 If a token renders as plain text, the palette is missing a key. If a token renders as the wrong color, you either picked the wrong scope mapping in Phase 2 or transcribed the hex wrong in Phase 4. Compare against a screenshot from the upstream theme's README or the VSCode marketplace listing.
 
@@ -482,6 +556,7 @@ If a token renders as plain text, the palette is missing a key. If a token rende
 The skill is complete when:
 
 - `lib/theme-<name>/src/tokens.ts` exports both `light` and `dark`, each containing every name from `@twinkleplop/core/tokens` plus `background_color`, and the source-citation header points at URLs you actually opened for both variants (for a borrowed pair: the upstream variant's URLs plus the partner package).
+- `tokens.ts` also exports `light_styles` and `dark_styles`, holding the italics, bold and underlines upstream sets (or `{}` when it sets none), and the lab renders them.
 - `lib/theme-<name>/src/tokens.test.ts` exists and `pnpm --filter @twinkleplop/theme-<name> test` passes.
 - `lib/theme-<name>/dist/index.css`, `light.css`, and `dark.css` exist and were generated from `tokens.ts` by `build.ts` (not hand-written). Each stylesheet declares `--twp-background` in its variable block(s) and has no selector binding it.
 - `package.json` exports include `.`, `./light`, `./dark`, and `./tokens`, and each stylesheet export has a `types` condition (listed first) pointing at a generated `.d.ts`; scripts include `build` and `test`.
@@ -494,3 +569,4 @@ Report back to the user with:
 - Any scope mappings that had to fall back (which tokens, to what, and why).
 - Any sources that disagreed with upstream and which one won.
 - The two `background_color` hexes chosen (light and dark) and the upstream field they came from (or the partner package, for a borrowed variant).
+- Which tokens are italic, bold or underlined in each variant, and any upstream styles that could not be kept because twinkleplop merges the tokens they apply to.

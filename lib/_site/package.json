@@ -35,6 +35,7 @@
     "@twinkleplop/svelte": "workspace:*",
     "@twinkleplop/theme-atom-one": "workspace:*",
     "@twinkleplop/theme-github": "workspace:*",
+    "@twinkleplop/theme-night-owl": "workspace:*",
     "@twinkleplop/theme-rose-pine": "workspace:*",
     "@twinkleplop/theme-solarized": "workspace:*",
     "@twinkleplop/toml": "workspace:*",

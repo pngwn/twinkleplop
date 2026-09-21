@@ -1,3 +1,4 @@
+import type { theme_styles } from "@twinkleplop/core/types";
 import type { token_palette } from "./themes";
 
 // produces an inline style string (without the `style=` wrapper) that
@@ -16,4 +17,22 @@ export function palette_to_vars(palette: token_palette): string {
     parts.push(`--twp-${var_name}:${palette[key]}`);
   }
   return parts.join(";");
+}
+
+// the first rule outranks the italic comments and bold markdown explore.css gives every theme
+export function styles_to_css(styles: theme_styles, scope: string): string {
+  const rules = [`${scope} .tok.tok{font-style:normal;font-weight:normal;text-decoration:none}`];
+  for (const [key, style = []] of Object.entries(styles)) {
+    const decorations = [
+      style.includes("underline") && "underline",
+      style.includes("strikethrough") && "line-through",
+    ].filter(Boolean);
+    const declarations = [
+      style.includes("italic") && "font-style:italic",
+      style.includes("bold") && "font-weight:bold",
+      decorations.length > 0 && `text-decoration:${decorations.join(" ")}`,
+    ].filter(Boolean);
+    rules.push(`${scope} .tok.${key}{${declarations.join(";")}}`);
+  }
+  return rules.join("\n");
 }

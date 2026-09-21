@@ -15,9 +15,16 @@ import {
 	light as solarized_light
 } from '@twinkleplop/theme-solarized/tokens';
 import {
+	dark as night_owl_dark,
+	dark_styles as night_owl_dark_styles,
+	light as night_owl_light,
+	light_styles as night_owl_light_styles
+} from '@twinkleplop/theme-night-owl/tokens';
+import {
 	dark as rose_pine_dark,
 	light as rose_pine_light
 } from '@twinkleplop/theme-rose-pine/tokens';
+import type { theme_styles } from '@twinkleplop/core/types';
 
 export type theme_variant =
 	| 'github-light'
@@ -26,14 +33,18 @@ export type theme_variant =
 	| 'atom-one-dark'
 	| 'solarized-light'
 	| 'solarized-dark'
+	| 'night-owl-light'
+	| 'night-owl-dark'
 	| 'rose-pine-light'
 	| 'rose-pine-dark';
-export type theme_name = 'github' | 'atom-one' | 'solarized' | 'rose-pine';
+export type theme_name = 'github' | 'atom-one' | 'solarized' | 'night-owl' | 'rose-pine';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
 	palette: token_palette;
 	shiki_id: string;
+	// absent for themes that leave font styles to the lab stylesheet
+	styles?: theme_styles;
 }
 
 // shiki ships TWO github theme families: `github-dark` / `github-light`
@@ -49,6 +60,16 @@ export const THEMES: Record<theme_variant, theme_def> = {
 	'atom-one-dark': { palette: atom_one_dark, shiki_id: 'one-dark-pro' },
 	'solarized-light': { palette: solarized_light, shiki_id: 'solarized-light' },
 	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' },
+	'night-owl-light': {
+		palette: night_owl_light,
+		shiki_id: 'night-owl-light',
+		styles: night_owl_light_styles
+	},
+	'night-owl-dark': {
+		palette: night_owl_dark,
+		shiki_id: 'night-owl',
+		styles: night_owl_dark_styles
+	},
 	'rose-pine-light': { palette: rose_pine_light, shiki_id: 'rose-pine-dawn' },
 	'rose-pine-dark': { palette: rose_pine_dark, shiki_id: 'rose-pine' }
 };
@@ -94,7 +115,13 @@ export const FONTS: mono_font[] = [
 	}
 ];
 
-export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized', 'rose-pine'];
+export const THEME_NAMES: theme_name[] = [
+	'github',
+	'atom-one',
+	'solarized',
+	'night-owl',
+	'rose-pine'
+];
 
 export interface lab_view {
 	theme: theme_name;

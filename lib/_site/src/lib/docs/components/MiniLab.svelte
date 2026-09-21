@@ -27,9 +27,8 @@ console.log(msg);`,
 	let parse_ms = $state(0);
 	let highlight_supported = $state(true);
 
-	// prefix avoids clashing with site-wide `::highlight(keyword)` rules in
-	// highlight-styles.css. only one MiniLab should be mounted per page; if
-	// that ever changes, switch to per-instance names plus adoptedStyleSheets.
+	// prefix keeps clear of other highlight rules on the page
+	// names are not per instance so mount one MiniLab per page
 	function hl_name(token_type: string) {
 		return `mini_${token_type}`;
 	}
@@ -115,7 +114,6 @@ console.log(msg);`,
 		}
 
 		for (const [type_name, ranges] of by_type) {
-		console.log(type_name)
 			CSS.highlights.set(hl_name(type_name), new Highlight(...ranges));
 		}
 
