@@ -21,6 +21,12 @@ import {
 	light_styles as night_owl_light_styles
 } from '@twinkleplop/theme-night-owl/tokens';
 import {
+	dark as rose_pine_dark,
+	dark_styles as rose_pine_dark_styles,
+	light as rose_pine_light,
+	light_styles as rose_pine_light_styles
+} from '@twinkleplop/theme-rose-pine/tokens';
+import {
 	dark as ayu_dark,
 	dark_styles as ayu_dark_styles,
 	light as ayu_light,
@@ -37,9 +43,11 @@ export type theme_variant =
 	| 'solarized-dark'
 	| 'night-owl-light'
 	| 'night-owl-dark'
+	| 'rose-pine-light'
+	| 'rose-pine-dark'
 	| 'ayu-light'
 	| 'ayu-dark';
-export type theme_name = 'github' | 'atom-one' | 'solarized' | 'night-owl' | 'ayu';
+export type theme_name = 'github' | 'atom-one' | 'solarized' | 'night-owl' | 'rose-pine' | 'ayu';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
@@ -71,6 +79,16 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		palette: night_owl_dark,
 		shiki_id: 'night-owl',
 		styles: night_owl_dark_styles
+	},
+	'rose-pine-light': {
+		palette: rose_pine_light,
+		shiki_id: 'rose-pine-dawn',
+		styles: rose_pine_light_styles
+	},
+	'rose-pine-dark': {
+		palette: rose_pine_dark,
+		shiki_id: 'rose-pine',
+		styles: rose_pine_dark_styles
 	},
 	'ayu-light': { palette: ayu_light, shiki_id: 'ayu-light', styles: ayu_light_styles },
 	'ayu-dark': { palette: ayu_dark, shiki_id: 'ayu-dark', styles: ayu_dark_styles }
@@ -117,7 +135,14 @@ export const FONTS: mono_font[] = [
 	}
 ];
 
-export const THEME_NAMES: theme_name[] = ['github', 'atom-one', 'solarized', 'night-owl', 'ayu'];
+export const THEME_NAMES: theme_name[] = [
+	'github',
+	'atom-one',
+	'solarized',
+	'night-owl',
+	'rose-pine',
+	'ayu'
+];
 
 export interface lab_view {
 	theme: theme_name;

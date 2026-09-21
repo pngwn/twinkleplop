@@ -134,6 +134,33 @@ export const THEMES: swatch[] = [
     chips: ["#c792ea", "#ecc48d", "#82aaff", "#c5e478"],
   },
   {
+    name: "rosé pine",
+    package_name: "@twinkleplop/theme-rose-pine",
+    dark: {
+      bg: "#191724",
+      fg: "#e0def4",
+      com: "#6e6a86",
+      kw: "#31748f",
+      str: "#f6c177",
+      fn: "#ebbcba",
+      param: "#c4a7e7",
+      type: "#9ccfd8",
+      num: "#ebbcba",
+    },
+    light: {
+      bg: "#faf4ed",
+      fg: "#575279",
+      com: "#9893a5",
+      kw: "#286983",
+      str: "#ea9d34",
+      fn: "#d7827e",
+      param: "#907aa9",
+      type: "#56949f",
+      num: "#d7827e",
+    },
+    chips: ["#31748f", "#f6c177", "#ebbcba", "#9ccfd8"],
+  },
+  {
     name: "ayu",
     package_name: "@twinkleplop/theme-ayu",
     dark: {
