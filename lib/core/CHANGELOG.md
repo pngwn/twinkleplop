@@ -1,5 +1,63 @@
 # @twinkleplop/core
 
+## 0.1.2
+### Patch Changes
+
+
+
+- [#53](https://github.com/pngwn/twinkleplop/pull/53) [`4f1ce83`](https://github.com/pngwn/twinkleplop/commit/4f1ce837b309e8d2e26b8a2967fa8bb9b183eb03) Thanks [@pngwn](https://github.com/pngwn)! - Classify two brace positions the prev-token rules read wrongly. A function body behind a return-type annotation (`function f(state: number): void { ... }`) fell through to `object`, because the token before the brace is the tail of the type rather than the `)` the block rule looks for; a `case` arm with a block body (`case "bytes": { ... }`) matched the annotation rule on its `:` and became `type_literal`. Both now classify as `block`, which is what the claim passes gate on — a statement inside such a body is no longer a candidate member.
+  
+  `BraceKindRule` gains two optional conditions to express this: `scan_back`, a bounded backward walk that lets a rule key on the shape of a whole annotation instead of the one token before the brace, and `in_kinds`, an enclosing-frame gate that keeps the `case` rule off a reserved word used as an object key (`{ default: { a: 1 } }` looks identical until you know the enclosing frame is an object literal). The return-type rules accept both spellings of a builtin type name, since the TSX grammar tags `string` / `number` as `type` where the TypeScript grammar leaves them identifiers. Brace-kind prev rules are now bucketed by the previous token's type, so a longer rule list costs nothing for braces the rules do not apply to.
+  
+  Also fixes parameter names going untagged in the second arm of a ternary (`c ? (i: number) => a : (i: number) => b`) inside a function body. `params()` with `skip_in_type_position` treated any `(` after a `:` as a function type unless the enclosing frame was an object literal, which happened to be what a mis-classified function body looked like; it now consults the tracker's ternary-colon signal, discounting the `?` of an optional member (`onHover?: (index: number) => void`), which the mode-blind qmark counting cannot tell from a ternary on its own.
+
+
+- [#53](https://github.com/pngwn/twinkleplop/pull/53) [`4bbdfbb`](https://github.com/pngwn/twinkleplop/commit/4bbdfbbd4a13d2fc4099d0b37563fda1b31cc5f4) Thanks [@pngwn](https://github.com/pngwn)! - Close generic parameter lists that end on a coalesced `>`. The tokenizer emits a run of `>` as one right-shift operator, so `make<T extends Record<string, unknown>>(base: T)` closes both angle groups on a single `>>` token. Three of the walkers that count angle depth only understood a lone `>`, never found the close, and gave up on the whole declaration: the name stayed `identifier` rather than `function`, the type parameter `T` stayed `identifier` rather than `type`, and `base` was never tagged as a parameter.
+  
+  - `type_span`'s generic-argument verification and its span walk pop as many levels as the run has `>` characters. The walk previously never came back down, so once verification was fixed the span would have run on past the close and claimed every later identifier as a type.
+  - `promote_ts_generic_calls` does the same.
+  - Class, interface and object method parameter lists now step over type parameters, the way function declarations already did, so `interface I { make<T>(base: T): T }` tags `base` as a parameter.
+  
+  `>=` and `>>=` still close nothing, and a shift expression such as `a < b >> c` is still rejected by the generic-argument check.
+  
+  The same walk decides which identifiers inside a `{ ... }` name a member rather than refer to one, and it recognised only two of the four shapes. It now also skips:
+  
+  - a method signature's name, so `type T = { make<U>(base: U): U }` keeps the `function` the grammar gave it instead of being claimed as a type. A plain type reference (`{ a: Foo<U> }`) is still recorded, because only an angle group that closes straight onto a parameter list marks a method.
+  - an optional key written as a separate `?` and `:`, which is what the JavaScript family emits. `{ brackets: { paren?: { open: string } } }` claimed `paren` as a type; it is a property. The same fix names an optional parameter in a function type (`(options?: Options) => void`).
+
+
+- [#53](https://github.com/pngwn/twinkleplop/pull/53) [`4bbdfbb`](https://github.com/pngwn/twinkleplop/commit/4bbdfbbd4a13d2fc4099d0b37563fda1b31cc5f4) Thanks [@pngwn](https://github.com/pngwn)! - Classify a brace that shares a token with the punctuation before it. Grammars coalesce adjacent punctuation, so `) {` arrives as two tokens and `){` as one — the same code differing only by a space. The frame tracker classified a brace from the *previous token*, which for `switch(k){` is the identifier `k`, so no rule matched and the body fell through to the fallback kind. A `switch` body read as an object literal, and an arrow returning an object (`x => ({ a: 1 })`) read as a block because the `=>` rule matched a brace that the `(` had already separated from it.
+  
+  `BraceKindSpec.prev_rules` now also apply to the character immediately before a mid-token brace. Same rules, same kinds: `) {` and `){` classify identically.
+
+
+- [#47](https://github.com/pngwn/twinkleplop/pull/47) [`75ac009`](https://github.com/pngwn/twinkleplop/commit/75ac0094b8a5039b35d5c204070b48fec0c7daa8) Thanks [@pngwn](https://github.com/pngwn)! - Re-export `Grammar`, `CompiledGrammar`, `GrammarRule` and `GrammarState` from `@twinkleplop/core/compile`. `compile` and `define_grammar` return these types, but they were only reachable through `@twinkleplop/core/types`, so a package that built a grammar with them could not emit its own declarations: TypeScript reported `TS4023`/`TS4082` for a type it could not name through the subpath the value came from.
+
+
+
+- [#53](https://github.com/pngwn/twinkleplop/pull/53) [`4bbdfbb`](https://github.com/pngwn/twinkleplop/commit/4bbdfbbd4a13d2fc4099d0b37563fda1b31cc5f4) Thanks [@pngwn](https://github.com/pngwn)! - Stop two kinds of frame-tracker state from outliving the statement that set them. Both fed the same failure: a brace classified as something it is not, and every pass that reads frame kinds following it.
+  
+  **The angle counter.** `<` opens a type-argument list, but in the C family it is also less-than, so `for (let i = 0; i < n; i++)` armed a level that never closed. The counter is only read when a `{` opens, where a non-zero depth means "inside a generic" — so one unbalanced comparison reclassified every brace in the rest of the document. In a long file a class body, an interface body and a `switch` body all ended up as `type_literal`, and the passes that read frame kinds followed it: class fields were claimed as properties, and TypeScript type positions and parameter lists went unrecognised.
+  
+  `BraceKindSpec.angles` takes a new `reset_chars`, and a closing brace resynchronises the counter unconditionally. A type-argument list never crosses either at its own nesting level, so a real generic constraint (`class C<T extends { id: V }> {}`) classifies as before. The JavaScript family sets `reset_chars: ";"`.
+  
+  **The pending body marker.** `class` and `interface` are legal property names, so `const o = { class: 1 }` armed a marker that no brace of its own ever consumed — and the next unrelated `{` claimed it. `const o = { class: 1 }; const p = { a: 1 }` classified `p`'s literal as a class body, so `a` was not a property key.
+  
+  `BraceKindSpec` takes a new `marker_reset_chars`: a pending marker is discarded when one of those characters appears at the brace depth the marker was armed at. A class head never contains one at its own depth, while a generic constraint's `{ a: string; b: X }` sits a level deeper and is untouched. The JavaScript family sets `";,:"`.
+  
+  This corrects brace kinds in files past the first unbalanced comparison, so highlighting there changes — mostly identifiers that now resolve to `type` or `parameter`, and class fields that are no longer marked as properties.
+
+
+- [#47](https://github.com/pngwn/twinkleplop/pull/47) [`75ac009`](https://github.com/pngwn/twinkleplop/commit/75ac0094b8a5039b35d5c204070b48fec0c7daa8) Thanks [@pngwn](https://github.com/pngwn)! - Fix the debug and introspector declarations rejecting the documented calls. The declaration bundle emits each entry point as a self-contained block, so a class reachable from several subpaths was inlined once per block; because TypeScript compares classes with `private` members nominally, those copies were mutually unassignable. Passing `TokenizerIntrospector` from `/introspector` to `tokenize` from `/debug`, or to `GrammarMapper.create_enhanced_introspector` from `/grammar-mapper`, reported `TS2345` even though both sides are the same class at runtime. The bundled declarations no longer carry `private` members, so the copies share one structural identity.
+
+
+
+- [#47](https://github.com/pngwn/twinkleplop/pull/47) [`75ac009`](https://github.com/pngwn/twinkleplop/commit/75ac0094b8a5039b35d5c204070b48fec0c7daa8) Thanks [@pngwn](https://github.com/pngwn)! - Fix the unparseable reserved-word declarations in `dist/types.d.ts`. The bundle contained `export const "function" = "function";` and `export const "null" = "null";`, neither of which is valid TypeScript, so any consumer importing the package failed to compile with `TS1134` — and a parse error in a `.d.ts` cannot be suppressed with `skipLibCheck`. The two reserved-word token exports are now declared as legal identifiers and re-exported under their required names, so `TOKENS.function` and `TOKENS["null"]` keep working.
+
+
+
+- [#53](https://github.com/pngwn/twinkleplop/pull/53) [`ae80327`](https://github.com/pngwn/twinkleplop/commit/ae8032733702e2a838ddabab7f641120a59aed5e) Thanks [@pngwn](https://github.com/pngwn)! - Read a template interpolation's brace as an expression rather than an object literal. The `{` in `${` shares a token with the `$`, so the frame tracker could not place it and fell through to the fallback kind. `` `${function () {}}` `` was tracked as an object literal, and `` `${ foo(a) }` `` tagged `a` as a parameter as if `foo` were a method signature.
+
 ## 0.1.1
 ### Patch Changes
 

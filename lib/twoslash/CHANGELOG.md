@@ -1,5 +1,29 @@
 # @twinkleplop/twoslash
 
+## 0.1.2
+### Patch Changes
+
+
+
+- [#51](https://github.com/pngwn/twinkleplop/pull/51) [`adb982b`](https://github.com/pngwn/twinkleplop/commit/adb982bced5f3772f63cb12a9f955cbd8d5ff148) Thanks [@pngwn](https://github.com/pngwn)! - Render `^|` completion lists. Twoslash reports a completion as a zero-length node, but `render` treated it as a range wrapper like hovers and errors; a wrapper only opens a span once its range covers a character, so the list — and the `.twoslash-completion` / `.twoslash-completions` styles in `style.css` — never made it into the output. Completions are now point annotations: an empty host emitted at the caret, inside any wrapper it falls within but outside the token span, with the list anchored to it. `@twinkleplop/twoslash-svelte` picks this up through the shared renderer.
+
+
+
+- [#47](https://github.com/pngwn/twinkleplop/pull/47) [`75ac009`](https://github.com/pngwn/twinkleplop/commit/75ac0094b8a5039b35d5c204070b48fec0c7daa8) Thanks [@pngwn](https://github.com/pngwn)! - Change the default `class_name` from `"highlight twoslash"` to `"twinkleplop twoslash"`. Themes bind token colours to `.twinkleplop .<token>`, so default Twoslash output carried no colour at all while a plain language highlighter rendered correctly. The `twoslash` class is kept because it carries the popover and query styling.
+  
+  This changes the `<pre>` class in the rendered HTML. If you style `pre.highlight`, pass `class_name: "highlight twoslash"` to restore the previous value.
+
+
+- [#52](https://github.com/pngwn/twinkleplop/pull/52) [`a8aa0a3`](https://github.com/pngwn/twinkleplop/commit/a8aa0a35c4f35cb2d925692fcb125df9f790fea4) Thanks [@pngwn](https://github.com/pngwn)! - Mark hover popovers `aria-hidden="true"`. A popover sits inline between the tokens it describes and holds a type signature, docs and tags, so anything that reads the markup as text rather than rendering it spliced that payload into the code: `const greeting = "hello world"` came back as `const greetingconst greeting: "hello world" = "hello world"`. Only CSS kept the popovers out of the way, and a screen reader, a search indexer or an HTML-to-markdown fetcher has none. The rendered text of a snippet is now the snippet.
+
+
+
+- [#47](https://github.com/pngwn/twinkleplop/pull/47) [`75ac009`](https://github.com/pngwn/twinkleplop/commit/75ac0094b8a5039b35d5c204070b48fec0c7daa8) Thanks [@pngwn](https://github.com/pngwn)! - Add `@twinkleplop/twoslash/style.css`, the layout and visibility rules for the `twoslash-*` spans. A theme only colours tokens, so importing one left every popover rendering inline and hover type text appeared in the middle of the code. The stylesheet is colour-free — it uses `currentColor` and two overridable custom properties — so it composes with any theme.
+
+- Updated dependencies [[`4f1ce83`](https://github.com/pngwn/twinkleplop/commit/4f1ce837b309e8d2e26b8a2967fa8bb9b183eb03), [`4bbdfbb`](https://github.com/pngwn/twinkleplop/commit/4bbdfbbd4a13d2fc4099d0b37563fda1b31cc5f4), [`4bbdfbb`](https://github.com/pngwn/twinkleplop/commit/4bbdfbbd4a13d2fc4099d0b37563fda1b31cc5f4), [`75ac009`](https://github.com/pngwn/twinkleplop/commit/75ac0094b8a5039b35d5c204070b48fec0c7daa8), [`4bbdfbb`](https://github.com/pngwn/twinkleplop/commit/4bbdfbbd4a13d2fc4099d0b37563fda1b31cc5f4), [`75ac009`](https://github.com/pngwn/twinkleplop/commit/75ac0094b8a5039b35d5c204070b48fec0c7daa8), [`75ac009`](https://github.com/pngwn/twinkleplop/commit/75ac0094b8a5039b35d5c204070b48fec0c7daa8), [`ae80327`](https://github.com/pngwn/twinkleplop/commit/ae8032733702e2a838ddabab7f641120a59aed5e), [`4bbdfbb`](https://github.com/pngwn/twinkleplop/commit/4bbdfbbd4a13d2fc4099d0b37563fda1b31cc5f4), [`4bbdfbb`](https://github.com/pngwn/twinkleplop/commit/4bbdfbbd4a13d2fc4099d0b37563fda1b31cc5f4), [`4bbdfbb`](https://github.com/pngwn/twinkleplop/commit/4bbdfbbd4a13d2fc4099d0b37563fda1b31cc5f4), [`75ac009`](https://github.com/pngwn/twinkleplop/commit/75ac0094b8a5039b35d5c204070b48fec0c7daa8)]:
+  - @twinkleplop/core@0.1.2
+  - @twinkleplop/typescript@0.1.2
+
 ## 0.1.1
 ### Patch Changes
 
