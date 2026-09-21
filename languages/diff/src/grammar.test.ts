@@ -52,3 +52,55 @@ describe("Diff Grammar", () => {
     });
   }
 });
+
+describe("stack balance", () => {
+  // the state stack has 256 slots, a pop past it loses multi char patterns such as the hunk marker
+  it("tokenizes the tail after 300 of every line form", () => {
+    const unit = [
+      "diff --git a/f b/f",
+      "index 1234567..89abcde 100644",
+      "--- a/f",
+      "+++ b/f",
+      "@@ -1,2 +1,2 @@ fn main",
+      "-a",
+      "+b",
+      "@@ -9,2 +9,2 @@",
+      " c",
+      "--- a/g\t2024-01-01 00:00:00",
+      "+++ b/g\t2024-01-01 00:00:00",
+      "@@ -1 +1 @@",
+      "-x",
+      "+y",
+      "*** a/h\t2024-01-01",
+      "--- b/h\t2024-01-01",
+      "***************",
+      "*** 1,2 ****",
+      "! old",
+      "--- 1,2 ----",
+      "! new",
+      "1c1",
+      "< p",
+      "---",
+      "> q",
+      "",
+    ].join("\n");
+    const input = `${unit.repeat(300)}diff --git a/z b/z\n@@ -1 +1 @@\n+z\n`;
+    const tail = get_tokens(input)
+      .slice(-12)
+      .map((t) => [t.type, t.match]);
+    expect(tail).toEqual([
+      ["keyword", "diff "],
+      ["keyword", "--git"],
+      ["string", "a/z"],
+      ["string", "b/z"],
+      ["label", "@@ "],
+      ["punctuation", "-"],
+      ["number", "1"],
+      ["punctuation", "+"],
+      ["number", "1"],
+      ["label", "@@"],
+      ["inserted_marker", "+"],
+      ["inserted", "z"],
+    ]);
+  });
+});
