@@ -893,7 +893,6 @@
 }
 .explore-app .tok.comment {
 	color: var(--twp-comment);
-	font-style: italic;
 }
 .explore-app .tok.identifier {
 	color: var(--twp-identifier);
@@ -1030,7 +1029,6 @@
 }
 .explore-app .tok.bold {
 	color: var(--twp-bold);
-	font-weight: 700;
 }
 .explore-app .tok.code {
 	color: var(--twp-code);
@@ -1043,14 +1041,12 @@
 }
 .explore-app .tok.italic {
 	color: var(--twp-italic);
-	font-style: italic;
 }
 .explore-app .tok.link_text {
 	color: var(--twp-link_text);
 }
 .explore-app .tok.strike {
 	color: var(--twp-strike);
-	text-decoration: line-through;
 }
 .explore-app .tok.url {
 	color: var(--twp-url);

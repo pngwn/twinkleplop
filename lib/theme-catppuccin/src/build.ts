@@ -64,7 +64,8 @@ const binding_block = (palette: Record<string, string>) => {
   return `${lines.join("\n")}\n`;
 };
 
-const HEADER = "/* @twinkleplop/theme-github - generated from src/tokens.ts, do not edit */\n\n";
+const HEADER =
+  "/* @twinkleplop/theme-catppuccin - generated from src/tokens.ts, do not edit */\n\n";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(here, "..", "dist");

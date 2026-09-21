@@ -188,6 +188,33 @@ export const THEMES: swatch[] = [
     chips: ["#ff8f40", "#aad94c", "#ffb454", "#d2a6ff"],
   },
   {
+    name: "catppuccin",
+    package_name: "@twinkleplop/theme-catppuccin",
+    dark: {
+      bg: "#1e1e2e",
+      fg: "#cdd6f4",
+      com: "#9399b2",
+      kw: "#cba6f7",
+      str: "#a6e3a1",
+      fn: "#89b4fa",
+      param: "#eba0ac",
+      type: "#cba6f7",
+      num: "#fab387",
+    },
+    light: {
+      bg: "#eff1f5",
+      fg: "#4c4f69",
+      com: "#7c7f93",
+      kw: "#8839ef",
+      str: "#40a02b",
+      fn: "#1e66f5",
+      param: "#e64553",
+      type: "#8839ef",
+      num: "#fe640b",
+    },
+    chips: ["#cba6f7", "#a6e3a1", "#89b4fa", "#fab387"],
+  },
+  {
     name: "material",
     package_name: "@twinkleplop/theme-material",
     dark: {

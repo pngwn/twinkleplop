@@ -3,7 +3,7 @@
 // https://github.com/microsoft/vscode/blob/main/extensions/theme-solarized-dark/themes/solarized-dark-color-theme.json
 // https://github.com/microsoft/vscode/blob/main/extensions/theme-solarized-light/themes/solarized-light-color-theme.json
 
-import type { theme_palette } from "@twinkleplop/core/types";
+import type { theme_palette, theme_styles } from "@twinkleplop/core/types";
 
 const base03 = "#002b36";
 const base01 = "#586e75";
@@ -161,3 +161,19 @@ const palette = (
 export const light: theme_palette = palette(base3, base00, base1, base01);
 
 export const dark: theme_palette = palette(base03, base0, base01, base1);
+
+// keyword has no entry, upstream bolds storage keywords like const but not if
+const styles: theme_styles = {
+  bold: ["bold"], // markup.bold
+  comment: ["italic"], // comment
+  format: ["bold"], // storage.type.format.python via storage
+  hash: ["italic"], // meta.diff.index via meta.diff
+  heading: ["bold"], // markup.heading, diff file headers are italic upstream
+  heading_marker: ["bold"], // markup.heading
+  italic: ["italic"], // markup.italic
+  strike: ["strikethrough"], // markup.strikethrough
+};
+
+export const light_styles: theme_styles = styles;
+
+export const dark_styles: theme_styles = styles;
