@@ -1,0 +1,45 @@
+/**
+ * Doc comments are embedded, so a tag and its type expression come back
+ * as tokens. Everything else stays comment.
+ *
+ * @param {string} name - the name, and this tail is prose
+ * @param {number[]} counts
+ * @param {Partial<Config>} [options] an optional parameter
+ * @param nothing a parameter with no type
+ * @returns {Promise<void>} the description is NOT a name
+ * @type {Map<string, Foo>}
+ * @type {{ a: number, b: string }}
+ * @typedef {object} Point
+ * @callback Handler
+ * @template T
+ * @see {@link mergeDeep}
+ * @throws {RangeError}
+ */
+function documented(name, counts, options, nothing) {}
+
+/** a one-liner with @returns {number} mid-line */
+const terse = 1;
+
+/**
+ * Things that must NOT be lifted out of the comment.
+ *
+ * mail me at someone@example.com — an `@` in prose is not a tag
+ * @example
+ *   const x = { a: 1 };          // a brace in prose is not a type
+ *   if (x.a < 2) return x;
+ * @description braces {like this} only count straight after a tag
+ */
+const prose = 2;
+
+/* a plain block comment: @param {string} x stays entirely comment */
+// a line comment: @param {string} x stays entirely comment
+
+/**/
+/***/
+/** */
+
+/**
+ * An unterminated type expression runs to the end of the comment.
+ * @type {Unclosed
+ */
+const unterminated = 3;

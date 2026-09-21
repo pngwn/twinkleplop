@@ -18,7 +18,9 @@
 //     operators. The contents still highlight correctly (keywords/identifiers).
 //   - No JSX/TSX support. A separate tsx grammar would be needed.
 //   - Contextual keywords (type, interface, etc.) are always highlighted as
-//     keywords, even in the rare cases where they are used as variable names.
+//     keywords at grammar level. The reclassifier reclaims the member
+//     positions -- property keys, member access, method names -- but a
+//     reserved word used as a plain variable name still reads as a keyword.
 //   - Generic function calls like `foo<T>()` highlight foo as identifier, not
 //     function, because the probe does not scan past `<...>` to see `(`.
 //   - Mapped type modifiers (-readonly, +readonly, -?, +?) are not specially
@@ -43,10 +45,13 @@ import * as TOKENS from "@twinkleplop/core/tokens";
 import {
   BOOLEAN_LITERALS,
   KEYWORDS,
-  OP_ALL,
+  OP_ALL_OUTSIDE_MEMBER,
   REGEX_PRECEDING_KEYWORDS,
   SPECIAL_VALUES,
+  function_body_state,
   js_common,
+  member_access_entry,
+  paren_group_state,
   raw_grammar as js_grammar,
   js_tmpl_common,
 } from "@twinkleplop/javascript";
@@ -113,7 +118,10 @@ export const BUILTIN_TYPES = [
 // parameterized rule factories (extended for TypeScript)
 // ---------------------------------------------------------------------------
 
-const ts_operators = (after: string | null) => match(OP_ALL, TOKENS.operator, to(after));
+// `?.` is owned by member_access_entry, so the name after it is never
+// read as a keyword; every state below carries that entry.
+const ts_operators = (after: string | null) =>
+  match(OP_ALL_OUTSIDE_MEMBER, TOKENS.operator, to(after));
 
 const ts_keywords_literals = (regex_dest: string | null, div_dest: string | null) => [
   keyword(REGEX_PRECEDING_KEYWORDS, to(regex_dest)),
@@ -146,6 +154,15 @@ export default define_grammar({
     },
 
     // ---------------------------------------------------------------------
+    // call arguments — the shared states, rebuilt with the TypeScript
+    // keyword set so `fn(x as Foo)` and `fn(<T>y)` read correctly. the
+    // JavaScript versions inherited via `js_grammar.states` would only
+    // know the JavaScript words.
+    // ---------------------------------------------------------------------
+    function_body: function_body_state(ts_keywords_literals("regex_allow", "division")),
+    paren_group: paren_group_state(ts_keywords_literals(null, null)),
+
+    // ---------------------------------------------------------------------
     // regex_allow — initial state; `/` starts a regex here
     // override: TS keywords + built-in types + decorator
     // ---------------------------------------------------------------------
@@ -167,7 +184,8 @@ export default define_grammar({
         // property key, label) — emitted as punctuation, not operator.
         match(["(", "{", "["], TOKENS.punctuation),
         match([")", "}", "]"], TOKENS.punctuation, goto("division")),
-        match([";", ",", ".", ":"], TOKENS.punctuation),
+        ...member_access_entry("member_access"),
+        match([";", ",", ":"], TOKENS.punctuation),
 
         // identifiers
         on(["_", "$", LETTER], goto("identifier_probe")),
@@ -198,7 +216,7 @@ export default define_grammar({
         // its value or a name from its type annotation.
         match([")", "}", "]"], TOKENS.punctuation),
         match([";", ",", ":"], TOKENS.punctuation, goto("regex_allow")),
-        match(".", TOKENS.punctuation),
+        ...member_access_entry("member_access"),
 
         // identifiers
         on(["_", "$", LETTER], goto("identifier_probe")),
@@ -226,7 +244,8 @@ export default define_grammar({
         match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
         match(["(", "["], TOKENS.punctuation),
         match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
-        match([";", ",", ".", ":"], TOKENS.punctuation),
+        ...member_access_entry("member_access_tmpl"),
+        match([";", ",", ":"], TOKENS.punctuation),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
       ],
@@ -254,7 +273,7 @@ export default define_grammar({
         match("/", TOKENS.operator, goto("tmpl_regex_allow")),
         match([")", "]"], TOKENS.punctuation),
         match([";", ",", ":"], TOKENS.punctuation, goto("tmpl_regex_allow")),
-        match(".", TOKENS.punctuation),
+        ...member_access_entry("member_access_tmpl"),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
       ],

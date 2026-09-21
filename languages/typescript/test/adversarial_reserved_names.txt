@@ -1,0 +1,183 @@
+// Reserved words used as names, in TypeScript positions. Every line is
+// annotated with what the token SHOULD be.
+
+// --- should be reclassified ---
+
+// interface and type-literal members: `property`
+interface Store {
+  default: string;
+  new: number;
+  delete: boolean;
+  readonly type: string;
+}
+
+type Options = {
+  default: string;
+  class: string;
+};
+
+// TypeScript's own contextual keywords are ordinary keys
+const config = { type: 'a', interface: 'b', readonly: true, declare: 1, as: 2 };
+
+// interface methods: `function`
+interface Registry {
+  delete(key: string): void;
+  get(key: string): unknown;
+  default(): void;
+}
+
+// class methods: `function`
+class Cache {
+  delete(key: string) {}
+  static get for() {
+    return null;
+  }
+}
+
+// member access: `identifier`; called members: `function`
+const chosen = overrides?.default ?? defaults.default;
+registry.delete(chosen);
+
+// --- must NOT be reclassified ---
+
+// a construct signature is not a method named `new`
+interface Constructable {
+  new (): Constructable;
+  (): void;
+}
+
+// member modifiers stay keywords, and the member after them is the name
+interface Modified {
+  readonly id: number;
+}
+
+class Fields {
+  private readonly client: string = '';
+  public static accessor count = 0;
+}
+
+// switch arms, labels and module syntax keep their keywords
+function classify(kind: string) {
+  switch (kind) {
+    case 'a':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+export default classify;
+
+// --- the comparison that poisoned later braces ---
+
+// `<` is both a generic opener and less-than, so this used to leave the
+// angle counter armed and reclassify every brace after it
+function sum(items: number[]): number {
+  let total = 0;
+  for (let i = 0; i < items.length; i++) total += items[i];
+  return total;
+}
+
+class AfterTheLoop {
+  field: number = 1;
+  method(): void {}
+}
+
+interface AlsoAfter {
+  member: string;
+}
+
+// `class` / `interface` as keys arm the body marker; the next literal
+// used to be read as a class body and lose its property keys
+const attrs = { class: 'btn', interface: 'x' };
+const after = { foo: 1, bar: 2 };
+
+// --- generics whose parameter list closes on a coalesced `>` ---
+
+// the tokenizer emits a run of `>` as one right-shift operator, so both
+// groups here close on a single token. the walkers that only understood a
+// lone `>` never found the close and gave up on the whole declaration:
+// the name stayed an identifier, `T` stayed an identifier, and `base` was
+// never tagged as a parameter.
+interface Introspectable {
+  create_enhanced_introspector<T extends Record<string, unknown>>(base: T): T;
+}
+
+class Introspector {
+  enhance<T extends Record<string, unknown>>(base: T): T {
+    return base;
+  }
+}
+
+function enhance<T extends Record<string, unknown>>(base: T): T {
+  return base;
+}
+
+// the span that starts at `Map<` has to stop at the `>>` rather than
+// carry on tagging every identifier below it as a type
+const chars = new Map<number, Record<number, number>>();
+const rules = new Set<number>();
+state_names.forEach((name) => name);
+
+// a shift expression is still not a generic
+const shifted = a < b >> c;
+
+// --- positions worth eyeballing ---
+
+// a labelled tuple: `start` and `end` are tuple labels, not members.
+// they read as types — pre-existing, and not what the angle walkers do
+interface Span {
+  range: [start: number, end: number];
+}
+
+// a `case` arm's block and a function body with a return type are both
+// classified `object` / `type_literal` by the frame tracker, which is why
+// the reserved-word method rule stays out of those kinds
+function bodied(): void {
+  switch (kind) {
+    case 'a': {
+      while (n > 0) n--;
+      break;
+    }
+  }
+}
+
+// a real generic constraint must still classify as a type literal
+class Repo<T extends { id: string; kind: number }> extends Base<T> {
+  items: T[] = [];
+}
+
+// TypeScript keywords inside call arguments need the TypeScript keyword
+// set, which the shared call-argument states are rebuilt with
+fn(x as Foo);
+fn(y satisfies Shape);
+class Animal {
+  constructor(public name: string) {}
+}
+
+// a type literal's method signatures are named, generic or not, and a
+// reserved word works as a method name in a type literal or an object
+type Factory = { make<T>(base: T): T; build(): T };
+type Handlers = { delete(): void };
+const handlers2 = { delete() {} };
+
+// --- known gaps ---
+
+// optional members, nested and direct
+interface Brackets {
+  paren?: { open: string; close: string };
+  brackets: {
+    paren?: { open: string; close: string };
+  };
+}
+type Ref = { kind: 'ref'; to?: number };
+type Factory2 = (options?: Options) => void;
+
+// object-literal method shorthand is not claimed either
+const handlers = { default() {}, delete() {} };
+
+// enum members are untouched by the member rules
+enum Mode {
+  default = 1,
+  Normal = 2,
+}

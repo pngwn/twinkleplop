@@ -80,7 +80,7 @@ export default [
 		"end": 45
 	},
 	{
-		"type": "identifier",
+		"type": "boolean",
 		"start": 46,
 		"end": 50
 	},
@@ -140,7 +140,7 @@ export default [
 		"end": 73
 	},
 	{
-		"type": "identifier",
+		"type": "boolean",
 		"start": 74,
 		"end": 78
 	},

@@ -1,0 +1,133 @@
+// Reserved words used as names — and the places that look identical but
+// are not. Every line is annotated with what the token SHOULD be.
+
+// --- should be reclassified ---
+
+// property keys: `property`
+const flags = { default: 'boo', new: 1, class: 2, delete: 3, in: 4 };
+const literals = { true: 1, false: 2, null: 3, undefined: 4 };
+const one = { default: 'only key' };
+const { default: renamed } = registry;
+
+// member access: `identifier`, same as `obj.foo`
+obj.default;
+obj?.new;
+this.default = 1;
+super.default;
+a.b.default.class;
+foo().default;
+arr[0].class;
+
+// called members: `function`, same as `map.has(k)`
+map.delete(key);
+map.set(key, value);
+map.get(key);
+Array.from(items);
+promise.catch((error) => error);
+obj?.delete(key);
+
+// class methods: `function`
+class Router {
+  default() {}
+  delete(key) {}
+  static get for() {}
+  set import(value) {}
+}
+
+// --- must NOT be reclassified ---
+
+// a switch arm is a keyword, not a key. this broke while the frame
+// tracker's angle counter was leaking.
+switch (kind) {
+  case 1:
+    break;
+  default:
+    handle();
+}
+
+// labels are not keys either
+outer: for (;;) {
+  inner: while (true) break outer;
+}
+
+// module syntax keeps its keywords
+export default flags;
+
+// a ternary alternate is not a member
+const picked = cond ? left : right;
+
+// an import specifier names an export, not a property
+import { default as fallback } from './registry.js';
+
+// --- braces that share a token with the punctuation before them ---
+
+// grammars coalesce adjacent punctuation, so `) {` is two tokens and
+// `){` is one. the frame tracker classified a brace from the PREVIOUS
+// token, which here is `k` — so this switch body read as an object
+// literal and `default` became a key.
+switch (kind) {
+  default:
+    break;
+}
+
+// an arrow returning an object: the `(` separates the brace from the
+// `=>`, so this is an object literal, not a block
+const makeUser = (name) => ({ name, id: 1 });
+const makeBlock = (name) => {
+  return name;
+};
+
+// --- frames that look like object literals but are not ---
+
+// a template interpolation: the brace belongs to `${`, so it is an
+// expression, not an object literal.
+const rendered = `${function () { return 1; }}`;
+const called = `${typeof value}`;
+const inner = `${{ a: 1 }}`;
+const arrowed = `${() => ({ key: value })}`;
+
+// a bare block is classified `object` by fallback — the keywords inside
+// it must survive that
+{
+  typeof value;
+  void 0;
+}
+
+// the comparison that used to poison every later brace: `<` opens a
+// generic AND is less-than, so this armed a counter that never closed
+for (let i = 0; i < items.length; i++) {
+  total += items[i];
+}
+class AfterTheLoop {
+  field = 1;
+  method() {}
+}
+
+// `class` as a key arms the class-body marker. no brace of its own ever
+// consumes it, so before the fix the NEXT literal was read as a class
+// body and its keys stopped being properties.
+const attrs = { class: 'btn', id: 'x' };
+const after = { foo: 1, bar: 2 };
+const interfaces = { interface: 'a' };
+const alsoAfter = { baz: 3 };
+
+// --- keywords inside call arguments ---
+
+// the call-argument states had no keyword rules at all, so none of these
+// were highlighted. they were only ever right by accident: a leading
+// identifier leaked the machine into `division`, where keywords live.
+console.log(typeof x);
+fn(await p);
+fn(new Date());
+fn(function () {});
+fn(null, true, undefined);
+fn(this / 2);
+fn(typeof /re/);
+fn((a || typeof b));
+fn((x.default));
+map.get(0, typeof x);
+
+// object-literal method shorthand. this only became safe once every brace
+// the tracker could not place stopped landing on `object` — see the
+// return-type and `case` label rules in js_frame_spec.
+const handlers = { default() {}, delete() {} };

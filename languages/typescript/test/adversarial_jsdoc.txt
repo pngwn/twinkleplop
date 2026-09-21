@@ -1,0 +1,23 @@
+/**
+ * Doc comments are embedded in TypeScript too, and the annotation types
+ * on the code below are classified independently of the ones in here.
+ *
+ * @param {Config} base - the config to start from
+ * @param {Partial<Config>} [overrides] values that win
+ * @returns {Promise<Config>} the merged config
+ * @typedef {object} Config
+ * @template T
+ */
+export async function merge(base: Config, overrides?: Partial<Config>): Promise<Config> {
+  return { ...base, ...overrides };
+}
+
+/* a plain block comment: @param {Config} base stays entirely comment */
+// a line comment: @param {Config} base stays entirely comment
+
+/**
+ * @example
+ *   const merged = merge({ a: 1 }, { b: 2 });
+ * mail me at someone@example.com
+ */
+export const documented = 1;

@@ -20,6 +20,8 @@ import {
   any_of,
   as_claim_producer,
   balanced_parens,
+  capture,
+  create_language,
   embed_interleaved,
   frame_track,
   make_token_view,
@@ -35,7 +37,9 @@ import {
   tag,
   type,
 } from "@twinkleplop/core";
+import { compile } from "@twinkleplop/core/compile";
 import type {
+  BraceKindScan,
   ClaimFn,
   ClaimingReclassifier,
   FrameSpec,
@@ -45,6 +49,8 @@ import type {
   Region,
   RewriteRule,
 } from "@twinkleplop/core";
+
+import { default as jsdoc_grammar } from "./jsdoc.js";
 
 import { tokenize as css_tokenize } from "@twinkleplop/css";
 // Cross-language references are imported lazily so the HTML ↔ JS workspace
@@ -172,6 +178,28 @@ const function_value = seq(
   ),
 );
 
+// Reserved words used as names. Every reserved word is a legal property
+// name, so `{ default: 1 }` and `class C { default() {} }` need the
+// frame table to tell an object literal from a block. Member access
+// (`obj.delete`) is settled earlier, by the grammar's `member_access`
+// state.
+
+// frames whose members are named: `{ k: v }`, `interface I { k: v }`,
+// `: { k: v }`. block frames are excluded, so a labelled statement and a
+// `switch` arm keep their keywords.
+const NAMED_MEMBER_KINDS = ["object", "interface", "type_literal"];
+
+// `object` is the frame tracker's fallback kind, so this list is only
+// safe while every brace it cannot place is a genuine object literal --
+// the return-type and `case` label rules in `js_frame_spec` are what make
+// that true. `type_literal` is absent because a type alias's `= {` is
+// already `object`.
+const METHOD_MEMBER_KINDS = ["class", "interface", "object"];
+
+// `true` / `false` arrive as `boolean` rather than `keyword`; both are
+// legal keys.
+const reserved_word = any_of(type("keyword"), type("boolean"));
+
 export const property_scope_rules: RewriteRule[] = [
   // object method shorthand: the key of a function-valued member reads as
   // a function, not a property.
@@ -197,9 +225,119 @@ export const property_scope_rules: RewriteRule[] = [
   },
 ];
 
+// Correctness rather than enrichment, so this runs at every fidelity
+// setting. The targets are where a plain name would land: `identifier`,
+// which `claim_property_scope` promotes to `property` when fidelity
+// allows, and `function`, which the fidelity downgrade maps back to
+// `identifier` on its own.
+export const reserved_name_rules: RewriteRule[] = [
+  // `interface I { new (): T }` is a construct signature, not a method
+  // named `new`. claiming `keyword` both keeps the word highlighted and
+  // stops the method rule below from matching the position — rules are
+  // first-match-wins per anchor. a class body has no construct signature,
+  // so `class C { new() {} }` still reads as a method.
+  {
+    anchor: {
+      type_name: "keyword",
+      value: "new",
+      at_start: true,
+      frame_kinds: ["interface"],
+      frame_direct: true,
+    },
+    when: balanced_parens("(", ")"),
+    rewrite: "keyword",
+  },
+  // `class C { default() {} }` — method shorthand.
+  {
+    anchor: {
+      type_name: "keyword",
+      at_start: true,
+      frame_kinds: METHOD_MEMBER_KINDS,
+      frame_direct: true,
+    },
+    when: balanced_parens("(", ")"),
+    rewrite: "function",
+  },
+  // `{ default: 1 }`, `interface I { new: number }` — a property key.
+  {
+    anchor: { type_name: "keyword", at_start: true, frame_kinds: NAMED_MEMBER_KINDS },
+    when: member_colon,
+    rewrite: "identifier",
+  },
+  {
+    anchor: { type_name: "boolean", at_start: true, frame_kinds: NAMED_MEMBER_KINDS },
+    when: member_colon,
+    rewrite: "identifier",
+  },
+];
+
+// A plain Reclassifier on purpose. Without `__claim` it is a barrier, so
+// the claim batch below sees its output and `claim_property_scope`'s
+// ordinary identifier rules do the promoting — and the batch stays one
+// segment, leaving the order-independence permutation count unchanged.
+const reserved_names_pass = rewrite_types(reserved_name_rules, { trivia: ["comment"] });
+export const classify_reserved_names: Reclassifier = (input, result) =>
+  reserved_names_pass(input, result);
+
 export const claim_property_scope: ClaimingReclassifier = rewrite_types(property_scope_rules, {
   trivia: ["comment"],
 });
+
+// keywords the grammar emits that can sit inside a type expression.
+// `string` / `number` / `boolean` and the rest of the builtin type names
+// are plain identifiers at this stage -- builtin-type promotion is a
+// reclassifier that runs downstream of frame_track.
+const TYPE_EXPR_KEYWORDS = [
+  "void",
+  "null",
+  "undefined",
+  "this",
+  "typeof",
+  "keyof",
+  "readonly",
+  "infer",
+  "is",
+  "asserts",
+];
+
+// the subset of those that can be the LAST token of a return type, i.e.
+// the token a body brace actually follows.
+const TYPE_TAIL_KEYWORDS = ["void", "null", "undefined", "this"];
+
+// walk back over a return-type annotation to the `):` that opened it.
+// `[`, `]` and `,` come in through `chars` rather than a text list
+// because the grammar coalesces adjacent punctuation -- `readonly T[] {`
+// arrives with a single `[]` token.
+const RETURN_TYPE_SCAN: BraceKindScan = {
+  over: [
+    { type: "identifier" },
+    // the TSX grammar tags the builtin type names (`string`, `number`)
+    // as `type` directly, where the TS grammar leaves them identifiers
+    // for a downstream pass. the walk has to accept both.
+    { type: "type" },
+    { type: "keyword", texts: TYPE_EXPR_KEYWORDS },
+    { type: "string" },
+    { type: "number" },
+    { type: "boolean" },
+    { type: "operator", texts: ["|", "&", "<", ">", ">>", ">>>"] },
+    { type: "punctuation", chars: ".[]," },
+  ],
+  to: { type: "punctuation", last_char_in: ":", preceded_by_char_in: ")" },
+};
+
+// walk back over a switch label's expression to the `case` keyword.
+const CASE_LABEL_SCAN: BraceKindScan = {
+  over: [
+    { type: "identifier" },
+    { type: "string" },
+    { type: "number" },
+    { type: "boolean" },
+    { type: "keyword", texts: ["this", "null", "undefined"] },
+    { type: "operator", texts: ["-"] },
+    { type: "punctuation", chars: "." },
+  ],
+  to: { type: "keyword", texts: ["case", "default"] },
+};
 
 // shared frame_track config for JS/TS/TSX/Svelte. the spec object is
 // exported separately so TS-family packages can extend it (ternary and
@@ -220,6 +358,10 @@ export const js_frame_spec: FrameSpec = {
       { type: "keyword", text: "class", kind: "class" },
       { type: "keyword", text: "interface", kind: "interface" },
     ],
+    // `class` and `interface` are legal property names, so a key arms a
+    // marker that never finds a brace of its own; discard it at the
+    // separator that ends the member.
+    marker_reset_chars: ";,:",
     // a `{` inside a generic constraint while a body marker is armed is a
     // type literal -- `class C<T extends { id: V }> { ... }`.
     pending_in_angles_kind: "type_literal",
@@ -231,14 +373,63 @@ export const js_frame_spec: FrameSpec = {
         { text: ">>", pops: 2 },
         { text: ">>>", pops: 3 },
       ],
+      // `<` is also less-than, so `for (i = 0; i < n; i++)` leaves the
+      // counter armed. resynchronise at a statement separator.
+      reset_chars: ";",
     },
     prev_rules: [
       { prev_type: "operator", prev_texts: ["=>"], kind: "block" },
+      // `${` in a template: the brace opens an interpolated expression.
+      // it shares a token with the `$`, so this matches on that character.
+      { prev_type: "punctuation", prev_last_char_in: "$", kind: "block" },
+      // a switch label ends in `:` too -- `case "bytes": { ... }` opens a
+      // block, not the annotation type literal the next rule reads a bare
+      // `:` as. the walk steps back over the label expression to the
+      // `case` keyword. `in_kinds` is what keeps a reserved word used as
+      // an object key out of it: in `{ default: { a: 1 } }` the walk lands
+      // on `default` just the same, but the enclosing frame is the object
+      // literal rather than a block.
+      {
+        prev_type: "punctuation",
+        prev_texts: [":"],
+        in_kinds: ["block"],
+        scan_back: CASE_LABEL_SCAN,
+        kind: "block",
+      },
       // `:` is punctuation in the grammar (separator, not operator); a
       // brace after it is an annotation / return-position type literal.
       { prev_type: "punctuation", prev_texts: [":"], kind: "type_literal" },
       { prev_type: "keyword", prev_texts: ["do", "try", "else", "finally"], kind: "block" },
       { prev_type: "punctuation", prev_last_char_in: ")", kind: "block" },
+      // a return-type annotation hides the parameter list from the rule
+      // above: in `f(): Promise<void> {` the token before the body brace
+      // is the tail of the type, not the `)`. one entry rule per shape a
+      // type can end with, each walking back over the annotation to the
+      // `):` that opened it -- keying on the annotation rather than on
+      // whichever token happens to be last. the entry conditions stay
+      // narrow on purpose; they are what keeps the walk off the object
+      // literals that reach these rules (`= {`, `, {`, `return {` all
+      // fail them without a step).
+      { prev_type: "identifier", scan_back: RETURN_TYPE_SCAN, kind: "block" },
+      { prev_type: "type", scan_back: RETURN_TYPE_SCAN, kind: "block" },
+      {
+        prev_type: "keyword",
+        prev_texts: TYPE_TAIL_KEYWORDS,
+        scan_back: RETURN_TYPE_SCAN,
+        kind: "block",
+      },
+      {
+        prev_type: "operator",
+        prev_texts: [">", ">>", ">>>"],
+        scan_back: RETURN_TYPE_SCAN,
+        kind: "block",
+      },
+      {
+        prev_type: "punctuation",
+        prev_last_char_in: "]",
+        scan_back: RETURN_TYPE_SCAN,
+        kind: "block",
+      },
     ],
     default_kind: "object",
     start_kind: "block",
@@ -459,6 +650,79 @@ export function scan_tagged_template(
   }
   // ran off the end without a closing backtick — malformed template.
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// JSDoc comment embedding
+// ---------------------------------------------------------------------------
+//
+// A `/** … */` comment is an embedded language the same way a tagged
+// template is: the host grammar emits it as one `comment` token, and this
+// scanner hands its body to the jsdoc grammar so tags and type
+// expressions come back as their own tokens. Prose stays `comment`, so
+// the only visible change is the structured parts.
+//
+// The host tokenizes a block comment as two tokens — the body (which
+// carries the opening `/*`) and the closing `*/`. Only the body is
+// replaced: `/**` is re-emitted as a synthetic `comment` token and
+// everything after it becomes the content region.
+
+// per-token_types comment id cache, same rationale as get_type_ids above:
+// the scanner runs once per host token position, so the lookup must not
+// be an indexOf per call.
+const comment_id_cache = new WeakMap<string[], number>();
+
+function get_comment_id(token_types: string[]): number {
+  let id = comment_id_cache.get(token_types);
+  if (id === undefined) {
+    id = token_types.indexOf("comment");
+    comment_id_cache.set(token_types, id);
+  }
+  return id;
+}
+
+let jsdoc_fn: LanguageFn | undefined;
+// the grammar is compiled on first use, not at module load: a consumer
+// whose sources carry no doc comments never pays for it.
+const jsdoc_default: LanguageFn = (src) =>
+  (jsdoc_fn ??= create_language(compile(jsdoc_grammar))())(src);
+
+/**
+ * Scanner called at each host token position. Returns a GroupDescriptor if
+ * a doc comment starts here, or null otherwise. Matches `GroupScanFn`.
+ */
+export function scan_jsdoc(
+  tokens: Uint32Array,
+  input: string,
+  i: number,
+  token_types: string[],
+): GroupDescriptor | null {
+  const comment_id = get_comment_id(token_types);
+  if (comment_id < 0) return null;
+  const count = tokens.length / 3;
+  if (i >= count) return null;
+  if (tokens[i * 3] !== comment_id) return null;
+
+  const start = tokens[i * 3 + 1];
+  const end = tokens[i * 3 + 2];
+  // `/**` plus at least one body character. the length test also keeps
+  // the transform's fixed-point iteration from re-entering: the synthetic
+  // `/**` token this emits is exactly three characters long, and `/**/`
+  // (an empty block comment) tokenizes as a two-character `/*` body.
+  if (end - start <= 3) return null;
+  if (input.charCodeAt(start) !== 0x2f /* / */) return null;
+  if (input.charCodeAt(start + 1) !== 0x2a /* * */) return null;
+  if (input.charCodeAt(start + 2) !== 0x2a /* * */) return null;
+
+  return {
+    token_start: i,
+    token_end: i + 1,
+    regions: [
+      { kind: "synthetic", source_start: start, source_end: start + 3, type_name: "comment" },
+      { kind: "content", source_start: start + 3, source_end: end },
+    ],
+    language: jsdoc_default,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -889,7 +1153,10 @@ const member_method_rule = (type_name: string, value?: string[]): RewriteRule =>
     frame_kinds: MEMBER_BRACE_KINDS,
     frame_direct: true,
   },
-  when: params(JS_PARAM_WALK),
+  // a generic method puts its type parameters between the name and the
+  // paren -- `make<T>(base: T)` -- so the walk has to step over them the
+  // same way the function-declaration rule does.
+  when: params({ ...JS_PARAM_WALK, skip_generics: true }),
   rewrite: { p: "parameter" },
 });
 
@@ -1008,12 +1275,33 @@ export const promote_js_namespaces: ClaimingReclassifier =
 // keeps tagged entries whose `produces` intersects the allowlist. the
 // tagged-template embedder is always-on — embeds are not an identifier
 // fidelity axis.
+/**
+ * The host embeds every group the same way, so both scanners share one
+ * `embed_interleaved` pass rather than paying for two walks of the token
+ * stream. Each rejects on its trigger token type before touching the
+ * source, so the one that does not own a position costs a comparison.
+ */
+export function scan_embedded_groups(
+  tokens: Uint32Array,
+  input: string,
+  i: number,
+  token_types: string[],
+): GroupDescriptor | null {
+  return (
+    scan_tagged_template(tokens, input, i, token_types) ?? scan_jsdoc(tokens, input, i, token_types)
+  );
+}
+
 export const reclassifiers: LanguagePipeline = [
   // frame_track first: every subsequent claim reclassifier that needs
   // scope-aware data reads from `result.frames`. languages that reuse
   // claim_property_scope (TS, TSX, Svelte) must include js_frame_track in
   // their own pipelines too.
   always(js_frame_track, "type_claim"),
+  // correctness, not enrichment: a reserved word in a name position is
+  // wrong at any fidelity. a barrier, so the claim batch below sees the
+  // corrected stream and its ordinary identifier rules do the rest.
+  always(classify_reserved_names, "shape"),
   // every pass below except the embedder is a claim producer: the runner
   // batches them against the same frozen base stream, claims merge by
   // precedence (ties resolve to the earlier pipeline entry), and the
@@ -1034,5 +1322,7 @@ export const reclassifiers: LanguagePipeline = [
   tag(class_name_promoter, ["class_name"]),
   tag(promote_js_parameters, ["parameter"]),
   tag(promote_js_namespaces, ["namespace"]),
-  always(embed_interleaved({ scan: scan_tagged_template }), "embed"),
+  // tagged templates and doc comments are both embeds, so they run at
+  // every fidelity setting -- same rule as CSS inside a `<style>` tag.
+  always(embed_interleaved({ scan: scan_embedded_groups }), "embed"),
 ];

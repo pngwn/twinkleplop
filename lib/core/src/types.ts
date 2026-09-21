@@ -251,7 +251,9 @@ export interface StmtFlagSpec {
 //      `class C<T extends { x: V }>` -- the constraint's `{` is a type
 //      literal, the real body brace still claims the marker).
 //   3. otherwise the previous non-trivia token is tested against
-//      prev_rules in order; the first matching rule's kind wins.
+//      prev_rules in order; the first matching rule's kind wins. a rule
+//      can add an enclosing-frame gate (`in_kinds`) and a bounded
+//      backward walk (`scan_back`) on top of the prev-token test.
 //   4. no rule matches: default_kind (or start_kind when the brace has
 //      no previous token).
 export interface BraceKindRule {
@@ -263,7 +265,62 @@ export interface BraceKindRule {
   // for shapes like "punctuation ending in `)`" where the grammar may
   // coalesce `)` with adjacent punctuation chars.
   prev_last_char_in?: string;
+  // restrict the rule to braces opening directly inside a frame of one
+  // of these kinds. names resolve against the spec's own kinds; an
+  // unknown name never matches. used to keep a rule that reads a
+  // statement shape from firing in a frame where the same token
+  // sequence means something else -- a reserved word is a legal
+  // property name, so `{ default: { ... } }` looks exactly like a
+  // switch label until you know the enclosing frame is an object.
+  in_kinds?: string[];
+  // extra condition: walk back from the token BEFORE the matched prev
+  // token and require the walk to land on a given shape. see
+  // BraceKindScan.
+  scan_back?: BraceKindScan;
   kind: string;
+}
+
+// a bounded backward walk used to key a rule on the shape of a whole
+// annotation rather than on the single token that happens to sit before
+// the brace. a return type hides the parameter list from a prev rule
+// (`f(): Promise<void> {`), and a switch label hides the `case` keyword
+// behind its label expression (`case "bytes": {`) -- in both, the token
+// that decides the brace's kind is several tokens back, with a bounded,
+// language-describable run in between.
+export interface BraceKindScan {
+  // token shapes the walk steps over. an entry with neither `texts` nor
+  // `chars` matches any token of that type. the walk stops -- and the
+  // rule fails -- at the first token matching no entry, so the `over`
+  // set doubles as the walk's bound in practice.
+  over: BraceKindScanStep[];
+  // the shape the walk must land on for the rule to fire. tested before
+  // `over`, so a token matching both lands rather than being skipped.
+  to: {
+    type: string;
+    // exact source texts. omit to match any text of `type`.
+    texts?: string[];
+    // match the landing token's LAST character instead of its whole
+    // text. grammars coalesce adjacent punctuation, so the `:` of a
+    // return type can arrive as part of a `():` token.
+    last_char_in?: string;
+    // match the source character immediately before the landing token's
+    // last character -- inside the same token when it has one, else the
+    // last character of the token before it. `")"` with a `":"`
+    // last_char_in selects the `):` that opens a return type.
+    preceded_by_char_in?: string;
+  };
+  // give up after this many steps. defaults to 16.
+  max?: number;
+}
+
+export interface BraceKindScanStep {
+  type: string;
+  // exact source texts to step over.
+  texts?: string[];
+  // step over a token whose characters are ALL in this set. survives
+  // punctuation coalescing (`[]`, `[],`) that an exact text list would
+  // have to enumerate.
+  chars?: string;
 }
 
 export interface BraceKindSpec {
@@ -280,7 +337,18 @@ export interface BraceKindSpec {
     type: string;
     open: string;
     closes: { text: string; pops: number }[];
+    // punctuation that forces the angle counter back to zero. an opener
+    // that doubles as a comparison operator (`a < b`) otherwise leaks a
+    // level on every unbalanced comparison, and a stuck counter
+    // reclassifies every later brace. a closing brace resets it too.
+    reset_chars?: string;
   };
+  // punctuation that discards a pending body marker when it appears at
+  // the depth the marker was armed at. `{ class: 1 }` arms one that no
+  // brace of its own consumes, and the next unrelated `{` claims it. a
+  // class head has none of these at its own depth; a generic constraint's
+  // `{ a: string; b: X }` sits a level deeper and is untouched.
+  marker_reset_chars?: string;
   prev_rules?: BraceKindRule[];
   // fallback kind when no rule matches.
   default_kind: string;

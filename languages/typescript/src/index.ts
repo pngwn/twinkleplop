@@ -6,6 +6,8 @@ import {
   claim_property_scope,
   function_variable_rules,
   reclassifiers,
+  scan_embedded_groups,
+  scan_jsdoc,
   scan_tagged_template,
   ts_frame_track,
 } from "./reclassifiers.js";
@@ -35,6 +37,8 @@ export {
   reclassifiers,
   claim_property_scope,
   function_variable_rules,
+  scan_embedded_groups,
+  scan_jsdoc,
   scan_tagged_template,
   ts_frame_track,
 };

@@ -144,6 +144,12 @@ export const OP_1CHAR = ["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", 
 // Full operator set (excludes bare `/`, which is state-dependent).
 export const OP_ALL = [...OP_4CHAR, ...OP_3CHAR, OP_SPREAD, ...OP_2CHAR, ...OP_1CHAR];
 
+// The same set without `?.`, which `member_access_entry` owns so that the
+// name after it is not read as a keyword. Two rules matching one pattern
+// would leave the winner to the compiler's bucket ordering; one rule makes
+// it explicit. States that use this MUST also carry a member-access entry.
+export const OP_ALL_OUTSIDE_MEMBER = OP_ALL.filter((op) => op !== "?.");
+
 // Operator subset used by identifier_probe's "not a function call" rule.
 export const PROBE_OPERATORS = [
   "===",
@@ -247,6 +253,98 @@ export const js_body_common = [...js_comments, ...js_strings, ...js_numbers_arg]
 // `${...}` can push a fresh `template_literal`.
 export const js_tmpl_common = [...js_comments, ...js_strings, ...js_numbers_arg, ...js_whitespace];
 
+// Member access. After a `.` or `?.` only a name can follow, so the
+// keyword rules must not apply — `obj.default` is a property, not a
+// statement. A dot used to leave the machine in `division`, where those
+// rules live.
+//
+// `dest` resumes when the next character is not a name (`.5`, a stray
+// dot); `probe` decides identifier vs call site.
+export const member_access = (dest: string, probe: string) => ({
+  rules: [
+    ...js_comments,
+    // `a\n  .b`, `a . b`, `a./* note */b`
+    on([" ", "\t", "\n", "\r"]),
+    on(["_", "$", LETTER], goto(probe)),
+    fallback(goto(dest)),
+  ],
+});
+
+// The `paren_group` variant. That state matches identifiers directly
+// rather than through a probe, so the detour reads one name and hands
+// back without consuming the character that ended it — keeping the
+// pushed frame intact.
+export const member_access_paren = {
+  rules: [
+    ...js_comments,
+    on([" ", "\t", "\n", "\r"]),
+    match(["_", "$", ALNUM], TOKENS.identifier),
+    fallback(goto("paren_group")),
+  ],
+};
+
+// The two rules that route into it. `?.` has to be pulled out of the
+// operator set, which would otherwise send it to `regex_allow`.
+export const member_access_entry = (state: string) => [
+  match("?.", TOKENS.operator, goto(state)),
+  match(".", TOKENS.punctuation, goto(state)),
+];
+
+// Call arguments: `function_body` is a call's own parentheses,
+// `paren_group` the nested ones inside them.
+//
+// How each ends decides where its keywords may go. `function_body`
+// leaves sideways (`)` → `division`), so its keywords route to
+// `regex_allow` / `division` as they do elsewhere. `paren_group` is
+// PUSHED and pops on `)`, so its keywords must stay put — routing them
+// out would strand the frame on the stack.
+export const function_body_state = (keywords: object[]) => ({
+  rules: [
+    ...js_body_common,
+    ...keywords,
+
+    // End of arguments
+    match(")", TOKENS.punctuation, goto("division")),
+    // Nested parentheses
+    match("(", TOKENS.punctuation, enter("paren_group")),
+    // Argument separator
+    match(",", TOKENS.punctuation),
+
+    // Operators (legacy subset — no compound assigns here)
+    match(["===", "!=="], TOKENS.operator),
+    match(["--", "++", "<=", ">=", "==", "!=", "&&", "||"], TOKENS.operator),
+    match(["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%"], TOKENS.operator),
+    match("/", TOKENS.regex, enter("regex_pattern")),
+
+    // Other punctuation. `:` is a separator (named arg, ternary,
+    // type annotation), not an operator.
+    match(["[", "]", "{", "}"], TOKENS.punctuation),
+    ...member_access_entry("member_access"),
+    match([";", ":"], TOKENS.punctuation),
+
+    // Identifiers (recursive probe for nested function calls)
+    on(["_", "$", LETTER], goto("identifier_probe")),
+  ],
+});
+
+export const paren_group_state = (keywords: object[]) => ({
+  rules: [
+    ...js_body_common,
+    ...keywords,
+    match(")", TOKENS.punctuation, leave()),
+    match(",", TOKENS.punctuation),
+    // a member name is never a keyword, and this state has no probe to
+    // route through, so it gets its own one-name detour.
+    ...member_access_entry("member_access_paren"),
+    match(["[", "]", "{", "}", ";", ":"], TOKENS.punctuation),
+    match(["===", "!=="], TOKENS.operator),
+    match(["--", "++", "<=", ">=", "==", "!=", "&&", "||"], TOKENS.operator),
+    match(["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "/", "~", "^", "%"], TOKENS.operator),
+    match(["_", "$", ALNUM], TOKENS.identifier),
+    match("(", TOKENS.punctuation, enter("paren_group")),
+  ],
+});
+
 // Rules used inside `paren_group`.
 export const js_paren_common = [
   match(")", TOKENS.punctuation, leave()),
@@ -264,7 +362,7 @@ export const js_paren_common = [
 
 // Full operator set as one rule. `after` = null → stay; string → sideways.
 export const operators = (after: null | "regex_allow" | "tmpl_regex_allow") =>
-  match(OP_ALL, TOKENS.operator, to(after));
+  match(OP_ALL_OUTSIDE_MEMBER, TOKENS.operator, to(after));
 
 // Keyword + literal branching.
 //   regexDest → where REGEX_PRECEDING_KEYWORDS go after matching
@@ -309,12 +407,16 @@ export default define_grammar({
         // type annotation, ternary, label) — not an operator.
         match(["(", "{", "["], TOKENS.punctuation),
         match([")", "}", "]"], TOKENS.punctuation, goto("division")),
-        match([";", ",", ".", ":"], TOKENS.punctuation),
+        ...member_access_entry("member_access"),
+        match([";", ",", ":"], TOKENS.punctuation),
 
         // Identifiers
         on(["_", "$", LETTER], goto("identifier_probe")),
       ],
     },
+
+    member_access: member_access("division", "identifier_probe"),
+    member_access_tmpl: member_access("tmpl_division", "identifier_probe_tmpl"),
 
     identifier_probe: {
       mode: "probe",
@@ -341,43 +443,14 @@ export default define_grammar({
     // -------------------------------------------------------------------------
     // function_body — inside call-site parentheses (top-level context)
     // -------------------------------------------------------------------------
-    function_body: {
-      rules: [
-        ...js_body_common,
-
-        // End of arguments
-        match(")", TOKENS.punctuation, goto("division")),
-        // Nested parentheses
-        match("(", TOKENS.punctuation, enter("paren_group")),
-        // Argument separator
-        match(",", TOKENS.punctuation),
-
-        // Operators (legacy subset — no compound assigns here)
-        match(["===", "!=="], TOKENS.operator),
-        match(["--", "++", "<=", ">=", "==", "!=", "&&", "||"], TOKENS.operator),
-        match(["-", "+", "<", ">", "=", "!", "&", "|", "?", "*", "~", "^", "%"], TOKENS.operator),
-        match("/", TOKENS.regex, enter("regex_pattern")),
-
-        // Other punctuation. `:` is a separator (named arg, ternary,
-        // type annotation), not an operator.
-        match(["[", "]", "{", "}"], TOKENS.punctuation),
-        match([";", ".", ":"], TOKENS.punctuation),
-
-        // Identifiers (recursive probe for nested function calls)
-        on(["_", "$", LETTER], goto("identifier_probe")),
-      ],
-    },
+    function_body: function_body_state(keywordsLiterals("regex_allow", "division")),
 
     // -------------------------------------------------------------------------
     // paren_group — nested parentheses inside function arguments
     // -------------------------------------------------------------------------
-    paren_group: {
-      rules: [
-        ...js_body_common,
-        ...js_paren_common,
-        match("(", TOKENS.punctuation, enter("paren_group")),
-      ],
-    },
+    paren_group: paren_group_state(keywordsLiterals(null, null)),
+
+    member_access_paren,
 
     // -------------------------------------------------------------------------
     // Number states — argument/group context (pop back on exit)
@@ -452,10 +525,10 @@ export default define_grammar({
         // key from value, label name from statement, parameter from
         // type annotation, ternary from alternate.
         match([",", ";", ":"], TOKENS.punctuation, goto("regex_allow")),
-        // Dot accessor
-        match(".", TOKENS.punctuation, goto("division")),
+        // Dot accessor — the name after it is never a keyword.
+        ...member_access_entry("member_access"),
         // All operators including `/` and `/=` — sideways to regex_allow
-        match([...OP_ALL, "/"], TOKENS.operator, goto("regex_allow")),
+        match([...OP_ALL_OUTSIDE_MEMBER, "/"], TOKENS.operator, goto("regex_allow")),
         // Whitespace after identifier → switch to division context
         on([" ", "\t", "\n", "\r"], goto("division")),
       ],
@@ -479,7 +552,7 @@ export default define_grammar({
         // its value — go back to regex_allow for the right-hand side.
         match([")", "}", "]"], TOKENS.punctuation),
         match([";", ",", ":"], TOKENS.punctuation, goto("regex_allow")),
-        match(".", TOKENS.punctuation),
+        ...member_access_entry("member_access"),
 
         // Identifiers
         on(["_", "$", LETTER], goto("identifier_probe")),
@@ -664,7 +737,8 @@ export default define_grammar({
         match("{", TOKENS.punctuation, enter("tmpl_regex_allow")),
         match(["(", "["], TOKENS.punctuation),
         match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
-        match([";", ",", ".", ":"], TOKENS.punctuation),
+        ...member_access_entry("member_access_tmpl"),
+        match([";", ",", ":"], TOKENS.punctuation),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
       ],
@@ -687,7 +761,7 @@ export default define_grammar({
         match("/", TOKENS.operator, goto("tmpl_regex_allow")),
         match([")", "]"], TOKENS.punctuation),
         match([";", ",", ":"], TOKENS.punctuation, goto("tmpl_regex_allow")),
-        match(".", TOKENS.punctuation),
+        ...member_access_entry("member_access_tmpl"),
 
         on(["_", "$", LETTER], goto("identifier_probe_tmpl")),
       ],
@@ -772,8 +846,8 @@ export default define_grammar({
         match("}", TOKENS.punctuation, leave()),
         match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
         match([",", ";", ":"], TOKENS.punctuation, goto("tmpl_regex_allow")),
-        match(".", TOKENS.punctuation, goto("tmpl_division")),
-        match([...OP_ALL, "/"], TOKENS.operator, goto("tmpl_regex_allow")),
+        ...member_access_entry("member_access_tmpl"),
+        match([...OP_ALL_OUTSIDE_MEMBER, "/"], TOKENS.operator, goto("tmpl_regex_allow")),
         on([" ", "\t", "\n", "\r"], goto("tmpl_division")),
       ],
     },
