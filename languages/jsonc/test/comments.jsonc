@@ -1,0 +1,22 @@
+// -*- mode: jsonc -*-
+/** Header doc comment with a URL: https://example.com/a//b */
+/*
+ * Multi-line block comment.
+ * "quotes", 'apostrophes', {braces}, [brackets], a // line marker
+ * and a /* nested opener that does not nest.
+ */
+{
+  /**/ "empty": 1,
+  /***/ "stars": 2,
+  /* one **/ "double_star": 3,
+  /*/ not closed yet */ "slash_star_slash": 4,
+  "between" /* key and colon */ : 5,
+  "after_colon":/* no space */6,
+  "line_before_colon" // comment
+    : 7,
+  "trailing": [1, 2 /* end */], // after the value
+  // don't "quote" or {open} anything here /* either
+  "glued": 8/*c*/,
+  "true_then_comment": true//c
+}
+// trailing comment at EOF without a newline

@@ -1,0 +1,15 @@
+"editor.fontSize": 14, // a bare member from docs, no braces
+"editor.tabSize": 2,
+
+{
+  "nested": { "inner": { "deepest": "value" } },
+  "array_of_objects": [{ "k": "v" }, { "k": "w" }],
+  "array_of_strings": ["not", "keys"],
+  "escaped\"key": 1,
+  "\u0041": 2,
+  "missing_comma": 1 "next": 2,
+  "value_then_colon": "string",
+  "minified":{"a":{"b":[1,{"c":null}]}},
+  "trailing": {},
+  "empty": [],
+}

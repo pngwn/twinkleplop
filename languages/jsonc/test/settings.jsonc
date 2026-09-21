@@ -1,0 +1,6 @@
+/** @see https://code.visualstudio.com */
+{
+  "editor.rulers": [80, -1.5e+3, 0.25E-2],
+  "files.exclude": { "**/.git": true, "**/*.js": { "when": "$(basename).ts" } },
+  "x": null, /**/ "y": false //
+}
