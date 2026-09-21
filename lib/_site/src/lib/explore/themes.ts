@@ -21,6 +21,12 @@ import {
 	light_styles as night_owl_light_styles
 } from '@twinkleplop/theme-night-owl/tokens';
 import {
+	dark as rose_pine_dark,
+	dark_styles as rose_pine_dark_styles,
+	light as rose_pine_light,
+	light_styles as rose_pine_light_styles
+} from '@twinkleplop/theme-rose-pine/tokens';
+import {
 	dark as catppuccin_dark,
 	dark_styles as catppuccin_dark_styles,
 	light as catppuccin_light,
@@ -37,9 +43,17 @@ export type theme_variant =
 	| 'solarized-dark'
 	| 'night-owl-light'
 	| 'night-owl-dark'
+	| 'rose-pine-light'
+	| 'rose-pine-dark'
 	| 'catppuccin-light'
 	| 'catppuccin-dark';
-export type theme_name = 'github' | 'atom-one' | 'solarized' | 'night-owl' | 'catppuccin';
+export type theme_name =
+	| 'github'
+	| 'atom-one'
+	| 'solarized'
+	| 'night-owl'
+	| 'rose-pine'
+	| 'catppuccin';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
@@ -71,6 +85,16 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		palette: night_owl_dark,
 		shiki_id: 'night-owl',
 		styles: night_owl_dark_styles
+	},
+	'rose-pine-light': {
+		palette: rose_pine_light,
+		shiki_id: 'rose-pine-dawn',
+		styles: rose_pine_light_styles
+	},
+	'rose-pine-dark': {
+		palette: rose_pine_dark,
+		shiki_id: 'rose-pine',
+		styles: rose_pine_dark_styles
 	},
 	'catppuccin-light': {
 		palette: catppuccin_light,
@@ -130,6 +154,7 @@ export const THEME_NAMES: theme_name[] = [
 	'atom-one',
 	'solarized',
 	'night-owl',
+	'rose-pine',
 	'catppuccin'
 ];
 
