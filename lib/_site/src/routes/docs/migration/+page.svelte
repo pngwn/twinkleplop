@@ -90,7 +90,7 @@ shiki_notation({ classes: "shiki" });`;
 					{ kind: "name", value: "any bundled theme name" },
 					{
 						kind: "desc",
-						value: `Two theme packages are available. Customise their colours with CSS.`,
+						value: `Eight theme packages are available. Customise their colours with CSS.`,
 					},
 				],
 			]}
@@ -170,7 +170,7 @@ shiki_notation({ classes: "shiki" });`;
 			</li>
 			<li>
 				<strong>Language coverage.</strong> Shiki ships hundreds of grammars. Twinkleplop ships
-				<a href="/docs/languages-ref">eighteen</a>.
+				<a href="/docs/languages-ref">twenty-three</a>.
 			</li>
 		</ul>
 	</Section>
