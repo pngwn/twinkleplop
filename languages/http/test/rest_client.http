@@ -1,0 +1,30 @@
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}

@@ -79,6 +79,24 @@ importers:
         specifier: workspace:*
         version: link:../javascript
 
+  languages/http:
+    dependencies:
+      '@twinkleplop/bash':
+        specifier: workspace:*
+        version: link:../bash
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+      '@twinkleplop/html':
+        specifier: workspace:*
+        version: link:../html
+      '@twinkleplop/javascript':
+        specifier: workspace:*
+        version: link:../javascript
+      '@twinkleplop/json':
+        specifier: workspace:*
+        version: link:../json
+
   languages/javascript:
     dependencies:
       '@twinkleplop/core':
@@ -216,6 +234,9 @@ importers:
       '@twinkleplop/html':
         specifier: workspace:*
         version: link:../../languages/html
+      '@twinkleplop/http':
+        specifier: workspace:*
+        version: link:../../languages/http
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../../languages/javascript

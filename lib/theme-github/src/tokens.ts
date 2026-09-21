@@ -137,6 +137,8 @@ export const light: theme_palette = {
   // raw containers (reclassifier placeholders) — fall back to default text
   raw_code_block: "#1f2328",
   raw_front_matter: "#1f2328",
+  raw_json: "#1f2328",
+  raw_markup: "#1f2328",
   raw_script: "#1f2328",
   raw_shell: "#1f2328",
   raw_style: "#1f2328",
@@ -269,6 +271,8 @@ export const dark: theme_palette = {
   // raw containers
   raw_code_block: "#e6edf3",
   raw_front_matter: "#e6edf3",
+  raw_json: "#e6edf3",
+  raw_markup: "#e6edf3",
   raw_script: "#e6edf3",
   raw_shell: "#e6edf3",
   raw_style: "#e6edf3",

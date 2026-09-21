@@ -1,0 +1,9 @@
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
