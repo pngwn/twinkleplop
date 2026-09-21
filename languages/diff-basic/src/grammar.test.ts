@@ -52,3 +52,24 @@ describe("Diff Basic Grammar", () => {
     });
   }
 });
+
+describe("stack balance", () => {
+  // the state stack has 256 slots, a pop past it loses multi char patterns such as the hunk marker
+  it("tokenizes the tail after 300 of every hunk header form", () => {
+    const unit = "@@ -1,2 +1,2 @@ fn\n-a\n+b\n@@@ -1 -1 +1 @@@\n";
+    const input = `${unit.repeat(300)}+c\n@@ -9 +9 @@\n`;
+    const tail = get_tokens(input)
+      .slice(-8)
+      .map((t) => [t.type, t.match]);
+    expect(tail).toEqual([
+      ["inserted_marker", "+"],
+      ["inserted", "c"],
+      ["label", "@@"],
+      ["punctuation", "-"],
+      ["number", "9"],
+      ["punctuation", "+"],
+      ["number", "9"],
+      ["label", "@@"],
+    ]);
+  });
+});
