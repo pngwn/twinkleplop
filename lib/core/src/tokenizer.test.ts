@@ -948,3 +948,63 @@ describe("probe mode - with default fallback behavior", () => {
     ]);
   });
 });
+
+describe("non-ascii transitions", () => {
+  test("the next non-ascii character dispatches on the new state's rules", () => {
+    const grammar: Grammar = {
+      states: {
+        root: { rules: [{ range: [[0x3b0, 0x3ff]], token: "first", state: "after", exit: true }] },
+        after: {
+          rules: [
+            { match: "x", token: "ascii" },
+            { range: [[0x3b0, 0x3ff]], token: "second" },
+          ],
+        },
+      },
+    };
+    const input = "λμ";
+    const result = tokenize(input, compile(grammar));
+    expect(get_tokens_with_values(result, input)).toEqual([
+      { type: "first", value: "λ" },
+      { type: "second", value: "μ" },
+    ]);
+  });
+
+  test("a probe entered on a non-ascii character at the end of input takes its fallback", () => {
+    const grammar: Grammar = {
+      states: {
+        root: { rules: [{ match: "λ", state: "check" }] },
+        check: {
+          mode: "probe",
+          fallback: "symbol",
+          rules: [{ match: " ", state: "symbol", exit: true }],
+        },
+        symbol: { rules: [{ match: "λ", token: "prompt" }] },
+      },
+    };
+    const input = "λ";
+    const result = tokenize(input, compile(grammar));
+    expect(get_tokens_with_values(result, input)).toEqual([{ type: "prompt", value: "λ" }]);
+  });
+
+  test("a probe whose last character is non-ascii takes its fallback", () => {
+    const grammar: Grammar = {
+      states: {
+        root: { rules: [{ match: "a", state: "check" }] },
+        check: { mode: "probe", fallback: "done", rules: [{ match: "λ" }] },
+        done: {
+          rules: [
+            { match: "a", token: "hit" },
+            { any: true, token: "rest" },
+          ],
+        },
+      },
+    };
+    const input = "aλ";
+    const result = tokenize(input, compile(grammar));
+    expect(get_tokens_with_values(result, input)).toEqual([
+      { type: "hit", value: "a" },
+      { type: "rest", value: "λ" },
+    ]);
+  });
+});

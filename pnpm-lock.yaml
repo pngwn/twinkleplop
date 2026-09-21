@@ -115,6 +115,15 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/shellsession:
+    dependencies:
+      '@twinkleplop/bash':
+        specifier: workspace:*
+        version: link:../bash
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/sql:
     dependencies:
       '@twinkleplop/core':
@@ -213,6 +222,9 @@ importers:
       '@twinkleplop/rust':
         specifier: workspace:*
         version: link:../../languages/rust
+      '@twinkleplop/shellsession':
+        specifier: workspace:*
+        version: link:../../languages/shellsession
       '@twinkleplop/sql':
         specifier: workspace:*
         version: link:../../languages/sql

@@ -46,6 +46,7 @@ export const light: theme_palette = {
 			tokens: "autolink, bold, code, code_block, code_language, italic, link_text, strike, url, url_link, url_title, blockquote_marker, code_fence, front_matter_marker, heading_marker, hr, list_marker, task_marker, escape, hard_break",
 		},
 		{ group: "svelte", tokens: "expression, svelte_block, svelte_directive" },
+		{ group: "shell sessions", tokens: "output, prompt, prompt_prefix" },
 		{ group: "whitespace", tokens: "space, tab, newline, carriage_return" },
 		{
 			group: "language-unique",

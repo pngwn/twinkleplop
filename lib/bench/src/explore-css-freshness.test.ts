@@ -28,6 +28,7 @@ const INHERITED_TOKENS = new Set([
   "raw_code_block",
   "raw_front_matter",
   "raw_script",
+  "raw_shell",
   "raw_style",
   "raw_svelte_expression",
 ]);

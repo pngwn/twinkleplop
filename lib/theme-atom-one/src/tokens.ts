@@ -124,6 +124,11 @@ export const light: theme_palette = {
   svelte_block: "#A626A4", // fallback to keyword
   svelte_directive: "#986801", // fallback to attribute
 
+  // shell sessions, the sources have no rule so these use the foreground
+  output: "#383A42",
+  prompt: "#383A42",
+  prompt_prefix: "#383A42",
+
   // whitespace
   carriage_return: "inherit",
   newline: "inherit",
@@ -134,6 +139,7 @@ export const light: theme_palette = {
   raw_code_block: "#383A42", // fallback to foreground
   raw_front_matter: "#383A42", // fallback to foreground
   raw_script: "#383A42", // fallback to foreground
+  raw_shell: "#383A42",
   raw_style: "#383A42", // fallback to foreground
   raw_svelte_expression: "#383A42", // fallback to foreground
 
@@ -252,6 +258,11 @@ export const dark: theme_palette = {
   svelte_block: "#c678dd", // fallback to keyword
   svelte_directive: "#d19a66", // fallback to attribute
 
+  // shell sessions, the sources have no rule so these use the foreground
+  output: "#abb2bf",
+  prompt: "#abb2bf",
+  prompt_prefix: "#abb2bf",
+
   // whitespace
   carriage_return: "inherit",
   newline: "inherit",
@@ -262,6 +273,7 @@ export const dark: theme_palette = {
   raw_code_block: "#abb2bf", // foreground
   raw_front_matter: "#abb2bf", // foreground
   raw_script: "#abb2bf", // foreground
+  raw_shell: "#abb2bf",
   raw_style: "#abb2bf", // foreground
   raw_svelte_expression: "#abb2bf", // foreground
 

@@ -28,6 +28,7 @@
     "@twinkleplop/markdown": "workspace:*",
     "@twinkleplop/python": "workspace:*",
     "@twinkleplop/rust": "workspace:*",
+    "@twinkleplop/shellsession": "workspace:*",
     "@twinkleplop/sql": "workspace:*",
     "@twinkleplop/svelte": "workspace:*",
     "@twinkleplop/theme-atom-one": "workspace:*",

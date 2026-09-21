@@ -59,6 +59,7 @@
 		toml: () => import('@twinkleplop/toml'),
 		python: () => import('@twinkleplop/python'),
 		bash: () => import('@twinkleplop/bash'),
+		shellsession: () => import('@twinkleplop/shellsession'),
 		go: () => import('@twinkleplop/go'),
 		diff: () => import('@twinkleplop/diff'),
 		'diff-basic': () => import('@twinkleplop/diff-basic')

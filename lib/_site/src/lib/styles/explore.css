@@ -1124,6 +1124,17 @@
 	color: var(--twp-svelte_directive);
 }
 
+/* shell sessions */
+.explore-app .tok.output {
+	color: var(--twp-output);
+}
+.explore-app .tok.prompt {
+	color: var(--twp-prompt);
+}
+.explore-app .tok.prompt_prefix {
+	color: var(--twp-prompt_prefix);
+}
+
 /* whitespace — never coloured, but keep layout-preserving */
 .explore-app .tok.space,
 .explore-app .tok.tab,
