@@ -27,6 +27,12 @@ import {
 	light_styles as rose_pine_light_styles
 } from '@twinkleplop/theme-rose-pine/tokens';
 import {
+	dark as ayu_dark,
+	dark_styles as ayu_dark_styles,
+	light as ayu_light,
+	light_styles as ayu_light_styles
+} from '@twinkleplop/theme-ayu/tokens';
+import {
 	dark as material_dark,
 	dark_styles as material_dark_styles,
 	light as material_light,
@@ -45,6 +51,8 @@ export type theme_variant =
 	| 'night-owl-dark'
 	| 'rose-pine-light'
 	| 'rose-pine-dark'
+	| 'ayu-light'
+	| 'ayu-dark'
 	| 'material-light'
 	| 'material-dark';
 export type theme_name =
@@ -53,6 +61,7 @@ export type theme_name =
 	| 'solarized'
 	| 'night-owl'
 	| 'rose-pine'
+	| 'ayu'
 	| 'material';
 export type theme_mode = 'light' | 'dark';
 
@@ -96,6 +105,8 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		shiki_id: 'rose-pine',
 		styles: rose_pine_dark_styles
 	},
+	'ayu-light': { palette: ayu_light, shiki_id: 'ayu-light', styles: ayu_light_styles },
+	'ayu-dark': { palette: ayu_dark, shiki_id: 'ayu-dark', styles: ayu_dark_styles },
 	'material-light': {
 		palette: material_light,
 		shiki_id: 'material-theme-lighter',
@@ -155,6 +166,7 @@ export const THEME_NAMES: theme_name[] = [
 	'solarized',
 	'night-owl',
 	'rose-pine',
+	'ayu',
 	'material'
 ];
 
