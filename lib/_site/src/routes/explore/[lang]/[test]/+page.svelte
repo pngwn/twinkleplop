@@ -64,7 +64,8 @@
 		go: () => import('@twinkleplop/go'),
 		http: () => import('@twinkleplop/http'),
 		diff: () => import('@twinkleplop/diff'),
-		'diff-basic': () => import('@twinkleplop/diff-basic')
+		'diff-basic': () => import('@twinkleplop/diff-basic'),
+		dotenv: () => import('@twinkleplop/dotenv')
 	};
 
 	const all_languages = Object.keys(grammar_loaders);
