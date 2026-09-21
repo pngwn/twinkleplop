@@ -67,7 +67,7 @@ export const light: theme_palette = {
 >
 	<Section id="builtin" title="built-in themes" num="§ 01">
 		<p>
-			Seven theme packages are available. Each includes light and dark variants in one stylesheet.
+			Eight theme packages are available. Each includes light and dark variants in one stylesheet.
 			Add a <code>.dark</code> class to an ancestor to use dark colours.
 		</p>
 		<CardGrid cols={2}>

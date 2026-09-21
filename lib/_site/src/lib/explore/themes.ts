@@ -50,6 +50,12 @@ import {
 	light as catppuccin_light,
 	light_styles as catppuccin_light_styles
 } from '@twinkleplop/theme-catppuccin/tokens';
+import {
+	dark as material_dark,
+	dark_styles as material_dark_styles,
+	light as material_light,
+	light_styles as material_light_styles
+} from '@twinkleplop/theme-material/tokens';
 import type { theme_styles } from '@twinkleplop/core/types';
 
 export type theme_variant =
@@ -66,7 +72,9 @@ export type theme_variant =
 	| 'ayu-light'
 	| 'ayu-dark'
 	| 'catppuccin-light'
-	| 'catppuccin-dark';
+	| 'catppuccin-dark'
+	| 'material-light'
+	| 'material-dark';
 export type theme_name =
 	| 'github'
 	| 'atom-one'
@@ -74,7 +82,8 @@ export type theme_name =
 	| 'night-owl'
 	| 'rose-pine'
 	| 'ayu'
-	| 'catppuccin';
+	| 'catppuccin'
+	| 'material';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
@@ -151,6 +160,16 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		palette: catppuccin_dark,
 		shiki_id: 'catppuccin-mocha',
 		styles: catppuccin_dark_styles
+	},
+	'material-light': {
+		palette: material_light,
+		shiki_id: 'material-theme-lighter',
+		styles: material_light_styles
+	},
+	'material-dark': {
+		palette: material_dark,
+		shiki_id: 'material-theme',
+		styles: material_dark_styles
 	}
 };
 
@@ -202,7 +221,8 @@ export const THEME_NAMES: theme_name[] = [
 	'night-owl',
 	'rose-pine',
 	'ayu',
-	'catppuccin'
+	'catppuccin',
+	'material'
 ];
 
 export interface lab_view {

@@ -39,6 +39,7 @@
     "@twinkleplop/theme-ayu": "workspace:*",
     "@twinkleplop/theme-catppuccin": "workspace:*",
     "@twinkleplop/theme-github": "workspace:*",
+    "@twinkleplop/theme-material": "workspace:*",
     "@twinkleplop/theme-night-owl": "workspace:*",
     "@twinkleplop/theme-rose-pine": "workspace:*",
     "@twinkleplop/theme-solarized": "workspace:*",
