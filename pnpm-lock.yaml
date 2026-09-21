@@ -61,6 +61,12 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/dotenv:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/go:
     dependencies:
       '@twinkleplop/core':
