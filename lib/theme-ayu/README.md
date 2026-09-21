@@ -19,12 +19,20 @@ import "@twinkleplop/theme-ayu/light";
 import "@twinkleplop/theme-ayu/dark";
 ```
 
-The palettes are also available as data, keyed by token type:
+The palettes and font styles are also available as data, keyed by token type:
 
 ```ts
-import { light, dark } from "@twinkleplop/theme-ayu/tokens";
+import { light, dark, light_styles, dark_styles } from "@twinkleplop/theme-ayu/tokens";
 ```
 
 Each stylesheet sets `--twp-background` to the theme's editor background but does not apply it. Use `background: var(--twp-background)` on your code container to opt in.
+
+Ayu's italic comments and bold markdown headings come from variables too, so you can turn one off with plain CSS:
+
+```css
+.twinkleplop {
+  --twp-comment-font-style: normal;
+}
+```
 
 VS Code dims separators (`;`, `,`) and HTML tag brackets with transparency. twinkleplop has a single `punctuation` type, so all punctuation uses the plain foreground colour.

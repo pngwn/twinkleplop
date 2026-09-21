@@ -20,7 +20,12 @@ import {
 	light as night_owl_light,
 	light_styles as night_owl_light_styles
 } from '@twinkleplop/theme-night-owl/tokens';
-import { dark as ayu_dark, light as ayu_light } from '@twinkleplop/theme-ayu/tokens';
+import {
+	dark as ayu_dark,
+	dark_styles as ayu_dark_styles,
+	light as ayu_light,
+	light_styles as ayu_light_styles
+} from '@twinkleplop/theme-ayu/tokens';
 import type { theme_styles } from '@twinkleplop/core/types';
 
 export type theme_variant =
@@ -67,8 +72,8 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		shiki_id: 'night-owl',
 		styles: night_owl_dark_styles
 	},
-	'ayu-light': { palette: ayu_light, shiki_id: 'ayu-light' },
-	'ayu-dark': { palette: ayu_dark, shiki_id: 'ayu-dark' }
+	'ayu-light': { palette: ayu_light, shiki_id: 'ayu-light', styles: ayu_light_styles },
+	'ayu-dark': { palette: ayu_dark, shiki_id: 'ayu-dark', styles: ayu_dark_styles }
 };
 
 export function resolve_theme(core: theme_name, mode: theme_mode): theme_def {

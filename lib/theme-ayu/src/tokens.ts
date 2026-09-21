@@ -7,7 +7,7 @@
 // the diff header colour is hardcoded in the vscode-ayu template, not in ayu-colors
 // https://github.com/ayu-theme/vscode-ayu/blob/444ef92911cb75c3933c8003e3a7c79b6b6c914f/src/template.ts
 
-import type { theme_palette } from "@twinkleplop/core/types";
+import type { theme_palette, theme_styles } from "@twinkleplop/core/types";
 
 const light_colours = {
   bg: "#fcfcfc",
@@ -188,3 +188,24 @@ const palette = (c: typeof light_colours): theme_palette => ({
 export const light: theme_palette = palette(light_colours);
 
 export const dark: theme_palette = palette(dark_colours);
+
+// both variants share the vscode-ayu template, so their font styles match
+const styles: theme_styles = {
+  autolink: ["underline"], // markup.underline.link
+  blockquote_marker: ["italic"], // markup.quote
+  bold: ["bold"], // markup.bold
+  bold_open: ["bold"], // punctuation.definition.bold inside markup.bold
+  bold_close: ["bold"], // punctuation.definition.bold inside markup.bold
+  comment: ["italic"], // comment
+  heading: ["bold"], // markup.heading, diff headers are upright
+  heading_marker: ["bold"], // punctuation.definition.heading inside markup.heading
+  hr: ["bold"], // meta.separator
+  italic: ["italic"], // markup.italic
+  italic_open: ["italic"], // punctuation.definition.italic inside markup.italic
+  italic_close: ["italic"], // punctuation.definition.italic inside markup.italic
+  url: ["underline"], // markup.underline.link, http urls have no rule
+};
+
+export const light_styles: theme_styles = styles;
+
+export const dark_styles: theme_styles = styles;
