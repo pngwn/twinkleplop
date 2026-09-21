@@ -2770,11 +2770,10 @@ const PRECEDENCE_TABLE: Record<string, number> = {
   punctuation: 5,
   operator: 5,
   variable: 10,
-  // parameter sits below property and function: a token claimed as both a
-  // parameter and a member key (TS method-shorthand params with
-  // annotations) keeps the member classification, matching the old
-  // sequential pipelines where param tagging ran last and gated on the
-  // token still being a bare identifier.
+  // parameter sits below property and function: a token that draws one of
+  // those claims as well keeps it, matching the old sequential pipelines
+  // where param tagging ran last and gated on the token still being a bare
+  // identifier.
   parameter: 15,
   property: 20,
   function: 30,

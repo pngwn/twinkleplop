@@ -23,6 +23,7 @@ import {
   embed_interleaved,
   frame_track,
   make_token_view,
+  precedence_for,
   promote_by_text_set,
   rewrite_types,
   seq,
@@ -603,10 +604,7 @@ export const type_position_promoter: ClaimingReclassifier = rewrite_types(type_p
 // a label is an identifier directly inside a bracket frame, first in its
 // element, followed by `:`, `?:` or `?` `:`. the only other code with that
 // shape is an index signature's key (`[k: string]: V`).
-//
-// claims at 35 to beat the method-shorthand `function` claim (30) that
-// claim_property_scope also makes for `[cb: () => void]` in an object type.
-const TUPLE_LABEL_PREC = 35;
+const TUPLE_LABEL_PREC = precedence_for("property");
 
 const CH_COLON = 0x3a;
 const CH_COMMA = 0x2c;
