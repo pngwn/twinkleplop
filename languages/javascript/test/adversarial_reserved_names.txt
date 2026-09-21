@@ -79,9 +79,8 @@ const makeBlock = (name) => {
 
 // --- frames that look like object literals but are not ---
 
-// a template interpolation: the brace belongs to `${`, and `function`
-// here is a keyword. this broke when method shorthand still trusted the
-// `object` frame kind.
+// a template interpolation: the brace belongs to `${`, so it is an
+// expression, not an object literal.
 const rendered = `${function () { return 1; }}`;
 const called = `${typeof value}`;
 const inner = `${{ a: 1 }}`;

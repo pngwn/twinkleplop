@@ -324,6 +324,9 @@ export const js_frame_spec: FrameSpec = {
     },
     prev_rules: [
       { prev_type: "operator", prev_texts: ["=>"], kind: "block" },
+      // `${` in a template: the brace opens an interpolated expression.
+      // it shares a token with the `$`, so this matches on that character.
+      { prev_type: "punctuation", prev_last_char_in: "$", kind: "block" },
       // `:` is punctuation in the grammar (separator, not operator); a
       // brace after it is an annotation / return-position type literal.
       { prev_type: "punctuation", prev_texts: [":"], kind: "type_literal" },
