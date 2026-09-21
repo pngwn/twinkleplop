@@ -124,10 +124,12 @@ const shifted = a < b >> c;
 
 // --- positions worth eyeballing ---
 
-// a labelled tuple: `start` and `end` are tuple labels, not members.
-// they read as types — pre-existing, and not what the angle walkers do
+// a labelled tuple: `start`, `end`, `head` and `tail` are labels and read
+// as properties, like the keys of `{ start: number }`; `number` and
+// `string` stay types
 interface Span {
-  range: [start: number, end: number];
+  range: [start: number, end?: number];
+  rest: [head: string, ...tail: string[]];
 }
 
 // a `case` arm's block and a function body with a return type are both

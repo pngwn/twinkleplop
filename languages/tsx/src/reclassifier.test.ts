@@ -71,3 +71,13 @@ describe("TSX parameters — later parameters inside a member body", () => {
     expect(type_of("const o = { f: (a: string, b: number) => a };", "b")).toBe("parameter");
   });
 });
+
+describe("TSX tuple labels", () => {
+  it("labels are properties and their types stay types", () => {
+    const src = "type Pair = [first: string, ...rest: number[]];";
+    expect(type_of(src, "first")).toBe("property");
+    expect(type_of(src, "rest")).toBe("property");
+    expect(type_of(src, "string")).toBe("type");
+    expect(type_of(src, "number")).toBe("type");
+  });
+});
