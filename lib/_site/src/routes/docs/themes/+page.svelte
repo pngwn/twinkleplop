@@ -104,6 +104,11 @@ import "@twinkleplop/theme-github/dark";`;
 				<code>carriage_return</code> are never coloured. They get
 				<code>white-space: pre</code> instead.
 			</li>
+			<li>
+				Tokens a theme draws in italic, bold, underline or strikethrough also read
+				<code>--twp-&lt;token&gt;-font-style</code>, <code>-font-weight</code> or
+				<code>-text-decoration</code>, which you can override like the colours.
+			</li>
 		</ul>
 	</Section>
 

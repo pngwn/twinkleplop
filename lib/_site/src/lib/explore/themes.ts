@@ -18,6 +18,7 @@ import {
 	dark as night_owl_dark,
 	light as night_owl_light
 } from '@twinkleplop/theme-night-owl/tokens';
+import type { theme_styles } from '@twinkleplop/core/types';
 
 export type theme_variant =
 	| 'github-light'
@@ -34,6 +35,8 @@ export type theme_mode = 'light' | 'dark';
 export interface theme_def {
 	palette: token_palette;
 	shiki_id: string;
+	// absent for themes that leave font styles to the lab stylesheet
+	styles?: theme_styles;
 }
 
 // shiki ships TWO github theme families: `github-dark` / `github-light`
