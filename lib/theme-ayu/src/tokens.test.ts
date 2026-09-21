@@ -64,7 +64,7 @@ describe("dist/tokens.js", () => {
   const dist = new URL("../dist/tokens.js", import.meta.url);
 
   if (!fs.existsSync(dist.pathname)) {
-    it("exists (run `pnpm --filter=@twinkleplop/theme-github build`)", () => {
+    it("exists (run `pnpm --filter=@twinkleplop/theme-ayu build`)", () => {
       expect(fs.existsSync(dist.pathname)).toBe(true);
     });
   } else {

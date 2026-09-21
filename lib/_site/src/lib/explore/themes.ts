@@ -8,11 +8,23 @@ export type token_palette = Record<string, string>;
 // theme name when upstream names diverge (e.g. catppuccin's "latte" /
 // "mocha" vs. our "catppuccin-light" / "catppuccin-dark"), hence the
 // explicit mapping rather than a blind string reuse.
-import { dark as github_dark, light as github_light } from '@twinkleplop/theme-github/tokens';
-import { dark as atom_one_dark, light as atom_one_light } from '@twinkleplop/theme-atom-one/tokens';
+import {
+	dark as github_dark,
+	dark_styles as github_dark_styles,
+	light as github_light,
+	light_styles as github_light_styles
+} from '@twinkleplop/theme-github/tokens';
+import {
+	dark as atom_one_dark,
+	dark_styles as atom_one_dark_styles,
+	light as atom_one_light,
+	light_styles as atom_one_light_styles
+} from '@twinkleplop/theme-atom-one/tokens';
 import {
 	dark as solarized_dark,
-	light as solarized_light
+	dark_styles as solarized_dark_styles,
+	light as solarized_light,
+	light_styles as solarized_light_styles
 } from '@twinkleplop/theme-solarized/tokens';
 import {
 	dark as night_owl_dark,
@@ -26,6 +38,12 @@ import {
 	light as rose_pine_light,
 	light_styles as rose_pine_light_styles
 } from '@twinkleplop/theme-rose-pine/tokens';
+import {
+	dark as ayu_dark,
+	dark_styles as ayu_dark_styles,
+	light as ayu_light,
+	light_styles as ayu_light_styles
+} from '@twinkleplop/theme-ayu/tokens';
 import {
 	dark as catppuccin_dark,
 	dark_styles as catppuccin_dark_styles,
@@ -45,6 +63,8 @@ export type theme_variant =
 	| 'night-owl-dark'
 	| 'rose-pine-light'
 	| 'rose-pine-dark'
+	| 'ayu-light'
+	| 'ayu-dark'
 	| 'catppuccin-light'
 	| 'catppuccin-dark';
 export type theme_name =
@@ -53,14 +73,14 @@ export type theme_name =
 	| 'solarized'
 	| 'night-owl'
 	| 'rose-pine'
+	| 'ayu'
 	| 'catppuccin';
 export type theme_mode = 'light' | 'dark';
 
 export interface theme_def {
 	palette: token_palette;
 	shiki_id: string;
-	// absent for themes that leave font styles to the lab stylesheet
-	styles?: theme_styles;
+	styles: theme_styles;
 }
 
 // shiki ships TWO github theme families: `github-dark` / `github-light`
@@ -70,12 +90,36 @@ export interface theme_def {
 // palette is ported from. Pin to the `-default` variants so both panes
 // resolve class_name, function, etc. to the same hexes.
 export const THEMES: Record<theme_variant, theme_def> = {
-	'github-light': { palette: github_light, shiki_id: 'github-light-default' },
-	'github-dark': { palette: github_dark, shiki_id: 'github-dark-default' },
-	'atom-one-light': { palette: atom_one_light, shiki_id: 'one-light' },
-	'atom-one-dark': { palette: atom_one_dark, shiki_id: 'one-dark-pro' },
-	'solarized-light': { palette: solarized_light, shiki_id: 'solarized-light' },
-	'solarized-dark': { palette: solarized_dark, shiki_id: 'solarized-dark' },
+	'github-light': {
+		palette: github_light,
+		shiki_id: 'github-light-default',
+		styles: github_light_styles
+	},
+	'github-dark': {
+		palette: github_dark,
+		shiki_id: 'github-dark-default',
+		styles: github_dark_styles
+	},
+	'atom-one-light': {
+		palette: atom_one_light,
+		shiki_id: 'one-light',
+		styles: atom_one_light_styles
+	},
+	'atom-one-dark': {
+		palette: atom_one_dark,
+		shiki_id: 'one-dark-pro',
+		styles: atom_one_dark_styles
+	},
+	'solarized-light': {
+		palette: solarized_light,
+		shiki_id: 'solarized-light',
+		styles: solarized_light_styles
+	},
+	'solarized-dark': {
+		palette: solarized_dark,
+		shiki_id: 'solarized-dark',
+		styles: solarized_dark_styles
+	},
 	'night-owl-light': {
 		palette: night_owl_light,
 		shiki_id: 'night-owl-light',
@@ -96,6 +140,8 @@ export const THEMES: Record<theme_variant, theme_def> = {
 		shiki_id: 'rose-pine',
 		styles: rose_pine_dark_styles
 	},
+	'ayu-light': { palette: ayu_light, shiki_id: 'ayu-light', styles: ayu_light_styles },
+	'ayu-dark': { palette: ayu_dark, shiki_id: 'ayu-dark', styles: ayu_dark_styles },
 	'catppuccin-light': {
 		palette: catppuccin_light,
 		shiki_id: 'catppuccin-latte',
@@ -155,6 +201,7 @@ export const THEME_NAMES: theme_name[] = [
 	'solarized',
 	'night-owl',
 	'rose-pine',
+	'ayu',
 	'catppuccin'
 ];
 

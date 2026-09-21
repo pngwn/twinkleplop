@@ -1,0 +1,53 @@
+{
+  "name": "@twinkleplop/theme-ayu",
+  "version": "0.0.0",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.css"
+    },
+    "./light": {
+      "types": "./dist/light.d.ts",
+      "default": "./dist/light.css"
+    },
+    "./dark": {
+      "types": "./dist/dark.d.ts",
+      "default": "./dist/dark.css"
+    },
+    "./tokens": {
+      "source": "./src/tokens.ts",
+      "types": "./dist/tokens.d.ts",
+      "import": "./dist/tokens.js",
+      "default": "./dist/tokens.js"
+    }
+  },
+  "scripts": {
+    "build": "tsx src/build.ts",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@twinkleplop/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pngwn/twinkleplop",
+    "directory": "lib/theme-ayu"
+  },
+  "homepage": "https://twinkleplop.pngwn.at",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues",
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  }
+}

@@ -161,6 +161,33 @@ export const THEMES: swatch[] = [
     chips: ["#31748f", "#f6c177", "#ebbcba", "#9ccfd8"],
   },
   {
+    name: "ayu",
+    package_name: "@twinkleplop/theme-ayu",
+    dark: {
+      bg: "#10141c",
+      fg: "#bfbdb6",
+      com: "#5a6673",
+      kw: "#ff8f40",
+      str: "#aad94c",
+      fn: "#ffb454",
+      param: "#d2a6ff",
+      type: "#39bae6",
+      num: "#d2a6ff",
+    },
+    light: {
+      bg: "#fcfcfc",
+      fg: "#5c6166",
+      com: "#adaeb1",
+      kw: "#fa8532",
+      str: "#86b300",
+      fn: "#eba400",
+      param: "#a37acc",
+      type: "#55b4d4",
+      num: "#a37acc",
+    },
+    chips: ["#ff8f40", "#aad94c", "#ffb454", "#d2a6ff"],
+  },
+  {
     name: "catppuccin",
     package_name: "@twinkleplop/theme-catppuccin",
     dark: {
