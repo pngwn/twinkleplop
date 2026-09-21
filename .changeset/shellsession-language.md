@@ -1,5 +1,5 @@
 ---
-"@twinkleplop/shellsession": minor
+"@twinkleplop/shellsession": patch
 "@twinkleplop/core": patch
 "@twinkleplop/theme-github": patch
 "@twinkleplop/theme-atom-one": patch
