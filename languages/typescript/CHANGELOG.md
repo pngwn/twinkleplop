@@ -1,5 +1,93 @@
 # @twinkleplop/typescript
 
+## 0.1.3
+### Patch Changes
+
+
+
+- [#79](https://github.com/pngwn/twinkleplop/pull/79) [`eedef07`](https://github.com/pngwn/twinkleplop/commit/eedef07a232680c44a80812b57dd19b161dbc973) Thanks [@pngwn](https://github.com/pngwn)! - Highlight a generator's `*` as a `keyword` rather than an `operator`, matching Shiki. This applies at every fidelity setting.
+  
+  ```js
+  function* ids() {
+    yield* other();
+  }
+  
+  class Tree {
+    *[Symbol.iterator]() {}
+    static async *walk() {}
+  }
+  ```
+
+
+- [#57](https://github.com/pngwn/twinkleplop/pull/57) [`a5f4d21`](https://github.com/pngwn/twinkleplop/commit/a5f4d2106a4c3aa0a4921da88964208f36032904) Thanks [@pngwn](https://github.com/pngwn)! - Highlight every parameter of a function inside an object literal, interface or type literal the same way as the first, rather than as `property`:
+  
+  ```ts
+  type U = { f: (a: string, b: number) => void };
+  interface I {
+    f(a: string, b: number): void;
+  }
+  const o = { f: (a: string, b: number) => a };
+  ```
+  
+  This covers methods, call and construct signatures, and function expressions in an object, including a function-typed parameter such as `cb: () => void`.
+
+
+- [#79](https://github.com/pngwn/twinkleplop/pull/79) [`a3f4923`](https://github.com/pngwn/twinkleplop/commit/a3f4923c486b140d5d744745690efa4b3a90e073) Thanks [@pngwn](https://github.com/pngwn)! - Highlight the `*` of a whole-module import or re-export as a `constant` rather than an `operator`, matching Shiki. It follows `constant` fidelity.
+  
+  ```js
+  import * as utils from "./utils.js";
+  import def, * as ns from "./ns.js";
+  export * from "./shared.js";
+  ```
+  
+  The binding after a default import, as in `import def, * as ns`, and after TypeScript's `import type * as ns` is now a `namespace` too.
+
+
+- [#54](https://github.com/pngwn/twinkleplop/pull/54) [`fba34b1`](https://github.com/pngwn/twinkleplop/commit/fba34b14df85f4f61fc54f75c977a1145ee8b18a) Thanks [@pngwn](https://github.com/pngwn)! - Highlight the name in a TypeScript parameter property as `parameter`, the same as any other parameter, rather than `identifier`:
+  
+  ```ts
+  class Animal {
+    constructor(
+      public name: string,
+      private readonly id: number,
+    ) {}
+  }
+  ```
+
+
+- [#61](https://github.com/pngwn/twinkleplop/pull/61) [`77e5791`](https://github.com/pngwn/twinkleplop/commit/77e5791ed37ef14477d3b14c2ee2d54ea81f4ee0) Thanks [@pngwn](https://github.com/pngwn)! - Long runs of numbers no longer break the highlighting that follows them. In JSON, JavaScript, TypeScript, TSX, Go, Rust and SQL, a file with a few hundred numeric literals went wrong partway through and stayed wrong, and highlighting such files repeatedly slowed down every other language in the same process:
+  
+  ```js
+  const samples = [0.5, 1.5, 2.5 /* ...300 more */];
+  if (ready) start(); // `if` was highlighted as a plain identifier
+  ```
+  
+  In JavaScript, an exponent in a call argument such as `f(1e3, x)` no longer drops the highlighting for the rest of the input.
+
+
+- [#58](https://github.com/pngwn/twinkleplop/pull/58) [`a3e1a0c`](https://github.com/pngwn/twinkleplop/commit/a3e1a0c90a02ee14caf0dd4fa09d7df9dd591cfa) Thanks [@pngwn](https://github.com/pngwn)! - Highlight the type in an optional annotation (`x?: T`) as `type`, the same as in a required one, rather than `identifier`:
+  
+  ```ts
+  interface Hooks {
+    line?: (n: number, source_line: number) => HookResult | void;
+    options?: RewriteOptions;
+  }
+  ```
+  
+  This covers optional interface members, class fields and parameters. An optional method's return type, as in `f?(): R`, is still `identifier`.
+
+
+- [#56](https://github.com/pngwn/twinkleplop/pull/56) [`8cc71aa`](https://github.com/pngwn/twinkleplop/commit/8cc71aaea9008e5b7a5e53345e386990b85aed3a) Thanks [@pngwn](https://github.com/pngwn)! - Highlight the labels in a labelled tuple as `property` rather than `type`, the same as keys in an object type:
+  
+  ```ts
+  type Range = [start: number, end: number];
+  ```
+  
+  Optional and rest labels such as `[a?: T]` and `[...rest: T[]]` are covered too. With `fidelity: ["type"]`, labels stay `identifier`, as object type keys already do.
+- Updated dependencies [[`e36051c`](https://github.com/pngwn/twinkleplop/commit/e36051c72d4956e25c79daf627ec08f2c2934edf), [`185c681`](https://github.com/pngwn/twinkleplop/commit/185c681197726bc90abed3cca566e37078dab105), [`eedef07`](https://github.com/pngwn/twinkleplop/commit/eedef07a232680c44a80812b57dd19b161dbc973), [`a5f4d21`](https://github.com/pngwn/twinkleplop/commit/a5f4d2106a4c3aa0a4921da88964208f36032904), [`a3f4923`](https://github.com/pngwn/twinkleplop/commit/a3f4923c486b140d5d744745690efa4b3a90e073), [`fba34b1`](https://github.com/pngwn/twinkleplop/commit/fba34b14df85f4f61fc54f75c977a1145ee8b18a), [`77e5791`](https://github.com/pngwn/twinkleplop/commit/77e5791ed37ef14477d3b14c2ee2d54ea81f4ee0), [`84b7527`](https://github.com/pngwn/twinkleplop/commit/84b75279520c63ca19d322cfbced72e41e439085), [`6710782`](https://github.com/pngwn/twinkleplop/commit/671078298b33450abfca1006d55666098d5f351c), [`4fec60d`](https://github.com/pngwn/twinkleplop/commit/4fec60d3295dba2175ab34742025ad1206a186b1), [`4fec60d`](https://github.com/pngwn/twinkleplop/commit/4fec60d3295dba2175ab34742025ad1206a186b1), [`d06f61e`](https://github.com/pngwn/twinkleplop/commit/d06f61efed390b05d572bc65bf8c772a15a9f987), [`a3e1a0c`](https://github.com/pngwn/twinkleplop/commit/a3e1a0c90a02ee14caf0dd4fa09d7df9dd591cfa), [`8cc71aa`](https://github.com/pngwn/twinkleplop/commit/8cc71aaea9008e5b7a5e53345e386990b85aed3a)]:
+  - @twinkleplop/core@0.2.0
+  - @twinkleplop/javascript@0.1.3
+
 ## 0.1.2
 ### Patch Changes
 
