@@ -106,9 +106,8 @@
 /* ---------- top bar ---------- */
 .explore-app .topbar {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	gap: 0 16px;
+	gap: 16px;
 	min-height: 44px;
 	padding: 0 16px;
 	border-bottom: 1px solid var(--border);
@@ -150,21 +149,61 @@
 	height: 18px;
 	background: var(--border);
 }
-.explore-app .topbar__path .chip__value {
-	max-width: 160px;
-	overflow: hidden;
-	text-overflow: ellipsis;
+.explore-app .topbar > * {
+	flex: none;
 }
 .explore-app .topbar__view {
 	gap: 10px;
 	margin-left: auto;
 }
-/* the whole group wraps, so no control is ever orphaned on a row of its own */
-.explore-app .topbar.is-wrapped .topbar__view {
-	flex-basis: 100%;
-	margin-left: 0;
-	padding: 4px 0 6px;
-	border-top: 1px dashed var(--border);
+/* the bar never wraps, it condenses as it narrows, and the sample name gives
+   up the last of the room */
+.explore-app .topbar > .topbar__path {
+	flex: 0 1 auto;
+}
+.explore-app .topbar__path .chip {
+	flex: none;
+	min-width: 0;
+}
+.explore-app .topbar__path .chip:last-child {
+	flex: 0 1 auto;
+}
+.explore-app .topbar__path .chip__button {
+	max-width: 100%;
+}
+.explore-app .topbar__path .chip__value {
+	min-width: 0;
+	max-width: 160px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+@media (max-width: 1320px) {
+	.explore-app .topbar {
+		gap: 12px;
+	}
+	.explore-app .topbar__view {
+		gap: 6px;
+	}
+	.explore-app .topbar__view .chip__label {
+		display: none;
+	}
+}
+@media (max-width: 1140px) {
+	.explore-app .site-link[aria-current='page'],
+	.explore-app .site-link[aria-current='page'] + .slash {
+		display: none;
+	}
+	.explore-app .topbar__path .chip__value {
+		max-width: 110px;
+	}
+}
+@media (max-width: 1000px) {
+	.explore-app .topbar {
+		gap: 10px;
+	}
+	.explore-app .site-links {
+		display: none;
+	}
 }
 
 /* ---------- command chips ---------- */
@@ -1136,7 +1175,7 @@
 /* ---------- phones ---------- */
 /* one pane at a time in a horizontal scroller, with every control in a bar
    along the bottom whose sheets grow upward */
-@media (max-width: 760px) {
+@media (max-width: 900px) {
 	.explore-app {
 		/* the race line and button row of the bar */
 		--mbar-h: 85px;
