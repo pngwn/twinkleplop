@@ -28,7 +28,6 @@ const html = typescript("1 + 2");`
 <ArticleMain
 	pane_path="docs / welcome.md"
 	title="twinkleplop"
-	subtitle="A syntax highlighter and code authoring toolkit. Small, fast, customisable. plop it in and twinkle."
 >
 	<!-- <HomeHero
 		title="twinkleplop"
