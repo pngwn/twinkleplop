@@ -5,6 +5,7 @@
 //
 // code is utf8, deflate raw and base64url, and goes last so the settings stay
 // readable, fidelity lists the enabled tags, absent means all and empty none
+// scripts/share_to_fixture.mjs decodes the same format in node
 
 const VERSION = "1";
 

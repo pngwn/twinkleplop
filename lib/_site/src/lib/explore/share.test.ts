@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { deflateRawSync } from "node:zlib";
 
 import { decode_share, encode_share, type share_state } from "./share";
+import { decode_share as decode_in_node } from "../../../scripts/share_to_fixture.mjs";
 
 const state: share_state = {
   lang: "tsx",
@@ -35,9 +36,10 @@ describe("share links", () => {
     }
   });
 
-  it("reads a whole url", async () => {
+  it("reads a whole url, and the node decoder agrees", async () => {
     const link = `https://twinkleplop.pngwn.at/explore/edit#${await encode_share(state)}`;
     expect(await decode_share(new URL(link).hash)).toEqual(state);
+    expect(decode_in_node(link)).toEqual(state);
   });
 
   it("rejects what is not a link it wrote", async () => {
@@ -52,6 +54,7 @@ describe("share links", () => {
       good.replace(/code=.*/, `code=${snippet_bomb}`),
     ]) {
       expect(await decode_share(hash)).toBeNull();
+      expect(decode_in_node(hash)).toBeNull();
     }
   });
 });
