@@ -578,6 +578,59 @@
 	background: color-mix(in oklab, var(--accent) 22%, transparent);
 	outline: 1px solid var(--accent);
 }
+.explore-app .inspect-tip {
+	position: fixed;
+	z-index: 200;
+	pointer-events: none;
+	transform: translate(12px, 16px);
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 0 4px 1px;
+	background: var(--bg-elev);
+	border: 1px solid var(--fg-dim);
+	border-radius: 2px;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+	color: var(--fg);
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	white-space: nowrap;
+}
+.explore-app .inspect-tip--stack {
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+	padding: 4px 6px 5px;
+}
+.explore-app .inspect-tip__value {
+	color: var(--accent);
+}
+.explore-app .inspect-tip__themed {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 6px;
+}
+.explore-app .inspect-tip__themed-label {
+	color: var(--fg-muted);
+	font-size: 9px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+.explore-app .inspect-tip__themed-scope,
+.explore-app .inspect-tip__scope {
+	color: var(--fg-dim);
+	font-size: 10px;
+}
+.explore-app .inspect-tip__chain {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	width: 100%;
+	margin: 0;
+	padding: 4px 0 0;
+	border-top: 1px dashed var(--border);
+	list-style: none;
+}
 
 .explore-app .pane__foot {
 	display: flex;

@@ -343,8 +343,65 @@
 	}
 
 	function on_pointerleave() {
+		tip = null;
 		if (!pinned) hot = null;
 	}
+
+	// a tooltip beside the pointer names the token under it, twinkleplop by
+	// its type and shiki by its leaf scope and the theme rule that coloured
+	// it, touch leaves this to the pane footers
+	interface inspect_tip {
+		x: number;
+		y: number;
+		label: string;
+		themed_by: string | null;
+		chain: string[];
+	}
+	let tip = $state<inspect_tip | null>(null);
+	let shift_held = $state(false);
+
+	function on_pointermove(e: PointerEvent) {
+		if (!view.inspect || e.pointerType === 'touch') return;
+		const target = e.target instanceof Element ? e.target : null;
+		const plop = target?.closest<HTMLElement>('[data-pane="plop"] .tok');
+		const shiki = target?.closest<HTMLElement>('[data-pane="shiki"] span[data-scopes]:not([data-ws])');
+		if (plop) {
+			tip = { x: e.clientX, y: e.clientY, label: plop.classList[1] ?? '', themed_by: null, chain: [] };
+		} else if (shiki) {
+			// data-scopes runs root first, so the leaf is last
+			const chain = shiki.dataset.scopes?.split('|') ?? [];
+			tip = {
+				x: e.clientX,
+				y: e.clientY,
+				label: chain.at(-1) ?? '',
+				themed_by: shiki.dataset.themeScope ?? null,
+				chain: chain.slice(0, -1).reverse()
+			};
+		} else {
+			tip = null;
+		}
+	}
+
+	// holding shift unfolds the rest of the scope chain under the leaf
+	$effect(() => {
+		if (!view.inspect) {
+			tip = null;
+			return;
+		}
+		const on_key = (e: KeyboardEvent) => (shift_held = e.shiftKey);
+		const on_blur = () => (shift_held = false);
+		addEventListener('keydown', on_key);
+		addEventListener('keyup', on_key);
+		addEventListener('blur', on_blur);
+		return () => {
+			removeEventListener('keydown', on_key);
+			removeEventListener('keyup', on_key);
+			removeEventListener('blur', on_blur);
+			shift_held = false;
+		};
+	});
+
+	const tip_chain = $derived(shift_held && tip?.chain.length ? tip.chain : null);
 
 	function on_click(e: MouseEvent) {
 		if (!view.inspect) return;
@@ -506,6 +563,7 @@
 		style={palette_style}
 		onscroll={on_panes_scroll}
 		onpointerover={on_pointerover}
+		onpointermove={on_pointermove}
 		onpointerleave={on_pointerleave}
 		onclick={on_click}
 	>
@@ -573,4 +631,28 @@
 		{shiki_ms}
 		fidelity={{ available: available_tags, enabled: enabled_tags, toggle: toggle_tag }}
 	/>
+
+	{#if tip}
+		<div
+			class="inspect-tip"
+			class:inspect-tip--stack={tip_chain || tip.themed_by}
+			style:left="{tip.x}px"
+			style:top="{tip.y}px"
+		>
+			<span class="inspect-tip__value">{tip.label}</span>
+			{#if tip.themed_by}
+				<span class="inspect-tip__themed">
+					<span class="inspect-tip__themed-label">themed by</span>
+					<span class="inspect-tip__themed-scope">{tip.themed_by}</span>
+				</span>
+			{/if}
+			{#if tip_chain}
+				<ul class="inspect-tip__chain">
+					{#each tip_chain as scope, i (i)}
+						<li class="inspect-tip__scope">{scope}</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	{/if}
 </div>
