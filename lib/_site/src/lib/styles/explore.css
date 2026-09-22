@@ -160,16 +160,11 @@
 	margin-left: auto;
 }
 /* the whole group wraps, so no control is ever orphaned on a row of its own */
-@media (max-width: 1300px) {
-	.explore-app .topbar {
-		column-gap: 12px;
-	}
-	.explore-app .topbar__view {
-		flex-basis: 100%;
-		margin-left: 0;
-		padding: 4px 0 6px;
-		border-top: 1px dashed var(--border);
-	}
+.explore-app .topbar.is-wrapped .topbar__view {
+	flex-basis: 100%;
+	margin-left: 0;
+	padding: 4px 0 6px;
+	border-top: 1px dashed var(--border);
 }
 
 /* ---------- command chips ---------- */

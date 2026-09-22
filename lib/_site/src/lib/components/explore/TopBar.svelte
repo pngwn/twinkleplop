@@ -21,9 +21,39 @@
 	let { path, edit }: { path: path_control; edit: edit_control } = $props();
 
 	const font_labels = FONTS.map((f) => f.label);
+
+	let bar = $state<HTMLElement>();
+	let path_el = $state<HTMLElement>();
+	let view_el = $state<HTMLElement>();
+	// the view controls move to a row of their own only when they cannot fit
+	// beside the path, measured from their content since a wrapped row is
+	// always full width
+	let wrapped = $state(false);
+
+	$effect(() => {
+		if (!bar || !path_el || !view_el) return;
+		const [outer, path_box, view_box] = [bar, path_el, view_el];
+		function measure() {
+			const first = view_box.firstElementChild?.getBoundingClientRect();
+			const last = view_box.lastElementChild?.getBoundingClientRect();
+			if (!first || !last) return;
+			const box = outer.getBoundingClientRect();
+			const style = getComputedStyle(outer);
+			const needed =
+				path_box.getBoundingClientRect().right -
+				box.left +
+				parseFloat(style.columnGap) +
+				(last.right - first.left) +
+				parseFloat(style.paddingRight);
+			wrapped = needed > box.width;
+		}
+		const observer = new ResizeObserver(measure);
+		for (const el of [outer, path_box, ...view_box.children]) observer.observe(el);
+		return () => observer.disconnect();
+	});
 </script>
 
-<header class="topbar">
+<header class="topbar" class:is-wrapped={wrapped} bind:this={bar}>
 	<a class="brand" href="/">twinkleplop</a>
 	<nav class="site-links" aria-label="Site">
 		<a class="site-link" aria-current="page" href="/explore">explore</a>
@@ -31,7 +61,7 @@
 		<a class="site-link" href="/docs">docs</a>
 	</nav>
 	<span class="topbar__sep" aria-hidden="true"></span>
-	<nav class="topbar__path" aria-label="Sample">
+	<nav class="topbar__path" aria-label="Sample" bind:this={path_el}>
 		<CommandChip label="language" value={path.lang} options={LANGUAGES} on_change={path.on_lang_change} />
 		<span class="slash" aria-hidden="true">/</span>
 		<CommandChip
@@ -41,7 +71,7 @@
 			on_change={path.on_sample_change}
 		/>
 	</nav>
-	<div class="topbar__view" role="group" aria-label="Code view">
+	<div class="topbar__view" role="group" aria-label="Code view" bind:this={view_el}>
 		<CommandChip
 			label="theme"
 			value={view.theme}
