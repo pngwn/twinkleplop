@@ -125,9 +125,10 @@ const tokens = html_tokenizer("hello world");`;
 	{/snippet}
 
 	{#snippet a_size()}
-			Core is roughly 4kb min+gzip. Each language adds between 2–9kb depending on grammar
-			complexity. There is no shared regex blob — grammars are pre-compiled to small state
-			machines at build time.
+			A single language comes to roughly 30 to 40kb min+gzip depending on the grammar, and
+			each language after that adds a few kb, since they all share the same core. There is no
+			regex blob: grammars are compiled to small state machines. More size optimisations are on
+			the way.
 	{/snippet}
 
 	{#snippet a_speed()}
