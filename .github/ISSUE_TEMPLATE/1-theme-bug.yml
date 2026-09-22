@@ -1,0 +1,44 @@
+name: Theme bug
+description: A theme gives something the wrong colour or font style
+labels: [bug, theme]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open the [explorer](https://twinkleplop.pngwn.at/explore/edit), paste the smallest snippet that shows the problem, pick the language and theme, then press **copy link**. The link holds the code, language, theme and fidelity settings, so it is the whole reproduction.
+
+  - type: input
+    id: link
+    attributes:
+      label: Explorer link
+      description: The link from **copy link** on the explore/edit page.
+      placeholder: https://twinkleplop.pngwn.at/explore/edit#v=1&lang=...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      description: The link does not record light or dark mode.
+      options:
+        - Light
+        - Dark
+        - Both
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What is wrong
+      description: Which tokens are wrong, what they look like now, and what they should look like. Shiki renders the same theme beside twinkleplop, so say whether it gets them right.
+      placeholder: Decorators on lines 2 and 5 are the plain text colour. The theme colours them #d2a8ff in VS Code, and Shiki matches that.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: Reference
+      description: Optional. A screenshot of the theme in its own editor, or a link to where the theme defines the colour.

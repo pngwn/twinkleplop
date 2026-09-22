@@ -1,0 +1,26 @@
+name: Language bug
+description: A language tokenizes something wrong
+labels: [bug, language]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open the [explorer](https://twinkleplop.pngwn.at/explore/edit), paste the smallest snippet that shows the problem, pick the language, then press **copy link**. The link holds the code, language, theme and fidelity settings, so it is the whole reproduction. If the problem only shows with some fidelity tags on or off, set them before copying.
+
+  - type: input
+    id: link
+    attributes:
+      label: Explorer link
+      description: The link from **copy link** on the explore/edit page.
+      placeholder: https://twinkleplop.pngwn.at/explore/edit#v=1&lang=...
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What is wrong
+      description: Which tokens are wrong, what they are now, and what they should be. Turn on **inspect** and hover a token to see the type twinkleplop gave it.
+      placeholder: "`satisfies` on line 3 is `identifier`, it should be `keyword` like `as` on line 1."
+    validations:
+      required: true

@@ -1,0 +1,53 @@
+name: Theme request
+description: Ask for a theme twinkleplop does not ship yet
+labels: [enhancement, theme]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every theme ships as one package with a light and a dark variant. The theme picker in the [explorer](https://twinkleplop.pngwn.at/explore/edit) lists the ones that ship today.
+
+  - type: input
+    id: name
+    attributes:
+      label: Theme
+      placeholder: Tokyo Night
+    validations:
+      required: true
+
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: Where the theme defines its colours, such as its repository or editor extension.
+      placeholder: https://github.com/...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: variants
+    attributes:
+      label: Variants
+      description: Dark-only themes can still ship, with a light variant borrowed from another family.
+      options:
+        - Light and dark
+        - Dark only
+        - Light only
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: shiki
+    attributes:
+      label: Does Shiki ship it?
+      options:
+        - "Yes"
+        - "No"
+        - Not sure
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Optional. Why you want it, which variant matters most to you, anything that makes it unusual.
