@@ -523,6 +523,19 @@ describe("TypeScript fidelity — decorator downgrade", () => {
     expect(tokens.find((t) => t.value === "fs")?.type).toBe("namespace");
   });
 
+  it("`import def, * as X` promotes X to namespace, not a cast target", () => {
+    const tokens = tokens_of('import def, * as ns from "x";');
+    expect(tokens.find((t) => t.value === "ns")?.type).toBe("namespace");
+  });
+
+  it("`import type * as X` / `export type *` tag the star `constant`", () => {
+    const imported = tokens_of('import type * as T from "./t";');
+    expect(imported.find((t) => t.value === "*")?.type).toBe("constant");
+    expect(imported.find((t) => t.value === "T")?.type).toBe("namespace");
+    const exported = tokens_of('export type * from "./t";');
+    expect(exported.find((t) => t.value === "*")?.type).toBe("constant");
+  });
+
   it("namespace downgrades to identifier under fidelity='low'", () => {
     const tokens = tokens_of("namespace Utils { }", { fidelity: "low" });
     expect(tokens.find((t) => t.value === "Utils")?.type).toBe("identifier");

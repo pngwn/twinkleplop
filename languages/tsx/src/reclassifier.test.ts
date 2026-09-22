@@ -29,6 +29,13 @@ function type_of(input: string, value: string): string | undefined {
   return undefined;
 }
 
+describe("TSX stars", () => {
+  it("tags the star of `import type * as X` `constant`", () => {
+    expect(type_of('import type * as T from "./t";', "*")).toBe("constant");
+    expect(type_of('import type * as T from "./t";', "T")).toBe("namespace");
+  });
+});
+
 describe("TSX optional annotations", () => {
   // the TSX grammar splits `x?:` into `?` and `:` too.
   it("promotes the return of a function type on an optional member", () => {

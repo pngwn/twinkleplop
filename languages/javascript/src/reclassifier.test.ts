@@ -648,6 +648,49 @@ describe("JavaScript reclassifier — namespace promotion", () => {
     });
     expect(pick(tokens, "React")).toBe("identifier");
   });
+
+  it("`import def, * as X` promotes X after a default binding", () => {
+    const tokens = tokens_of('import def, * as ns from "x";');
+    expect(pick(tokens, "def")).toBe("identifier");
+    expect(pick(tokens, "ns")).toBe("namespace");
+  });
+});
+
+describe("JavaScript reclassifier: stars", () => {
+  function stars_of(input, options) {
+    const result = make_language(options)(input);
+    const out = [];
+    for (let i = 0; i < result.tokens.length / 3; i++) {
+      if (input.slice(result.tokens[i * 3 + 1], result.tokens[i * 3 + 2]) === "*") {
+        out.push(result.token_types[result.tokens[i * 3]]);
+      }
+    }
+    return out;
+  }
+
+  it.each([
+    "import * as utils from './utils.js';",
+    "import def, * as ns from 'x';",
+    "export * from './x.js';",
+    "export * as ns from './x.js';",
+    "import /* a */ * /* b */ as ns from 'x';",
+  ])("%s tags the star `constant`", (input) => {
+    expect(stars_of(input)).toEqual(["constant"]);
+  });
+
+  it.each(["const n = a * b;", "export default a * b;", "export const n = a * b;"])(
+    "%s leaves multiplication an operator",
+    (input) => {
+      expect(stars_of(input)).toEqual(["operator"]);
+    },
+  );
+
+  it("gates with `constant` fidelity", () => {
+    const input = "import * as utils from './utils.js';";
+    expect(stars_of(input, { fidelity: "low" })).toEqual(["operator"]);
+    expect(stars_of(input, { fidelity: ["namespace"] })).toEqual(["operator"]);
+    expect(stars_of(input, { fidelity: ["constant"] })).toEqual(["constant"]);
+  });
 });
 
 describe("JavaScript reclassifier — parameter promotion", () => {
