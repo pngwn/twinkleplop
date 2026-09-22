@@ -6,12 +6,14 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { strict as assert } from "node:assert";
 
-import { highlight } from "@twinkleplop/twoslash";
-import { highlight as svelte_highlight } from "@twinkleplop/twoslash-svelte";
+import { create_highlighter } from "@twinkleplop/twoslash";
+import { create_highlighter as create_svelte_highlighter } from "@twinkleplop/twoslash-svelte";
 import { light, dark } from "@twinkleplop/theme-github/tokens";
 import { language } from "@twinkleplop/typescript";
 
 const require_ = createRequire(import.meta.url);
+const highlight = create_highlighter();
+const svelte_highlight = create_svelte_highlighter();
 const check = (label, fn) => {
   fn();
   console.log(`  ok  ${label}`);
