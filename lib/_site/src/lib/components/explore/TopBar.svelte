@@ -14,6 +14,7 @@
 <script lang="ts">
 	import CommandChip from "./CommandChip.svelte";
 	import ModeSwitch from "$lib/components/ModeSwitch.svelte";
+	import Rainbow from "$lib/splash/Rainbow.svelte";
 	import { LANGUAGES } from "$lib/explore/grammars";
 	import { view } from "$lib/explore/lab_state.svelte";
 	import { FONTS, THEME_NAMES, type theme_name } from "$lib/explore/themes";
@@ -24,9 +25,11 @@
 </script>
 
 <header class="topbar">
-	<a class="brand" href="/">twinkleplop</a>
+	<a class="brand" href="/"><Rainbow text="twinkleplop" /></a>
 	<nav class="site-links" aria-label="Site">
 		<a class="site-link" aria-current="page" href="/explore">explore</a>
+		<span class="slash" aria-hidden="true">/</span>
+		<a class="site-link" href="/twoslash">twoslash</a>
 		<span class="slash" aria-hidden="true">/</span>
 		<a class="site-link" href="/docs">docs</a>
 	</nav>
