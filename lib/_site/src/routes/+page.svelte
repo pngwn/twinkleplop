@@ -221,6 +221,7 @@
 		padding: 12px 18px;
 		font-size: 13px;
 		color: var(--ink);
+		text-decoration: none;
 		transition: border-color 0.2s;
 	}
 	.cta:hover {

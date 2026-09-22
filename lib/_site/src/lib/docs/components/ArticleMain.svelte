@@ -113,7 +113,6 @@
 	}
 	.content :global(a) {
 		color: var(--docs-accent);
-		text-decoration: none;
 	}
 	.content :global(a:hover) {
 		text-shadow: 0 0 8px color-mix(in oklch, var(--docs-accent) 60%, transparent);

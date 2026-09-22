@@ -69,20 +69,18 @@
 		gap: 8px;*/
 		padding: 2px 14px 2px calc(2rem + 17px);
 		color: var(--docs-fg-dim);
-		text-decoration: none;
+		text-underline-offset: 4px;
+		text-decoration-color: color-mix(in oklab, currentColor 35%, transparent);
 	}
 
 	.mp-entry:hover {
 		color: var(--docs-fg);
-		text-decoration: underline;
-		text-decoration-thickness: 1px;
-		text-underline-offset: 4px;
+		text-decoration-color: currentColor;
 	}
 	.mp-entry.active {
 		color: var(--docs-accent);
-		text-decoration: underline;
+		text-decoration-color: currentColor;
 		text-decoration-thickness: 2px;
-		text-underline-offset: 4px;
 	}
 
 	.mp-group-label {

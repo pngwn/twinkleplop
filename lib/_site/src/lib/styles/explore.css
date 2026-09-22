@@ -128,17 +128,23 @@
 	gap: 6px;
 	min-width: 0;
 }
+.explore-app .site-link,
+.explore-app .mtop__back {
+	text-underline-offset: 4px;
+	text-decoration-color: color-mix(in oklab, currentColor 35%, transparent);
+}
 .explore-app .site-link {
 	padding: 2px 4px;
 	color: var(--fg-dim);
-	text-decoration: none;
 }
-.explore-app .site-link:hover {
+.explore-app .site-link:hover,
+.explore-app .mtop__back:hover {
 	color: var(--fg);
+	text-decoration-color: currentColor;
 }
 .explore-app .site-link[aria-current='page'] {
 	color: var(--fg);
-	box-shadow: inset 0 -1px var(--accent);
+	text-decoration-color: var(--accent);
 }
 .explore-app .slash {
 	color: var(--fg-muted);
@@ -1204,7 +1210,6 @@
 		align-items: center;
 		min-height: 44px;
 		color: var(--fg);
-		text-decoration: none;
 	}
 
 	.explore-app .source__ta {
