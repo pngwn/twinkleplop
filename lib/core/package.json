@@ -42,8 +42,7 @@
     },
     "./types": {
       "source": "./src/types.ts",
-      "types": "./dist/types.d.ts",
-      "import": "./dist/twinkleplop.types.js"
+      "types": "./dist/types.d.ts"
     }
   },
   "scripts": {
