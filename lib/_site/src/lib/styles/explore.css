@@ -104,20 +104,23 @@
 }
 
 /* ---------- top bar ---------- */
+/* height, gutter, wordmark and site links mirror SiteHeader */
 .explore-app .topbar {
 	display: flex;
 	align-items: center;
 	gap: 16px;
-	min-height: 44px;
-	padding: 0 16px;
+	min-height: 56px;
+	padding: 0 24px;
 	border-bottom: 1px solid var(--border);
 	background: var(--bg);
 	white-space: nowrap;
 }
 .explore-app .brand {
-	font-weight: 600;
+	margin-right: 24px;
+	font-family: var(--font-chrome);
+	font-size: 16px;
+	font-weight: 700;
 	letter-spacing: 0.02em;
-	color: var(--fg);
 	text-decoration: none;
 }
 .explore-app .site-links,
@@ -128,14 +131,19 @@
 	gap: 6px;
 	min-width: 0;
 }
+.explore-app .site-links {
+	gap: 8px;
+	font-family: var(--font-chrome);
+}
 .explore-app .site-link,
 .explore-app .mtop__back {
 	text-underline-offset: 4px;
 	text-decoration-color: color-mix(in oklab, currentColor 35%, transparent);
 }
 .explore-app .site-link {
-	padding: 2px 4px;
+	padding: 4px 8px;
 	color: var(--fg-dim);
+	text-underline-offset: 5px;
 }
 .explore-app .site-link:hover,
 .explore-app .mtop__back:hover {
@@ -143,8 +151,9 @@
 	text-decoration-color: currentColor;
 }
 .explore-app .site-link[aria-current='page'] {
-	color: var(--fg);
-	text-decoration-color: var(--accent);
+	color: var(--accent);
+	text-decoration-color: currentColor;
+	text-decoration-thickness: 2px;
 }
 .explore-app .slash {
 	color: var(--fg-muted);
