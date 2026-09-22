@@ -16,12 +16,6 @@ import { create_highlighter } from "@twinkleplop/twoslash";
 const highlight = create_highlighter({ lang: "ts" });
 const html = highlight(code);`;
 
-	const oneshot = twoslash`declare const code: string;
-// ---cut---
-import { highlight } from "@twinkleplop/twoslash";
-
-const html = highlight(code, { lang: "ts" });`;
-
 	const svelte_usage = twoslash`import { create_highlighter } from "@twinkleplop/twoslash-svelte";
 
 // same options, minus \`lang\`
@@ -91,8 +85,11 @@ unified()
 			package's.
 		</p>
 		<CodeBlock fname="twoslash.ts" html={usage} />
-		<p>Or highlight a single snippet directly:</p>
-		<CodeBlock fname="oneshot.ts" html={oneshot} />
+		<Callout mark="▸" variant="tip">
+			Create the highlighter once and reuse it. Each one builds its own TypeScript environment, which
+			costs far more than highlighting a snippet, so calling <code>create_highlighter</code> per
+			snippet can make a docs build several times slower.
+		</Callout>
 		<p>
 			Use <code>@twinkleplop/twoslash-svelte</code> for Svelte snippets. It takes the same options
 			except <code>lang</code>.
