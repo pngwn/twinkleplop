@@ -82,8 +82,8 @@
 		</button>
 		{#if "href" in edit}
 			<a class="toggle" href={edit.href}>
-				<span class="toggle__pip"></span>
 				<span>edit</span>
+				<span aria-hidden="true">→</span>
 			</a>
 		{:else}
 			<button
@@ -91,11 +91,8 @@
 				class:is-on={edit.on}
 				type="button"
 				aria-pressed={edit.on}
-				onclick={edit.toggle}
+				onclick={edit.toggle}>edit</button
 			>
-				<span class="toggle__pip"></span>
-				<span>edit</span>
-			</button>
 		{/if}
 		<span class="topbar__sep" aria-hidden="true"></span>
 		<ModeSwitch compact />
