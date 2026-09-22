@@ -131,7 +131,7 @@ run(
 
 // -- contents ---------------------------------------------------------------
 
-// only dist ships
+// only dist and a license ship, pnpm packs the workspace root LICENSE into each
 // sourcemaps would embed a second copy of the source
 // tsc below resolves only the types condition so other export targets are checked here
 const ALWAYS_PACKED = /^(package\.json|readme(\.md)?|licen[cs]e(\.md)?)$/i;
@@ -156,11 +156,15 @@ const problems = [];
 for (const pkg of packages) {
   const dir = join(consumer, "node_modules", pkg.name);
   const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
-  for (const file of files_in(dir)) {
+  const files = files_in(dir);
+  for (const file of files) {
     if (ALWAYS_PACKED.test(file)) continue;
     if (!file.startsWith("dist/") || file.endsWith(".map")) {
       problems.push(`${pkg.name} packs ${file}`);
     }
+  }
+  if (!manifest.license || !files.some((file) => /^licen[cs]e/i.test(file))) {
+    problems.push(`${pkg.name} has no license field or packs no license file`);
   }
   const named = export_targets(manifest.exports ?? {});
   if (manifest.main) named.push(["main", manifest.main]);

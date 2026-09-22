@@ -1,6 +1,7 @@
 {
   "name": "@twinkleplop/go",
   "version": "0.1.3",
+  "license": "MIT",
   "files": [
     "dist"
   ],
