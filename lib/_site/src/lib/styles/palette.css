@@ -1,0 +1,69 @@
+/* the site palette, shared by the docs and the explore lab */
+
+/* dark doubles as the fallback when <html> has no data-mode.
+ *
+ * text tiers, on every surface from bg to bg-2 (mute: to bg-3):
+ *   fg (headings, emphasis) ≥ 15:1, fg-dim (body) ≥ 10.5:1,
+ *   fg-mute (secondary) ≥ 7:1, t-* accents ≥ 4.5:1.
+ * fg-ghost is for decoration only (separators, list markers, disabled
+ * controls) and is deliberately below all of that. */
+:root,
+:root[data-mode='dark'] {
+	--docs-bg: #000000;
+	--docs-bg-1: #08080a;
+	--docs-bg-2: #101014;
+	--docs-bg-3: #16161c;
+	--docs-line: #26262e;
+	--docs-line-2: #1a1a20;
+	--docs-fg: #eeece5;
+	--docs-fg-dim: #c3c1b9;
+	--docs-fg-mute: #a4a29b;
+	--docs-fg-ghost: #3d3b37;
+
+	--t-red: #f26d6d;
+	--t-orange: #f29a6d;
+	--t-yellow: #f2c94c;
+	--t-green: #7fe08a;
+	--t-teal: #5fd4c4;
+	--t-blue: #6aa9ff;
+	--t-purple: #c59bff;
+	--t-pink: #f29ad2;
+
+	--docs-accent: #7fe08a;
+	--docs-accent-dim: #3d8a47;
+	--docs-code-bg: var(--docs-bg-1);
+	/* strength of annotation tints (diff, highlight, ...) on code lines */
+	--docs-anno: 1;
+}
+
+/* light mode, adapted from the old paper theme */
+:root[data-mode='light'] {
+	--docs-bg: #f3f0e8;
+	--docs-bg-1: #ebe8df;
+	--docs-bg-2: #e3e0d5;
+	--docs-bg-3: #d8d4c7;
+	--docs-line: #c5c0b0;
+	--docs-line-2: #d5d0c0;
+	--docs-fg: #090909;
+	--docs-fg-dim: #2c2c2c;
+	--docs-fg-mute: #433f34;
+	--docs-fg-ghost: #b5b0a0;
+
+	--t-red: #b02a2b;
+	--t-orange: #9c4400;
+	--t-yellow: #735900;
+	--t-green: #1c6c2f;
+	--t-teal: #186a62;
+	--t-blue: #2a5ab8;
+	--t-purple: #6a3ab0;
+	--t-pink: #a53077;
+
+	--docs-accent: #1c6c2f;
+	--docs-accent-dim: #5aa868;
+	/* theme palettes are tuned for their own editor background (white for
+	 * github-light), so highlighted code sits on it, pulled halfway to the
+	 * paper so it isn't stark. github-light comments dip to ~4.25:1 there;
+	 * every other token keeps 4.5:1 or more. */
+	--docs-code-bg: color-mix(in srgb, var(--twp-background, #ffffff) 50%, var(--docs-bg));
+	--docs-anno: 0.4;
+}
