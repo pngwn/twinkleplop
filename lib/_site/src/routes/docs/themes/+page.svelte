@@ -62,7 +62,7 @@ import "@twinkleplop/theme-github/dark";`;
 <ArticleMain
 	pane_path="docs / themes"
 	title="themes"
-	subtitle="Two themes ship today, each with a light and a dark variant. Themes are CSS custom properties and can be customised with plain CSS."
+	subtitle="Eight themes ship today, each with a light and a dark variant. Themes are CSS custom properties and can be customised with plain CSS."
 >
 	<p>
 		A theme is a stylesheet. Colours are defined as <code>--twp-*</code> custom properties and

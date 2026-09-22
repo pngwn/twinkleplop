@@ -1,0 +1,20 @@
+{
+  "name": "@twinkleplop/json",
+  "version": "0.1.2",
+  "private": false,
+  "description": "Tab\tnewline\nquote \" slash \/ backslash \\ caf\u00e9",
+  "keywords": ["syntax", "highlighting", "json"],
+  "homepage": null,
+  "stats": {
+    "size_kb": 1.25,
+    "grammars": 23,
+    "offset": -42,
+    "epsilon": 2.5e-8,
+    "max": 1E+308
+  },
+  "contributors": [
+    { "name": "pngwn", "active": true },
+    { "name": "", "active": false }
+  ],
+  "matrix": [[1, 0], [0, -1]]
+}

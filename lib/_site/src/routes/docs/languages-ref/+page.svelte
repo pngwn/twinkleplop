@@ -19,12 +19,13 @@ const ts = language();`;
 		{ name: "css", notes: "Selectors, at-rules, custom properties, units. Probe-based selector disambiguation." },
 		{ name: "diff", notes: "Unified, context and normal diff, plus git metadata. Combined diff at a basic level." },
 		{ name: "diff-basic", notes: "Minimal line-level overlay: +/- prefixes, ! changed, @@ hunk headers. Built to compose with another grammar, so file and git headers are deliberately omitted." },
+		{ name: "dotenv", notes: ".env files as read by dotenv, godotenv and Docker Compose: export prefixes, quoted values, $VAR and ${VAR:-default} interpolation, $( ) commands. Whole-value numbers and booleans promoted." },
 		{ name: "go", notes: "Predeclared types and builtins at lex time; UPPER_SNAKE constants promoted after." },
 		{ name: "html", notes: "Embeds css and javascript in style and script elements." },
 		{ name: "http", notes: "Raw HTTP/1.x messages and REST Client / JetBrains request files: headers, {{variables}}, ### separators. Embeds json and html bodies, javascript scripts and bash curl requests." },
 		{ name: "ini", notes: "One reading across php.ini, configparser, git config, systemd, .desktop and .editorconfig: inline comments, quoted git subsections, glob headers, indented continuation lines." },
 		{ name: "javascript", notes: "Regex-vs-division disambiguation, template literals, tagged-template embedding of html and css." },
-		{ name: "json", notes: "RFC 8259. No JSON5 extensions — no comments, trailing commas or single quotes." },
+		{ name: "json", notes: "RFC 8259. No JSON5 extensions: no comments, trailing commas or single quotes." },
 		{ name: "jsonc", notes: "JSON with Comments: json plus // and /* */ comments, as in tsconfig and VS Code settings. Object keys promoted to property." },
 		{ name: "markdown", notes: "CommonMark constructs, front matter, fenced code containers." },
 		{ name: "python", notes: "F-strings, soft keywords, decorators." },
@@ -35,7 +36,7 @@ const ts = language();`;
 		{ name: "toml", notes: "Tables, array tables, datetimes." },
 		{ name: "tsx", notes: "TypeScript plus JSX. Reuses the typescript pipeline." },
 		{ name: "typescript", notes: "JavaScript plus types, interfaces, enums and generics." },
-		{ name: "whitespace", notes: "Grammar only — exports no language or tokenize factory." },
+		{ name: "whitespace", notes: "Grammar only. Exports no language or tokenize factory." },
 		{ name: "yaml", notes: "Block and flow collections, anchors, aliases, scalars." },
 	];
 
@@ -89,6 +90,11 @@ const ts = language();`;
 						kind: "desc",
 						value: `request and response bodies, <code>{% %}</code> scripts and <code>curl</code> requests`,
 					},
+				],
+				[
+					{ kind: "name", value: "shellsession" },
+					{ kind: "type", value: "bash" },
+					{ kind: "desc", value: `commands after the prompt, with continuation lines joined` },
 				],
 				[
 					{ kind: "name", value: "javascript" },

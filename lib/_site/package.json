@@ -28,6 +28,7 @@
     "@twinkleplop/http": "workspace:*",
     "@twinkleplop/ini": "workspace:*",
     "@twinkleplop/javascript": "workspace:*",
+    "@twinkleplop/json": "workspace:*",
     "@twinkleplop/jsonc": "workspace:*",
     "@twinkleplop/markdown": "workspace:*",
     "@twinkleplop/python": "workspace:*",

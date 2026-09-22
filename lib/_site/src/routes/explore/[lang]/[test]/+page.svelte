@@ -55,6 +55,7 @@
 		tsx: () => import('@twinkleplop/tsx'),
 		sql: () => import('@twinkleplop/sql'),
 		yaml: () => import('@twinkleplop/yaml'),
+		json: () => import('@twinkleplop/json'),
 		jsonc: () => import('@twinkleplop/jsonc'),
 		markdown: () => import('@twinkleplop/markdown'),
 		toml: () => import('@twinkleplop/toml'),
@@ -69,7 +70,7 @@
 		dotenv: () => import('@twinkleplop/dotenv')
 	};
 
-	const all_languages = Object.keys(grammar_loaders);
+	const all_languages = Object.keys(grammar_loaders).sort();
 	const sample_options = $derived(data.css_files.map(([file]) => file));
 
 	// the factory reference is kept separately from the resolved grammar so

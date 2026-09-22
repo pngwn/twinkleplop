@@ -38,7 +38,7 @@ export const DOCS: doc_group[] = [
         title: "Themes",
         path: "/docs/themes",
         crumb: "docs / themes",
-        blurb: "Two themes ship today, each with a light and a dark variant. Themes are CSS custom properties and can be customised with plain CSS.",
+        blurb: "Eight themes ship today, each with a light and a dark variant. Themes are CSS custom properties and can be customised with plain CSS.",
         icon: "↔",
       },
       {
