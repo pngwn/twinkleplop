@@ -69,3 +69,12 @@ export function measure<T>(fn: () => T, opts: measure_options = {}): measurement
     iters: total_iters,
   };
 }
+
+/** times under a millisecond keep four decimals so they never round to zero */
+export function format_ms(ms: number): string {
+  return `${ms < 1 ? ms.toFixed(4) : ms.toFixed(2)}ms`;
+}
+
+export function speedup(a_ms: number, b_ms: number): string {
+  return `×${(Math.max(a_ms, b_ms) / Math.max(0.001, Math.min(a_ms, b_ms))).toFixed(1)}`;
+}

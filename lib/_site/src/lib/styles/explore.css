@@ -1,32 +1,31 @@
-/* terminal aesthetic for the explore route. scoped via the
-   `.explore-app` wrapper so its vars and the scanline overlay do not leak
-   into the rest of the site.
+/* terminal aesthetic for the explore route, scoped via the `.explore-app`
+   wrapper so its vars and the scanline overlay do not leak into the rest
+   of the site, the chrome takes its colours and text tiers from the docs
+   palette */
 
-   text tiers on the chrome surfaces (bg, bg-elev, bg-pane): fg ≥ 15:1,
-   fg-dim ≥ 10.5:1, fg-muted ≥ 7:1, accent* and warn ≥ 4.5:1. fg-muted
-   still clears 4.5:1 on the code themes' own backgrounds, so line
-   numbers use it. */
+@import './palette.css';
 
 .explore-app {
 	--font-mono:
 		'Berkeley Mono', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
-	--bg: #0f0f10;
-	--bg-elev: #18181b;
-	--bg-pane: #121214;
-	--fg: #f4f0e4;
-	--fg-dim: #ccc7ba;
-	--fg-muted: #a7a396;
-	--border: #2a2822;
-	--border-bright: #3f3c34;
-	--accent: #d4c896;
-	--accent2: #a8e0c8;
-	--warn: #e8b56a;
+	--bg: var(--docs-bg);
+	--bg-elev: var(--docs-bg-2);
+	--bg-pane: var(--docs-bg-1);
+	--fg: var(--docs-fg);
+	--fg-dim: var(--docs-fg-dim);
+	--fg-muted: var(--docs-fg-mute);
+	--border: var(--docs-line);
+	--border-bright: var(--docs-fg-ghost);
+	--accent: var(--docs-accent);
+	--accent2: var(--t-green);
+	--warn: var(--t-orange);
 	--scanline: rgba(255, 255, 255, 0.015);
 	--glow: 0 0 0 transparent;
+	--menu-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 
-	--mode-height: 24px;
-	--mode-font-size: 11px;
+	--mode-height: 26px;
+	--mode-font-size: 13px;
 	--mode-line: var(--border-bright);
 	--mode-bg: var(--bg);
 	--mode-fg: var(--fg-dim);
@@ -35,14 +34,14 @@
 	--mode-focus: var(--accent);
 
 	/* strength of annotation tints (diff, highlight, ...) on code lines */
-	--anno: 1;
+	--anno: var(--docs-anno);
 
 	position: relative;
 	/* svh: the visible height on a phone, toolbars and all */
 	height: 100svh;
 	width: 100%;
-	display: grid;
-	grid-template-rows: auto 1fr auto;
+	display: flex;
+	flex-direction: column;
 	background: var(--bg);
 	color: var(--fg);
 	font-family: var(--font-mono);
@@ -53,29 +52,17 @@
 		'liga' 0,
 		'calt' 0;
 }
-
-/* /explore/edit puts its source editor between the top bar and the panes */
-.explore-app--edit {
-	grid-template-rows: auto auto 1fr auto;
+.explore-app > * {
+	flex: none;
+}
+.explore-app > .panes {
+	flex: 1;
+	min-height: 0;
 }
 
-/* light mode swaps the chrome for a neutral paper palette */
 :root[data-mode='light'] .explore-app {
-	--bg: #f3f0e8;
-	--bg-elev: #ebe8df;
-	--bg-pane: #e3e0d5;
-	--fg: #090909;
-	--fg-dim: #2c2c2c;
-	--fg-muted: #4b473c;
-	--border: #c5c0b0;
-	--border-bright: #a9a595;
-	--accent: #1c6c2f;
-	--accent2: #2a5ab8;
-	--warn: #9c4400;
 	--scanline: rgba(0, 0, 0, 0.02);
-	--glow: 0 0 0 transparent;
-	/* light code themes leave little contrast headroom for tinted lines */
-	--anno: 0.55;
+	--menu-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
 }
 
 /* grayscale antialiasing thins glyphs; keep it for light-on-dark only */
@@ -116,161 +103,78 @@
 	}
 }
 
+.explore-app :focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
 /* ---------- top bar ---------- */
 .explore-app .topbar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	justify-content: space-between;
-	padding: 10px 18px;
+	gap: 0 16px;
+	min-height: 44px;
+	padding: 0 16px;
 	border-bottom: 1px solid var(--border);
 	background: var(--bg);
-	gap: 20px;
+	white-space: nowrap;
 }
-
-.explore-app .topbar__l {
-	display: flex;
-	align-items: center;
-	gap: 18px;
-	min-width: 0;
-}
-.explore-app .topbar__r {
-	display: flex;
-	align-items: center;
-	gap: 14px;
-}
-
 .explore-app .brand {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	color: inherit;
-	text-decoration: none;
-}
-.explore-app .brand__mark {
-	position: relative;
-	width: 28px;
-	height: 28px;
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	grid-template-rows: 1fr 1fr;
-	gap: 3px;
-	padding: 4px;
-	border: 1px solid var(--border-bright);
-	background: var(--bg-elev);
-}
-.explore-app .brand__pip {
-	background: var(--fg-dim);
-	transition:
-		background 0.6s,
-		transform 0.6s;
-}
-.explore-app .brand__pip--1 {
-	background: var(--accent);
-}
-.explore-app .brand__pip--2 {
-	background: var(--accent2);
-	grid-column: 2;
-}
-.explore-app .brand__pip--3 {
-	background: var(--fg);
-	grid-column: 1;
-	grid-row: 2;
-}
-.explore-app .brand__mark::before {
-	content: '';
-	grid-column: 2;
-	grid-row: 2;
-	background: var(--fg-muted);
-}
-
-.explore-app .brand__name {
-	display: flex;
-	flex-direction: column;
-	line-height: 1.1;
-}
-.explore-app .brand__glyph {
 	font-weight: 600;
 	letter-spacing: 0.02em;
 	color: var(--fg);
-	text-shadow: var(--glow);
-	/*font-family: var(--font-pixel);*/
+	text-decoration: none;
 }
-.explore-app .brand__tag {
-	font-size: 10px;
-	color: var(--fg-muted);
-	text-transform: lowercase;
-	letter-spacing: 0.05em;
-	margin-top: 2px;
-}
-
-.explore-app .divider {
-	width: 1px;
-	height: 22px;
-	background: var(--border);
-}
-
-.explore-app .crumbs {
+.explore-app .site-links,
+.explore-app .topbar__path,
+.explore-app .topbar__view {
 	display: flex;
 	align-items: center;
-	gap: 4px;
-	color: var(--fg-muted);
-	font-size: 11px;
-}
-.explore-app .crumb {
-	color: var(--fg-dim);
-	padding: 2px 4px;
-}
-.explore-app .crumb.is-active {
-	color: var(--fg);
-}
-.explore-app .site-links {
-	display: flex;
-	align-items: center;
-	gap: 2px;
-	font-size: 12px;
+	gap: 6px;
+	min-width: 0;
 }
 .explore-app .site-link {
-	color: var(--fg-dim);
 	padding: 2px 4px;
+	color: var(--fg-dim);
 	text-decoration: none;
 }
 .explore-app .site-link:hover {
-	/* neutral, so the accent stays the current-page colour */
 	color: var(--fg);
-	text-decoration: underline;
-	text-decoration-thickness: 1px;
-	text-underline-offset: 5px;
 }
 .explore-app .site-link[aria-current='page'] {
-	color: var(--accent);
-	text-decoration: underline;
-	text-decoration-thickness: 2px;
-	text-underline-offset: 5px;
+	color: var(--fg);
+	box-shadow: inset 0 -1px var(--accent);
 }
-
-.explore-app .crumb__sep {
+.explore-app .slash {
 	color: var(--fg-muted);
-	opacity: 0.5;
-	padding: 0 1px;
 	user-select: none;
 }
-
-.explore-app .crumbs .chip__button {
-	padding: 2px 6px;
-	font-size: 11px;
-}
-
-.explore-app .topbar__group {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-}
-
-.explore-app .topbar__divider {
+.explore-app .topbar__sep {
 	width: 1px;
 	height: 18px;
 	background: var(--border);
-	margin: 0 4px;
+}
+.explore-app .topbar__path .chip__value {
+	max-width: 160px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.explore-app .topbar__view {
+	gap: 10px;
+	margin-left: auto;
+}
+/* the whole group wraps, so no control is ever orphaned on a row of its own */
+@media (max-width: 1300px) {
+	.explore-app .topbar {
+		column-gap: 12px;
+	}
+	.explore-app .topbar__view {
+		flex-basis: 100%;
+		margin-left: 0;
+		padding: 4px 0 6px;
+		border-top: 1px dashed var(--border);
+	}
 }
 
 /* ---------- command chips ---------- */
@@ -279,95 +183,81 @@
 }
 .explore-app .chip__button {
 	display: inline-flex;
-	align-items: baseline;
+	align-items: center;
 	gap: 6px;
-	background: transparent;
-	border: 0;
-	color: var(--fg);
 	padding: 4px 6px;
-	font: inherit;
-	font-size: 12px;
-	cursor: pointer;
+	border: 0;
 	border-radius: 2px;
-	transition:
-		background 0.15s,
-		color 0.15s;
+	background: transparent;
+	color: var(--fg);
+	font: inherit;
+	cursor: pointer;
+	transition: background 0.15s;
 }
-.explore-app .chip__button:hover {
-	background: color-mix(in oklab, var(--fg) 6%, transparent);
-}
+.explore-app .chip__button:hover,
 .explore-app .chip__button[aria-expanded='true'] {
-	background: color-mix(in oklab, var(--accent) 14%, transparent);
+	background: color-mix(in oklab, var(--fg) 7%, transparent);
 }
 .explore-app .chip__label {
-	color: var(--fg-dim);
+	color: var(--fg-muted);
+	font-size: 12px;
 }
-.explore-app .chip__value {
-	color: var(--accent);
-	font-weight: 500;
-	text-shadow: var(--glow);
+.explore-app .chip__caret {
+	color: var(--fg-muted);
+	font-size: 9px;
 }
-.explore-app .chip__button:hover .chip__value {
-	color: var(--accent);
-}
-
-.explore-app .chip__menu {
-	display: flex;
-	flex-direction: column;
+.explore-app .chip__menu,
+.explore-app .fidelity__menu {
 	position: absolute;
 	top: calc(100% + 6px);
 	left: 0;
-	min-width: 260px;
+	z-index: 100;
+	display: flex;
+	flex-direction: column;
+	min-width: 200px;
 	max-height: 360px;
-	overflow: hidden;
+	padding: 4px;
 	background: var(--bg-elev);
 	border: 1px solid var(--border-bright);
-	z-index: 100;
-	box-shadow:
-		0 12px 40px rgba(0, 0, 0, 0.6),
-		var(--glow);
-	padding: 4px;
+	box-shadow: var(--menu-shadow);
 }
-.explore-app .chip__menu--right {
+.explore-app .chip__menu--right,
+.explore-app .fidelity__menu {
 	left: auto;
 	right: 0;
-	min-width: 200px;
 }
-.explore-app .chip__menu-head {
-	display: flex;
-	justify-content: space-between;
-	padding: 6px 10px;
-	border-bottom: 1px dashed var(--border);
-	color: var(--fg-muted);
-	font-size: 10px;
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
-	margin-bottom: 4px;
-}
-.explore-app .chip__item {
+.explore-app .chip__item,
+.explore-app .fidelity__item {
 	display: flex;
 	align-items: center;
 	gap: 10px;
 	width: 100%;
-	background: transparent;
+	padding: 8px 10px;
 	border: 0;
+	background: transparent;
 	color: var(--fg);
-	padding: 7px 10px;
 	font: inherit;
-	font-size: 12px;
-	cursor: pointer;
 	text-align: left;
+	cursor: pointer;
+	user-select: none;
 }
 .explore-app .chip__item.is-hi {
 	background: color-mix(in oklab, var(--accent) 14%, transparent);
 	color: var(--accent);
 }
-.explore-app .chip__item.is-selected .chip__item-marker {
-	color: var(--accent);
+/* a tap would leave the wash on a touch screen */
+@media (hover: hover) {
+	.explore-app .fidelity__item:hover {
+		background: color-mix(in oklab, var(--accent) 14%, transparent);
+		color: var(--accent);
+	}
 }
 .explore-app .chip__item-marker {
+	width: 10px;
 	color: var(--fg-muted);
-	width: 12px;
+}
+.explore-app .chip__item.is-selected .chip__item-marker {
+	color: var(--accent);
 }
 
 /* ---------- toggles and page actions ---------- */
@@ -375,17 +265,15 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 7px;
-	background: transparent;
-	border: 0;
-	color: var(--fg-dim);
 	padding: 4px 8px;
+	border: 0;
+	border-radius: 2px;
+	background: transparent;
+	color: var(--fg-dim);
 	font: inherit;
-	font-size: 11px;
-	cursor: pointer;
 	text-decoration: none;
 	text-transform: lowercase;
-	letter-spacing: 0.05em;
-	border-radius: 2px;
+	cursor: pointer;
 	transition:
 		background 0.15s,
 		color 0.15s;
@@ -394,19 +282,10 @@
 	color: var(--fg);
 	background: color-mix(in oklab, var(--fg) 5%, transparent);
 }
-.explore-app .toggle:disabled {
-	cursor: default;
-	opacity: 0.6;
-}
 .explore-app .toggle__pip {
 	width: 7px;
 	height: 7px;
-	background: transparent;
 	border: 1px solid var(--border-bright);
-	transition:
-		background 0.15s,
-		border-color 0.15s,
-		box-shadow 0.2s;
 }
 .explore-app .toggle.is-on {
 	color: var(--accent);
@@ -414,47 +293,62 @@
 .explore-app .toggle.is-on .toggle__pip {
 	background: var(--accent);
 	border-color: var(--accent);
-	box-shadow: 0 0 6px var(--accent);
 }
 
 /* ---------- source editor ---------- */
 .explore-app .source {
 	border-bottom: 1px solid var(--border);
 	background: var(--bg-pane);
-	overflow: hidden;
 }
 .explore-app .source__head {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 8px 18px;
-	font-size: 11px;
-	color: var(--fg-muted);
-}
-.explore-app .source__title {
-	display: flex;
-	align-items: center;
 	gap: 10px;
+	padding: 8px 16px;
+	font-size: 12px;
+	color: var(--fg-muted);
+	white-space: nowrap;
 }
 .explore-app .source__prompt {
 	color: var(--accent);
 	font-weight: 700;
 }
-.explore-app .source__hint {
-	color: var(--fg-muted);
-	font-style: italic;
+.explore-app .source__hint,
+.explore-app .source__error {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .explore-app .source__error {
 	color: var(--warn);
 }
+.explore-app .source__actions {
+	display: flex;
+	gap: 4px;
+	margin-left: auto;
+}
+.explore-app .source__btn {
+	padding: 2px 6px;
+	border: 0;
+	border-radius: 2px;
+	background: transparent;
+	color: var(--fg-dim);
+	font: inherit;
+	cursor: pointer;
+}
+.explore-app .source__btn:hover {
+	color: var(--fg);
+}
+.explore-app .source__btn:disabled {
+	cursor: default;
+	opacity: 0.6;
+}
 .explore-app .source__ta {
 	display: block;
 	width: 100%;
-	height: 30svh;
-	min-height: 120px;
-	/* the panes keep the rest, however far the editor is dragged */
-	max-height: 60svh;
-	padding: 12px 18px;
+	min-height: 160px;
+	max-height: 40vh;
+	padding: 12px 16px;
 	border: 0;
 	border-top: 1px dashed var(--border);
 	background: var(--bg);
@@ -474,119 +368,145 @@
 .explore-app .source__ta::placeholder {
 	color: var(--fg-muted);
 }
-.explore-app .source__ta:focus {
-	background: color-mix(in oklab, var(--bg) 92%, var(--accent) 3%);
-}
 /* outline is off for the flush look, so draw the focus ring inside */
 .explore-app .source__ta:focus-visible {
 	box-shadow: inset 0 0 0 2px var(--accent);
 }
 
-/* ---------- panes ----------
-   the .panes wrapper is the single scroll container for both columns,
-   so vertical scrolling stays in perfect lockstep without any js sync.
-   each .pane flows to content height; sticky headers and footers keep
-   the chrome visible while the code content scrolls underneath. */
+/* ---------- panes ---------- */
 .explore-app .panes {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
-	min-height: 0;
-	overflow: auto;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	background: var(--bg);
 }
-
 .explore-app .pane {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
-	/* --twp-background comes from the active theme's palette (set on the
-	   .panes wrapper). when absent we fall back to the chrome's pane bg. */
+	min-height: 0;
+	/* the active theme palette sets --twp-background on the .panes wrapper */
 	background: var(--twp-background, var(--bg-pane));
-	border-top: 1px solid var(--border);
 }
 .explore-app .pane + .pane {
 	border-left: 1px solid var(--border);
 }
-
 .explore-app .pane__head {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 10px 16px 8px;
-	min-height: 48px;
-	border-bottom: 1px solid var(--border);
-	background: var(--bg-elev);
-	position: sticky;
-	top: 0;
-	z-index: 5;
-}
-.explore-app .pane__title-group {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	min-width: 0;
-}
-.explore-app .pane__title {
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--fg);
-	letter-spacing: 0.02em;
-	text-shadow: var(--glow);
-}
-.explore-app .pane__subtitle {
-	font-size: 10px;
-	color: var(--fg-muted);
-	letter-spacing: 0.05em;
-}
-.explore-app .pane__meta {
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	height: 40px;
+	padding: 0 16px;
+	border-bottom: 1px solid var(--border);
+	background: var(--bg-elev);
+	white-space: nowrap;
 }
-
+.explore-app .pane__title {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--fg);
+}
+.explore-app .pane__status {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--fg-muted);
+	font-size: 11px;
+}
 .explore-app .pane__body {
 	flex: 1;
-	min-width: 0;
-	position: relative;
-	/* vertical scroll lives on the .panes parent so both columns scroll
-	   together. horizontal scroll stays per-pane because each side has
-	   its own natural line widths. the browser forces overflow-y to auto
-	   when overflow-x is auto — that's harmless here since the body has
-	   no fixed height, so content fits vertically and only the horizontal
-	   scrollbar is ever shown. */
-	overflow-x: auto;
+	min-height: 0;
+	overflow: auto;
 }
-.explore-app .panes::-webkit-scrollbar,
 .explore-app .pane__body::-webkit-scrollbar {
 	width: 8px;
 	height: 8px;
 }
-.explore-app .panes::-webkit-scrollbar-track,
 .explore-app .pane__body::-webkit-scrollbar-track {
-	background: var(--bg-pane);
+	background: transparent;
 }
-.explore-app .panes::-webkit-scrollbar-thumb,
 .explore-app .pane__body::-webkit-scrollbar-thumb {
 	background: var(--border-bright);
 }
-.explore-app .panes::-webkit-scrollbar-thumb:hover,
-.explore-app .pane__body::-webkit-scrollbar-thumb:hover {
-	background: var(--accent);
+
+.explore-app .fidelity {
+	position: relative;
+	margin-left: auto;
+}
+.explore-app .fidelity__trigger {
+	padding: 2px 7px;
+	border: 1px solid var(--border-bright);
+	color: var(--fg-dim);
+	font-size: 11px;
+	list-style: none;
+	cursor: pointer;
+	user-select: none;
+}
+.explore-app .fidelity__trigger::-webkit-details-marker {
+	display: none;
+}
+.explore-app .fidelity__trigger.is-full {
+	color: var(--accent2);
+	border-color: color-mix(in oklab, var(--accent2) 50%, transparent);
+}
+.explore-app .fidelity__trigger:hover,
+.explore-app .fidelity[open] .fidelity__trigger {
+	color: var(--fg);
+	border-color: var(--fg-dim);
+}
+.explore-app .fidelity:not([open]) .fidelity__menu {
+	display: none;
+}
+.explore-app .fidelity__menu {
+	max-height: min(480px, 70vh);
+	overflow-y: auto;
+}
+.explore-app .fidelity__head {
+	margin-bottom: 4px;
+	padding: 8px 10px 6px;
+	border-bottom: 1px dashed var(--border);
+	color: var(--fg-muted);
+	font-size: 10px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+.explore-app .fidelity__item {
+	position: relative;
+}
+.explore-app .fidelity__item input {
+	position: absolute;
+	width: 0;
+	height: 0;
+	opacity: 0;
+	pointer-events: none;
+}
+.explore-app .fidelity__item:has(input:focus-visible) {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+.explore-app .fidelity__mark {
+	color: var(--fg-muted);
+	white-space: pre;
+}
+/* the nbsp keeps the unchecked box as wide as the checked one */
+.explore-app .fidelity__mark::before {
+	content: '[\00a0]';
+}
+.explore-app .fidelity__item:has(input:checked) .fidelity__mark {
+	color: var(--accent);
+}
+.explore-app .fidelity__item:has(input:checked) .fidelity__mark::before {
+	content: '[x]';
 }
 
 .explore-app .code {
 	margin: 0;
-	padding: 14px 0;
+	padding: 12px 0;
 	font-size: 13px;
-	line-height: 1.55;
+	line-height: 1.6;
 	white-space: pre;
 	min-width: max-content;
 	font-family: inherit;
-}
-
-.explore-app .line-number {
-	display: flex;
-	padding: 0 16px 0 0;
 }
 
 /* the shiki pane draws the same gutter from a css counter, since shiki
@@ -594,291 +514,182 @@
 .explore-app .ln,
 .explore-app .pane__body.show-line-numbers pre.shiki .line::before {
 	display: inline-block;
-	width: 44px;
-	padding-right: 12px;
-	text-align: right;
-	color: var(--fg-muted);
-	user-select: none;
 	flex-shrink: 0;
-	border-right: 1px solid var(--border);
+	width: 40px;
 	margin-right: 12px;
+	padding-right: 10px;
+	border-right: 1px solid var(--border);
+	color: var(--fg-muted);
 	font-size: 11px;
+	text-align: right;
+	user-select: none;
 }
 
 /* horizontal padding lives on the line rather than the <pre>, so line
    hover and line-mode overlays reach the pane edges. with line numbers on,
    the gutter supplies the left inset instead. */
-.explore-app .l {
-	width: 100%;
+.explore-app .l,
+.explore-app .pane__body pre.shiki .line {
 	display: inline-block;
+	width: 100%;
 	padding: 0 16px;
 }
-.explore-app .pane__body.show-line-numbers .l {
+.explore-app .pane__body.show-line-numbers .l,
+.explore-app .pane__body.show-line-numbers pre.shiki .line {
 	padding-left: 0;
 }
-.explore-app .code--plain {
-	padding: 14px 16px;
-}
-
-.explore-app .l:hover {
+.explore-app .l:hover,
+.explore-app .pane__body pre.shiki .line:hover {
 	background: color-mix(in oklab, var(--fg) 3%, transparent);
 }
-
-.explore-app .code__content {
-	flex: 1;
-	min-width: 0;
-}
-.explore-app .code__empty {
-	display: inline-block;
-	min-height: 1em;
+.explore-app .code--plain {
+	padding: 12px 16px;
 }
 
-.explore-app .tok {
-	transition: opacity 0.1s;
-}
-.explore-app .panes.is-inspect [data-pane='plop'] .tok:hover,
-.explore-app .panes.is-inspect [data-pane='shiki'] span[data-scopes]:hover {
-	background: color-mix(in oklab, var(--accent) 22%, transparent);
-	box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 60%, transparent);
-	border-radius: 1px;
-}
-.explore-app .inspect-tip {
-	position: fixed;
-	z-index: 200;
-	pointer-events: none;
-	transform: translate(12px, 16px);
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 0px 4px 1px 4px;
-	background: var(--bg-elev);
-	border: 1px solid var(--fg-dim);
-	box-shadow:
-		0 2px 6px rgba(0, 0, 0, 0.6),
-		var(--glow);
-	font-size: 11px;
-	letter-spacing: 0.04em;
-	color: var(--fg);
-	white-space: nowrap;
-	border-radius: 2px;
-}
-.explore-app .inspect-tip--stack {
-	display: inline-flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 4px;
-	padding: 4px 6px 5px 6px;
-}
-.explore-app .inspect-tip__label {
-	color: var(--fg-muted);
-	font-size: 9px;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-}
-.explore-app .inspect-tip__value {
-	color: var(--accent);
-	font-variant-numeric: tabular-nums;
-}
-.explore-app .inspect-tip__themed {
-	display: inline-flex;
-	align-items: baseline;
-	gap: 6px;
-}
-.explore-app .inspect-tip__themed-label {
-	color: var(--fg-muted);
-	font-size: 9px;
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
-}
-.explore-app .inspect-tip__themed-scope {
-	color: var(--fg-dim);
-	font-size: 10px;
-	font-variant-numeric: tabular-nums;
-}
-.explore-app .inspect-tip__chain {
+.explore-app .pane__body pre.shiki {
 	margin: 0;
+	padding: 12px 0;
+	background: transparent !important;
+	font-family: inherit;
+	font-size: 13px;
+	line-height: 1.6;
+	min-width: max-content;
+}
+.explore-app .pane__body pre.shiki code {
 	padding: 0;
-	list-style: none;
-	display: flex;
-	flex-direction: column;
-	gap: 1px;
-	border-top: 1px dashed var(--border);
-	padding-top: 4px;
-	width: 100%;
+	background: transparent;
+	font-family: inherit;
 }
-.explore-app .inspect-tip__scope {
-	color: var(--fg-dim);
-	font-size: 10px;
-	font-variant-numeric: tabular-nums;
+.explore-app .pane__body.show-line-numbers pre.shiki {
+	counter-reset: line;
 }
-.explore-app .tok.is-hovered {
-	background: color-mix(in oklab, var(--accent) 20%, transparent);
+.explore-app .pane__body.show-line-numbers pre.shiki .line::before {
+	counter-increment: line;
+	content: counter(line);
+}
+
+/* inspect underlines every token, and the one under the pointer lights up
+   in both panes */
+.explore-app .panes.is-inspect code > span > span:not(.ln):not([data-ws]) {
+	box-shadow: inset 0 -1px color-mix(in oklab, var(--fg) 25%, transparent);
+	cursor: crosshair;
+}
+.explore-app .panes .is-hot {
+	background: color-mix(in oklab, var(--accent) 22%, transparent);
 	outline: 1px solid var(--accent);
-	outline-offset: 1px;
 }
 
 .explore-app .pane__foot {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 6px 16px;
-	border-top: 1px solid var(--border);
-	background: var(--bg-elev);
-	font-size: 10px;
-	color: var(--fg-muted);
-	letter-spacing: 0.05em;
-	position: sticky;
-	bottom: 0;
-	z-index: 5;
-	margin-top: auto;
-}
-.explore-app .pane__foot-l,
-.explore-app .pane__foot-r {
-	display: flex;
 	align-items: center;
 	gap: 8px;
+	height: 30px;
+	padding: 0 16px;
+	border-top: 1px solid var(--border);
+	background: var(--bg-elev);
+	color: var(--fg-muted);
+	font-size: 11px;
+	white-space: nowrap;
+	overflow: hidden;
 }
 .explore-app .pane__foot .dot {
+	flex-shrink: 0;
 	width: 6px;
 	height: 6px;
-	background: var(--accent2);
 	border-radius: 50%;
+	background: var(--accent2);
 }
-.explore-app .pane__foot .sep {
-	opacity: 0.4;
+.explore-app .pane__readout {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--fg);
 }
-.explore-app .perf {
-	display: flex;
-	align-items: center;
-	gap: 6px;
+.explore-app .pane__type {
+	color: var(--accent);
 }
-.explore-app .perf__label {
+.explore-app .pane__note {
 	color: var(--fg-muted);
 }
-.explore-app .perf__value {
+.explore-app .pane__ms {
+	margin-left: auto;
 	color: var(--fg);
-	font-weight: 500;
+	font-variant-numeric: tabular-nums;
 }
 
-/* ---------- bottom bar (perf race) ---------- */
-.explore-app .bottombar {
-	display: block;
-	padding: 10px 18px;
+/* ---------- perf race ---------- */
+.explore-app .race {
+	padding: 8px 16px;
 	border-top: 1px solid var(--border);
-	background: var(--bg-pane);
 }
-.explore-app .bottombar__l {
-	min-width: 0;
-}
-
 .explore-app .racebar {
 	display: grid;
-	grid-template-columns: 80px 1fr 70px;
-	gap: 8px 12px;
+	grid-template-columns: 90px minmax(0, 1fr) 72px;
+	gap: 6px 12px;
 	align-items: center;
 	font-size: 11px;
-}
-.explore-app .racebar__row {
-	display: contents;
 }
 .explore-app .racebar__who {
 	color: var(--fg-muted);
-	text-transform: lowercase;
-	letter-spacing: 0.05em;
 }
 .explore-app .racebar__track {
-	height: 14px;
+	position: relative;
+	height: 10px;
+	overflow: hidden;
 	background: var(--bg-elev);
 	border: 1px solid var(--border);
-	position: relative;
-	overflow: hidden;
-	display: flex;
-	align-items: center;
 }
 .explore-app .racebar__fill {
 	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	transition: width 0.3s ease;
-}
-.explore-app .racebar__delta {
-	position: relative;
-	z-index: 1;
-	margin-left: auto;
-	padding: 0 8px;
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	font-size: 10px;
-	letter-spacing: 0.04em;
-	color: var(--accent);
-	font-variant-numeric: tabular-nums;
-	text-shadow:
-		0 0 4px color-mix(in oklab, var(--bg) 80%, transparent),
-		0 0 8px color-mix(in oklab, var(--bg) 80%, transparent);
-}
-.explore-app .racebar__delta-sign {
-	font-weight: 700;
-	font-size: 11px;
-}
-.explore-app .racebar__delta-sep {
-	opacity: 0.4;
+	inset: 0 auto 0 0;
+	transition: width 0.3s;
 }
 .explore-app .racebar__fill--plop {
 	background: repeating-linear-gradient(
 		-45deg,
 		var(--accent) 0,
 		var(--accent) 4px,
-		color-mix(in oklab, var(--accent) 60%, transparent) 4px,
-		color-mix(in oklab, var(--accent) 60%, transparent) 8px
+		color-mix(in oklab, var(--accent) 55%, transparent) 4px,
+		color-mix(in oklab, var(--accent) 55%, transparent) 8px
 	);
-	box-shadow: 0 0 8px color-mix(in oklab, var(--accent) 50%, transparent);
 }
 .explore-app .racebar__fill--shiki {
 	background: repeating-linear-gradient(
 		-45deg,
 		var(--fg-dim) 0,
 		var(--fg-dim) 4px,
-		color-mix(in oklab, var(--fg-dim) 50%, transparent) 4px,
-		color-mix(in oklab, var(--fg-dim) 50%, transparent) 8px
+		color-mix(in oklab, var(--fg-dim) 45%, transparent) 4px,
+		color-mix(in oklab, var(--fg-dim) 45%, transparent) 8px
 	);
+}
+.explore-app .racebar__lead {
+	position: absolute;
+	top: 50%;
+	right: 8px;
+	padding: 0 4px;
+	transform: translateY(-50%);
+	background: var(--bg-elev);
+	color: var(--accent);
+	font-size: 10px;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
 }
 .explore-app .racebar__t {
 	color: var(--fg);
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
+@media (prefers-reduced-motion: reduce) {
+	.explore-app .racebar__fill {
+		transition: none;
+	}
+}
 
-/* ---------- shiki override inside pane ---------- */
-.explore-app .pane__body pre.shiki {
-	margin: 0;
-	padding: 14px 0;
-	background: transparent !important;
-	font-family: inherit;
-	font-size: 13px;
-	line-height: 1.55;
-	overflow: visible;
-}
-.explore-app .pane__body pre.shiki code {
-	font-family: inherit;
-	background: transparent;
-	padding: 0;
-}
-.explore-app .pane__body pre.shiki .line {
-	display: inline-block;
-	width: 100%;
-	padding: 0 16px;
-}
-.explore-app .pane__body.show-line-numbers pre.shiki {
-	counter-reset: line;
-}
-.explore-app .pane__body.show-line-numbers pre.shiki .line {
-	padding-left: 0;
-}
-.explore-app .pane__body.show-line-numbers pre.shiki .line::before {
-	counter-increment: line;
-	content: counter(line);
+/* ---------- phone chrome, hidden on wider screens ---------- */
+.explore-app .mtop,
+.explore-app .tabs,
+.explore-app .mbar {
+	display: none;
 }
 
 /* token colors driven by css variables on the owning pane so swapping
@@ -1278,72 +1089,286 @@
 	text-underline-offset: 3px;
 }
 
+
 /* ---------- phones ---------- */
-/* side by side does not fit: each column would be ~180px of a horizontally
-   scrolling page, which put the shiki pane off screen entirely. the panes
-   stack instead, so shiki is a scroll away, and the chrome wraps rather
-   than forcing the whole app wider than the viewport. */
+/* one pane at a time in a horizontal scroller, with every control in a bar
+   along the bottom whose sheets grow upward */
 @media (max-width: 760px) {
-	.explore-app .topbar {
-		flex-wrap: wrap;
-		gap: 8px 14px;
-		padding: 8px 12px;
+	.explore-app {
+		/* the race line and button row of the bar */
+		--mbar-h: 85px;
+		padding-bottom: calc(var(--mbar-h) + env(safe-area-inset-bottom));
+		font-size: 14px;
 	}
-	.explore-app .topbar__l,
-	.explore-app .topbar__r {
-		flex-wrap: wrap;
-		gap: 8px 12px;
-	}
-	.explore-app .divider {
+	.explore-app .topbar,
+	.explore-app .race,
+	.explore-app .pane__head {
 		display: none;
 	}
 
+	.explore-app .mtop {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		height: 44px;
+		padding: 0 14px;
+		border-bottom: 1px solid var(--border);
+		--mode-fg: var(--fg-muted);
+		--mode-fg-on: var(--fg);
+	}
+	.explore-app .mtop__back {
+		display: flex;
+		align-items: center;
+		min-height: 44px;
+		color: var(--fg);
+		text-decoration: none;
+	}
+
+	.explore-app .source__ta {
+		height: 160px;
+		min-height: 0;
+		max-height: none;
+		font-size: 14px;
+	}
+
+	.explore-app .tabs {
+		display: flex;
+		height: 40px;
+		border-bottom: 1px solid var(--border);
+	}
+	.explore-app .tabs__tab {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		border: 0;
+		background: transparent;
+		color: var(--fg-muted);
+		font: inherit;
+		font-size: 13px;
+		cursor: pointer;
+	}
+	.explore-app .tabs__tab.is-on {
+		color: var(--fg);
+		box-shadow: inset 0 -2px var(--accent);
+	}
+	.explore-app .tabs__fid {
+		font-size: 11px;
+	}
+	.explore-app .tabs__tab.is-on .tabs__fid {
+		color: var(--accent2);
+	}
+
 	.explore-app .panes {
-		grid-template-columns: 1fr;
+		display: flex;
+		overflow-x: auto;
+		overflow-y: hidden;
+		scroll-snap-type: x mandatory;
+		scrollbar-width: none;
+	}
+	.explore-app .panes::-webkit-scrollbar {
+		display: none;
+	}
+	.explore-app .pane {
+		flex: 0 0 100%;
+		scroll-snap-align: start;
+		scroll-snap-stop: always;
 	}
 	.explore-app .pane + .pane {
 		border-left: 0;
 	}
-
-	.explore-app .code,
-	.explore-app .pane__body pre.shiki {
-		font-size: 11px;
-		line-height: 1.5;
+	.explore-app .pane__foot {
+		height: 34px;
+		font-size: 12px;
 	}
-	.explore-app .l,
-	.explore-app .pane__body pre.shiki .line {
+
+	.explore-app .mbar {
+		display: block;
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 200;
+		padding-bottom: env(safe-area-inset-bottom);
+		background: var(--bg);
+		border-top: 1px solid var(--border);
+	}
+	.explore-app .mbar__race {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 10px;
+		height: 28px;
+		padding: 0 14px;
+		border-bottom: 1px solid var(--border);
+		color: var(--fg-muted);
+		font-size: 11px;
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
+	}
+	.explore-app .mbar__race b {
+		color: var(--fg);
+		font-weight: 500;
+	}
+	.explore-app .mbar__ratio {
+		color: var(--accent);
+	}
+	.explore-app .mbar__mini {
+		display: grid;
+		gap: 2px;
+	}
+	.explore-app .mbar__mini i {
+		display: block;
+		height: 3px;
+		background: var(--bg-elev);
+	}
+	.explore-app .mbar__mini i::before {
+		content: '';
+		display: block;
+		width: var(--w);
+		height: 100%;
+		background: var(--fg-dim);
+	}
+	.explore-app .mbar__mini i:first-child::before {
+		background: var(--accent);
+	}
+	.explore-app .mbar__row {
+		display: flex;
+		align-items: stretch;
+		gap: 4px;
+		height: 56px;
+		padding: 6px;
+	}
+	.explore-app .mbar__btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 44px;
 		padding: 0 10px;
+		border: 0;
+		background: transparent;
+		color: var(--fg);
+		font: inherit;
+		text-decoration: none;
+		cursor: pointer;
 	}
-	.explore-app .ln,
-	.explore-app .pane__body.show-line-numbers pre.shiki .line::before {
-		width: 28px;
-		padding-right: 8px;
-		margin-right: 8px;
-		font-size: 9.5px;
+	.explore-app .mbar__path > span:not(.slash),
+	.explore-app .mbar__edit {
+		text-decoration: underline dotted var(--fg-muted);
+		text-decoration-thickness: 1px;
+		text-underline-offset: 4px;
+	}
+	.explore-app .mbar__btn.is-on {
+		color: var(--accent);
+	}
+	.explore-app .mbar__path.is-on > span:not(.slash),
+	.explore-app .mbar__edit.is-on {
+		text-decoration-color: var(--accent);
+	}
+	.explore-app .mbar__path {
+		flex: 1;
+		justify-content: flex-start;
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
+	}
+	.explore-app .mbar__path > span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.explore-app .mbar__path .slash {
+		flex: none;
+		margin: 0 8px;
+	}
+	.explore-app .mbar__menu {
+		width: 44px;
+		padding: 0;
+		font-size: 18px;
+		line-height: 1;
 	}
 
-	/* the chrome wraps onto several rows, so keep each one short */
-	.explore-app .topbar {
-		--mode-height: 22px;
-		--mode-font-size: 10px;
+	.explore-app .sheet {
+		display: flex;
+		flex-direction: column;
+		max-height: 60dvh;
+		overflow-y: auto;
+		background: var(--bg);
 	}
-	.explore-app .chip__button,
-	.explore-app .toggle {
-		padding: 2px 5px;
-		font-size: 11px;
+	.explore-app .sheet--tall {
+		height: 50dvh;
+		overflow: hidden;
 	}
-	.explore-app .pane__head {
-		padding: 8px 12px;
+	.explore-app .sheet__scroll {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
 	}
-
-	/* the delta badge rides inside the track, which is too narrow here for
-	   its text; the per-side timings in the last column still show it. */
-	.explore-app .racebar {
-		grid-template-columns: 62px 1fr 58px;
-		gap: 6px 8px;
-		font-size: 10px;
+	.explore-app .sheet__item,
+	.explore-app .sheet__head,
+	.explore-app .sheet__row {
+		display: flex;
+		flex: none;
+		align-items: center;
+		gap: 12px;
+		width: 100%;
+		min-height: 52px;
+		padding: 0 14px;
+		border: 0;
+		border-bottom: 1px solid var(--border);
+		background: transparent;
+		color: var(--fg-dim);
+		font: inherit;
+		text-align: left;
 	}
-	.explore-app .racebar__delta {
-		display: none;
+	.explore-app .sheet__item {
+		cursor: pointer;
+	}
+	.explore-app .sheet__scroll .sheet__item {
+		min-height: 44px;
+		padding-left: 18px;
+	}
+	.explore-app .sheet__item.is-on,
+	.explore-app .sheet__item--nav {
+		color: var(--fg);
+	}
+	.explore-app .sheet__lbl {
+		flex-shrink: 0;
+		width: 64px;
+		color: var(--fg-muted);
+		font-size: 12px;
+	}
+	.explore-app .sheet__chev {
+		margin-left: auto;
+		color: var(--fg-muted);
+		font-size: 18px;
+	}
+	.explore-app .sheet__mk {
+		width: 10px;
+		color: var(--fg-muted);
+	}
+	.explore-app .sheet__item.is-on .sheet__mk {
+		color: var(--accent);
+	}
+	.explore-app .sheet__head {
+		color: var(--fg-muted);
+	}
+	.explore-app .sheet__back {
+		display: flex;
+		align-items: center;
+		min-height: 44px;
+		padding: 0 4px;
+		border: 0;
+		background: transparent;
+		color: var(--accent);
+		font: inherit;
+		cursor: pointer;
+	}
+	.explore-app .sheet__row {
+		gap: 6px;
+	}
+	.explore-app .sheet__row .toggle {
+		min-height: 44px;
+		padding: 0 10px;
 	}
 }

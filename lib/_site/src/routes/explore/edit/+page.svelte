@@ -1,17 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 
-	import TopBar from '$lib/components/explore/TopBar.svelte';
 	import SourceEditor from '$lib/components/explore/SourceEditor.svelte';
 	import ExploreLab from '$lib/components/explore/ExploreLab.svelte';
 	import { fidelity_by_lang, view } from '$lib/explore/lab_state.svelte';
 	import { decode_share, encode_share, type share_state } from '$lib/explore/share';
 	import { THEME_NAMES, type theme_name } from '$lib/explore/themes';
 
+	let { data } = $props();
+
 	let lang = $state('javascript');
 	let source = $state('');
+	let editor_open = $state(true);
 	// nothing is written back to the url until its hash has been read
 	let ready = $state(false);
 	let unreadable = $state(false);
@@ -110,26 +112,37 @@
 	}
 </script>
 
-<div class="explore-app explore-app--edit">
-	<TopBar {lang} on_lang_change={(next) => (lang = next)}>
-		{#snippet actions()}
-			<button class="toggle" type="button" disabled={!ready} onclick={copy_link}>
-				<span aria-live="polite">
-					{copy_status === 'copied'
-						? 'link copied'
-						: copy_status === 'failed'
-							? 'copy failed'
-							: 'copy link'}
-				</span>
-			</button>
-		{/snippet}
-	</TopBar>
-
-	<SourceEditor
-		bind:value={source}
-		bind:textarea
-		error={unreadable ? "this link's snippet could not be read" : null}
-	/>
-
-	<ExploreLab {lang} {source} />
-</div>
+<ExploreLab
+	path={{
+		lang,
+		on_lang_change: (next) => (lang = next),
+		sample: 'snippet',
+		samples: data.samples[lang] ?? [],
+		on_sample_change: (next) => goto(`/explore/${lang}/${next}`)
+	}}
+	edit={{ on: editor_open, toggle: () => (editor_open = !editor_open) }}
+	{source}
+>
+	{#snippet editor()}
+		{#if editor_open}
+			<SourceEditor
+				bind:value={source}
+				bind:textarea
+				error={unreadable ? "this link's snippet could not be read" : null}
+				on_close={() => (editor_open = false)}
+			>
+				{#snippet actions()}
+					<button class="source__btn" type="button" disabled={!ready} onclick={copy_link}>
+						<span aria-live="polite">
+							{copy_status === 'copied'
+								? 'link copied'
+								: copy_status === 'failed'
+									? 'copy failed'
+									: 'copy link'}
+						</span>
+					</button>
+				{/snippet}
+			</SourceEditor>
+		{/if}
+	{/snippet}
+</ExploreLab>

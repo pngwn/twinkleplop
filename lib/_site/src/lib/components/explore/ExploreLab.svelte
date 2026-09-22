@@ -1,13 +1,19 @@
 <script lang="ts">
-	import CodePane from '$lib/components/explore/CodePane.svelte';
-	import ShikiPane from '$lib/components/explore/ShikiPane.svelte';
-	import RaceBar from '$lib/components/explore/RaceBar.svelte';
+	import type { Snippet } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+
+	import TopBar, { type edit_control, type path_control } from './TopBar.svelte';
+	import MobileBar from './MobileBar.svelte';
+	import Pane, { type readout } from './Pane.svelte';
+	import RaceBar from './RaceBar.svelte';
+	import ModeSwitch from '$lib/components/ModeSwitch.svelte';
 
 	import { FONTS, resolve_theme } from '$lib/explore/themes';
 	import { GRAMMAR_LOADERS } from '$lib/explore/grammars';
 	import { fidelity_by_lang, view } from '$lib/explore/lab_state.svelte';
+	import { locate, token_in, token_index, type text_position } from '$lib/explore/inspect';
+	import { annotate_shiki } from '$lib/explore/shiki_annotate';
 	import { theme_mode, hydrate_mode } from '$lib/theme_mode.svelte';
-	import { onMount } from 'svelte';
 	import { GRAMMAR_EXTENSION_CATEGORIES, to_html } from '@twinkleplop/core';
 	import { add, del, dim, em, err, hl, info, mod, warn } from '@twinkleplop/annotation';
 
@@ -31,11 +37,16 @@
 	import '$lib/styles/explore.css';
 
 	interface Props {
-		lang: string;
+		path: path_control;
+		edit: edit_control;
 		source: string;
+		// the source editor, shown between the top bar and the panes
+		editor?: Snippet;
 	}
 
-	let { lang, source }: Props = $props();
+	let { path, edit, source, editor }: Props = $props();
+
+	const lang = $derived(path.lang);
 
 	// the factory reference is kept separately from the resolved grammar so
 	// flipping a fidelity tag just re-runs the derivation below without
@@ -150,100 +161,6 @@
 		hydrate_mode();
 	});
 
-	// token inspector tooltip. when view.inspect is on, hovering a span in
-	// either pane reveals the classification the highlighter assigned. for
-	// the plop pane we read the second class on a `.tok` span (the first is
-	// always `tok`); for the shiki pane we read the `data-scopes` attribute
-	// attached by the second-pass annotation effect below. holding shift
-	// while hovering a shiki span unfolds the rest of the textmate scope
-	// chain beneath the leaf.
-	let inspect_label = $state<string | null>(null);
-	let inspect_chain = $state<string[] | null>(null);
-	let inspect_theme_scope = $state<string | null>(null);
-	let inspect_x = $state(0);
-	let inspect_y = $state(0);
-	let shift_held = $state(false);
-
-	function on_inspect_move(e: PointerEvent) {
-		if (!view.inspect) return;
-		const target = e.target as Element | null;
-		const plop_tok = target?.closest?.('[data-pane="plop"] .tok') as HTMLElement | null;
-		if (plop_tok) {
-			// the `to_html` markup is `<span class="tok TYPE">`. token types
-			// are emitted as bare strings (no spaces), so the second class is
-			// the full type name.
-			inspect_label = plop_tok.classList[1] ?? null;
-			inspect_chain = null;
-			inspect_theme_scope = null;
-			inspect_x = e.clientX;
-			inspect_y = e.clientY;
-			return;
-		}
-		const shiki_tok = target?.closest?.(
-			'[data-pane="shiki"] span[data-scopes]'
-		) as HTMLElement | null;
-		if (shiki_tok) {
-			// `data-scopes` is a `|`-joined chain ordered root-first; the
-			// leaf (most-specific) scope is the last entry. `data-theme-scope`
-			// is the literal scope pattern of the theme rule that won the
-			// color contest for this token (e.g. `keyword.operator` even when
-			// the grammar leaf is `keyword.operator.assignment.js`).
-			const raw = shiki_tok.dataset.scopes ?? '';
-			const chain = raw ? raw.split('|') : [];
-			inspect_chain = chain.length ? chain : null;
-			inspect_label = chain.length ? chain[chain.length - 1] : null;
-			inspect_theme_scope = shiki_tok.dataset.themeScope ?? null;
-			inspect_x = e.clientX;
-			inspect_y = e.clientY;
-			return;
-		}
-		inspect_label = null;
-		inspect_chain = null;
-		inspect_theme_scope = null;
-	}
-
-	function on_inspect_leave() {
-		inspect_label = null;
-		inspect_chain = null;
-		inspect_theme_scope = null;
-	}
-
-	$effect(() => {
-		if (!view.inspect) {
-			inspect_label = null;
-			inspect_chain = null;
-			inspect_theme_scope = null;
-			return;
-		}
-		function on_keydown(e: KeyboardEvent) {
-			if (e.key === 'Shift') shift_held = true;
-		}
-		function on_keyup(e: KeyboardEvent) {
-			if (e.key === 'Shift') shift_held = false;
-		}
-		function on_blur() {
-			shift_held = false;
-		}
-		window.addEventListener('keydown', on_keydown);
-		window.addEventListener('keyup', on_keyup);
-		window.addEventListener('blur', on_blur);
-		return () => {
-			window.removeEventListener('keydown', on_keydown);
-			window.removeEventListener('keyup', on_keyup);
-			window.removeEventListener('blur', on_blur);
-			shift_held = false;
-		};
-	});
-
-	// chain entries to surface beneath the leaf when shift is held, ordered
-	// most-specific-first (the leaf itself sits at the top of the tooltip,
-	// so the unfold begins with the leaf's parent).
-	let inspect_extra = $derived(
-		shift_held && inspect_chain && inspect_chain.length > 1
-			? inspect_chain.slice(0, -1).reverse()
-			: null
-	);
-
 	// twinkleplop tokenization + real parse time. `measure` batches calls
 	// to beat the 5-100us `performance.now()` clamp and takes the median
 	// across samples to damp out jit/gc noise.
@@ -324,17 +241,15 @@
 	// `includeExplanation` materially slows tokenization, so keeping it out
 	// of the timed `codeToHtml` path lets the perf readout in the shiki pane
 	// stay honest. the result is the per-line, per-token explanation tree
-	// used to populate `data-scopes` on the rendered shiki spans below.
-	let shiki_body_el = $state<HTMLElement | null>(null);
-	let shiki_explained = $state<ThemedToken[][] | null>(null);
+	// used to populate `data-scopes` on the rendered shiki spans.
+	let shiki_explained = $state<{ html: string; tokens: ThemedToken[][] } | null>(null);
 	$effect(() => {
 		const shiki_lang = shiki_lang_for(lang);
-		// always invalidate first so the annotation effect doesn't run with
-		// stale tokens against fresh dom while the microtask is in flight.
 		shiki_explained = null;
 		if (!view.inspect || !highlighter || !source || !shiki_lang || !shiki_html) return;
 		const local_highlighter = highlighter;
 		const local_source = source;
+		const local_html = shiki_html;
 		const local_lang = shiki_lang;
 		const local_theme = resolve_theme(view.theme, theme_mode.resolved).shiki_id;
 		let cancelled = false;
@@ -342,186 +257,21 @@
 		// block the same microtask that just rendered shiki_html.
 		queueMicrotask(() => {
 			if (cancelled) return;
-			if (local_source !== source) return;
 			try {
-				shiki_explained = tokenize_with_scopes(
+				const tokens = tokenize_with_scopes(
 					local_highlighter,
 					local_source,
 					local_lang,
 					local_theme
 				);
+				shiki_explained = { html: local_html, tokens };
 			} catch (err) {
 				console.warn('shiki explained-tokens pass failed', err);
-				shiki_explained = null;
 			}
 		});
 		return () => {
 			cancelled = true;
 		};
-	});
-
-	// returns true when textmate selector `sel` matches the dot-segmented
-	// scope `target`. selectors match when their segments are a prefix of
-	// the target's segments (e.g. `keyword.operator` matches
-	// `keyword.operator.assignment.js`, but `keyword.assignment` does not).
-	function selector_matches(sel: string, target: string): boolean {
-		return target === sel || target.startsWith(sel + '.');
-	}
-
-	// resolves which theme rule actually colored a sub-token, given the
-	// rendered color of its parent themedtoken. walks the sub-token's
-	// scopes and finds the themematch whose `settings.foreground` equals
-	// the parent color. when a matching rule has an array `scope` (theme
-	// json shorthand for "all these selectors share these settings"), we
-	// narrow to the single selector that actually matched this scope:
-	// listing siblings would point at unrelated tokens that happen to
-	// share the rule.
-	type SubScope = { scopeName: string; themeMatches?: ThemedTokenScopeMatch[] };
-	type ThemedTokenScopeMatch = {
-		scope?: string | string[];
-		settings?: { foreground?: string };
-	};
-	function resolve_rule(scopes: SubScope[], parent_color: string): string | null {
-		if (!parent_color) return null;
-		for (const scope of scopes) {
-			for (const match of scope.themeMatches ?? []) {
-				const fg = match.settings?.foreground?.toLowerCase();
-				if (!fg || fg !== parent_color) continue;
-				const s = match.scope;
-				if (typeof s === 'string') return s;
-				if (Array.isArray(s)) {
-					let best: string | null = null;
-					for (const sel of s) {
-						if (typeof sel !== 'string') continue;
-						if (selector_matches(sel, scope.scopeName)) {
-							if (!best || sel.length > best.length) best = sel;
-						}
-					}
-					if (best) return best;
-					for (const sel of s) {
-						if (typeof sel === 'string') return sel;
-					}
-				}
-				return null;
-			}
-		}
-		return null;
-	}
-
-	// dom annotation: walks the rendered shiki output and tags each token
-	// span with `data-scopes` (the grammar chain) and `data-theme-scope`
-	// (the theme rule that earned the color). shiki coalesces tokens at
-	// *two* layers and we have to undo both:
-	//
-	// 1. `codeToHtml` merges adjacent same-color spans for the rendered
-	//    output, so a single dom span often contains several themedtokens.
-	// 2. inside a themedtoken, the tokenizer can also coalesce neighboring
-	//    same-color atoms: `");"` arrives as one themedtoken whose
-	//    `explanation` array carries two entries (`)` with `meta.brace
-	//    .round` and `;` with `punctuation.terminator.statement`). so the
-	//    real atomic unit is the explanation entry, not the themedtoken.
-	//
-	// we flatten the line into per-explanation sub-tokens, walk dom spans
-	// in lockstep by character length, and split any span that ends up
-	// containing more than one sub-token into per-sub-token spans. cloning
-	// the original span's style preserves the rendered color so splitting
-	// is visually invisible, but each sub-span is now its own hover
-	// target with its own accurate scope/rule annotation.
-	//
-	// we restore shiki_html into the body before walking so previous
-	// annotation passes (which mutated the dom by splitting) don't throw
-	// off the per-character walk. svelte's {@html} only re-renders when
-	// the html string itself changes, so toggling inspect off/on for the
-	// same source would otherwise re-walk a stale, already-split dom.
-	// `shiki_html` is shiki's own escaped output and is already trusted
-	// here: the parent template renders it via {@html} in shikipane.
-	$effect(() => {
-		if (!shiki_body_el || !shiki_explained || !shiki_html) return;
-		Reflect.set(shiki_body_el, 'innerHTML', shiki_html);
-		const lines = shiki_body_el.querySelectorAll('.line');
-		const explained = shiki_explained;
-		for (let line_idx = 0; line_idx < lines.length; line_idx++) {
-			const line = lines[line_idx];
-			const tokens = explained[line_idx];
-			if (!tokens || tokens.length === 0) continue;
-			type Sub = { content: string; scopes: string[]; theme_scope: string | null };
-			const flat: Sub[] = [];
-			for (const tok of tokens) {
-				const color = (tok.color ?? '').toLowerCase();
-				const exps = tok.explanation ?? [];
-				if (exps.length === 0) {
-					flat.push({ content: tok.content, scopes: [], theme_scope: null });
-					continue;
-				}
-				for (const exp of exps) {
-					const scopes_arr = exp.scopes ?? [];
-					const names = scopes_arr.map((s) => s.scopeName);
-					const theme_scope = resolve_rule(scopes_arr as SubScope[], color);
-					flat.push({ content: exp.content, scopes: names, theme_scope });
-				}
-			}
-			const original_spans = Array.from(line.querySelectorAll(':scope > span'));
-			let sub_idx = 0;
-			for (const span of original_spans) {
-				const span_len = span.textContent?.length ?? 0;
-				const contained: Sub[] = [];
-				let consumed = 0;
-				while (sub_idx < flat.length && consumed < span_len) {
-					contained.push(flat[sub_idx]);
-					consumed += flat[sub_idx].content.length;
-					sub_idx++;
-				}
-				apply_subtokens(span as HTMLElement, contained);
-			}
-		}
-	});
-
-	function apply_subtokens(
-		span: HTMLElement,
-		subs: { content: string; scopes: string[]; theme_scope: string | null }[]
-	) {
-		if (subs.length === 0) return;
-		if (subs.length === 1) {
-			annotate_span(span, subs[0].scopes, subs[0].theme_scope);
-			return;
-		}
-		const style = span.getAttribute('style') ?? '';
-		const cls = span.getAttribute('class') ?? '';
-		const fragment = document.createDocumentFragment();
-		for (const s of subs) {
-			const new_span = document.createElement('span');
-			if (style) new_span.setAttribute('style', style);
-			if (cls) new_span.setAttribute('class', cls);
-			new_span.textContent = s.content;
-			annotate_span(new_span, s.scopes, s.theme_scope);
-			fragment.appendChild(new_span);
-		}
-		span.replaceWith(fragment);
-	}
-
-	function annotate_span(span: HTMLElement, scopes: string[], theme_scope: string | null) {
-		if (scopes.length > 0) {
-			span.dataset.scopes = scopes.join('|');
-		} else {
-			delete span.dataset.scopes;
-		}
-		if (theme_scope) {
-			span.dataset.themeScope = theme_scope;
-		} else {
-			delete span.dataset.themeScope;
-		}
-	}
-
-	// `crossOriginIsolated` flips true once the coop/coep response headers
-	// from hooks.server.ts land. that's what lets `performance.now()`
-	// report in 5us steps instead of 100us, so we surface it in the pane
-	// subtitle to make the precision of the perf readout honest.
-	let cross_origin_isolated = $state(false);
-	$effect(() => {
-		cross_origin_isolated =
-			typeof globalThis !== 'undefined' &&
-			'crossOriginIsolated' in globalThis &&
-			Boolean((globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated);
 	});
 
 	let plop_html = $derived(
@@ -544,6 +294,150 @@
 		return count;
 	}
 
+	// written here rather than with {@html}, which cannot survive the scope
+	// annotation rewriting the shiki dom, both are escaped highlighter output
+	let plop_code_el = $state<HTMLElement>();
+	let shiki_code_el = $state<HTMLElement>();
+	// bumped whenever either pane dom is rebuilt
+	let dom_version = $state(0);
+
+	$effect(() => {
+		if (!plop_code_el) return;
+		plop_code_el.innerHTML = plop_html;
+		untrack(() => dom_version++);
+	});
+
+	$effect(() => {
+		if (!shiki_code_el) return;
+		shiki_code_el.innerHTML = shiki_html ?? '';
+		if (shiki_html && shiki_explained?.html === shiki_html) {
+			annotate_shiki(shiki_code_el, shiki_explained.tokens);
+		}
+		untrack(() => dom_version++);
+	});
+
+	// the inspected token, under the pointer or pinned by a click, lights up
+	// in both panes and each footer names it
+	let panes_el = $state<HTMLElement>();
+	let hot = $state<text_position | null>(null);
+	let pinned = $state(false);
+	let plop_readout = $state<readout | null>(null);
+	let shiki_readout = $state<readout | null>(null);
+
+	const line_starts = $derived.by(() => {
+		const starts = [0];
+		for (let i = 0; i < source.length; i++) {
+			if (source.charCodeAt(i) === 10) starts.push(i + 1);
+		}
+		return starts;
+	});
+
+	function same(a: text_position | null, b: text_position | null) {
+		return a?.line === b?.line && a?.col === b?.col;
+	}
+
+	function on_pointerover(e: PointerEvent) {
+		if (!view.inspect || pinned) return;
+		const at = locate(e.target);
+		if (!same(at, hot)) hot = at;
+	}
+
+	function on_pointerleave() {
+		if (!pinned) hot = null;
+	}
+
+	function on_click(e: MouseEvent) {
+		if (!view.inspect) return;
+		const at = locate(e.target);
+		if (at && !(pinned && same(at, hot))) {
+			hot = at;
+			pinned = true;
+		} else {
+			hot = null;
+			pinned = false;
+		}
+	}
+
+	$effect(() => {
+		if (view.inspect) return;
+		hot = null;
+		pinned = false;
+	});
+
+	// the plop readout comes from the token stream, so its index is the real
+	// token index rather than a count of spans
+	function plop_token_at(offset: number): readout | null {
+		if (!plop_tokens) return null;
+		const t = plop_tokens.tokens;
+		let lo = 0;
+		let hi = t.length / 3 - 1;
+		let found = -1;
+		while (lo <= hi) {
+			const mid = (lo + hi) >> 1;
+			if (t[mid * 3 + 1] <= offset) {
+				found = mid;
+				lo = mid + 1;
+			} else {
+				hi = mid - 1;
+			}
+		}
+		if (found < 0 || t[found * 3 + 2] <= offset) return null;
+		return {
+			index: found,
+			type: plop_tokens.token_types[t[found * 3]],
+			text: source.slice(t[found * 3 + 1], t[found * 3 + 2])
+		};
+	}
+
+	function shiki_token_readout(pane: Element, token: HTMLElement): readout {
+		const chain = token.dataset.scopes?.split('|') ?? [];
+		return {
+			index: token_index(pane, token),
+			type: chain.at(-1) ?? 'text',
+			text: token.textContent ?? '',
+			note: token.dataset.themeScope && `themed by ${token.dataset.themeScope}`,
+			detail: chain.toReversed().join('\n') || undefined
+		};
+	}
+
+	$effect(() => {
+		dom_version;
+		const at = hot;
+		const lit: HTMLElement[] = [];
+		plop_readout = null;
+		shiki_readout = null;
+		if (at && panes_el) {
+			for (const pane of panes_el.querySelectorAll<HTMLElement>('[data-pane]')) {
+				const token = token_in(pane, at);
+				if (!token) continue;
+				token.classList.add('is-hot');
+				lit.push(token);
+				if (pane.dataset.pane === 'shiki') shiki_readout = shiki_token_readout(pane, token);
+			}
+			plop_readout = plop_token_at((line_starts[at.line] ?? 0) + at.col);
+		}
+		return () => {
+			for (const token of lit) token.classList.remove('is-hot');
+		};
+	});
+
+	// phones show one pane at a time in a horizontal scroller
+	let active_pane = $state(0);
+
+	function on_panes_scroll() {
+		if (panes_el?.clientWidth) {
+			active_pane = Math.round(panes_el.scrollLeft / panes_el.clientWidth);
+		}
+	}
+
+	function show_pane(index: number) {
+		const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		panes_el?.scrollTo({
+			left: index * panes_el.clientWidth,
+			behavior: reduce ? 'auto' : 'smooth'
+		});
+	}
+
 	// palette_style drives the plop pane's token colours AND the shared
 	// `--twp-background` so both panes paint against the theme's editor
 	// background. it lives on the .panes wrapper so the shiki pane (which
@@ -559,6 +453,7 @@
 		)
 	);
 
+	const fidelity_count = $derived(`${enabled_tags.length}/${available_tags.length}`);
 </script>
 
 <svelte:head>
@@ -567,216 +462,115 @@
 	{/if}
 </svelte:head>
 
-{#snippet fidelity_meta()}
-	{#if available_tags.length > 0}
-		<details bind:this={fidelity_el} bind:open={fidelity_open} class="fidelity">
-			<summary class="fidelity__trigger">
-				<span class="fidelity__label">fidelity</span>
-				<span class="fidelity__count">
-					[{enabled_tags.length}/{available_tags.length}]
-				</span>
-			</summary>
-			<div class="fidelity__menu" role="group" aria-label="Fidelity tags">
-				<div class="fidelity__head">token categories</div>
-				{#each available_tags as tag (tag)}
-					<label class="fidelity__item">
-						<input
-							type="checkbox"
-							checked={enabled_tags.includes(tag)}
-							onchange={() => toggle_tag(tag)}
-						/>
-						<span class="fidelity__mark" aria-hidden="true"></span>
-						<span class="fidelity__name">{tag}</span>
-					</label>
-				{/each}
-			</div>
-		</details>
-	{/if}
-{/snippet}
+<div class="explore-app">
+	<TopBar {path} {edit} />
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-	class="panes"
-	class:is-inspect={view.inspect}
-	style={palette_style}
-	onpointermove={on_inspect_move}
-	onpointerleave={on_inspect_leave}
->
-	<CodePane
-		pane_id="plop"
-		title="twinkleplop"
-		subtitle={`theme: ${view.theme}-${theme_mode.resolved} · timer ${
-			cross_origin_isolated ? '~5µs' : '~100µs'
-		}`}
-		html={plop_html}
-		line_count={plop_line_count}
-		font={font.value}
-		show_line_numbers={view.show_line_numbers}
-		perf_ms={plop_ms}
-		perf_token_count={plop_token_count}
-		meta={fidelity_meta}
-	/>
-	<ShikiPane
-		pane_id="shiki"
-		title="shiki"
-		subtitle={shiki_loading
-			? 'loading oniguruma...'
-			: shiki_error
-				? `error: ${shiki_error}`
-				: `theme: ${resolve_theme(view.theme, theme_mode.resolved).shiki_id}`}
-		{shiki_html}
-		{source}
-		font={font.value}
-		show_line_numbers={view.show_line_numbers}
-		perf_ms={shiki_ms}
-		perf_token_count={shiki_token_count}
-		bind:body_el={shiki_body_el}
-	/>
-</div>
+	<header class="mtop">
+		<a class="mtop__back" href="/docs">← docs</a>
+		<ModeSwitch bare />
+	</header>
 
-<div class="bottombar">
-	<div class="bottombar__l">
+	{@render editor?.()}
+
+	<div class="tabs" role="tablist" aria-label="Highlighter">
+		<button
+			class="tabs__tab"
+			class:is-on={active_pane === 0}
+			type="button"
+			role="tab"
+			aria-selected={active_pane === 0}
+			aria-controls="pane-plop"
+			onclick={() => show_pane(0)}
+		>
+			twinkleplop
+			{#if available_tags.length > 0}<span class="tabs__fid">{fidelity_count}</span>{/if}
+		</button>
+		<button
+			class="tabs__tab"
+			class:is-on={active_pane === 1}
+			type="button"
+			role="tab"
+			aria-selected={active_pane === 1}
+			aria-controls="pane-shiki"
+			onclick={() => show_pane(1)}
+		>
+			shiki
+		</button>
+	</div>
+
+	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+	<div
+		bind:this={panes_el}
+		class="panes"
+		class:is-inspect={view.inspect}
+		style={palette_style}
+		onscroll={on_panes_scroll}
+		onpointerover={on_pointerover}
+		onpointerleave={on_pointerleave}
+		onclick={on_click}
+	>
+		<Pane
+			pane_id="plop"
+			title="twinkleplop"
+			font={font.value}
+			show_line_numbers={view.show_line_numbers}
+			token_count={plop_token_count}
+			line_count={plop_line_count}
+			ms={plop_ms}
+			readout={plop_readout}
+			bind:code_el={plop_code_el}
+		>
+			{#snippet meta()}
+				{#if available_tags.length > 0}
+					<details bind:this={fidelity_el} bind:open={fidelity_open} class="fidelity">
+						<summary
+							class="fidelity__trigger"
+							class:is-full={enabled_tags.length === available_tags.length}
+						>
+							fidelity {fidelity_count}
+						</summary>
+						<div class="fidelity__menu" role="group" aria-label="Token categories">
+							<div class="fidelity__head">token categories</div>
+							{#each available_tags as tag (tag)}
+								<label class="fidelity__item">
+									<input
+										type="checkbox"
+										checked={enabled_tags.includes(tag)}
+										onchange={() => toggle_tag(tag)}
+									/>
+									<span class="fidelity__mark" aria-hidden="true"></span>
+									<span>{tag}</span>
+								</label>
+							{/each}
+						</div>
+					</details>
+				{/if}
+			{/snippet}
+		</Pane>
+		<Pane
+			pane_id="shiki"
+			title="shiki"
+			status={shiki_loading ? 'loading oniguruma' : shiki_error && `error: ${shiki_error}`}
+			font={font.value}
+			show_line_numbers={view.show_line_numbers}
+			token_count={shiki_token_count}
+			line_count={plop_line_count}
+			ms={shiki_ms}
+			readout={shiki_readout}
+			plain={shiki_html ? undefined : source}
+			bind:code_el={shiki_code_el}
+		/>
+	</div>
+
+	<div class="race">
 		<RaceBar twinkle_ms={plop_ms} {shiki_ms} />
 	</div>
+
+	<MobileBar
+		{path}
+		{edit}
+		{plop_ms}
+		{shiki_ms}
+		fidelity={{ available: available_tags, enabled: enabled_tags, toggle: toggle_tag }}
+	/>
 </div>
-
-{#if view.inspect && inspect_label}
-	<div
-		class="inspect-tip"
-		class:inspect-tip--stack={inspect_extra || inspect_theme_scope}
-		style="left: {inspect_x}px; top: {inspect_y}px;"
-	>
-		<span class="inspect-tip__value">{inspect_label}</span>
-		{#if inspect_theme_scope}
-			<span class="inspect-tip__themed">
-				<span class="inspect-tip__themed-label">themed by</span>
-				<span class="inspect-tip__themed-scope">{inspect_theme_scope}</span>
-			</span>
-		{/if}
-		{#if inspect_extra}
-			<ul class="inspect-tip__chain">
-				{#each inspect_extra as scope (scope)}
-					<li class="inspect-tip__scope">{scope}</li>
-				{/each}
-			</ul>
-		{/if}
-	</div>
-{/if}
-
-<style>
-	.fidelity {
-		position: relative;
-	}
-	.fidelity__trigger {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		background: var(--bg-pane);
-		border: 1px solid var(--border);
-		color: var(--fg-dim);
-		padding: 3px 8px;
-		font: inherit;
-		font-size: 11px;
-		letter-spacing: 0.04em;
-		cursor: pointer;
-		user-select: none;
-		list-style: none;
-		text-transform: lowercase;
-		transition:
-			border-color 0.15s,
-			color 0.15s,
-			background 0.15s;
-	}
-	.fidelity__trigger::-webkit-details-marker {
-		display: none;
-	}
-	.fidelity__trigger::marker {
-		content: '';
-	}
-	.fidelity__trigger:hover {
-		color: var(--fg);
-		border-color: var(--border-bright);
-	}
-	.fidelity[open] .fidelity__trigger {
-		color: var(--accent);
-		border-color: var(--accent);
-		background: color-mix(in oklab, var(--accent) 14%, var(--bg-pane));
-	}
-	.fidelity__count {
-		color: var(--accent);
-		font-variant-numeric: tabular-nums;
-	}
-	.fidelity:not([open]) .fidelity__menu {
-		display: none;
-	}
-	.fidelity__menu {
-		position: absolute;
-		top: calc(100% + 6px);
-		right: 0;
-		min-width: 220px;
-		max-height: 320px;
-		overflow: auto;
-		background: var(--bg-elev);
-		border: 1px solid var(--border-bright);
-		box-shadow:
-			0 12px 40px rgba(0, 0, 0, 0.6),
-			var(--glow);
-		padding: 6px;
-		z-index: 100;
-	}
-	.fidelity__head {
-		padding: 4px 8px 6px;
-		color: var(--fg-muted);
-		font-size: 9px;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		border-bottom: 1px dashed var(--border);
-		margin-bottom: 4px;
-	}
-	.fidelity__item {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 4px 8px;
-		color: var(--fg-dim);
-		font-size: 12px;
-		cursor: pointer;
-		user-select: none;
-	}
-	.fidelity__item:hover {
-		background: color-mix(in oklab, var(--fg) 5%, transparent);
-		color: var(--fg);
-	}
-	.fidelity__item:has(input:checked) {
-		color: var(--fg);
-	}
-	.fidelity__item input {
-		position: absolute;
-		opacity: 0;
-		pointer-events: none;
-		width: 0;
-		height: 0;
-	}
-	.fidelity__mark {
-		display: inline-block;
-		min-width: 22px;
-		color: var(--fg-muted);
-		white-space: pre;
-		font-variant-numeric: tabular-nums;
-	}
-	/* the nbsp keeps the space between [ and ] from collapsing so the
-	   unchecked and checked glyphs occupy the same width. */
-	.fidelity__mark::before {
-		content: '[\00a0]';
-	}
-	.fidelity__item:has(input:checked) .fidelity__mark {
-		color: var(--accent);
-		text-shadow: var(--glow);
-	}
-	.fidelity__item:has(input:checked) .fidelity__mark::before {
-		content: '[x]';
-	}
-	.fidelity__name {
-		flex: 1;
-	}
-</style>

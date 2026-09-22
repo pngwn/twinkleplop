@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 
-	import TopBar from '$lib/components/explore/TopBar.svelte';
 	import ExploreLab from '$lib/components/explore/ExploreLab.svelte';
 	import { fidelity_by_lang, view } from '$lib/explore/lab_state.svelte';
 	import { encode_share } from '$lib/explore/share';
@@ -42,23 +41,14 @@
 	}
 </script>
 
-<div class="explore-app">
-	<TopBar
-		lang={data.lang}
-		on_lang_change={handle_lang}
-		sample={{
-			value: data.test,
-			options: data.css_files.map(([file]) => file),
-			on_change: handle_sample
-		}}
-	>
-		{#snippet actions()}
-			<a class="toggle" href={edit_href}>
-				<span>edit</span>
-				<span aria-hidden="true">→</span>
-			</a>
-		{/snippet}
-	</TopBar>
-
-	<ExploreLab lang={data.lang} {source} />
-</div>
+<ExploreLab
+	path={{
+		lang: data.lang,
+		on_lang_change: handle_lang,
+		sample: data.test,
+		samples: data.css_files.map(([file]) => file),
+		on_sample_change: handle_sample
+	}}
+	edit={{ href: edit_href }}
+	{source}
+/>
