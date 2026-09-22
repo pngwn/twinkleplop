@@ -27,7 +27,7 @@
 	// keeps the factory call cheap (no new array every reactive update).
 	const annotation_plugins = [em, hl, dim, add, del, mod, err, warn, info];
 	import { palette_to_vars, styles_to_css } from '$lib/explore/palette_vars';
-	import { measure } from '$lib/explore/measure';
+	import { after_paint, measure } from '$lib/explore/measure';
 	import {
 		get_highlighter,
 		shiki_lang_for,
@@ -51,7 +51,10 @@
 	// the factory reference is kept separately from the resolved grammar so
 	// flipping a fidelity tag just re-runs the derivation below without
 	// re-importing the language module.
-	let make_language = $state<((opts?: unknown) => (src: string) => tokenize_result) | undefined>();
+	// its lang keeps the previous grammar off the next language source
+	let make_language = $state.raw<
+		{ lang: string; make: (opts?: unknown) => (src: string) => tokenize_result } | undefined
+	>();
 	let available_tags = $state.raw<string[]>([]);
 
 	// shared so a page can put the picks in a link, tags the grammar lacks are dropped
@@ -101,7 +104,7 @@
 		// a later language may have been picked while this one loaded
 		if (next !== lang) return;
 		available_tags = tags;
-		make_language = mod.tokenize;
+		make_language = mod.tokenize && { lang: next, make: mod.tokenize };
 	}
 
 	$effect(() => {
@@ -109,14 +112,14 @@
 	});
 
 	let grammar = $derived.by(() => {
-		if (!make_language) return undefined;
+		if (make_language?.lang !== lang) return undefined;
 		const fidelity =
 			enabled_tags.length === 0
 				? 'low'
 				: enabled_tags.length === available_tags.length
 					? 'high'
 					: enabled_tags;
-		return make_language({ fidelity, annotation: { plugins: annotation_plugins } });
+		return make_language.make({ fidelity, annotation: { plugins: annotation_plugins } });
 	});
 
 	function toggle_tag(tag: string) {
@@ -173,9 +176,12 @@
 			return;
 		}
 		const local_grammar = grammar;
-		const { result, ms } = measure(() => local_grammar(source));
-		plop_tokens = result;
-		plop_ms = ms;
+		const local_source = source;
+		// one untimed pass paints the pane, the timing waits for that paint
+		plop_tokens = local_grammar(local_source);
+		return after_paint(() => {
+			plop_ms = measure(() => local_grammar(local_source)).ms;
+		});
 	});
 
 	// shiki now runs client-side so we can time real tokenization against
@@ -206,33 +212,46 @@
 
 	let shiki_html = $state<string | null>(null);
 	let shiki_ms = $state(0);
+	// a new snippet paints as plain text first since shiki compiles regexes on
+	// its first pass, edits highlight in place so typing does not flash
+	const snippet = $derived(`${lang}/${path.sample}`);
+	let shiki_snippet: string | undefined;
 	$effect(() => {
 		const shiki_lang = shiki_lang_for(lang);
 		if (!highlighter || !source || !shiki_lang) {
 			shiki_html = null;
 			shiki_ms = 0;
+			shiki_snippet = undefined;
 			return;
 		}
-		try {
-			const local_highlighter = highlighter;
-
-			const { result, ms } = measure(
-				() =>
-					local_highlighter.codeToHtml(source, {
-						lang: shiki_lang,
-						theme: resolve_theme(view.theme, theme_mode.resolved).shiki_id
-					}),
+		const local_highlighter = highlighter;
+		const local_source = source;
+		const theme = resolve_theme(view.theme, theme_mode.resolved).shiki_id;
+		const render = () => local_highlighter.codeToHtml(local_source, { lang: shiki_lang, theme });
+		let cancel = () => {};
+		function highlight() {
+			try {
+				shiki_html = render();
+			} catch (err) {
+				shiki_error = err instanceof Error ? err.message : String(err);
+				shiki_html = null;
+				shiki_ms = 0;
+				return;
+			}
+			cancel = after_paint(() => {
 				// shiki is an order of magnitude heavier than twinkleplop;
 				// trim the budget so edits still feel responsive.
-				{ min_sample_ms: 5, budget_ms: 50 }
-			);
-			shiki_html = result;
-			shiki_ms = ms;
-		} catch (err) {
-			shiki_error = err instanceof Error ? err.message : String(err);
-			shiki_html = null;
-			shiki_ms = 0;
+				shiki_ms = measure(render, { min_sample_ms: 5, budget_ms: 50 }).ms;
+			});
 		}
+		if (snippet === shiki_snippet) {
+			highlight();
+		} else {
+			shiki_snippet = snippet;
+			shiki_html = null;
+			cancel = after_paint(highlight);
+		}
+		return () => cancel();
 	});
 
 	let shiki_token_count = $derived((shiki_html?.match(/<span /g)?.length ?? 0) || 0);
@@ -576,6 +595,7 @@
 			line_count={plop_line_count}
 			ms={plop_ms}
 			readout={plop_readout}
+			plain={plop_html ? undefined : source}
 			bind:code_el={plop_code_el}
 		>
 			{#snippet meta()}

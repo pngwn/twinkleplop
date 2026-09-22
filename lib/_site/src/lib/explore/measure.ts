@@ -70,6 +70,18 @@ export function measure<T>(fn: () => T, opts: measure_options = {}): measurement
   };
 }
 
+/** runs `fn` once the next frame has painted, returns a canceller */
+export function after_paint(fn: () => void): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const frame = requestAnimationFrame(() => {
+    timer = setTimeout(fn);
+  });
+  return () => {
+    cancelAnimationFrame(frame);
+    clearTimeout(timer);
+  };
+}
+
 /** times under a millisecond keep four decimals so they never round to zero */
 export function format_ms(ms: number): string {
   return `${ms < 1 ? ms.toFixed(4) : ms.toFixed(2)}ms`;
