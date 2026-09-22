@@ -11,10 +11,14 @@ shared CI hosts. The site deploys from `main` without waiting for a benchmark ru
 
 ## Hardware
 
-A bare-metal AMD EPYC 7232P (8 cores, 16 threads, 3.1 GHz), Debian 12, Node
-22, with the CPU governor pinned to `performance`, boost disabled, and nothing
-else running. `meta.runner`, `meta.cpu`, `meta.node` and `meta.commit` in the
-file say exactly which machine, node and commit produced it.
+A bare-metal AMD EPYC 8024P (8 cores, 16 threads, 2.4 GHz with boost
+disabled), Debian 12, Node 22, with the CPU governor pinned to `performance`,
+the RAID resync throttled, and nothing else running. `meta.runner`,
+`meta.cpu`, `meta.node` and `meta.commit` in the file say exactly which
+machine, node and commit produced it. The run before this one came from an
+EPYC 7232P (Zen 2, 3.1 GHz); absolute figures from the two parts are not
+comparable, and the ratios differ too, since the newer core helps Prism's
+regex engine more than it helps a character scanner.
 
 ## Regenerating results
 
@@ -33,9 +37,15 @@ node lib/bench/perf/bin/setup-baseline.mjs --ref HEAD
 node --expose-gc lib/bench/perf/bin/calibrate.mjs --suite ci --rounds 15
 ```
 
-The reported noise floor estimates the smallest measurable change. The EPYC machine
-above calibrated at 5.4% per workload with a median A/A deviation of 1.1%; a
-shared CI runner is typically 6–20% with anchor drift in the tens of percent.
+The reported noise floor estimates the smallest measurable change. The EPYC
+8024P above calibrated at 8.9% per workload with a median A/A deviation of
+1.5% and anchor drift of 0.2%; the earlier 7232P calibrated at 5.4% and 1.1%.
+The wider floor on the newer part is not machine noise: about half its rows
+show a consistent offset between two builds of identical source, worst 36%,
+which is the JIT and memory placement lottery that only an A/B sees. The
+comparison measures one build per library, so it is unaffected, and repeats
+to about 1% on the same box. A shared CI runner is typically 6 to 20% with
+anchor drift in the tens of percent.
 
 ## Checking results
 
