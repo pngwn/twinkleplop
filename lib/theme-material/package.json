@@ -2,8 +2,7 @@
   "name": "@twinkleplop/theme-material",
   "version": "0.1.0",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "type": "module",
   "exports": {

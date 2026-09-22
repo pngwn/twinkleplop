@@ -17,6 +17,7 @@
 import { execFileSync } from "node:child_process";
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -127,6 +128,57 @@ run(
     step: "installing the packed tarballs — an export may point at a file that is not published",
   },
 );
+
+// -- contents ---------------------------------------------------------------
+
+// only dist ships
+// sourcemaps would embed a second copy of the source
+// tsc below resolves only the types condition so other export targets are checked here
+const ALWAYS_PACKED = /^(package\.json|readme(\.md)?|licen[cs]e(\.md)?)$/i;
+
+function files_in(dir, prefix = "") {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.name === "node_modules") return [];
+    const path = `${prefix}${entry.name}`;
+    return entry.isDirectory() ? files_in(join(dir, entry.name), `${path}/`) : [path];
+  });
+}
+
+function export_targets(value, condition = "default") {
+  if (typeof value === "string") return [[condition, value]];
+  if (value === null || typeof value !== "object") return [];
+  return Object.entries(value).flatMap(([key, inner]) =>
+    export_targets(inner, key.startsWith(".") ? condition : key),
+  );
+}
+
+const problems = [];
+for (const pkg of packages) {
+  const dir = join(consumer, "node_modules", pkg.name);
+  const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+  for (const file of files_in(dir)) {
+    if (ALWAYS_PACKED.test(file)) continue;
+    if (!file.startsWith("dist/") || file.endsWith(".map")) {
+      problems.push(`${pkg.name} packs ${file}`);
+    }
+  }
+  const named = export_targets(manifest.exports ?? {});
+  if (manifest.main) named.push(["main", manifest.main]);
+  if (manifest.types) named.push(["types", manifest.types]);
+  for (const [condition, target] of named) {
+    if (condition === "source") {
+      problems.push(`${pkg.name} publishes a \`source\` condition for ${target}`);
+    } else if (!existsSync(join(dir, target))) {
+      problems.push(`${pkg.name} names ${target} (${condition}), which is not packed`);
+    }
+  }
+}
+
+if (problems.length > 0) {
+  console.error(problems.join("\n"));
+  console.error("\ncheck:packed failed: packed contents (see above)");
+  process.exit(1);
+}
 
 // -- fixtures ---------------------------------------------------------------
 

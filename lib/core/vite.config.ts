@@ -69,7 +69,6 @@ export default defineConfig(({ mode }) => {
             }),
         ].filter(Boolean),
       },
-      sourcemap: true,
       emptyOutDir: false,
     },
   };

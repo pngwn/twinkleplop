@@ -15,8 +15,7 @@
   },
   "type": "module",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "types": "./dist/types.d.ts",
   "exports": {

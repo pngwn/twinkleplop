@@ -2,8 +2,7 @@
   "name": "@twinkleplop/theme-night-owl",
   "version": "0.1.0",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "type": "module",
   "exports": {
