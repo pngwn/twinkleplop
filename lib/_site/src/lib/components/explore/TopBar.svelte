@@ -1,48 +1,21 @@
 <script lang="ts">
+	import type { Snippet } from "svelte";
 	import CommandChip from "./CommandChip.svelte";
 	import ModeSwitch from "$lib/components/ModeSwitch.svelte";
+	import { LANGUAGES } from "$lib/explore/grammars";
+	import { view } from "$lib/explore/lab_state.svelte";
+	import { FONTS, THEME_NAMES, type theme_name } from "$lib/explore/themes";
 
 	interface Props {
 		lang: string;
-		sample: string;
-		languages: string[];
-		samples: string[];
-		theme: string;
-		themes: string[];
-		font: string;
-		fonts: string[];
-		show_line_numbers: boolean;
-		inspect: boolean;
-		edit_open: boolean;
 		on_lang_change: (next: string) => void;
-		on_sample_change: (next: string) => void;
-		on_theme_change: (next: string) => void;
-		on_font_change: (next: string) => void;
-		on_toggle_line_numbers: () => void;
-		on_toggle_inspect: () => void;
-		on_toggle_edit: () => void;
+		sample?: { value: string; options: string[]; on_change: (next: string) => void };
+		actions?: Snippet;
 	}
 
-	let {
-		lang,
-		sample,
-		languages,
-		samples,
-		theme,
-		themes,
-		font,
-		fonts,
-		show_line_numbers,
-		inspect,
-		edit_open,
-		on_lang_change,
-		on_sample_change,
-		on_theme_change,
-		on_font_change,
-		on_toggle_line_numbers,
-		on_toggle_inspect,
-		on_toggle_edit,
-	}: Props = $props();
+	let { lang, on_lang_change, sample, actions }: Props = $props();
+
+	const font_labels = FONTS.map((f) => f.label);
 </script>
 
 <header class="topbar">
@@ -63,69 +36,62 @@
 			<CommandChip
 				label="lang"
 				value={lang}
-				options={languages}
+				options={LANGUAGES}
 				on_change={on_lang_change}
 			/>
-			<span class="crumb__sep" aria-hidden="true">/</span>
-			<CommandChip
-				label="sample"
-				value={sample}
-				options={samples}
-				on_change={on_sample_change}
-			/>
+			{#if sample}
+				<span class="crumb__sep" aria-hidden="true">/</span>
+				<CommandChip
+					label="sample"
+					value={sample.value}
+					options={sample.options}
+					on_change={sample.on_change}
+				/>
+			{/if}
 		</nav>
 	</div>
 	<div class="topbar__r">
 		<div class="topbar__group" role="group" aria-label="Code view">
 			<CommandChip
 				label="theme"
-				value={theme}
-				options={themes}
+				value={view.theme}
+				options={THEME_NAMES}
 				show_label
 				align="right"
-				on_change={on_theme_change}
+				on_change={(next) => (view.theme = next as theme_name)}
 			/>
 			<CommandChip
 				label="font"
-				value={font}
-				options={fonts}
+				value={view.font}
+				options={font_labels}
 				show_label
 				align="right"
-				on_change={on_font_change}
+				on_change={(next) => (view.font = next)}
 			/>
 		</div>
 		<div class="topbar__divider"></div>
 		<button
 			class="toggle"
-			class:is-on={show_line_numbers}
+			class:is-on={view.show_line_numbers}
 			type="button"
-			aria-pressed={show_line_numbers}
+			aria-pressed={view.show_line_numbers}
 			title="line numbers"
-			onclick={on_toggle_line_numbers}
+			onclick={() => (view.show_line_numbers = !view.show_line_numbers)}
 		>
 			<span class="toggle__pip"></span>
 			<span>ln</span>
 		</button>
 		<button
 			class="toggle"
-			class:is-on={inspect}
+			class:is-on={view.inspect}
 			type="button"
-			aria-pressed={inspect}
-			onclick={on_toggle_inspect}
+			aria-pressed={view.inspect}
+			onclick={() => (view.inspect = !view.inspect)}
 		>
 			<span class="toggle__pip"></span>
 			<span>inspect tokens</span>
 		</button>
-		<button
-			class="toggle"
-			class:is-on={edit_open}
-			type="button"
-			aria-pressed={edit_open}
-			onclick={on_toggle_edit}
-		>
-			<span class="toggle__pip"></span>
-			<span>edit</span>
-		</button>
+		{@render actions?.()}
 		<div class="topbar__divider"></div>
 		<ModeSwitch />
 	</div>

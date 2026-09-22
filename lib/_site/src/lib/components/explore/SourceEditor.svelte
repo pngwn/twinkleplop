@@ -1,45 +1,37 @@
 <script lang="ts">
+	import { view } from "$lib/explore/lab_state.svelte";
+	import { FONTS } from "$lib/explore/themes";
+
 	interface Props {
 		value: string;
-		visible: boolean;
-		font: string;
-		on_change: (next: string) => void;
-		on_toggle_visible: () => void;
+		error?: string | null;
+		textarea?: HTMLTextAreaElement;
 	}
 
-	let { value, visible, font, on_change, on_toggle_visible }: Props = $props();
+	let { value = $bindable(), error = null, textarea = $bindable() }: Props = $props();
 
-	let ta: HTMLTextAreaElement | undefined = $state();
-
-	$effect(() => {
-		if (visible && ta) ta.focus();
-	});
-
-	function handle_input(e: Event & { currentTarget: HTMLTextAreaElement }) {
-		on_change(e.currentTarget.value);
-	}
+	const font = $derived((FONTS.find((f) => f.label === view.font) ?? FONTS[0]).value);
 </script>
 
-<div class="source" class:is-open={visible}>
+<div class="source">
 	<header class="source__head">
 		<div class="source__title">
 			<span class="source__prompt" aria-hidden="true">$</span>
 			<span>source.buffer</span>
-			<span class="source__hint">— editable · your changes stream into both panes</span>
+			{#if error}
+				<span class="source__error" role="alert">{error}</span>
+			{:else}
+				<span class="source__hint">edits rewrite this page's link, so it always shares what you see</span>
+			{/if}
 		</div>
-		<button class="source__toggle" type="button" onclick={on_toggle_visible}>
-			{visible ? "collapse ▲" : "edit ▼"}
-		</button>
 	</header>
-	{#if visible}
-		<textarea
-			bind:this={ta}
-			class="source__ta"
-			aria-label="source code"
-			{value}
-			spellcheck="false"
-			style:font-family={font}
-			oninput={handle_input}
-		></textarea>
-	{/if}
+	<textarea
+		bind:this={textarea}
+		bind:value
+		class="source__ta"
+		aria-label="source code"
+		placeholder="paste or type some code"
+		spellcheck="false"
+		style:font-family={font}
+	></textarea>
 </div>

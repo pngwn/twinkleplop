@@ -42,7 +42,7 @@
 	height: 100svh;
 	width: 100%;
 	display: grid;
-	grid-template-rows: auto auto 1fr auto;
+	grid-template-rows: auto 1fr auto;
 	background: var(--bg);
 	color: var(--fg);
 	font-family: var(--font-mono);
@@ -52,6 +52,11 @@
 	font-feature-settings:
 		'liga' 0,
 		'calt' 0;
+}
+
+/* /explore/edit puts its source editor between the top bar and the panes */
+.explore-app--edit {
+	grid-template-rows: auto auto 1fr auto;
 }
 
 /* light mode swaps the chrome for a neutral paper palette */
@@ -365,7 +370,7 @@
 	width: 12px;
 }
 
-/* ---------- inline toggles (ln/diff/edit) ---------- */
+/* ---------- toggles and page actions ---------- */
 .explore-app .toggle {
 	display: inline-flex;
 	align-items: center;
@@ -377,6 +382,7 @@
 	font: inherit;
 	font-size: 11px;
 	cursor: pointer;
+	text-decoration: none;
 	text-transform: lowercase;
 	letter-spacing: 0.05em;
 	border-radius: 2px;
@@ -387,6 +393,10 @@
 .explore-app .toggle:hover {
 	color: var(--fg);
 	background: color-mix(in oklab, var(--fg) 5%, transparent);
+}
+.explore-app .toggle:disabled {
+	cursor: default;
+	opacity: 0.6;
 }
 .explore-app .toggle__pip {
 	width: 7px;
@@ -412,7 +422,6 @@
 	border-bottom: 1px solid var(--border);
 	background: var(--bg-pane);
 	overflow: hidden;
-	transition: max-height 0.25s ease;
 }
 .explore-app .source__head {
 	display: flex;
@@ -435,40 +444,35 @@
 	color: var(--fg-muted);
 	font-style: italic;
 }
-.explore-app .source__toggle {
-	background: transparent;
-	border: 0;
-	color: var(--fg-dim);
-	padding: 3px 8px;
-	font: inherit;
-	font-size: 10px;
-	cursor: pointer;
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
-	border-radius: 2px;
-	transition:
-		background 0.15s,
-		color 0.15s;
-}
-.explore-app .source__toggle:hover {
-	color: var(--accent);
-	background: color-mix(in oklab, var(--accent) 10%, transparent);
+.explore-app .source__error {
+	color: var(--warn);
 }
 .explore-app .source__ta {
+	display: block;
 	width: 100%;
-	min-height: 180px;
-	max-height: 280px;
+	height: 30svh;
+	min-height: 120px;
+	/* the panes keep the rest, however far the editor is dragged */
+	max-height: 60svh;
 	padding: 12px 18px;
 	border: 0;
 	border-top: 1px dashed var(--border);
 	background: var(--bg);
 	color: var(--fg);
 	font-family: inherit;
+	/* form controls do not inherit it, and the panes turn ligatures off */
+	font-feature-settings: inherit;
 	font-size: 13px;
 	line-height: 1.55;
+	/* long lines scroll like they do in the panes */
+	white-space: pre;
+	overflow-wrap: normal;
 	resize: vertical;
 	outline: none;
 	tab-size: 2;
+}
+.explore-app .source__ta::placeholder {
+	color: var(--fg-muted);
 }
 .explore-app .source__ta:focus {
 	background: color-mix(in oklab, var(--bg) 92%, var(--accent) 3%);
