@@ -35,6 +35,12 @@ const html = typescript("1 + 2");`
 		lead="A syntax highlighter and code authoring toolkit. Small, fast, customisable. plop it in and twinkle."
 	/> -->
 
+	<blockquote>
+		<p>In the beginning there was only darkness.</p>
+		<p>Then some idiot lit a cigarette and set off the twinklers.</p>
+	</blockquote>
+	<p>Twinkleplop is a syntax highlighter of unspeakable power.</p>
+
 	<Section id="quicklinks" title="quick links" num="§ 01">
 		<QuickLinks items={quick_links} />
 	</Section>
@@ -58,15 +64,11 @@ const html = typescript("1 + 2");`
 
 	</Section> -->
 	<Section id="try-it" title="try it live" num="§ 02">
-		<p>
-			Edit the source to see the highlighting update. Try more languages and themes in the <a
-				href="/explore">playground</a
-			>.
-		</p>
+		<p>Tread lightly.</p>
 		<MiniLab />
 	</Section>
 	<Section id="hello" title="basic usage" num="§ 03">
-		<p>Import a language and theme, then call the highlighter:</p>
+		<p>With a few lines of code you can bestow its power upon your code blocks.</p>
 		<CodeBlock fname="first-twinkle.ts" html={first_highlight_code} />
 	</Section>
 </ArticleMain>

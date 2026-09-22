@@ -69,6 +69,7 @@ unified()
 	title="twoslash"
 	subtitle="TypeScript type information rendered into the highlighted output."
 >
+	<p>Twoslash is a gift, and as with all gifts, it is rude to refuse.</p>
 	<p>
 		Twoslash uses the TypeScript compiler to get hover types, query results, completions and errors
 		for a snippet. Twinkleplop includes this information in the highlighted HTML.

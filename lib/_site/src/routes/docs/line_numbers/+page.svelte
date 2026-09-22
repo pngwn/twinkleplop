@@ -2,11 +2,12 @@
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
 	import MiniLab from "$lib/docs/components/MiniLab.svelte";
 	import Card from "$lib/docs/components/Card.svelte";
 	import CardGrid from "$lib/docs/components/CardGrid.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { twoslash, ts, html, css } from "$lib/docs/snippets";
+	import { twoslash, ts, ts_split, html, css } from "$lib/docs/snippets";
 
 	const line_number = ts({ line_numbers: true })`import { language } from "@twinkleplop/typescript";
 
@@ -43,6 +44,12 @@ declare const code: string;
 const html = ts(code, {
   line_numbers: { start: 10 },
 });`;
+
+	const removed_lines = ts_split({ line_numbers: true })`const price = 100;
+// [!hl +1]
+const tax = 20;
+// [!em +1]
+const total = price + tax;`;
 </script>
 
 <ArticleMain
@@ -50,6 +57,12 @@ const html = ts(code, {
 	title="line numbers"
 	subtitle="Add line numbers to highlighted code."
 >
+	<p>
+		A long time ago, someone decided that counting lines every time you wanted to figure out the
+		location of some code is not good at all.
+	</p>
+	<p>Twinkleplop agrees.</p>
+
 	<Section id="s1" title="line numbers" num="§ 01">
 		<p>
 			Enable line numbers with the <code>line_numbers</code> render option.
@@ -76,5 +89,10 @@ const html = ts(code, {
 			Only visible lines are numbered. Lines containing only <a href="/docs/directives">directive</a
 			> markers are removed and do not count towards the sequence.
 		</p>
+		<SplitCodeBlock
+			lang="typescript"
+			left_html={removed_lines.input}
+			right_html={removed_lines.output}
+		/>
 	</Section>
 </ArticleMain>
