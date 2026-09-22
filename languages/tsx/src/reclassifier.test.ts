@@ -34,6 +34,10 @@ describe("TSX stars", () => {
     expect(type_of('import type * as T from "./t";', "*")).toBe("constant");
     expect(type_of('import type * as T from "./t";', "T")).toBe("namespace");
   });
+
+  it("tags a generator method's star `keyword`", () => {
+    expect(type_of("class A { *m(): Generator<number> {} }", "*")).toBe("keyword");
+  });
 });
 
 describe("TSX optional annotations", () => {

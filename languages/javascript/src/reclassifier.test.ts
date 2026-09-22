@@ -691,6 +691,44 @@ describe("JavaScript reclassifier: stars", () => {
     expect(stars_of(input, { fidelity: ["namespace"] })).toEqual(["operator"]);
     expect(stars_of(input, { fidelity: ["constant"] })).toEqual(["constant"]);
   });
+
+  it.each([
+    ["function* g() {}", ["keyword"]],
+    ["async function *g() {}", ["keyword"]],
+    ["const g = function /* c */ * () {};", ["keyword"]],
+    [
+      "function* g() { yield* inner(); yield *x; yield 2 * 3; }",
+      ["keyword", "keyword", "keyword", "operator"],
+    ],
+    [
+      "class A { *m() {} static *s() {} async *a() {} static async *b() {} }",
+      ["keyword", "keyword", "keyword", "keyword"],
+    ],
+    [
+      "class A { *[Symbol.iterator]() {} *default() {} x = a * b; }",
+      ["keyword", "keyword", "operator"],
+    ],
+    [
+      "const o = { *m() {}, async *a() {}, x: b * c(d), *[k]() {} };",
+      ["keyword", "keyword", "operator", "keyword"],
+    ],
+  ])("%s tags generator stars `keyword`", (input, expected) => {
+    expect(stars_of(input)).toEqual(expected);
+  });
+
+  it.each(["a\n*b();", "const o = { y: b\n* c };", "[a, b * c]; f(a, b * c);"])(
+    "%j leaves a continued multiplication an operator",
+    (input) => {
+      expect(stars_of(input).every((t) => t === "operator")).toBe(true);
+    },
+  );
+
+  it("keeps generator stars at fidelity='low'", () => {
+    expect(stars_of("function* g() { yield* inner(); }", { fidelity: "low" })).toEqual([
+      "keyword",
+      "keyword",
+    ]);
+  });
 });
 
 describe("JavaScript reclassifier — parameter promotion", () => {

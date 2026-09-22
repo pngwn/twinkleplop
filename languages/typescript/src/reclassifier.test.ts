@@ -536,6 +536,14 @@ describe("TypeScript fidelity — decorator downgrade", () => {
     expect(exported.find((t) => t.value === "*")?.type).toBe("constant");
   });
 
+  it("a typed generator method's star is `keyword`", () => {
+    const tokens = tokens_of("class A { *m(): Generator<number> { yield* xs; } }");
+    expect(tokens.filter((t) => t.value === "*").map((t) => t.type)).toEqual([
+      "keyword",
+      "keyword",
+    ]);
+  });
+
   it("namespace downgrades to identifier under fidelity='low'", () => {
     const tokens = tokens_of("namespace Utils { }", { fidelity: "low" });
     expect(tokens.find((t) => t.value === "Utils")?.type).toBe("identifier");

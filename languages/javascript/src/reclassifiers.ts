@@ -293,11 +293,35 @@ export const reserved_name_rules: RewriteRule[] = [
   },
 ];
 
+const GENERATOR_MEMBER_KINDS = ["class", "object"];
+
+// a generator star is never a multiplication, so it is fixed at every fidelity
+// operator anchored rules cost every operator token, so only the member start form uses one
+export const generator_star_rules: RewriteRule[] = [
+  {
+    anchor: { type_name: "keyword", value: ["function", "yield", "static", "async"] },
+    when: capture("star", type("operator", "*")),
+    rewrite: { star: "keyword" },
+  },
+  {
+    anchor: {
+      type_name: "operator",
+      value: "*",
+      at_start: true,
+      frame_kinds: GENERATOR_MEMBER_KINDS,
+      frame_direct: true,
+    },
+    rewrite: "keyword",
+  },
+];
+
 // A plain Reclassifier on purpose. Without `__claim` it is a barrier, so
 // the claim batch below sees its output and `claim_property_scope`'s
 // ordinary identifier rules do the promoting — and the batch stays one
 // segment, leaving the order-independence permutation count unchanged.
-const reserved_names_pass = rewrite_types(reserved_name_rules, { trivia: ["comment"] });
+const reserved_names_pass = rewrite_types([...reserved_name_rules, ...generator_star_rules], {
+  trivia: ["comment"],
+});
 export const classify_reserved_names: Reclassifier = (input, result) =>
   reserved_names_pass(input, result);
 
