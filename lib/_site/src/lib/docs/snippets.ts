@@ -31,8 +31,14 @@ export const twoslash: Tag = compiled_away;
 export const ts = compiled_away as HighlightTag;
 type Split = Tag<{ input: string; output: string }>;
 
+/** a split tag, or a call with render options that returns one */
+interface SplitTag {
+  (strings: TemplateStringsArray): { input: string; output: string };
+  (render: RenderOptions): Split;
+}
+
 /** typescript for SplitCodeBlock: markers left as written, and applied. */
-export const ts_split: Split = compiled_away;
+export const ts_split = compiled_away as SplitTag;
 /** as `ts_split`, with shiki's `[!code ...]` notation applied. */
 export const ts_shiki_split: Split = compiled_away;
 /** as `ts_split`, with the output rendered by twoslash. */
