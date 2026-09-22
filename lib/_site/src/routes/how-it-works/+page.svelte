@@ -595,6 +595,7 @@
 		gap: 8px;
 		font-size: 24px;
 		color: var(--purple);
+		text-decoration: none;
 	}
 	.brand span {
 		color: var(--ink);

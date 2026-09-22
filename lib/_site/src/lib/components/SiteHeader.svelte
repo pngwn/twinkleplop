@@ -69,7 +69,8 @@
 		flex: none;
 		z-index: 20;
 	}
-	a:hover {
+	.wordmark,
+	.ghost {
 		text-decoration: none;
 	}
 
@@ -90,21 +91,21 @@
 		gap: 8px;
 		font-size: 13px;
 	}
+	/* faint at rest so hover and the current page read stronger */
 	nav a {
 		color: var(--hdr-fg-dim, inherit);
 		padding: 4px 8px;
+		text-underline-offset: 5px;
+		text-decoration-color: color-mix(in oklab, currentColor 35%, transparent);
 	}
 	nav a:hover {
 		color: var(--hdr-fg, inherit);
-		text-decoration: underline;
-		text-decoration-thickness: 1px;
-		text-underline-offset: 5px;
+		text-decoration-color: currentColor;
 	}
 	nav a[aria-current='page'] {
 		color: var(--hdr-accent, inherit);
-		text-decoration: underline;
+		text-decoration-color: currentColor;
 		text-decoration-thickness: 2px;
-		text-underline-offset: 5px;
 	}
 	nav i {
 		color: var(--hdr-fg-ghost, inherit);

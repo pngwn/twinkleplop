@@ -49,20 +49,18 @@
 	}
 	.links a {
 		color: var(--docs-fg-dim);
-		text-decoration: none;
 		padding: 4px 2px;
+		text-underline-offset: 5px;
+		text-decoration-color: color-mix(in oklab, currentColor 35%, transparent);
 	}
 	.links a:hover {
 		color: var(--docs-fg);
-		text-decoration: underline;
-		text-decoration-thickness: 1px;
-		text-underline-offset: 5px;
+		text-decoration-color: currentColor;
 	}
 	.links a[aria-current='page'] {
 		color: var(--docs-accent);
-		text-decoration: underline;
+		text-decoration-color: currentColor;
 		text-decoration-thickness: 2px;
-		text-underline-offset: 5px;
 	}
 	.brand {
 		text-decoration: none;
