@@ -2,7 +2,7 @@
 // with a `source` condition becomes a module declaration in dist/types.d.ts,
 // from the same entry points package.vite.config.ts bundles.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createBundle } from "dts-buddy";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
@@ -61,6 +61,10 @@ if (/^[ \t]*(?:private|protected)\b/m.test(repaired)) {
     `${pkg.name}: unrecognised private/protected member survived declaration flattening`,
   );
 }
+
+// the declaration map points into src which is not published
+repaired = repaired.replace(/\n*\/\/# sourceMappingURL=\S+\s*$/, "\n");
+rmSync(`${output}.map`, { force: true });
 
 if (repaired !== declared) writeFileSync(output, repaired);
 

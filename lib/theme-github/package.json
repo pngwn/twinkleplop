@@ -1,9 +1,9 @@
 {
   "name": "@twinkleplop/theme-github",
   "version": "0.2.0",
+  "license": "MIT",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "type": "module",
   "exports": {

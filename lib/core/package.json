@@ -1,9 +1,9 @@
 {
   "name": "@twinkleplop/core",
   "version": "0.2.0",
+  "license": "MIT",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "type": "module",
   "types": "./dist/types.d.ts",
@@ -42,8 +42,7 @@
     },
     "./types": {
       "source": "./src/types.ts",
-      "types": "./dist/types.d.ts",
-      "import": "./dist/twinkleplop.types.js"
+      "types": "./dist/types.d.ts"
     }
   },
   "scripts": {

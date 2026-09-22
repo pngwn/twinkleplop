@@ -44,7 +44,6 @@ export default defineConfig({
         dir: "dist",
       },
     },
-    sourcemap: true,
     emptyOutDir: true,
   },
 });
