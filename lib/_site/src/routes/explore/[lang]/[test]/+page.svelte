@@ -7,7 +7,7 @@
 
 	let { data } = $props();
 
-	const source = $derived(data.css_files.find(([file]) => file === data.test)?.[1] ?? '');
+	const source = $derived(data.sources.find(([file]) => file === data.test)?.[1] ?? '');
 
 	// an href rather than a click handler so middle click works, it opens a
 	// blank editor until the first encode lands
@@ -46,7 +46,7 @@
 		lang: data.lang,
 		on_lang_change: handle_lang,
 		sample: data.test,
-		samples: data.css_files.map(([file]) => file),
+		samples: data.sources.map(([file]) => file),
 		on_sample_change: handle_sample
 	}}
 	edit={{ href: edit_href }}
