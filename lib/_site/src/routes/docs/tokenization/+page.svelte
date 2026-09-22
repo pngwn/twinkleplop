@@ -88,6 +88,8 @@ mapper.generate_report(introspector);`;
 	title="how tokenization works"
 	subtitle="How source code is tokenized, reclassified and rendered."
 >
+	<Callout variant="warn" mark="!">This page is a work in progress.</Callout>
+
 	<p>
 		Highlighting has three stages. Each takes the result of the previous stage, and each can be used
 		separately.

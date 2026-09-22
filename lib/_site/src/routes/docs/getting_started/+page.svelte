@@ -36,12 +36,12 @@ const html = ts(code, {
 
 const code = "const total = 1 + 2;";
 const tokenizer = tokenize();
-const result = tokenizer(code);
+const { token_types, tokens } = tokenizer(code);
 
 // tokens is a flat Uint32Array of [type, start, end] triplets
-for (let i = 0; i < result.tokens.length; i += 3) {
-  const name = result.token_types[result.tokens[i]];
-  const text = code.slice(result.tokens[i + 1], result.tokens[i + 2]);
+for (let i = 0; i < tokens.length; i += 3) {
+  const name = token_types[tokens[i]];
+  const text = code.slice(tokens[i + 1], tokens[i + 2]);
   console.log(name, text);
 }`;
 </script>
@@ -53,46 +53,44 @@ for (let i = 0; i < result.tokens.length; i += 3) {
 >
 	<Section id="s1" title="install" num="§ 01">
 		<p>
-			Install one language package per language you want to highlight, plus a theme. Language
-			packages depend on <code>@twinkleplop/core</code>, so it is installed automatically.
+			Install a package per language you wish to highlight. Power and beauty are bedfellows, so you
+			will probably want a <a href="/docs/themes">theme</a> as well.
 		</p>
+		<p>I have used <code>pnpm</code> here but you are your own person.</p>
 		<CodeBlock fname="terminal" html={install_code} />
-		<p>
-			There are eight theme packages: <code>@twinkleplop/theme-github</code>,
-			<code>@twinkleplop/theme-atom-one</code>, <code>@twinkleplop/theme-solarized</code>,
-			<code>@twinkleplop/theme-night-owl</code>, <code>@twinkleplop/theme-rose-pine</code>,
-			<code>@twinkleplop/theme-ayu</code>, <code>@twinkleplop/theme-catppuccin</code> and
-			<code>@twinkleplop/theme-material</code>. Each includes a light and a dark variant. See
-			<a href="/docs/themes">themes</a> for the options.
-		</p>
 	</Section>
 
 	<Section id="s2" title="highlighting code" num="§ 02">
-		<p>Import <code>language</code> and call it to create a highlighter.</p>
+		<p>Create a highlighter by calling the <code>language</code> function and save it to a variable.</p>
+		<p>You can call this new variable to highlight your code.</p>
 		<CodeBlock fname="first-twinkle.ts" html={first_highlight_code} />
 		<p>
-			<code>language()</code> takes configuration and returns a function that highlights source code as
-			HTML. Create the highlighter once and reuse it. The grammar is compiled when the package is imported.
+			The <code>language</code> function takes similar but different
+			<a href="/docs/api#language_options">options</a> depending on the language. Create a
+			highlighter once and reuse it.
 		</p>
 	</Section>
 
 	<Section id="s3" title="per-call options" num="§ 03">
 		<p>
-			Pass render options as the second argument to the highlight function. Each call can use
-			different options.
+			The resulting highlighter function <em>also</em> takes
+			<a href="/docs/render_options">options</a>.
 		</p>
+		<p>You can switch these options as you wish. There are no rules.</p>
 		<CodeBlock fname="render.ts" html={render_code} />
-		<p>
-			See <a href="/docs/render_options">render options</a> for the full list.
-		</p>
 	</Section>
 
 	<Section id="s4" title="tokens instead of html" num="§ 04">
+		<p>If you want 'tokens' instead of HTML, you can use the <code>tokenize</code> function.</p>
 		<p>
-			Use <code>tokenize</code> to get tokens for a custom renderer, such as the CSS Custom Highlight
-			API, a canvas renderer or an editor.
+			Tokens do not contain the source but are a flat array of <code>[type, start, end]</code>
+			triplets. A <code>token_types</code> map is also returned from <code>tokenize</code>.
 		</p>
 		<CodeBlock fname="tokens.ts" html={tokens_code} />
+		<p>
+			You can use this new power to create a custom renderer, fancy hovery things, and other
+			majestic creations.
+		</p>
 	</Section>
 
 	<Callout mark="✦">

@@ -48,7 +48,10 @@ export function create_highlighters(root: string) {
     ts,
     // source -> output pairs for SplitCodeBlock: the input pane shows the
     // markup as authored comment text, the output pane what it renders to.
-    ts_split: (code: string) => ({ input: ts_raw(code), output: ts(code) }),
+    ts_split: (code: string, render?: RenderOptions) => ({
+      input: ts_raw(code, render),
+      output: ts(code, render),
+    }),
     ts_shiki_split: (code: string) => ({ input: ts_raw(code), output: ts_shiki(code) }),
     twoslash_split: (code: string) => ({ input: ts_raw(code), output: twoslash(code) }),
     html: make_html({ annotation }),

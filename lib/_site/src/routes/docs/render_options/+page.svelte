@@ -2,8 +2,9 @@
 	import ArticleMain from "$lib/docs/components/ArticleMain.svelte";
 	import Section from "$lib/docs/components/Section.svelte";
 	import CodeBlock from "$lib/docs/components/CodeBlock.svelte";
+	import SplitCodeBlock from "$lib/docs/components/SplitCodeBlock.svelte";
 	import Callout from "$lib/docs/components/Callout.svelte";
-	import { twoslash, css, html } from "$lib/docs/snippets";
+	import { twoslash, ts, css, html } from "$lib/docs/snippets";
 
 	const basic = twoslash`import { language } from "@twinkleplop/typescript";
 declare const code: string;
@@ -82,6 +83,26 @@ ts(code, {
   indent_guides: { size: 4 }, // a tab is one level, 4 spaces is one level
 });`;
 
+	const guides_off = ts`function total(items) {
+  let sum = 0;
+  for (const item of items) {
+    if (item.active) {
+      sum += item.price;
+    }
+  }
+  return sum;
+}`;
+
+	const guides_on = ts({ indent_guides: true })`function total(items) {
+  let sum = 0;
+  for (const item of items) {
+    if (item.active) {
+      sum += item.price;
+    }
+  }
+  return sum;
+}`;
+
 	const whitespace_css = css`.twinkleplop .space { white-space: pre; }
 .twinkleplop .tab   { white-space: pre; }
 
@@ -109,15 +130,18 @@ ts(code, {
 
 	<Section id="block" title="block attributes" num="§ 01">
 		<p>
-			<code>class_name</code> replaces <code>twinkleplop</code> on the
-			<code>&lt;pre&gt;</code>. <code>attributes</code> adds arbitrary attributes after the class, in
-			the order given.
+			<code>class_name</code> replaces <code>twinkleplop</code> on the <code>&lt;pre&gt;</code>.
+			<code>attributes</code> adds arbitrary attributes after the class, in the order given.
 		</p>
+		<p>Do with this information what you will.</p>
 		<CodeBlock fname="attributes.ts" html={attributes} />
+		<ul>
+			<li>A string or number becomes <code>name="value"</code>,</li>
+			<li><code>true</code> becomes a bare attribute name,</li>
+			<li><code>false</code> emits nothing at all.</li>
+		</ul>
 		<p>
-			A string or number becomes <code>name="value"</code>, <code>true</code> a bare attribute name,
-			and <code>false</code> emits nothing at all. Values are HTML-escaped, so a value containing quotes
-			cannot break out of the attribute.
+			Values are HTML-escaped, so a value containing quotes cannot break out of the attribute.
 		</p>
 		<Callout mark="▸" variant="warn">
 			<code>class</code> and <code>style</code> are reserved. Use <code>class_name</code> for the
@@ -135,14 +159,16 @@ ts(code, {
 		</p>
 		<CodeBlock fname="overlays.ts" html={overlays} />
 		<p>
-			Offsets are UTF-16 code units, the same units as token positions. Lines are 1-based,
-			characters 0-based, and <code>end</code> is exclusive in both forms.
+			Numeric positions are JavaScript string indices, the same as token positions. In the
+			<code>&#123; line, character &#125;</code> form, lines start at 1 and characters at 0. In both
+			forms the range stops just before <code>end</code>, like
+			<code>String.prototype.slice</code>.
 		</p>
 		<p>
-			Line-mode overlays add their class to every <code>span.l</code> the range touches. Token-mode overlays
-			wrap the non-whitespace run on each line. When overlays overlap, each region gets all the classes
-			that apply to it. A hidden range renders as spaces of equal width, and a line that becomes whitespace-only
-			is dropped — visible line numbering continues without a gap.
+			Line-mode overlays add their class to every <code>span.l</code> the range matches. Token-mode
+			overlays wrap the non-whitespace characters on each line. When overlays overlap, each region
+			gets all the classes that apply to it. A hidden range renders as spaces of equal width, and a
+			line that becomes whitespace-only is dropped. Visible line numbering continues without a gap.
 		</p>
 		<p>
 			Every classification present also adds a <code>has-</code> class to the
@@ -174,29 +200,44 @@ ts(code, {
 
 	<Section id="whitespace" title="whitespace and indent guides" num="§ 05">
 		<p>
-			By default whitespace between tokens is bare text. Both options below wrap it so you can style
+			By default whitespace between tokens is bare text. The options below wrap it so you can style
 			it.
 		</p>
 		<CodeBlock fname="whitespace.ts" html={whitespace} />
 		<p>
 			<code>whitespace</code> wraps spaces and tabs between tokens, one span per character;
 			whitespace inside a token stays part of that token.
-			<code>indent_guides</code> splits leading indentation into adjacent
-			<code>span.indent</code> levels — one sibling span per level, not nested — where a tab is
-			always one level and <code>size</code> spaces is one level, defaulting to 2.
 		</p>
+		<p>
+			<code>indent_guides</code> wraps each level of a line's leading indentation in its own
+			<code>&lt;span class="indent"&gt;</code>. Each tab is one level, and every
+			<code>size</code> spaces (2 by default) is one level. Spaces left over after the last full level
+			are not wrapped. The spans sit next to each other rather than inside each other, so styling
+			<code>.indent</code> draws one guide per level.
+		</p>
+		<SplitCodeBlock
+			lang="typescript"
+			left_html={guides_off}
+			right_html={guides_on}
+			left_label="default"
+			right_label="indent_guides"
+		/>
 		<CodeBlock fname="whitespace.css" html={whitespace_css} />
 	</Section>
 
 	<Section id="output" title="HTML output" num="§ 06">
 		<p>Block output uses this HTML structure:</p>
 		<CodeBlock fname="output.html" html={output} />
-		<p>
-			The block contains a <code>&lt;pre&gt;</code> and a <code>&lt;code&gt;</code> element, with a
-			<code>span.l</code>
-			for each visible line. Tokens use <code>span.tok</code> with a class for their type. Adjacent tokens
-			of the same type share a span unless a hook adds classes or attributes. Text between tokens is escaped
-			and rendered without a span.
-		</p>
+		<ul>
+			<li>
+				The block contains a <code>&lt;pre&gt;</code> and a <code>&lt;code&gt;</code> element, with a
+				<code>span.l</code> for each visible line.
+			</li>
+			<li>Tokens use <code>span.tok</code> with a class for their type.</li>
+			<li>
+				Adjacent tokens of the same type share a span unless a hook adds classes or attributes.
+			</li>
+			<li>Text between tokens is escaped and rendered without a span.</li>
+		</ul>
 	</Section>
 </ArticleMain>

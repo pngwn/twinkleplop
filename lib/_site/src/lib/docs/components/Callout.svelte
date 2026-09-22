@@ -22,7 +22,6 @@
 		gap: 12px;
 		padding: 12px 16px;
 		border: 1px solid var(--docs-line);
-		border-left: 2px solid var(--docs-accent);
 		background: color-mix(in oklch, var(--docs-bg-1) 80%, var(--docs-bg));
 		margin: 18px 0;
 		font-size: var(--docs-fs-body);
@@ -33,14 +32,8 @@
 		font-size: 18px;
 		line-height: 1;
 	}
-	.callout.warn {
-		border-left-color: var(--t-yellow);
-	}
 	.callout.warn .mark {
 		color: var(--t-yellow);
-	}
-	.callout.tip {
-		border-left-color: var(--t-teal);
 	}
 	.callout.tip .mark {
 		color: var(--t-teal);

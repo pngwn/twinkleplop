@@ -37,18 +37,17 @@ always(embed_interleaved({ scan: scan_tagged_template }), "embed");`;
 	subtitle="Choose which token types the reclassifier identifies."
 >
 	<p>
-		The grammar produces tokens. The reclassifier pipeline assigns more specific types, turning an <code
-			>identifier</code
-		>
-		into a
-		<code>function</code> at a call site, a <code>class_name</code> in a type position, a
-		<code>constant</code>
-		for an <code>UPPER_SNAKE_CASE</code>
-		binding, and so on.
+		It is common for syntax highlighters to 'upgrade' certain tokens. For example, an
+		<code>identifier</code> could be upgraded to a <code>function</code> or a <code>class_name</code>.
 	</p>
 	<p>
-		Use <code>fidelity</code> to choose which reclassifier passes run. Running fewer passes reduces highlighting
-		time.
+		A relatively novel, although not necessarily useful, feature of Twinkleplop is the ability to
+		decide what level of granularity you want your highlighting to have.
+	</p>
+	<p>
+		These <code>fidelity</code> changes are controlled by
+		<a href="/docs/reclassifier">reclassifiers</a>. Use <code>fidelity</code> to choose which
+		reclassifier passes run. Running fewer passes reduces highlighting time a little.
 	</p>
 
 	<Section id="tiers" title="fidelity options" num="§ 01">

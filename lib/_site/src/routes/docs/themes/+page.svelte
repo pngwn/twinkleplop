@@ -62,7 +62,7 @@ import "@twinkleplop/theme-github/dark";`;
 <ArticleMain
 	pane_path="docs / themes"
 	title="themes"
-	subtitle="Eight themes ship today, each with a light and a dark variant. Themes are CSS custom properties and can be customised with plain CSS."
+	subtitle="Today there are eight themes, who knows what tomorrow holds. All themes come with a light and dark variant (even if the original it is based on has only one mode). Themes are CSS custom properties and can be customised with boring old CSS."
 >
 	<p>
 		A theme is a stylesheet. Colours are defined as <code>--twp-*</code> custom properties and
@@ -71,22 +71,21 @@ import "@twinkleplop/theme-github/dark";`;
 
 	<Section id="install" title="install a theme" num="§ 01">
 		<p>
-			Pick one from <a href="/docs/themes-ref">the theme reference</a> and install it with your package
+			Pick one from the <a href="/docs/themes-ref">theme reference</a> and install it with your package
 			manager.
 		</p>
 		<CodeBlock fname="terminal" html={install_code} />
 	</Section>
 
 	<Section id="css_import" title="direct import" num="§ 02">
-		<p>
-			With a bundler that handles CSS imports — Vite, Webpack, Parcel — import the package directly.
-		</p>
+		<p>With a bundler that handles CSS imports, import the package directly.</p>
 		<CodeBlock fname="theme.ts" html={use_theme_code} />
 		<p>
-			The main export includes both variants. Light colours are defined on <code>:root</code> and
-			dark colours on <code>.dark</code>. Add a <code>.dark</code> class to an ancestor of the snippet
-			to use the dark theme. You can also import either variant separately.
+			The main export includes both light and dark mode. Light colours are on <code>:root</code>,
+			dark colours are on <code>.dark</code>. Use this wisdom to integrate it into your own theme
+			switching magic.
 		</p>
+		<p>You can also import variants separately.</p>
 		<CodeBlock fname="variants.ts" html={variants_code} />
 	</Section>
 
@@ -114,8 +113,8 @@ import "@twinkleplop/theme-github/dark";`;
 
 	<Section id="override" title="overriding colours" num="§ 04">
 		<p>
-			Override a custom property to change a colour. The selector determines which code blocks are
-			affected.
+			Override a custom property to a colour of your choosing. The selector determines which code
+			blocks are affected.
 		</p>
 		<CodeBlock fname="overrides.css" html={override_css} />
 		<Callout mark="▸">
@@ -130,9 +129,6 @@ import "@twinkleplop/theme-github/dark";`;
 			palettes from a <code>/tokens</code> subpath.
 		</p>
 		<CodeBlock fname="tokens.ts" html={use_theme_tokens} />
-		<p>
-			The <code>light</code> and <code>dark</code> exports map token names to colours.
-		</p>
 		<CodeBlock fname="tokens.ts" html={sample_tokens} />
 		<p>
 			The keys match the token types exported by <code>@twinkleplop/core/tokens</code>. See

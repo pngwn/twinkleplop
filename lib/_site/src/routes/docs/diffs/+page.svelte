@@ -52,6 +52,10 @@ function changed_block() {
 	subtitle="Highlight patch files or use directives to mark changes in source code."
 >
 	<p>
+		Diffs really fall under two categories: showing additions and deletions within a syntax block,
+		and highlighting <code>.patch</code> files or the output of <code>git diff</code>.
+	</p>
+	<p>
 		Use a diff grammar for <code>.patch</code> files or <code>git diff</code> output. Use diff directives
 		to mark added, removed or modified lines in a highlighted code snippet.
 	</p>

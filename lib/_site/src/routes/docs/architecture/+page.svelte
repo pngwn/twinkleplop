@@ -29,6 +29,8 @@ languages/*       one package per grammar`;
 	title="architecture"
 	subtitle="The tokenizer, reclassifier pipeline, renderer and package structure."
 >
+	<Callout variant="warn" mark="!">This page is a work in progress.</Callout>
+
 	<p>
 		Twinkleplop uses a shared tokenizer with a separate grammar for each language. Grammars define
 		the rules the tokenizer uses to recognise tokens.

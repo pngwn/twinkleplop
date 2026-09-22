@@ -58,49 +58,57 @@ const html = await get_lang("html");`;
 >
 	<Section id="s1" title="language support" num="§ 01">
 		<p>
-			Every grammar is its own package. See
+			Every language is its own package. See
 			<a href="/docs/languages-ref">the language reference</a> for the full list of supported languages.
 		</p>
 		<p>
-			Check the <a href="https://github.com/pngwn/twinkleplop/issues"> GitHub issues </a>
-			for planned languages, and
-			<a href="https://github.com/pngwn/twinkleplop/issues/new">
-				file an issue if yours isn't listed
-			</a>.
+			Check the <a href="https://github.com/pngwn/twinkleplop/issues">GitHub issues</a> for planned
+			languages, and
+			<a href="https://github.com/pngwn/twinkleplop/issues/new">file an issue</a> if yours isn't listed.
 		</p>
 	</Section>
 
 	<Section id="s2" title="loading languages" num="§ 02">
 		<p>Install and import a package for each language you need.</p>
-		<CodeBlock fname="html.ts" html={html_usage} />
 		<p>
-			Some languages embed others. HTML and Svelte include CSS and JavaScript, JavaScript
-			includes HTML and CSS in tagged templates, and HTTP highlights JSON and HTML bodies.
-			Embedded languages are dependencies of the parent package and are installed automatically.
+			You do not need to think about embedded or dependent languages. They are internal
+			dependencies and handled for you.
 		</p>
+		<CodeBlock fname="html.ts" html={html_usage} />
 	</Section>
 
 	<Section id="s3" title="using multiple languages" num="§ 03">
+		<p>Using two languages is a lot like using one, except you do it twice.</p>
+		<p>All languages are exported as <code>language</code>. Use import aliases to prevent sorrow.</p>
 		<p>
-			Each package exports a function called <code>language</code>. Use import aliases when loading
-			multiple languages.
+			Do not worry about duplicate 'embedded' languages. They are all regular package dependencies,
+			so they will be deduplicated by your bundler.
 		</p>
 		<CodeBlock fname="multiple.ts" html={multiple_languages_usage} />
 	</Section>
 
 	<Section id="s4" title="lazy loading" num="§ 04">
-		<p>Languages can be lazily imported using dynamic imports.</p>
+		<p>
+			Languages are regular JavaScript modules. Lazy loading can be accomplished by dynamically
+			importing a language.
+		</p>
 		<CodeBlock fname="lazy.ts" html={lazy_loading_usage} />
 	</Section>
 
 	<Section id="s5" title="package exports" num="§ 05">
-		<p>Language packages provide these exports:</p>
+		<p>Languages all have the same set of exports, for your perusal.</p>
 		<CodeBlock fname="exports.ts" html={exports_usage} />
 		<p>
 			Use <code>language</code> to generate HTML and <code>tokenize</code> to get tokens for a
-			custom renderer. Use <code>grammar</code> and <code>reclassifiers</code> to configure your own
-			pipeline. See
+			custom renderer.
+		</p>
+		<p>
+			Use <code>grammar</code> and <code>reclassifiers</code> to configure your own pipeline. See
 			<a href="/docs/reclassifier">reclassifiers</a>.
+		</p>
+		<p>
+			<code>raw_grammar</code> is the uncompiled grammar definition and could be useful, so it is
+			there.
 		</p>
 		<CodeBlock fname="tokenize.ts" html={tokenize_usage} />
 		<Callout mark="▸" variant="warn">

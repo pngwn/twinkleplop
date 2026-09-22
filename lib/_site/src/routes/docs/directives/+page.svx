@@ -45,7 +45,11 @@ log(total, total); // [!err =total]`;
 	subtitle="Use comments to highlight lines and text in a code snippet."
 
 >
-	<Section id="s1" title="intro" num="§ 01">
+	Shiki had this brilliant idea of adding annotations to the actual source you are highlighting, in such a way that it doesn't mess with spacing or make the source unreadable.
+
+	Twinkleplop is a character of dubious reputation and has stolen this idea.
+
+	<Section id="s1" title="what is it tho" num="§ 01">
 		Source directives add CSS classes to selected lines or text. They extend [Shiki's notation transformers](/docs/migration#notation) with more ways to select parts of a snippet.
 
 		Write directives in comments in the source you want to highlight.
@@ -106,7 +110,7 @@ Example using several directive formats:
 
 Directives are disabled by default. Enable the ones you need in the highlighter configuration.
 
-The built-in directives select line or token mode based on their arguments:
+The built-in directives select line or token mode based on their arguments. There isn't anything special about this list, I just wanted to make sure there were enough to communicate different semantics.
 
 | plugin   | verb   | classification | typical use                          |
 | -------- | ------ | -------------- | ------------------------------------ |

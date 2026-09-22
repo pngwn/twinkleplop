@@ -95,6 +95,11 @@
 		color: var(--docs-fg-mute);
 		user-select: none;
 	}
+	/* inline-block so indent guides span the full line height and join up */
+	.code :global(pre .indent) {
+		display: inline-block;
+		box-shadow: inset 1px 0 0 color-mix(in oklab, var(--docs-fg-mute) 50%, transparent);
+	}
 
 	/* annotation overlays. line-mode classes attach to <span class="l ...">,
 	   token-mode classes attach to <span class="tok ..."> emitted by the
