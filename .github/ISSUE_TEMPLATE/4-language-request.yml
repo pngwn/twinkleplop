@@ -1,0 +1,46 @@
+name: Language request
+description: Ask for a language twinkleplop does not support yet
+labels: [enhancement, language]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The language picker in the [explorer](https://twinkleplop.pngwn.at/explore/edit) lists the ones that ship today.
+
+  - type: input
+    id: name
+    attributes:
+      label: Language
+      placeholder: Kotlin
+    validations:
+      required: true
+
+  - type: input
+    id: aliases
+    attributes:
+      label: File extensions and code fence names
+      placeholder: .kt, .kts, kotlin, kt
+    validations:
+      required: true
+
+  - type: input
+    id: spec
+    attributes:
+      label: Reference
+      description: The language specification, or the closest thing it has to one.
+      placeholder: https://kotlinlang.org/spec/
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample
+      description: Optional. A short snippet using the syntax you care about most.
+      render: text
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Optional. Why you want it, dialects or versions that matter, languages it embeds or is embedded in.
