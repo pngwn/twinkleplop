@@ -1,0 +1,23 @@
+# @twinkleplop/http
+
+## 0.1.3
+### Patch Changes
+
+
+
+- [#65](https://github.com/pngwn/twinkleplop/pull/65) [`e36051c`](https://github.com/pngwn/twinkleplop/commit/e36051c72d4956e25c79daf627ec08f2c2934edf) Thanks [@pngwn](https://github.com/pngwn)! - Add `@twinkleplop/http` for raw HTTP requests and responses and for `.http` request files from the VS Code REST Client and the JetBrains HTTP Client. JSON and HTML bodies, `{% %}` scripts and `curl` requests are highlighted in their own language, and a `{{variable}}` inside a body leaves the text around it intact:
+  
+  ```http
+  POST https://{{host}}/comments
+  Content-Type: application/json
+  
+  { "created_at": "{{$datetime iso8601}}" }
+  ```
+  
+  Core adds `raw_json` and `raw_markup` placeholder tokens for the embedded bodies, and both themes map them to the default text colour.
+- Updated dependencies [[`e36051c`](https://github.com/pngwn/twinkleplop/commit/e36051c72d4956e25c79daf627ec08f2c2934edf), [`185c681`](https://github.com/pngwn/twinkleplop/commit/185c681197726bc90abed3cca566e37078dab105), [`eedef07`](https://github.com/pngwn/twinkleplop/commit/eedef07a232680c44a80812b57dd19b161dbc973), [`a5f4d21`](https://github.com/pngwn/twinkleplop/commit/a5f4d2106a4c3aa0a4921da88964208f36032904), [`a3f4923`](https://github.com/pngwn/twinkleplop/commit/a3f4923c486b140d5d744745690efa4b3a90e073), [`fba34b1`](https://github.com/pngwn/twinkleplop/commit/fba34b14df85f4f61fc54f75c977a1145ee8b18a), [`77e5791`](https://github.com/pngwn/twinkleplop/commit/77e5791ed37ef14477d3b14c2ee2d54ea81f4ee0), [`84b7527`](https://github.com/pngwn/twinkleplop/commit/84b75279520c63ca19d322cfbced72e41e439085), [`6710782`](https://github.com/pngwn/twinkleplop/commit/671078298b33450abfca1006d55666098d5f351c), [`4fec60d`](https://github.com/pngwn/twinkleplop/commit/4fec60d3295dba2175ab34742025ad1206a186b1), [`4fec60d`](https://github.com/pngwn/twinkleplop/commit/4fec60d3295dba2175ab34742025ad1206a186b1), [`d06f61e`](https://github.com/pngwn/twinkleplop/commit/d06f61efed390b05d572bc65bf8c772a15a9f987), [`a3e1a0c`](https://github.com/pngwn/twinkleplop/commit/a3e1a0c90a02ee14caf0dd4fa09d7df9dd591cfa), [`8cc71aa`](https://github.com/pngwn/twinkleplop/commit/8cc71aaea9008e5b7a5e53345e386990b85aed3a)]:
+  - @twinkleplop/core@0.2.0
+  - @twinkleplop/javascript@0.1.3
+  - @twinkleplop/json@0.1.3
+  - @twinkleplop/html@0.1.3
+  - @twinkleplop/bash@0.1.3

@@ -1,5 +1,96 @@
 # @twinkleplop/core
 
+## 0.2.0
+### Minor Changes
+
+
+
+- [#67](https://github.com/pngwn/twinkleplop/pull/67) [`6710782`](https://github.com/pngwn/twinkleplop/commit/671078298b33450abfca1006d55666098d5f351c) Thanks [@pngwn](https://github.com/pngwn)! - Add the `theme_styles` and `font_style` types, which theme packages use to mark tokens as italic, bold, underlined or struck through in each variant.
+
+
+### Patch Changes
+
+
+
+- [#65](https://github.com/pngwn/twinkleplop/pull/65) [`e36051c`](https://github.com/pngwn/twinkleplop/commit/e36051c72d4956e25c79daf627ec08f2c2934edf) Thanks [@pngwn](https://github.com/pngwn)! - Add `@twinkleplop/http` for raw HTTP requests and responses and for `.http` request files from the VS Code REST Client and the JetBrains HTTP Client. JSON and HTML bodies, `{% %}` scripts and `curl` requests are highlighted in their own language, and a `{{variable}}` inside a body leaves the text around it intact:
+  
+  ```http
+  POST https://{{host}}/comments
+  Content-Type: application/json
+  
+  { "created_at": "{{$datetime iso8601}}" }
+  ```
+  
+  Core adds `raw_json` and `raw_markup` placeholder tokens for the embedded bodies, and both themes map them to the default text colour.
+
+
+- [#70](https://github.com/pngwn/twinkleplop/pull/70) [`185c681`](https://github.com/pngwn/twinkleplop/commit/185c681197726bc90abed3cca566e37078dab105) Thanks [@pngwn](https://github.com/pngwn)! - Fix missing stack information in the debug introspector's events. Push, pop, per-character and probe-entry events now report `stack_depth`, and each per-character `full_state_path` includes the states on the stack as well as the current one. Probe-entry events report the `rule_index` that started the probe, the completion event reports `final_stack_depth`, and each state session records its nesting `depth`.
+
+
+
+- [#54](https://github.com/pngwn/twinkleplop/pull/54) [`fba34b1`](https://github.com/pngwn/twinkleplop/commit/fba34b14df85f4f61fc54f75c977a1145ee8b18a) Thanks [@pngwn](https://github.com/pngwn)! - Highlight the name in a TypeScript parameter property as `parameter`, the same as any other parameter, rather than `identifier`:
+  
+  ```ts
+  class Animal {
+    constructor(
+      public name: string,
+      private readonly id: number,
+    ) {}
+  }
+  ```
+
+
+- [#62](https://github.com/pngwn/twinkleplop/pull/62) [`84b7527`](https://github.com/pngwn/twinkleplop/commit/84b75279520c63ca19d322cfbced72e41e439085) Thanks [@pngwn](https://github.com/pngwn)! - Add `@twinkleplop/shellsession` for terminal transcripts. Prompts become `prompt_prefix` and `prompt` tokens, commands are highlighted as bash, and every other line is `output`. Both themes colour the new tokens.
+  
+  A command continued on `> ` lines is highlighted as one command, so a quoted string or a trailing `\` carries over:
+  
+  ```console
+  $ echo 'first line
+  > second line'
+  ```
+
+
+- [#66](https://github.com/pngwn/twinkleplop/pull/66) [`4fec60d`](https://github.com/pngwn/twinkleplop/commit/4fec60d3295dba2175ab34742025ad1206a186b1) Thanks [@pngwn](https://github.com/pngwn)! - A non-ASCII character is kept when a grammar hands it to another state, such as the first character of a line in a Markdown code block, a Svelte `{expression}` or a Bash regex after `=~`:
+  
+  ````md
+  ```text
+  λ calculus
+  ```
+  ````
+  
+  The line above is highlighted as code in full rather than losing its first character.
+  
+  In a custom grammar, `fallback(goto(...))` and `fallback(leave())` without a token leave a non-ASCII character for the next state, and a `fallback` rule enters and resolves a probe state on a non-ASCII character, the same as on ASCII.
+
+
+- [#66](https://github.com/pngwn/twinkleplop/pull/66) [`4fec60d`](https://github.com/pngwn/twinkleplop/commit/4fec60d3295dba2175ab34742025ad1206a186b1) Thanks [@pngwn](https://github.com/pngwn)! - Tokenizing no longer hangs when a custom grammar starts a probe on a non-ASCII character and the probe reaches the end of the input with no `fallback` state. The character is skipped, the same as an ASCII one.
+
+
+
+- [#62](https://github.com/pngwn/twinkleplop/pull/62) [`d06f61e`](https://github.com/pngwn/twinkleplop/commit/d06f61efed390b05d572bc65bf8c772a15a9f987) Thanks [@pngwn](https://github.com/pngwn)! - A non-ASCII character that changes a grammar's state, such as a `λ` prompt symbol, is tokenized correctly along with the text after it, including when it is the last character of the input.
+
+
+
+- [#58](https://github.com/pngwn/twinkleplop/pull/58) [`a3e1a0c`](https://github.com/pngwn/twinkleplop/commit/a3e1a0c90a02ee14caf0dd4fa09d7df9dd591cfa) Thanks [@pngwn](https://github.com/pngwn)! - Highlight the type in an optional annotation (`x?: T`) as `type`, the same as in a required one, rather than `identifier`:
+  
+  ```ts
+  interface Hooks {
+    line?: (n: number, source_line: number) => HookResult | void;
+    options?: RewriteOptions;
+  }
+  ```
+  
+  This covers optional interface members, class fields and parameters. An optional method's return type, as in `f?(): R`, is still `identifier`.
+
+
+- [#56](https://github.com/pngwn/twinkleplop/pull/56) [`8cc71aa`](https://github.com/pngwn/twinkleplop/commit/8cc71aaea9008e5b7a5e53345e386990b85aed3a) Thanks [@pngwn](https://github.com/pngwn)! - Highlight the labels in a labelled tuple as `property` rather than `type`, the same as keys in an object type:
+  
+  ```ts
+  type Range = [start: number, end: number];
+  ```
+  
+  Optional and rest labels such as `[a?: T]` and `[...rest: T[]]` are covered too. With `fidelity: ["type"]`, labels stay `identifier`, as object type keys already do.
+
 ## 0.1.2
 ### Patch Changes
 
