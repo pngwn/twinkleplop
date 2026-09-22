@@ -1,5 +1,20 @@
 # @twinkleplop/core
 
+## 0.2.1
+### Patch Changes
+
+
+
+- [#85](https://github.com/pngwn/twinkleplop/pull/85) [`1618a01`](https://github.com/pngwn/twinkleplop/commit/1618a015421bccbcc3455f13a8374ae6dccde42d) Thanks [@pngwn](https://github.com/pngwn)! - `@twinkleplop/core/types` is now a types-only entry point. Import its runtime constants from `@twinkleplop/core`.
+
+
+
+- [#85](https://github.com/pngwn/twinkleplop/pull/85) [`2c5f3ef`](https://github.com/pngwn/twinkleplop/commit/2c5f3ef0f9ffa5f57c8fd0da0e46e71fbcaa7fbd) Thanks [@pngwn](https://github.com/pngwn)! - Packages are now published under the MIT license.
+
+
+
+- [#85](https://github.com/pngwn/twinkleplop/pull/85) [`9df0efc`](https://github.com/pngwn/twinkleplop/commit/9df0efc1785b21ea996dd658615bd0c24483c67c) Thanks [@pngwn](https://github.com/pngwn)! - Packages now contain only their built code, without source, tests or sourcemaps, which takes the combined install size from 7.2 MB to 1.1 MB. The language packages no longer expose a `./test` entry point.
+
 ## 0.2.0
 ### Minor Changes
 
