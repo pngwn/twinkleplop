@@ -4,7 +4,9 @@
 
 	// hosts theme it through --mode-* custom properties so the same control
 	// sits in the docs, lab and splash chrome without knowing their palettes.
-	let { compact = false }: { compact?: boolean } = $props();
+	// bare drops the boxes and marks the current mode with a dot
+	let { compact = false, bare = false }: { compact?: boolean; bare?: boolean } = $props();
+	const icons = $derived(compact || bare);
 
 	const OPTIONS: theme_mode_value[] = ['system', 'light', 'dark'];
 	const uid = $props.id();
@@ -18,10 +20,10 @@
 	});
 </script>
 
-<fieldset class="mode" class:compact>
+<fieldset class="mode" class:compact={icons} class:bare>
 	<legend class="sr-only">Colour mode</legend>
 	{#each OPTIONS as value (value)}
-		<label class="opt" title={compact ? `${value} mode` : undefined}>
+		<label class="opt" title={icons ? `${value} mode` : undefined}>
 			<input
 				type="radio"
 				{name}
@@ -29,7 +31,7 @@
 				checked={mounted && theme_mode.value === value}
 				onchange={() => set_mode(value)}
 			/>
-			{#if compact}
+			{#if icons}
 				<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
 					{#if value === 'system'}
 						<circle cx="8" cy="8" r="5.5" />
@@ -101,6 +103,37 @@
 	/* an accent ring would vanish on the inverted plate */
 	.opt:has(input:checked):has(input:focus-visible) {
 		outline-color: currentColor;
+	}
+	.bare {
+		height: auto;
+		border: 0;
+	}
+	.bare .opt {
+		width: var(--mode-bare-size, 28px);
+		height: var(--mode-bare-height, 32px);
+	}
+	.bare .opt + .opt {
+		border-left: 0;
+	}
+	.bare .opt:hover,
+	.bare .opt:has(input:checked) {
+		color: var(--mode-fg-on, inherit);
+		background: none;
+	}
+	.bare .opt:has(input:checked)::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		bottom: 5px;
+		width: 4px;
+		height: 4px;
+		margin-left: -2px;
+		border-radius: 50%;
+		background: var(--mode-focus, currentColor);
+	}
+	.bare svg {
+		width: var(--mode-bare-icon, 15px);
+		height: var(--mode-bare-icon, 15px);
 	}
 	input {
 		position: absolute;

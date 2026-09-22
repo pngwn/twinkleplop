@@ -1,132 +1,100 @@
+<script lang="ts" module>
+	// a link to /explore/edit on the sample pages, the editor toggle there
+	export type edit_control = { href: string } | { on: boolean; toggle: () => void };
+
+	export interface path_control {
+		lang: string;
+		on_lang_change: (next: string) => void;
+		sample: string;
+		samples: string[];
+		on_sample_change: (next: string) => void;
+	}
+</script>
+
 <script lang="ts">
 	import CommandChip from "./CommandChip.svelte";
 	import ModeSwitch from "$lib/components/ModeSwitch.svelte";
+	import { LANGUAGES } from "$lib/explore/grammars";
+	import { view } from "$lib/explore/lab_state.svelte";
+	import { FONTS, THEME_NAMES, type theme_name } from "$lib/explore/themes";
 
-	interface Props {
-		lang: string;
-		sample: string;
-		languages: string[];
-		samples: string[];
-		theme: string;
-		themes: string[];
-		font: string;
-		fonts: string[];
-		show_line_numbers: boolean;
-		inspect: boolean;
-		edit_open: boolean;
-		on_lang_change: (next: string) => void;
-		on_sample_change: (next: string) => void;
-		on_theme_change: (next: string) => void;
-		on_font_change: (next: string) => void;
-		on_toggle_line_numbers: () => void;
-		on_toggle_inspect: () => void;
-		on_toggle_edit: () => void;
-	}
+	let { path, edit }: { path: path_control; edit: edit_control } = $props();
 
-	let {
-		lang,
-		sample,
-		languages,
-		samples,
-		theme,
-		themes,
-		font,
-		fonts,
-		show_line_numbers,
-		inspect,
-		edit_open,
-		on_lang_change,
-		on_sample_change,
-		on_theme_change,
-		on_font_change,
-		on_toggle_line_numbers,
-		on_toggle_inspect,
-		on_toggle_edit,
-	}: Props = $props();
+	const font_labels = FONTS.map((f) => f.label);
 </script>
 
 <header class="topbar">
-	<div class="topbar__l">
-		<a class="brand" href="/">
-			<div class="brand__name">
-				<span class="brand__glyph">twinkleplop</span>
-			</div>
-		</a>
-		<div class="divider"></div>
-		<nav class="site-links" aria-label="Site">
-			<a class="site-link" aria-current="page" href="/explore">explore</a>
-			<span class="crumb__sep" aria-hidden="true">/</span>
-			<a class="site-link" href="/docs">docs</a>
-		</nav>
-		<div class="divider"></div>
-		<nav class="crumbs" aria-label="Breadcrumb">
-			<CommandChip
-				label="lang"
-				value={lang}
-				options={languages}
-				on_change={on_lang_change}
-			/>
-			<span class="crumb__sep" aria-hidden="true">/</span>
-			<CommandChip
-				label="sample"
-				value={sample}
-				options={samples}
-				on_change={on_sample_change}
-			/>
-		</nav>
-	</div>
-	<div class="topbar__r">
-		<div class="topbar__group" role="group" aria-label="Code view">
-			<CommandChip
-				label="theme"
-				value={theme}
-				options={themes}
-				show_label
-				align="right"
-				on_change={on_theme_change}
-			/>
-			<CommandChip
-				label="font"
-				value={font}
-				options={fonts}
-				show_label
-				align="right"
-				on_change={on_font_change}
-			/>
-		</div>
-		<div class="topbar__divider"></div>
+	<a class="brand" href="/">twinkleplop</a>
+	<nav class="site-links" aria-label="Site">
+		<a class="site-link" aria-current="page" href="/explore">explore</a>
+		<span class="slash" aria-hidden="true">/</span>
+		<a class="site-link" href="/docs">docs</a>
+	</nav>
+	<span class="topbar__sep" aria-hidden="true"></span>
+	<nav class="topbar__path" aria-label="Sample">
+		<CommandChip label="language" value={path.lang} options={LANGUAGES} on_change={path.on_lang_change} />
+		<span class="slash" aria-hidden="true">/</span>
+		<CommandChip
+			label="sample"
+			value={path.sample}
+			options={path.samples}
+			on_change={path.on_sample_change}
+		/>
+	</nav>
+	<div class="topbar__view" role="group" aria-label="Code view">
+		<CommandChip
+			label="theme"
+			value={view.theme}
+			options={THEME_NAMES}
+			show_label
+			align="right"
+			on_change={(next) => (view.theme = next as theme_name)}
+		/>
+		<CommandChip
+			label="font"
+			value={view.font}
+			options={font_labels}
+			show_label
+			align="right"
+			on_change={(next) => (view.font = next)}
+		/>
+		<span class="topbar__sep" aria-hidden="true"></span>
 		<button
 			class="toggle"
-			class:is-on={show_line_numbers}
+			class:is-on={view.show_line_numbers}
 			type="button"
-			aria-pressed={show_line_numbers}
+			aria-pressed={view.show_line_numbers}
 			title="line numbers"
-			onclick={on_toggle_line_numbers}
+			onclick={() => (view.show_line_numbers = !view.show_line_numbers)}
 		>
 			<span class="toggle__pip"></span>
 			<span>ln</span>
 		</button>
 		<button
 			class="toggle"
-			class:is-on={inspect}
+			class:is-on={view.inspect}
 			type="button"
-			aria-pressed={inspect}
-			onclick={on_toggle_inspect}
+			aria-pressed={view.inspect}
+			onclick={() => (view.inspect = !view.inspect)}
 		>
 			<span class="toggle__pip"></span>
-			<span>inspect tokens</span>
+			<span>inspect</span>
 		</button>
-		<button
-			class="toggle"
-			class:is-on={edit_open}
-			type="button"
-			aria-pressed={edit_open}
-			onclick={on_toggle_edit}
-		>
-			<span class="toggle__pip"></span>
-			<span>edit</span>
-		</button>
-		<div class="topbar__divider"></div>
-		<ModeSwitch />
+		{#if "href" in edit}
+			<a class="toggle" href={edit.href}>
+				<span>edit</span>
+				<span aria-hidden="true">→</span>
+			</a>
+		{:else}
+			<button
+				class="toggle"
+				class:is-on={edit.on}
+				type="button"
+				aria-pressed={edit.on}
+				onclick={edit.toggle}>edit</button
+			>
+		{/if}
+		<span class="topbar__sep" aria-hidden="true"></span>
+		<ModeSwitch bare />
 	</div>
 </header>

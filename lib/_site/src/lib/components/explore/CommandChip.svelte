@@ -73,12 +73,10 @@
 	>
 		{#if show_label}<span class="chip__label">{label}</span>{/if}
 		<span class="chip__value">{value}</span>
+		<span class="chip__caret" aria-hidden="true">▾</span>
 	</button>
 	{#if open}
 		<div class="chip__menu" class:chip__menu--right={align === "right"} role="listbox" aria-label={label}>
-			<div class="chip__menu-head">
-				<span>{label}</span>
-			</div>
 			<div class="chip__menu-items">
 			{#each options as opt, i (opt)}
 				<button
@@ -103,7 +101,7 @@
 
 <style>
 	.chip__menu-items {
-		overflow: scroll;
+		overflow-y: auto;
 		height: 100%;
 	}
 </style>
