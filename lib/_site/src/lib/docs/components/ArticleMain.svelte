@@ -118,6 +118,15 @@
 	.content :global(a:hover) {
 		text-shadow: 0 0 8px color-mix(in oklch, var(--docs-accent) 60%, transparent);
 	}
+	.content :global(blockquote) {
+		margin: 0 0 20px;
+		padding-left: 16px;
+		border-left: 2px solid var(--docs-line);
+		font-style: italic;
+	}
+	.content :global(blockquote p) {
+		margin: 0;
+	}
 
 	.content :global(table) {
 		display: block;
