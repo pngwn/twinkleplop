@@ -107,11 +107,10 @@
 	.bare {
 		height: auto;
 		border: 0;
-		gap: 4px;
 	}
 	.bare .opt {
-		width: 44px;
-		height: 40px;
+		width: var(--mode-bare-size, 28px);
+		height: var(--mode-bare-height, 32px);
 	}
 	.bare .opt + .opt {
 		border-left: 0;
@@ -133,8 +132,8 @@
 		background: var(--mode-focus, currentColor);
 	}
 	.bare svg {
-		width: 17px;
-		height: 17px;
+		width: var(--mode-bare-icon, 15px);
+		height: var(--mode-bare-icon, 15px);
 	}
 	input {
 		position: absolute;

@@ -95,6 +95,6 @@
 			>
 		{/if}
 		<span class="topbar__sep" aria-hidden="true"></span>
-		<ModeSwitch compact />
+		<ModeSwitch bare />
 	</div>
 </header>

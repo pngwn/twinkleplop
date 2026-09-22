@@ -24,13 +24,8 @@
 	--glow: 0 0 0 transparent;
 	--menu-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 
-	--mode-height: 26px;
-	--mode-font-size: 13px;
-	--mode-line: var(--border-bright);
-	--mode-bg: var(--bg);
-	--mode-fg: var(--fg-dim);
-	--mode-fg-on: var(--accent);
-	--mode-bg-on: color-mix(in oklab, var(--accent) 16%, transparent);
+	--mode-fg: var(--fg-muted);
+	--mode-fg-on: var(--fg);
 	--mode-focus: var(--accent);
 
 	/* strength of annotation tints (diff, highlight, ...) on code lines */
@@ -1166,8 +1161,9 @@
 		height: 44px;
 		padding: 0 14px;
 		border-bottom: 1px solid var(--border);
-		--mode-fg: var(--fg-muted);
-		--mode-fg-on: var(--fg);
+		--mode-bare-size: 36px;
+		--mode-bare-height: 40px;
+		--mode-bare-icon: 17px;
 	}
 	.explore-app .mtop__back {
 		display: flex;
