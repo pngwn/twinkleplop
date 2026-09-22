@@ -648,6 +648,87 @@ describe("JavaScript reclassifier — namespace promotion", () => {
     });
     expect(pick(tokens, "React")).toBe("identifier");
   });
+
+  it("`import def, * as X` promotes X after a default binding", () => {
+    const tokens = tokens_of('import def, * as ns from "x";');
+    expect(pick(tokens, "def")).toBe("identifier");
+    expect(pick(tokens, "ns")).toBe("namespace");
+  });
+});
+
+describe("JavaScript reclassifier: stars", () => {
+  function stars_of(input, options) {
+    const result = make_language(options)(input);
+    const out = [];
+    for (let i = 0; i < result.tokens.length / 3; i++) {
+      if (input.slice(result.tokens[i * 3 + 1], result.tokens[i * 3 + 2]) === "*") {
+        out.push(result.token_types[result.tokens[i * 3]]);
+      }
+    }
+    return out;
+  }
+
+  it.each([
+    "import * as utils from './utils.js';",
+    "import def, * as ns from 'x';",
+    "export * from './x.js';",
+    "export * as ns from './x.js';",
+    "import /* a */ * /* b */ as ns from 'x';",
+  ])("%s tags the star `constant`", (input) => {
+    expect(stars_of(input)).toEqual(["constant"]);
+  });
+
+  it.each(["const n = a * b;", "export default a * b;", "export const n = a * b;"])(
+    "%s leaves multiplication an operator",
+    (input) => {
+      expect(stars_of(input)).toEqual(["operator"]);
+    },
+  );
+
+  it("gates with `constant` fidelity", () => {
+    const input = "import * as utils from './utils.js';";
+    expect(stars_of(input, { fidelity: "low" })).toEqual(["operator"]);
+    expect(stars_of(input, { fidelity: ["namespace"] })).toEqual(["operator"]);
+    expect(stars_of(input, { fidelity: ["constant"] })).toEqual(["constant"]);
+  });
+
+  it.each([
+    ["function* g() {}", ["keyword"]],
+    ["async function *g() {}", ["keyword"]],
+    ["const g = function /* c */ * () {};", ["keyword"]],
+    [
+      "function* g() { yield* inner(); yield *x; yield 2 * 3; }",
+      ["keyword", "keyword", "keyword", "operator"],
+    ],
+    [
+      "class A { *m() {} static *s() {} async *a() {} static async *b() {} }",
+      ["keyword", "keyword", "keyword", "keyword"],
+    ],
+    [
+      "class A { *[Symbol.iterator]() {} *default() {} x = a * b; }",
+      ["keyword", "keyword", "operator"],
+    ],
+    [
+      "const o = { *m() {}, async *a() {}, x: b * c(d), *[k]() {} };",
+      ["keyword", "keyword", "operator", "keyword"],
+    ],
+  ])("%s tags generator stars `keyword`", (input, expected) => {
+    expect(stars_of(input)).toEqual(expected);
+  });
+
+  it.each(["a\n*b();", "const o = { y: b\n* c };", "[a, b * c]; f(a, b * c);"])(
+    "%j leaves a continued multiplication an operator",
+    (input) => {
+      expect(stars_of(input).every((t) => t === "operator")).toBe(true);
+    },
+  );
+
+  it("keeps generator stars at fidelity='low'", () => {
+    expect(stars_of("function* g() { yield* inner(); }", { fidelity: "low" })).toEqual([
+      "keyword",
+      "keyword",
+    ]);
+  });
 });
 
 describe("JavaScript reclassifier — parameter promotion", () => {

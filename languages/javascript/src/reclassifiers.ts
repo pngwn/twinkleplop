@@ -48,6 +48,7 @@ import type {
   Reclassifier,
   Region,
   RewriteRule,
+  TokenView,
 } from "@twinkleplop/core";
 
 import { default as jsdoc_grammar } from "./jsdoc.js";
@@ -292,11 +293,35 @@ export const reserved_name_rules: RewriteRule[] = [
   },
 ];
 
+const GENERATOR_MEMBER_KINDS = ["class", "object"];
+
+// a generator star is never a multiplication, so it is fixed at every fidelity
+// operator anchored rules cost every operator token, so only the member start form uses one
+export const generator_star_rules: RewriteRule[] = [
+  {
+    anchor: { type_name: "keyword", value: ["function", "yield", "static", "async"] },
+    when: capture("star", type("operator", "*")),
+    rewrite: { star: "keyword" },
+  },
+  {
+    anchor: {
+      type_name: "operator",
+      value: "*",
+      at_start: true,
+      frame_kinds: GENERATOR_MEMBER_KINDS,
+      frame_direct: true,
+    },
+    rewrite: "keyword",
+  },
+];
+
 // A plain Reclassifier on purpose. Without `__claim` it is a barrier, so
 // the claim batch below sees its output and `claim_property_scope`'s
 // ordinary identifier rules do the promoting — and the batch stays one
 // segment, leaving the order-independence permutation count unchanged.
-const reserved_names_pass = rewrite_types(reserved_name_rules, { trivia: ["comment"] });
+const reserved_names_pass = rewrite_types([...reserved_name_rules, ...generator_star_rules], {
+  trivia: ["comment"],
+});
 export const classify_reserved_names: Reclassifier = (input, result) =>
   reserved_names_pass(input, result);
 
@@ -951,6 +976,34 @@ export const promote_js_constants: Reclassifier = promote_by_upper_snake_case(
 // the one that should win.
 const CONST_BINDING_PREC = 25;
 
+/**
+ * index of the whole module star after the import or export keyword at i, else -1
+ * @example import * as ns from "x"
+ * @example import def, * as ns from "x"
+ * @example export * from "x"
+ * @example export type * as ns from "x"
+ */
+function module_star_after(
+  view: TokenView,
+  i: number,
+  operator_id: number,
+  punctuation_id: number,
+): number {
+  let j = view.next_non_trivia(i + 1);
+  if (j < 0) return -1;
+  const k = view.next_non_trivia(j + 1);
+  if (k >= 0 && view.kind_of(k) === punctuation_id && view.text_of(k) === ",") {
+    j = view.next_non_trivia(k + 1);
+  } else if (view.text_of(j) === "type") {
+    j = k;
+  }
+  if (j < 0 || view.kind_of(j) !== operator_id || view.text_of(j) !== "*") return -1;
+  return j;
+}
+
+// claimed from a constant pass so the star gates with constant fidelity
+const MODULE_STAR_PREC = precedence_for("constant");
+
 const promote_js_const_bindings_fn: ClaimFn = (input, tokens, token_types, sink) => {
   const identifier_id = token_types.indexOf("identifier");
   const keyword_id = token_types.indexOf("keyword");
@@ -971,7 +1024,13 @@ const promote_js_const_bindings_fn: ClaimFn = (input, tokens, token_types, sink)
   for (let i = 0; i < n; i++) {
     if (view.is_trivia(i)) continue;
     if (view.kind_of(i) !== keyword_id) continue;
-    if (view.text_of(i) !== "const") continue;
+    const kw = view.text_of(i);
+    if (kw === "import" || kw === "export") {
+      const star = module_star_after(view, i, operator_id, punctuation_id);
+      if (star >= 0) sink.emit(star, constant_id, MODULE_STAR_PREC);
+      continue;
+    }
+    if (kw !== "const") continue;
 
     // bracket depth of destructuring patterns; depth 0 is the top of the
     // binding list. the parallel is_object_pattern stack records whether
@@ -1213,6 +1272,7 @@ export const promote_js_parameters: Reclassifier = rewrite_types(js_parameter_ru
 // namespace promotion: targets positions where the syntax unambiguously
 // marks an identifier as a module/namespace binding. covers:
 //   - `import * as X from "..."`  → X = namespace  (both JS and TS)
+//     also after a default binding or ts import type
 //   - `export * as X from "..."`  → X = namespace  (both JS and TS)
 //   - `import X = require("...")` → X = namespace  (TS)
 //   - `namespace X { ... }`       → X = namespace  (TS)
@@ -1231,6 +1291,7 @@ const promote_js_namespaces_fn: ClaimFn = (input, tokens, token_types, sink) => 
   const identifier_id = token_types.indexOf("identifier");
   const keyword_id = token_types.indexOf("keyword");
   const operator_id = token_types.indexOf("operator");
+  const punctuation_id = token_types.indexOf("punctuation");
   if (identifier_id < 0 || keyword_id < 0) return;
   let namespace_id = token_types.indexOf("namespace");
   if (namespace_id < 0) {
@@ -1250,10 +1311,8 @@ const promote_js_namespaces_fn: ClaimFn = (input, tokens, token_types, sink) => 
     // namespace binding. same shape after the keyword, so both branches
     // share the lookahead.
     if (kw === "import" || kw === "export") {
-      const j = view.next_non_trivia(i + 1);
-      if (j < 0 || view.kind_of(j) !== operator_id || view.text_of(j) !== "*") {
-        continue;
-      }
+      const j = module_star_after(view, i, operator_id, punctuation_id);
+      if (j < 0) continue;
       const as = view.next_non_trivia(j + 1);
       if (as < 0 || view.kind_of(as) !== keyword_id || view.text_of(as) !== "as") {
         continue;
