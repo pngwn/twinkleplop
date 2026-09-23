@@ -551,8 +551,13 @@ interface TypeIds {
 }
 
 const type_id_cache = new WeakMap<string[], TypeIds>();
+// the scanner sees the same token_types array at every position of a
+// stream, so remembering the last one skips the WeakMap on all but the first.
+let last_type_ids_key: string[] | null = null;
+let last_type_ids: TypeIds | null = null;
 
 function get_type_ids(token_types: string[]): TypeIds {
+  if (token_types === last_type_ids_key) return last_type_ids!;
   let ids = type_id_cache.get(token_types);
   if (ids === undefined) {
     ids = {
@@ -562,6 +567,8 @@ function get_type_ids(token_types: string[]): TypeIds {
     };
     type_id_cache.set(token_types, ids);
   }
+  last_type_ids_key = token_types;
+  last_type_ids = ids;
   return ids;
 }
 
@@ -586,10 +593,11 @@ export function scan_tagged_template(
   if (tokens[i * 3] !== identifier_id) return null;
   const tag_start = tokens[i * 3 + 1];
   const tag_end = tokens[i * 3 + 2];
-  const tag_name = input.slice(tag_start, tag_end);
+  // compare in place: slicing here allocated a string for every identifier.
   let language: LanguageFn;
-  if (tag_name === "html") language = html_default;
-  else if (tag_name === "css") language = css_default;
+  const tag_len = tag_end - tag_start;
+  if (tag_len === 4 && input.startsWith("html", tag_start)) language = html_default;
+  else if (tag_len === 3 && input.startsWith("css", tag_start)) language = css_default;
   else return null;
 
   const first_chunk = i + 1;
@@ -659,7 +667,7 @@ export function scan_tagged_template(
             language,
           };
         }
-      } else if (tk === punctuation_id && input.slice(ts, te) === "${") {
+      } else if (tk === punctuation_id && te - ts === 2 && input.startsWith("${", ts)) {
         // start of interpolation hole. Brace depth begins at 1.
         in_hole = true;
         hole_tok_start = k;
@@ -719,13 +727,18 @@ export function scan_tagged_template(
 // the scanner runs once per host token position, so the lookup must not
 // be an indexOf per call.
 const comment_id_cache = new WeakMap<string[], number>();
+let last_comment_key: string[] | null = null;
+let last_comment_id = -1;
 
 function get_comment_id(token_types: string[]): number {
+  if (token_types === last_comment_key) return last_comment_id;
   let id = comment_id_cache.get(token_types);
   if (id === undefined) {
     id = token_types.indexOf("comment");
     comment_id_cache.set(token_types, id);
   }
+  last_comment_key = token_types;
+  last_comment_id = id;
   return id;
 }
 
