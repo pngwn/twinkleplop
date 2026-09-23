@@ -2980,6 +2980,17 @@ interface CompiledRewriteState {
   compiled: CompiledRule[];
   anchor_offset: Int32Array;
   anchor_count: Uint8Array;
+  // per-anchor dispatch pre-filtered by the anchor token's last char. most
+  // rules pin `anchor_last_char`, and rejecting them one at a time was half
+  // of all rule visits. `slot_base[type]` is -1 when the type has no rules,
+  // otherwise the first of 1 slot (no rule pins a last char) or 129 slots
+  // (ascii last char 0..127, then one for non-ascii). each slot is a range of
+  // `slot_rules`, which holds rule_table indices in the original order.
+  slot_base: Int32Array;
+  slot_by_char: Uint8Array;
+  slot_start: Int32Array;
+  slot_len: Uint8Array;
+  slot_rules: Int32Array;
   rule_table: CompiledRule[];
   trivia: Uint8Array;
   program: Int32Array;
@@ -3248,6 +3259,42 @@ function compile_rewrite(
     for (const r of list) rule_table.push(r);
   }
 
+  const slot_base = new Int32Array(type_count).fill(-1);
+  const slot_by_char = new Uint8Array(type_count);
+  const slot_start_list: number[] = [];
+  const slot_len_list: number[] = [];
+  const slot_rule_list: number[] = [];
+  const push_slot = (from: number, n: number, accept: (r: CompiledRule) => boolean) => {
+    slot_start_list.push(slot_rule_list.length);
+    let len = 0;
+    for (let g = from; g < from + n; g++) {
+      if (accept(rule_table[g])) {
+        slot_rule_list.push(g);
+        len++;
+      }
+    }
+    slot_len_list.push(len);
+  };
+  for (const [anchor_id] of buckets) {
+    const from = anchor_offset[anchor_id];
+    const n = anchor_count[anchor_id];
+    slot_base[anchor_id] = slot_start_list.length;
+    let pins = false;
+    for (let g = from; g < from + n; g++) if (rule_table[g].anchor_last_char >= 0) pins = true;
+    if (!pins) {
+      push_slot(from, n, () => true);
+      continue;
+    }
+    slot_by_char[anchor_id] = 1;
+    for (let c = 0; c < 128; c++) {
+      push_slot(from, n, (r) => r.anchor_last_char < 0 || r.anchor_last_char === c);
+    }
+    push_slot(from, n, (r) => r.anchor_last_char < 0 || r.anchor_last_char >= 128);
+  }
+  const slot_start = Int32Array.from(slot_start_list);
+  const slot_len = Uint8Array.from(slot_len_list);
+  const slot_rules = Int32Array.from(slot_rule_list);
+
   const trivia = new Uint8Array(Math.max(256, scratch.length));
   if (options.trivia) {
     for (const name of options.trivia) {
@@ -3266,6 +3313,11 @@ function compile_rewrite(
     compiled,
     anchor_offset,
     anchor_count,
+    slot_base,
+    slot_by_char,
+    slot_start,
+    slot_len,
+    slot_rules,
     rule_table,
     trivia,
     program,
@@ -3485,8 +3537,11 @@ function run_rewrite_loop_claims(
 ): void {
   const count = tokens.length / 3;
   const {
-    anchor_offset,
-    anchor_count,
+    slot_base,
+    slot_by_char,
+    slot_start,
+    slot_len,
+    slot_rules,
     rule_table,
     trivia,
     program,
@@ -3535,12 +3590,18 @@ function run_rewrite_loop_claims(
   for (let i = 0; i < count; i++) {
     const type = tokens[i * 3];
     if (trivia[type]) continue;
-    const offset = anchor_offset[type];
-    if (offset < 0) continue;
-    const rcount = anchor_count[type];
+    let slot = slot_base[type];
+    if (slot < 0) continue;
+    if (slot_by_char[type] === 1) {
+      const last = input.charCodeAt(tokens[i * 3 + 2] - 1);
+      slot += last < 128 ? last : 128;
+    }
+    const rfrom = slot_start[slot];
+    const rend = rfrom + slot_len[slot];
 
-    for (let r = 0; r < rcount; r++) {
-      const rule = rule_table[offset + r];
+    for (let q = rfrom; q < rend; q++) {
+      const g = slot_rules[q];
+      const rule = rule_table[g];
       // text constraints run before the gates: a one-char trailing test
       // and the value sets are far cheaper than frame walks, and value
       // anchors on common types (punctuation `:`) reject most tokens.
@@ -3568,7 +3629,7 @@ function run_rewrite_loop_claims(
         if (frames === undefined) continue;
         if (rule.anchor_at_start && frames.at_start[i] !== 1) continue;
         if (rule.anchor_frame_kinds !== null) {
-          const wanted = resolved_kinds![offset + r]!;
+          const wanted = resolved_kinds![g]!;
           let kind: number;
           if (rule.anchor_frame_direct) {
             // direct mode: the token's innermost frame, no parent walk.
@@ -3610,9 +3671,9 @@ function run_rewrite_loop_claims(
           if ((sig & SIGNAL_TERNARY_COLON) !== rule.anchor_ternary_colon) continue;
         }
         if (flags_all_masks !== null) {
-          const all = flags_all_masks[offset + r];
+          const all = flags_all_masks[g];
           if ((sig & all) !== all) continue;
-          if ((sig & flags_none_masks![offset + r]) !== 0) continue;
+          if ((sig & flags_none_masks![g]) !== 0) continue;
         } else if (rule.anchor_flags_all !== null || rule.anchor_flags_none !== null) {
           continue;
         }
