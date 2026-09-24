@@ -1146,6 +1146,32 @@ describe("reclassifier — embedGrammars", () => {
     const text_count = enriched.token_types.filter((t) => t === "text").length;
     expect(text_count).toBe(1);
   });
+
+  test("sub languages returning a fresh names array each call remap by content", () => {
+    // equal content reuses the previous remap; the same names in another
+    // order must not.
+    let calls = 0;
+    const fresh: LanguageFn = (src) => {
+      const r = sub_language(src);
+      const names = r.token_types.slice();
+      if (calls++ !== 2) return { tokens: r.tokens, token_types: names };
+      // swap the first two names and their ids in the third embed.
+      [names[0], names[1]] = [names[1], names[0]];
+      const tokens = r.tokens.slice();
+      for (let i = 0; i < tokens.length; i += 3) {
+        if (tokens[i] <= 1) tokens[i] = 1 - tokens[i];
+      }
+      return { tokens, token_types: names };
+    };
+    // the swap only shows if word is one of the swapped ids.
+    expect(sub_language("a").token_types.indexOf("word")).toBeLessThan(2);
+    const src = "<ab><cd><ef><gh>";
+    const raw = tokenize(src, host_compiled);
+    const got = as_tokens(reclassify([embed_grammars({ raw: fresh })])(src, raw), src);
+    const want = as_tokens(reclassify([embed_grammars({ raw: sub_language })])(src, raw), src);
+    expect(calls).toBe(4);
+    expect(got).toEqual(want);
+  });
 });
 
 describe("reclassifier — capture-based rewrites", () => {
