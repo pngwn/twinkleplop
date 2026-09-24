@@ -379,6 +379,32 @@ export function tokenize(
         const token_type = transitions[t_base + 1];
         const stack_op = transitions[t_base + 2];
 
+        // tokenless self loop: the rule neither emits nor changes state, so
+        // every character of its run would take the full dispatch below only
+        // to advance pos by one. skip the run with the same stop conditions
+        // as the emitting fast path. last_token_* stay untouched because the
+        // slow path leaves them alone for tokenless rules too.
+        if (
+          transition === 65535 &&
+          stack_op === 0 &&
+          token_type === 65535 &&
+          matched_length === 0 &&
+          !is_in_probe_state &&
+          !has_failed_probes &&
+          (!boundary_rules || !boundary_rules.has(current_state * 256 + char_class)) &&
+          !(INTROSPECTION && introspector)
+        ) {
+          pos++;
+          while (pos < len) {
+            const next = input.charCodeAt(pos);
+            if (next > 127) break;
+            if (char_maps[char_map_base + next] !== char_class) break;
+            if (state_buckets !== undefined && state_buckets[next] !== null) break;
+            pos++;
+          }
+          continue;
+        }
+
         // run fast path. the three table reads above already say whether this
         // rule can change state; one that cannot is a self-loop, so the whole
         // run of characters it matches can be consumed here instead of paying
