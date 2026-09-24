@@ -705,7 +705,9 @@ export function tokenize(
 
         // check if we've reached the end while in probe mode
         // this needs to be after state transition so current_state is updated
-        if (probe_states && probe_states.has(current_state) && pos >= len && probe_entry) {
+        // the end test goes first because it is almost always false and
+        // spares the set lookup on every slow path match
+        if (pos >= len && probe_entry && probe_states && probe_states.has(current_state)) {
           // check if this probe state has a fallback
           const fallback_state = probe_fallbacks?.get(current_state);
           if (fallback_state !== undefined) {
