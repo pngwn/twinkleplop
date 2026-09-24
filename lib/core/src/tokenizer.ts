@@ -1,5 +1,6 @@
 import type { CompiledGrammar, PatternInfo, TokenizeResult } from "./types";
 import type { TokenizerIntrospector } from "./introspector";
+import { RUN_EMITTING } from "./types";
 
 // every field is set in the literal that creates an entry, and none is added
 // later: adding a property after creation moves the object to a map that only
@@ -53,7 +54,8 @@ export function tokenize(
     probe_states,
     probe_mask,
     probe_fallbacks,
-    boundary_rules,
+    boundary_flags,
+    run_kinds,
     has_seals,
     seal_flags,
     fallback_seal_flags,
@@ -343,8 +345,8 @@ export function tokenize(
         // check boundary for single-character matches if required
         if (
           matched_rule_idx === 65535 &&
-          boundary_rules &&
-          boundary_rules.has(current_state * 256 + char_class)
+          boundary_flags !== undefined &&
+          boundary_flags[(current_state << 8) + char_class] === 1
         ) {
           // this is a single-char match that requires boundary checking
           if (pos + 1 < len) {
@@ -374,33 +376,26 @@ export function tokenize(
       }
 
       if (char_class !== 65535) {
-        const t_base = trans_base3 + char_class * 3;
-        const transition = transitions[t_base];
-        const token_type = transitions[t_base + 1];
-        const stack_op = transitions[t_base + 2];
-
-        // run fast path. the three table reads above already say whether this
-        // rule can change state; one that cannot is a self-loop, so the whole
-        // run of characters it matches can be consumed here instead of paying
-        // a full dispatch per character. string bodies, comment bodies,
-        // identifier runs and digit runs are all this shape, which is why a
-        // hand-written lexer's inner loops beat the table walk.
+        // run fast path. a rule that cannot change state is a self loop, so
+        // the whole run of characters it matches can be consumed here instead
+        // of paying a full dispatch per character. string bodies, comment
+        // bodies, identifier runs and digit runs are all this shape, which is
+        // why a hand written lexer's inner loops beat the table walk. run_kinds
+        // folds every static condition of this path into one byte at compile
+        // time, so a match that cannot take it pays a single load, and the
+        // transition reads below wait until the slow path needs them.
         //
         // the run stops at a character that maps to a different rule, at a
-        // character that begins one of this state's multi-char patterns (the
+        // character that begins one of this state's multi char patterns (the
         // bucket is consulted before the char map, so it would have won), and
-        // at non-ascii (the fallback path owns those).
+        // at non ascii (the fallback path owns those).
         if (
-          transition === 65535 &&
-          stack_op === 0 &&
-          token_type !== 65535 &&
+          run_kinds[(current_state << 8) + char_class] === RUN_EMITTING &&
           matched_length === 0 &&
-          !is_in_probe_state &&
           !has_failed_probes &&
-          (!has_seals || !seal_flags![current_state * 256 + char_class]) &&
-          (!boundary_rules || !boundary_rules.has(current_state * 256 + char_class)) &&
           !(INTROSPECTION && introspector)
         ) {
+          const token_type = transitions[trans_base3 + char_class * 3 + 1];
           if (token_type === last_token_type && pos === last_token_end) {
             pos++;
           } else {
@@ -422,6 +417,11 @@ export function tokenize(
           last_token_end = pos;
           continue;
         }
+
+        const t_base = trans_base3 + char_class * 3;
+        const transition = transitions[t_base];
+        const token_type = transitions[t_base + 1];
+        const stack_op = transitions[t_base + 2];
 
         // determine target state
         let target_state = current_state;

@@ -1,4 +1,5 @@
 import type { Grammar, CompiledGrammar, PatternInfo, GrammarState, GrammarRule } from "./types";
+import { RUN_EMITTING } from "./types";
 import {
   ASCII,
   DIGIT,
@@ -555,6 +556,34 @@ export function compile(grammar: Grammar): CompiledGrammar {
     probe_mask[id] = 1;
   });
 
+  // the tokenizer reads this per matched char, a typed array load is cheaper
+  // than hashing into the set. the set stays for tooling.
+  let boundary_flags: Uint8Array | undefined;
+  if (boundary_rules.size > 0) {
+    boundary_flags = new Uint8Array(state_names.length * max_rules);
+    for (const key of boundary_rules) boundary_flags[key] = 1;
+  }
+
+  // one byte per (state, rule) says whether a match can take the run fast
+  // path in the tokenizer. every static condition of that path is folded in
+  // here (no state change, no push or pop, emits a token, not a probe state,
+  // no seal, no boundary) so the hot loop tests one load instead of seven
+  // conditions per match. only real rule slots are visited.
+  const run_kinds = new Uint8Array(state_names.length * max_rules);
+  for (const name of state_names) {
+    const state_id = state_map.get(name)!;
+    if (probe_mask[state_id] === 1) continue;
+    const rule_count = processed_grammar.states[name].rules?.length ?? 0;
+    for (let rule_idx = 0; rule_idx < rule_count; rule_idx++) {
+      const key = state_id * max_rules + rule_idx;
+      const t_base = key * 3;
+      if (transitions[t_base] !== 65535 || transitions[t_base + 2] !== 0) continue;
+      if (transitions[t_base + 1] === 65535) continue;
+      if (seal_flags[key] === 1 || boundary_flags?.[key] === 1) continue;
+      run_kinds[key] = RUN_EMITTING;
+    }
+  }
+
   // order does not matter: overlapping ranges are rejected above, so at most
   // one entry can match a given codepoint whatever order the scan takes.
   const non_ascii_ranges = new Map<number, Int32Array>();
@@ -575,6 +604,8 @@ export function compile(grammar: Grammar): CompiledGrammar {
     probe_mask,
     probe_fallbacks: probe_fallbacks,
     boundary_rules: boundary_rules.size > 0 ? boundary_rules : undefined,
+    boundary_flags,
+    run_kinds,
     has_seals,
     seal_flags: has_seals ? seal_flags : undefined,
     fallback_seal_flags: has_seals ? fallback_seal_flags : undefined,
