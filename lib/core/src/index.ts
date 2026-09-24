@@ -50,6 +50,8 @@ export {
   promote_function_calls,
 } from "./fidelity";
 export type { FunctionCallVariants } from "./fidelity";
+export { compile_word_table, word_table_get } from "./word_table";
+export type { WordTable } from "./word_table";
 export * from "./types";
 export * from "./dsl";
 export { build_annotation_extractor } from "./annotation";

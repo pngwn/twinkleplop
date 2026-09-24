@@ -10,7 +10,7 @@
 // the sets below are a permissive union across postgresql, mysql, sqlite,
 // and transact-sql. see RESEARCH.md for the dialect-by-dialect breakdown.
 
-import { promote_function_calls, tag } from "@twinkleplop/core";
+import { compile_word_table, promote_function_calls, tag, word_table_get } from "@twinkleplop/core";
 import type { LanguagePipeline, Reclassifier } from "@twinkleplop/core";
 
 const TYPE_TOKEN = "type";
@@ -470,6 +470,13 @@ const KEYWORD_WORDS = new Set([
 // source text starts with a quote character (", `, or [). we skip those.
 // ---------------------------------------------------------------------------
 
+// group order matches the lookup order the sets had: boolean, then type,
+// then keyword.
+const SQL_WORDS = compile_word_table([BOOLEAN_WORDS, TYPE_WORDS, KEYWORD_WORDS], { fold: true });
+const WORD_BOOLEAN = 1;
+const WORD_TYPE = 2;
+const WORD_KEYWORD = 3;
+
 const keyword_reclassifier: Reclassifier = (input, result) => {
   const { tokens, token_types } = result;
   const n = tokens.length / 3;
@@ -503,12 +510,12 @@ const keyword_reclassifier: Reclassifier = (input, result) => {
     // plus all lowercase letters. these would never be keywords anyway,
     // but the guard avoids false positives if someone names a keyword
     // with a leading underscore.
-    const text = input.slice(start, end).toLowerCase();
-    if (BOOLEAN_WORDS.has(text)) {
+    const word = word_table_get(SQL_WORDS, input, start, end);
+    if (word === WORD_BOOLEAN) {
       tokens[i * 3] = boolean_id;
-    } else if (TYPE_WORDS.has(text)) {
+    } else if (word === WORD_TYPE) {
       tokens[i * 3] = type_id;
-    } else if (KEYWORD_WORDS.has(text)) {
+    } else if (word === WORD_KEYWORD) {
       tokens[i * 3] = keyword_id;
     }
   }
