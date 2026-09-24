@@ -20,9 +20,16 @@ interface ProbeEntry {
 
 declare const INTROSPECTION: boolean;
 
-// one 4k page worth of Uint32 slots. below this there is nothing worth
-// reclaiming from the scan scratch buffer and the copy is pure cost.
-const MIN_RECLAIMED_SLOTS = 1024;
+// token and state stack scratch shared by every tokenize call. allocating a
+// zeroed typed array per call was most of the fixed cost of a short input,
+// which every embedded fragment pays again. tokenize never calls back into
+// user code while it holds them (the introspector path gets its own), so a
+// call cannot be re-entered and one pair is enough. the token buffer grows
+// geometrically but a single input that needs more than a million slots
+// gets a buffer of its own, so one huge input does not stay pinned.
+const MAX_RETAINED_TOKEN_SLOTS = 1 << 20;
+let scratch_tokens = new Uint32Array(4096);
+const SCRATCH_STATE_STACK = new Uint16Array(256);
 
 // stands in for the fallback rule index in probe keys, a range rule never matches where the fallback does
 const FALLBACK_RULE = 255;
@@ -36,6 +43,14 @@ function is_identifier_char(char_code: number): boolean {
     char_code === 95 || // _
     char_code === 36 // $
   );
+}
+
+function scratch_token_buffer(slots: number): Uint32Array {
+  if (slots <= scratch_tokens.length) return scratch_tokens;
+  if (slots > MAX_RETAINED_TOKEN_SLOTS) return new Uint32Array(slots);
+  const grown = Math.max(slots, scratch_tokens.length * 2);
+  scratch_tokens = new Uint32Array(Math.min(grown, MAX_RETAINED_TOKEN_SLOTS));
+  return scratch_tokens;
 }
 
 export function tokenize(
@@ -60,10 +75,11 @@ export function tokenize(
   } = compiled_grammar;
 
   const len = input.length;
-  const tokens = new Uint32Array(len * 3);
+  const tokens = introspector === null ? scratch_token_buffer(len * 3) : new Uint32Array(len * 3);
   let token_count = 0;
 
-  const state_stack = new Uint16Array(256);
+  // stale entries are never read: every read is below a stack_ptr this call wrote
+  const state_stack = introspector === null ? SCRATCH_STATE_STACK : new Uint16Array(256);
   let stack_ptr = 0;
   let current_state = 0;
 
@@ -1247,19 +1263,11 @@ export function tokenize(
   // ...) are responsible for cloning before they push new names. cloning
   // here penalised every tokenize call, including reclassifier-free ones.
   //
-  // copy out rather than returning a view. the scratch buffer is sized at
-  // 3 slots per input character but real grammars fill 13-15% of it, so a
-  // subarray keeps 12 bytes per input character reachable for as long as the
-  // caller holds the result. a consumer that highlights many blocks and keeps
-  // the streams pays that on every one.
-  //
-  // the copy costs one allocation, which is measurable on inputs small enough
-  // that the whole call is a microsecond, so keep the view when the memory it
-  // pins is under a page and reclaiming it would not return anything to the
-  // allocator anyway.
+  // always copy out: the scratch buffer is reused by the next call, and real
+  // grammars fill only 13 to 15% of its 3 slots per input character anyway.
   const used = token_count * 3;
   return {
-    tokens: len * 3 - used > MIN_RECLAIMED_SLOTS ? tokens.slice(0, used) : tokens.subarray(0, used),
+    tokens: tokens.slice(0, used),
     token_types,
   };
 }
