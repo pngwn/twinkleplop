@@ -1252,6 +1252,17 @@ export interface EmbedInterleavedConfig {
    * "neutral" for the sub-language's tokenizer. Default: " ".
    */
   hole_char?: string;
+  /**
+   * token type names a group can start on, when set scan only runs on tokens
+   * of these types so it must return null everywhere else, types missing
+   * from the stream are ignored
+   */
+  trigger_types?: string[];
+  /**
+   * whole input precheck, false skips the pass so it must be true for every
+   * input scan could find a group in
+   */
+  may_match?: (input: string) => boolean;
 }
 
 // Introspector types

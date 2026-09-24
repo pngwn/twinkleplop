@@ -1822,6 +1822,57 @@ describe("reclassifier — embed_interleaved", () => {
     expect(runs[0]).toMatchObject({ value: "ab", start: 4, end: 6 });
     expect(runs[1]).toMatchObject({ value: "cd", start: 9, end: 11 });
   });
+
+  test("trigger_types only calls scan on trigger tokens, output unchanged", () => {
+    const src = "abTAG[a<H>b]cdTAG[c]";
+    const raw = tokenize(src, interleaved_host_compiled);
+    const seen: string[] = [];
+    const scan: GroupScanFn = (tokens, input, i, token_types) => {
+      seen.push(token_types[tokens[i * 3]]);
+      return scan_interleaved(tokens, input, i, token_types);
+    };
+    const result = reclassify([
+      embed_interleaved({ scan, language: interleaved_sub_lang, trigger_types: ["tag"] }),
+    ])(src, raw);
+    expect(new Set(seen)).toEqual(new Set(["tag"]));
+    expect(as_tokens(result, src)).toEqual(as_tokens(run_interleaved(src), src));
+  });
+
+  test("trigger_types absent from the stream skip the pass", () => {
+    const src = "TAG[ab]";
+    const raw = tokenize(src, interleaved_host_compiled);
+    let calls = 0;
+    const scan: GroupScanFn = (tokens, input, i, token_types) => {
+      calls++;
+      return scan_interleaved(tokens, input, i, token_types);
+    };
+    const result = reclassify([
+      embed_interleaved({ scan, language: interleaved_sub_lang, trigger_types: ["missing"] }),
+    ])(src, raw);
+    expect(calls).toBe(0);
+    expect(result).toBe(raw);
+  });
+
+  test("may_match returning false skips the pass", () => {
+    const src = "TAG[ab]";
+    const raw = tokenize(src, interleaved_host_compiled);
+    const skipped = reclassify([
+      embed_interleaved({
+        scan: scan_interleaved,
+        language: interleaved_sub_lang,
+        may_match: () => false,
+      }),
+    ])(src, raw);
+    expect(skipped).toBe(raw);
+    const kept = reclassify([
+      embed_interleaved({
+        scan: scan_interleaved,
+        language: interleaved_sub_lang,
+        may_match: (input) => input.includes("TAG["),
+      }),
+    ])(src, raw);
+    expect(as_tokens(kept, src)).toEqual(as_tokens(run_interleaved(src), src));
+  });
 });
 
 // -----------------------------------------------------------------------------
