@@ -72,24 +72,39 @@ export function compound_compose(config: CompoundComposeConfig): Reclassifier {
     const stack: string[] = [];
     let last_end = 0;
 
+    // marker lookups by type id. every input token id is below this length,
+    // so a dense array answers what the two maps answered, per token.
+    const base_count = new_token_types.length;
+    const open_by_id: (string | undefined)[] = new Array(base_count).fill(undefined);
+    const close_by_id: (string | undefined)[] = new Array(base_count).fill(undefined);
+    for (const [id, name] of styles.by_open_id) open_by_id[id] = name;
+    for (const [id, name] of styles.by_close_id) close_by_id[id] = name;
+    // interning a base name gives back its own id unless the vocabulary
+    // repeats a name, where the last copy wins. only then does a token
+    // outside every style need the lookup.
+    const unique_names = type_index.size === base_count;
+    // first newline at or after the position it was searched from. it stays
+    // the answer for last_end until last_end passes it, since last_end only
+    // grows. it starts behind every position so the first check searches.
+    let next_nl = -2;
+
     for (let i = 0; i < tokens.length; i += 3) {
       const old_type_id = tokens[i];
-      const old_type = new_token_types[old_type_id];
       const start = tokens[i + 1];
       const end = tokens[i + 2];
 
       if (config.auto_pop_on_newline && stack.length > 0) {
-        const nl = input.indexOf("\n", last_end);
-        if (nl !== -1 && nl < start) {
+        if (next_nl !== -1 && next_nl < last_end) next_nl = input.indexOf("\n", last_end);
+        if (next_nl !== -1 && next_nl < start) {
           stack.length = 0;
         }
       }
 
-      let new_type: string;
-      const open_style = styles.by_open_id.get(old_type_id);
-      const close_style = styles.by_close_id.get(old_type_id);
+      const open_style = open_by_id[old_type_id];
+      const close_style = open_style === undefined ? close_by_id[old_type_id] : undefined;
 
       if (open_style !== undefined) {
+        let new_type: string;
         const existing_idx = stack.lastIndexOf(open_style);
         if (existing_idx !== -1) {
           // grammar leaked a frame -- treat this "open" as a close down
@@ -100,15 +115,18 @@ export function compound_compose(config: CompoundComposeConfig): Reclassifier {
           stack.push(open_style);
           new_type = stack.join(config.join_separator);
         }
+        new_tokens[i] = intern(new_type);
       } else if (close_style !== undefined) {
-        new_type = stack.join(config.join_separator);
+        const new_type = stack.join(config.join_separator);
         const idx = stack.lastIndexOf(close_style);
         if (idx !== -1) stack.length = idx;
+        new_tokens[i] = intern(new_type);
+      } else if (stack.length === 0 && unique_names) {
+        new_tokens[i] = old_type_id;
       } else {
-        new_type = compose_with(stack, old_type);
+        new_tokens[i] = intern(compose_with(stack, new_token_types[old_type_id]));
       }
 
-      new_tokens[i] = intern(new_type);
       new_tokens[i + 1] = start;
       new_tokens[i + 2] = end;
       last_end = end;
