@@ -2846,6 +2846,10 @@ class ClaimBuffer implements ClaimSink {
 // the parallel arrays every call. safe because reclassify is synchronous
 // and never nested (pipeline entries run sequentially).
 const shared_sink = new ClaimBuffer();
+// sinks for the unbatched apply path. allocating one per call cost three
+// off-heap typed arrays, which dominated short inputs. a pool rather than
+// one spare keeps reentrant calls on separate sinks.
+const sink_pool: ClaimBuffer[] = [];
 
 // module-scope winner-table scratch reused across merges. claim batches
 // flush once per pipeline run, and with most passes claim-producing the
@@ -3504,9 +3508,11 @@ export function rewrite_types(
     const state = get_state(result.token_types);
     // local sink — apply_fn may be called reentrantly while the shared
     // sink is in use by an outer batch.
-    const sink = new ClaimBuffer(256);
+    const sink = sink_pool.pop() ?? new ClaimBuffer(256);
+    sink.reset();
     collect(input, tokens, token_types, state, sink, result.frames);
     merge_and_apply_buffer(tokens, sink);
+    sink_pool.push(sink);
     return { tokens, token_types, frames: result.frames };
   };
 
@@ -4521,9 +4527,11 @@ export function as_claim_producer(claim_fn: ClaimFn): ClaimingReclassifier {
   const apply_fn: Reclassifier = (input, result) => {
     const tokens = new Uint32Array(result.tokens);
     const token_types = result.token_types.slice();
-    const sink = new ClaimBuffer(256);
+    const sink = sink_pool.pop() ?? new ClaimBuffer(256);
+    sink.reset();
     claim_fn(input, tokens, token_types, sink, result.frames);
     merge_and_apply_buffer(tokens, sink);
+    sink_pool.push(sink);
     return { tokens, token_types, frames: result.frames };
   };
   const fn = apply_fn as ClaimingReclassifier;

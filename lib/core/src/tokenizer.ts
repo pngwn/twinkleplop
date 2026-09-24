@@ -38,6 +38,13 @@ function is_identifier_char(char_code: number): boolean {
   );
 }
 
+// typed arrays over 64 bytes get an off-heap backing store, which costs
+// several microseconds to allocate. that was most of the fixed cost of a
+// call on short inputs, so the state stack is reused. a pool rather than one
+// shared stack keeps a nested call safe. every read is below stack_ptr, so
+// stale contents from an earlier call are never seen.
+const stack_pool: Uint16Array[] = [];
+
 export function tokenize(
   input: string,
   compiled_grammar: CompiledGrammar,
@@ -63,7 +70,7 @@ export function tokenize(
   const tokens = new Uint32Array(len * 3);
   let token_count = 0;
 
-  const state_stack = new Uint16Array(256);
+  const state_stack = stack_pool.pop() ?? new Uint16Array(256);
   let stack_ptr = 0;
   let current_state = 0;
 
@@ -1241,6 +1248,8 @@ export function tokenize(
     });
   }
   // INTROSPECTION_END
+
+  stack_pool.push(state_stack);
 
   // return token_types by reference. reclassifiers that mutate the array
   // (promote_by_text_set, interface_member_promoter, class_name_promoter,
