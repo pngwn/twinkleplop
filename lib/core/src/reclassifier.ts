@@ -3950,19 +3950,25 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
       return id;
     };
 
-    // build a per-embed remap: sub_type_id -> merged_type_id. cache by sub
-    // token_types reference so repeated embeds of the same language reuse
-    // one remap table (which also catches cached languages returning the
-    // same token_types array).
-    const remap_cache = new WeakMap<string[], Uint32Array>();
+    // keyed by content since every sub pipeline call returns a freshly sliced
+    // vocabulary whose names repeat embed to embed
+    const remap_keys: string[][] = [];
+    const remap_vals: Uint32Array[] = [];
     const remap_for = (sub_types: string[]): Uint32Array => {
-      let remap = remap_cache.get(sub_types);
-      if (remap) return remap;
-      remap = new Uint32Array(sub_types.length);
+      outer: for (let c = remap_keys.length - 1; c >= 0; c--) {
+        const key = remap_keys[c];
+        if (key.length !== sub_types.length) continue;
+        for (let k = 0; k < key.length; k++) {
+          if (key[k] !== sub_types[k]) continue outer;
+        }
+        return remap_vals[c];
+      }
+      const remap = new Uint32Array(sub_types.length);
       for (let i = 0; i < sub_types.length; i++) {
         remap[i] = ensure_id(sub_types[i]);
       }
-      remap_cache.set(sub_types, remap);
+      remap_keys.push(sub_types);
+      remap_vals.push(remap);
       return remap;
     };
 
