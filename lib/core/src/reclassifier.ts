@@ -12,6 +12,7 @@
 
 import { build_annotation_extractor } from "./annotation";
 import { debug_enabled, warn_once } from "./debug";
+import { fuse_ident_producers } from "./fidelity";
 import { tokenize } from "./tokenizer";
 import { FRAME_BRACKET_BRACE, FRAME_KIND_TOP, SIGNAL_TERNARY_COLON } from "./types";
 import type {
@@ -4422,12 +4423,12 @@ function plan_pipeline(pipeline: ReclassifierPipeline): PipelineStep[] {
       continue;
     }
     if (batch.length > 0) {
-      steps.push({ batch, fn: null });
+      steps.push({ batch: fuse_ident_producers(batch), fn: null });
       batch = [];
     }
     steps.push({ batch: null, fn });
   }
-  if (batch.length > 0) steps.push({ batch, fn: null });
+  if (batch.length > 0) steps.push({ batch: fuse_ident_producers(batch), fn: null });
   return steps;
 }
 
