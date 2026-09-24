@@ -58,7 +58,10 @@ export function merge_adjacent(config: MergeAdjacentConfig): Reclassifier {
     }
 
     const count = old_tokens.length / 3;
-    const out: number[] = [];
+    // merging only ever shortens the stream, so the input length is an upper
+    // bound and the output can be written in place without a growing array
+    const out = new Uint32Array(old_tokens.length);
+    let w = 0;
     for (let i = 0; i < count; i++) {
       const base = i * 3;
       const tid = old_tokens[base];
@@ -91,16 +94,21 @@ export function merge_adjacent(config: MergeAdjacentConfig): Reclassifier {
           }
           if (!refused) {
             const merged_end = old_tokens[(i + 1) * 3 + 2];
-            out.push(result_id, start, merged_end);
+            out[w++] = result_id;
+            out[w++] = start;
+            out[w++] = merged_end;
             i++;
             continue;
           }
         }
       }
 
-      out.push(tid, start, end);
+      out[w++] = tid;
+      out[w++] = start;
+      out[w++] = end;
     }
 
-    return { tokens: new Uint32Array(out), token_types: new_types };
+    // a view rather than a copy: each merge leaves only three unused slots
+    return { tokens: out.subarray(0, w), token_types: new_types };
   };
 }
