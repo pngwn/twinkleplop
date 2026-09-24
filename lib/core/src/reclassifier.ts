@@ -2846,10 +2846,6 @@ class ClaimBuffer implements ClaimSink {
 // the parallel arrays every call. safe because reclassify is synchronous
 // and never nested (pipeline entries run sequentially).
 const shared_sink = new ClaimBuffer();
-// sinks for the unbatched apply path. allocating one per call cost three
-// off-heap typed arrays, which dominated short inputs. a pool rather than
-// one spare keeps reentrant calls on separate sinks.
-const sink_pool: ClaimBuffer[] = [];
 
 // module-scope winner-table scratch reused across merges. claim batches
 // flush once per pipeline run, and with most passes claim-producing the
@@ -2886,6 +2882,31 @@ function merge_and_apply_buffer(tokens: Uint32Array, buf: ClaimBuffer): void {
   for (let i = 0; i < token_count; i++) {
     const t = winner_type[i];
     if (t !== -1) tokens[i * 3] = t;
+  }
+}
+
+// one sink per nesting depth, a user ClaimFn may run another apply mode
+// producer inside its own run
+const apply_sinks: ClaimBuffer[] = [];
+let apply_depth = 0;
+
+// the ClaimFn contract forbids mutating token slots, so the token copy waits
+// until a claim fires
+function apply_claims(claim_fn: ClaimFn, input: string, result: TokenizeResult): TokenizeResult {
+  if (apply_depth === apply_sinks.length) apply_sinks.push(new ClaimBuffer(256));
+  const sink = apply_sinks[apply_depth++];
+  sink.reset();
+  const token_types = result.token_types.slice();
+  try {
+    claim_fn(input, result.tokens, token_types, sink, result.frames);
+    if (sink.count === 0) {
+      return { tokens: result.tokens, token_types, frames: result.frames };
+    }
+    const tokens = new Uint32Array(result.tokens);
+    merge_and_apply_buffer(tokens, sink);
+    return { tokens, token_types, frames: result.frames };
+  } finally {
+    apply_depth--;
   }
 }
 
@@ -3502,24 +3523,12 @@ export function rewrite_types(
     run_rewrite_loop_claims(input, tokens, token_types, state, remap, sink, frames);
   }
 
-  const apply_fn: Reclassifier = (input, result) => {
-    const tokens = new Uint32Array(result.tokens);
-    const token_types = result.token_types.slice();
-    const state = get_state(result.token_types);
-    // local sink — apply_fn may be called reentrantly while the shared
-    // sink is in use by an outer batch.
-    const sink = sink_pool.pop() ?? new ClaimBuffer(256);
-    sink.reset();
-    collect(input, tokens, token_types, state, sink, result.frames);
-    merge_and_apply_buffer(tokens, sink);
-    sink_pool.push(sink);
-    return { tokens, token_types, frames: result.frames };
-  };
-
   const claim_fn: ClaimFn = (input, tokens, token_types, sink, frames) => {
     const state = get_state(token_types);
     collect(input, tokens, token_types, state, sink, frames);
   };
+
+  const apply_fn: Reclassifier = (input, result) => apply_claims(claim_fn, input, result);
 
   const fn = apply_fn as ClaimingReclassifier;
   fn.__claim = claim_fn;
@@ -4515,8 +4524,9 @@ export function always(reclassifier: Reclassifier, layer: ReclassifierLayer): Ta
 
 /**
  * wrap a raw ClaimFn into a ClaimingReclassifier — callable as a plain
- * Reclassifier (apply mode: clone tokens+token_types, run claim_fn, merge
- * by precedence, apply) and also exposes a `__claim` method so the
+ * Reclassifier, apply mode clones token_types, runs claim_fn, merges by
+ * precedence and copies tokens only when a claim fired, and also exposes
+ * a __claim method so the
  * pipeline runner can batch this pass alongside other claim producers.
  *
  * apply mode runs merge_claims before applying so a single pass that
@@ -4524,16 +4534,7 @@ export function always(reclassifier: Reclassifier, layer: ReclassifierLayer): Ta
  * emit at most one per position) produces deterministic output.
  */
 export function as_claim_producer(claim_fn: ClaimFn): ClaimingReclassifier {
-  const apply_fn: Reclassifier = (input, result) => {
-    const tokens = new Uint32Array(result.tokens);
-    const token_types = result.token_types.slice();
-    const sink = sink_pool.pop() ?? new ClaimBuffer(256);
-    sink.reset();
-    claim_fn(input, tokens, token_types, sink, result.frames);
-    merge_and_apply_buffer(tokens, sink);
-    sink_pool.push(sink);
-    return { tokens, token_types, frames: result.frames };
-  };
+  const apply_fn: Reclassifier = (input, result) => apply_claims(claim_fn, input, result);
   const fn = apply_fn as ClaimingReclassifier;
   fn.__claim = claim_fn;
   return fn;
