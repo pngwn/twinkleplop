@@ -6,7 +6,7 @@
 // and a set of negatives that must NOT be rewritten.
 
 import { describe, it, expect } from "vitest";
-import { tokenize as make_language } from "./index.js";
+import { may_embed_groups, tokenize as make_language } from "./index.js";
 
 const language = make_language();
 
@@ -1043,5 +1043,19 @@ describe("JavaScript reclassifier — export * as namespace", () => {
       fidelity: "low",
     });
     expect(pick(tokens, "utils")).toBe("identifier");
+  });
+});
+
+describe("may_embed_groups", () => {
+  it("is true when a tag and its template are split by dropped characters", () => {
+    expect(may_embed_groups("x = html`<b></b>`")).toBe(true);
+    expect(may_embed_groups("x = css \n`a {}`")).toBe(true);
+    expect(may_embed_groups('x = html"`<b></b>`')).toBe(true);
+    expect(may_embed_groups("/** @param a */")).toBe(true);
+  });
+
+  it("is false without a doc comment or a tagged template", () => {
+    expect(may_embed_groups("const a = `x ${b}`; /* c */ // html")).toBe(false);
+    expect(may_embed_groups("styled.div`a {}`")).toBe(false);
   });
 });

@@ -1374,6 +1374,40 @@ export function scan_embedded_groups(
   );
 }
 
+// the token types scan_embedded_groups can return a group on.
+export const EMBEDDED_GROUP_TRIGGERS = ["identifier", "comment"];
+
+function is_ascii_word_char(code: number): boolean {
+  return (
+    (code >= 0x61 && code <= 0x7a) ||
+    (code >= 0x41 && code <= 0x5a) ||
+    (code >= 0x30 && code <= 0x39) ||
+    code === 0x5f ||
+    code === 0x24
+  );
+}
+
+/**
+ * cheap whole input test that is true whenever scan_embedded_groups could
+ * find a group: a doc comment opener, or a backtick whose nearest word
+ * before it ends in `html` or `css`. most sources have neither, and then
+ * the embed pass skips its token walk entirely.
+ */
+export function may_embed_groups(input: string): boolean {
+  if (input.includes("/**")) return true;
+  let tick = input.indexOf("`");
+  while (tick !== -1) {
+    // the grammar drops some characters without emitting a token, so a tag
+    // and its template are adjacent tokens across more than whitespace.
+    // skipping every non word character keeps this a superset.
+    let end = tick;
+    while (end > 0 && !is_ascii_word_char(input.charCodeAt(end - 1))) end--;
+    if (input.startsWith("css", end - 3) || input.startsWith("html", end - 4)) return true;
+    tick = input.indexOf("`", tick + 1);
+  }
+  return false;
+}
+
 export const reclassifiers: LanguagePipeline = [
   // frame_track first: every subsequent claim reclassifier that needs
   // scope-aware data reads from `result.frames`. languages that reuse
@@ -1406,5 +1440,12 @@ export const reclassifiers: LanguagePipeline = [
   tag(promote_js_namespaces, ["namespace"]),
   // tagged templates and doc comments are both embeds, so they run at
   // every fidelity setting -- same rule as CSS inside a `<style>` tag.
-  always(embed_interleaved({ scan: scan_embedded_groups }), "embed"),
+  always(
+    embed_interleaved({
+      scan: scan_embedded_groups,
+      trigger_types: EMBEDDED_GROUP_TRIGGERS,
+      may_match: may_embed_groups,
+    }),
+    "embed",
+  ),
 ];

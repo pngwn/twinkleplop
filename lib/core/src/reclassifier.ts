@@ -4047,7 +4047,9 @@ const MAX_EMBED_ITERATIONS = 16;
 
 export function embed_interleaved(config: EmbedInterleavedConfig): Reclassifier {
   const hole_char = config.hole_char ?? " ";
+  const may_match = config.may_match;
   return (input: string, result: TokenizeResult): TokenizeResult => {
+    if (may_match !== undefined && !may_match(input)) return result;
     // iterate the single-pass transform until it reaches a fixed point.
     //
     // why iterate: the scan loop advances past each matched group via
@@ -4081,6 +4083,21 @@ function embed_interleaved_once(
   const host_tokens = result.tokens;
   const host_types = result.token_types;
   const host_count = host_tokens.length / 3;
+
+  // resolved per pass, not per transform: a pass that finds a group
+  // extends token_types, so the next pass sees a different array.
+  let triggers: Uint8Array | null = null;
+  if (config.trigger_types !== undefined) {
+    triggers = new Uint8Array(host_types.length);
+    let any_trigger = false;
+    for (const name of config.trigger_types) {
+      const id = host_types.indexOf(name);
+      if (id < 0) continue;
+      triggers[id] = 1;
+      any_trigger = true;
+    }
+    if (!any_trigger) return result;
+  }
 
   // the vocabulary merge is deferred until a group is actually found.
   // every host stream without an embedded region pays this function, and
@@ -4130,6 +4147,12 @@ function embed_interleaved_once(
   let new_count = host_count;
   let i = 0;
   while (i < host_count) {
+    // most tokens cannot start a group, and a type test is far cheaper
+    // than a call into the scanner.
+    if (triggers !== null && triggers[host_tokens[i * 3]] === 0) {
+      i++;
+      continue;
+    }
     const desc = config.scan(host_tokens, input, i, token_types);
     if (desc === null) {
       i++;
@@ -4188,12 +4211,12 @@ function embed_interleaved_once(
       host_idx = g.token_end;
       continue;
     }
-    const base = host_idx * 3;
-    tokens[write_idx * 3] = host_tokens[base];
-    tokens[write_idx * 3 + 1] = host_tokens[base + 1];
-    tokens[write_idx * 3 + 2] = host_tokens[base + 2];
-    write_idx++;
-    host_idx++;
+    // copy the untouched host run up to the next group in one block.
+    const next_start = group_idx < groups.length ? groups[group_idx].token_start : host_count;
+    const run_end = next_start > host_idx ? next_start : host_count;
+    tokens.set(host_tokens.subarray(host_idx * 3, run_end * 3), write_idx * 3);
+    write_idx += run_end - host_idx;
+    host_idx = run_end;
   }
 
   return {

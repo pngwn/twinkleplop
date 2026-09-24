@@ -37,7 +37,9 @@ import {
   class_name_promoter,
   classify_reserved_names,
   function_variable_rules,
+  EMBEDDED_GROUP_TRIGGERS,
   js_frame_spec,
+  may_embed_groups,
   promote_boolean_literals,
   promote_call_site_functions,
   promote_js_const_bindings,
@@ -1032,5 +1034,12 @@ export const reclassifiers: LanguagePipeline = [
   always(retag_generic_angles, "shape"),
   // tagged templates and doc comments are both embeds, so they run at
   // every fidelity setting -- same rule as CSS inside a `<style>` tag.
-  always(embed_interleaved({ scan: scan_embedded_groups }), "embed"),
+  always(
+    embed_interleaved({
+      scan: scan_embedded_groups,
+      trigger_types: EMBEDDED_GROUP_TRIGGERS,
+      may_match: may_embed_groups,
+    }),
+    "embed",
+  ),
 ];
