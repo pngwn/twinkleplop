@@ -1,7 +1,7 @@
 # Cross-library comparison
 
 Produces the JSON the website's benchmark page renders: twinkleplop against
-Shiki (both engines), Prism and sugar-high, every language, three input sizes,
+Shiki (both engines), Prism, sugar-high and speed-highlight, every language, three input sizes,
 plus the sample files Shiki benchmarks itself on. The copy the site ships is
 committed at `lib/bench/published/comparison.json`, taken on a named machine;
 see the README there for how it is regenerated.
@@ -31,10 +31,15 @@ The benchmark records inputs and output counts so readers can assess the compari
 
 ## Differences between libraries
 
-- **HTML output.** Twinkleplop and Prism generate CSS classes. Shiki applies a theme
+- **HTML output.** Twinkleplop, Prism and speed-highlight generate CSS classes. Shiki applies a theme
   and generates inline styles, which requires additional string processing.
 - **Language support.** sugar-high has a JavaScript tokenizer without a language
-  argument, so it is included only in JS-family charts.
+  argument, so it is included only in JS-family charts. speed-highlight has no
+  TSX or Svelte grammar.
+- **Async APIs.** speed-highlight's public functions are async because they load
+  grammars on demand. The adapter preloads every grammar and calls its synchronous
+  `tokenizeWith`, so the measurement covers highlighting and excludes promise
+  scheduling.
 - **Setup.** Highlighters are configured once before the timed loop. The comparison
   measures repeated highlighting calls.
 
@@ -67,7 +72,7 @@ records variation between rounds for each library.
 | flag            | default                                          |
 | --------------- | ------------------------------------------------ |
 | `--arm`         | this repo root (must be built)                   |
-| `--libraries`   | `twinkleplop,shiki-wasm,shiki-js,prism,sugar-high` |
+| `--libraries`   | `twinkleplop,shiki-wasm,shiki-js,prism,sugar-high,speed-highlight` |
 | `--families`    | `sized,upstream`                                 |
 | `--languages`   | all                                              |
 | `--modes`       | `tokenize,html`                                  |

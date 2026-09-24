@@ -11,6 +11,7 @@
     "bench:corpus:upstream": "node perf/bin/fetch-upstream-corpus.mjs"
   },
   "dependencies": {
+    "@speed-highlight/core": "^2.1.0",
     "@twinkleplop/bash": "workspace:*",
     "@twinkleplop/go": "workspace:*",
     "@twinkleplop/javascript": "workspace:*",
