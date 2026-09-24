@@ -562,6 +562,16 @@ export function compile(grammar: Grammar): CompiledGrammar {
     non_ascii_ranges.set(state_id, Int32Array.from(list));
   }
 
+  // the tokenizer refreshes its per state caches on every state change, so it
+  // reads these dense copies by state id instead of paying a map lookup each
+  // time. the maps stay for tooling. filled by push so the arrays stay packed.
+  const patterns_by_state: ((PatternInfo[] | null)[] | undefined)[] = [];
+  const non_ascii_by_state: (Int32Array | undefined)[] = [];
+  for (let state_id = 0; state_id < state_names.length; state_id++) {
+    patterns_by_state.push(patterns.get(state_id));
+    non_ascii_by_state.push(non_ascii_ranges.get(state_id));
+  }
+
   return {
     states: state_map,
     transitions,
@@ -571,6 +581,8 @@ export function compile(grammar: Grammar): CompiledGrammar {
     patterns: patterns,
     fallback_transitions,
     non_ascii_ranges,
+    patterns_by_state,
+    non_ascii_by_state,
     probe_states: probe_states,
     probe_mask,
     probe_fallbacks: probe_fallbacks,

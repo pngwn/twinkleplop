@@ -47,9 +47,9 @@ export function tokenize(
     transitions,
     char_maps,
     token_types,
-    patterns,
     fallback_transitions,
-    non_ascii_ranges,
+    patterns_by_state,
+    non_ascii_by_state,
     probe_states,
     probe_mask,
     probe_fallbacks,
@@ -68,10 +68,10 @@ export function tokenize(
   let current_state = 0;
 
   // cache per-state hot references to avoid Map.get and multiplies per char
-  let state_buckets: (PatternInfo[] | null)[] | undefined = patterns && patterns.get(0);
+  let state_buckets: (PatternInfo[] | null)[] | undefined = patterns_by_state[0];
   let char_map_base: number = 0; // current_state * 128
   let trans_base3: number = 0; // (current_state * 256) * 3
-  let non_ascii_state: Int32Array | undefined = non_ascii_ranges && non_ascii_ranges.get(0 as any);
+  let non_ascii_state: Int32Array | undefined = non_ascii_by_state[0];
 
   let pos = 0;
   let prev_advanced_pos = -1;
@@ -120,10 +120,10 @@ export function tokenize(
     probe_entry = null;
 
     // refresh caches for new state
-    state_buckets = patterns && patterns.get(current_state);
+    state_buckets = patterns_by_state[current_state];
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+    non_ascii_state = non_ascii_by_state[current_state];
   }
 
   // resolves a probe left open at the end of input, true means restart the loop
@@ -219,10 +219,10 @@ export function tokenize(
     probe_entry = null;
 
     // refresh caches
-    state_buckets = patterns && patterns.get(current_state);
+    state_buckets = patterns_by_state[current_state];
     char_map_base = current_state * 128;
     trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+    non_ascii_state = non_ascii_by_state[current_state];
   }
 
   // INTROSPECTION_START
@@ -587,10 +587,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state << 7; // *128
           trans_base3 = (current_state << 8) * 3; // *256*3
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -635,10 +635,10 @@ export function tokenize(
           }
 
           // refresh caches
-          state_buckets = patterns ? patterns.get(current_state) : undefined;
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -656,10 +656,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         }
 
         // check if exiting probe state
@@ -697,10 +697,10 @@ export function tokenize(
           // INTROSPECTION_END
           probe_entry = null; // clear probe entry
           // refresh caches again in case state changed
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         }
 
         // check if we've reached the end while in probe mode
@@ -914,10 +914,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -962,10 +962,10 @@ export function tokenize(
           }
 
           // refresh caches
-          state_buckets = patterns ? patterns.get(current_state) : undefined;
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -983,10 +983,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         }
 
         // check if exiting probe state
@@ -1111,10 +1111,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -1159,10 +1159,10 @@ export function tokenize(
           }
 
           // refresh caches
-          state_buckets = patterns ? patterns.get(current_state) : undefined;
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -1180,10 +1180,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         }
 
         if (is_in_probe_state && !is_target_probe_state && probe_entry) close_probe(stack_op);
