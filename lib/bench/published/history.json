@@ -1,0 +1,1648 @@
+{
+  "entries": [
+    {
+      "version": "0.2.1",
+      "commit": "9cf688e1edfff0ea134951988cec64b4dfc0a961",
+      "commit_subject": "Merge pull request #82 from pngwn/changeset-release/main",
+      "generated_at": "2026-09-22T14:55:40.138Z",
+      "runner": "bare-metal-epyc-8024p",
+      "cpu": "AMD EPYC 8024P 8-Core Processor",
+      "node": "v22.23.2",
+      "corpus_hash": "1bd8ef683ecb5fea",
+      "anchor_stable": true,
+      "libraries": {
+        "twinkleplop": "0.2.1",
+        "shiki-wasm": "3.23.0",
+        "shiki-js": "3.23.0",
+        "prism": "1.30.0",
+        "sugar-high": "1.1.0"
+      },
+      "cells": {
+        "bash:large:tokenize": {
+          "twinkleplop": 8358010,
+          "shiki-wasm": 69217789,
+          "shiki-js": 50339085,
+          "prism": 179851922
+        },
+        "bash:large:html": {
+          "twinkleplop": 11098966,
+          "shiki-wasm": 126955037,
+          "shiki-js": 92268495,
+          "prism": 215782117
+        },
+        "bash:medium:tokenize": {
+          "twinkleplop": 636073,
+          "shiki-wasm": 7998829,
+          "shiki-js": 5872854,
+          "prism": 4638701
+        },
+        "bash:medium:html": {
+          "twinkleplop": 831835,
+          "shiki-wasm": 13147410,
+          "shiki-js": 11062455,
+          "prism": 5755769
+        },
+        "bash:small:tokenize": {
+          "twinkleplop": 53761,
+          "shiki-wasm": 2009620,
+          "shiki-js": 1476087,
+          "prism": 199350
+        },
+        "bash:small:html": {
+          "twinkleplop": 72583,
+          "shiki-wasm": 2983083,
+          "shiki-js": 2310193,
+          "prism": 331978
+        },
+        "css:large:tokenize": {
+          "twinkleplop": 3668682,
+          "shiki-wasm": 222101210,
+          "shiki-js": 80799758,
+          "prism": 6480439
+        },
+        "css:large:html": {
+          "twinkleplop": 5391460,
+          "shiki-wasm": 298664248,
+          "shiki-js": 143919406,
+          "prism": 25391564
+        },
+        "css:medium:tokenize": {
+          "twinkleplop": 374560,
+          "shiki-wasm": 25216906,
+          "shiki-js": 5974351,
+          "prism": 538101
+        },
+        "css:medium:html": {
+          "twinkleplop": 580500,
+          "shiki-wasm": 31054849,
+          "shiki-js": 12876274,
+          "prism": 1523142
+        },
+        "css:small:tokenize": {
+          "twinkleplop": 45121,
+          "shiki-wasm": 3412929,
+          "shiki-js": 794796,
+          "prism": 77611
+        },
+        "css:small:html": {
+          "twinkleplop": 69637,
+          "shiki-wasm": 4290191,
+          "shiki-js": 1862499,
+          "prism": 197894
+        },
+        "diff:large:tokenize": {
+          "twinkleplop": 1611735,
+          "shiki-wasm": 26979747,
+          "shiki-js": 11476817,
+          "prism": 2503154
+        },
+        "diff:large:html": {
+          "twinkleplop": 2599417,
+          "shiki-wasm": 48095957,
+          "shiki-js": 31542252,
+          "prism": 6847938
+        },
+        "diff:medium:tokenize": {
+          "twinkleplop": 134565,
+          "shiki-wasm": 2449210,
+          "shiki-js": 948575,
+          "prism": 219103
+        },
+        "diff:medium:html": {
+          "twinkleplop": 223558,
+          "shiki-wasm": 4209780,
+          "shiki-js": 2776887,
+          "prism": 439747
+        },
+        "diff:small:tokenize": {
+          "twinkleplop": 16687,
+          "shiki-wasm": 259968,
+          "shiki-js": 111632,
+          "prism": 15566
+        },
+        "diff:small:html": {
+          "twinkleplop": 27425,
+          "shiki-wasm": 441630,
+          "shiki-js": 303076,
+          "prism": 43836
+        },
+        "diff-basic:large:tokenize": {
+          "twinkleplop": 1979325
+        },
+        "diff-basic:large:html": {
+          "twinkleplop": 3215115
+        },
+        "diff-basic:medium:tokenize": {
+          "twinkleplop": 177912
+        },
+        "diff-basic:medium:html": {
+          "twinkleplop": 299561
+        },
+        "diff-basic:small:tokenize": {
+          "twinkleplop": 20688
+        },
+        "diff-basic:small:html": {
+          "twinkleplop": 34109
+        },
+        "go:large:tokenize": {
+          "twinkleplop": 4628500,
+          "shiki-wasm": 315629283,
+          "shiki-js": 339401430,
+          "prism": 9508219
+        },
+        "go:large:html": {
+          "twinkleplop": 7072828,
+          "shiki-wasm": 409199987,
+          "shiki-js": 420882352,
+          "prism": 40951193
+        },
+        "go:medium:tokenize": {
+          "twinkleplop": 201339,
+          "shiki-wasm": 15995302,
+          "shiki-js": 16807108,
+          "prism": 349448
+        },
+        "go:medium:html": {
+          "twinkleplop": 350474,
+          "shiki-wasm": 22251244,
+          "shiki-js": 21068515,
+          "prism": 1045850
+        },
+        "go:small:tokenize": {
+          "twinkleplop": 37114,
+          "shiki-wasm": 3516981,
+          "shiki-js": 2350896,
+          "prism": 58948
+        },
+        "go:small:html": {
+          "twinkleplop": 60957,
+          "shiki-wasm": 4180529,
+          "shiki-js": 3168870,
+          "prism": 173066
+        },
+        "html:large:tokenize": {
+          "twinkleplop": 5875415,
+          "shiki-wasm": 237673642,
+          "shiki-js": 225030897,
+          "prism": 14265216
+        },
+        "html:large:html": {
+          "twinkleplop": 7620203,
+          "shiki-wasm": 307752441,
+          "shiki-js": 280985721,
+          "prism": 49432329
+        },
+        "html:medium:tokenize": {
+          "twinkleplop": 657214,
+          "shiki-wasm": 26112798,
+          "shiki-js": 22976112,
+          "prism": 1408157
+        },
+        "html:medium:html": {
+          "twinkleplop": 846385,
+          "shiki-wasm": 32266246,
+          "shiki-js": 28594248,
+          "prism": 3090008
+        },
+        "html:small:tokenize": {
+          "twinkleplop": 71202,
+          "shiki-wasm": 2923464,
+          "shiki-js": 2643283,
+          "prism": 194395
+        },
+        "html:small:html": {
+          "twinkleplop": 99523,
+          "shiki-wasm": 3641692,
+          "shiki-js": 3679222,
+          "prism": 330477
+        },
+        "javascript:large:tokenize": {
+          "twinkleplop": 10390583,
+          "shiki-wasm": 339500889,
+          "shiki-js": 1749518924,
+          "prism": 26339455,
+          "sugar-high": 27308295
+        },
+        "javascript:large:html": {
+          "twinkleplop": 13922221,
+          "shiki-wasm": 412323980,
+          "shiki-js": 1802752183,
+          "prism": 50140395,
+          "sugar-high": 81964779
+        },
+        "javascript:medium:tokenize": {
+          "twinkleplop": 1113856,
+          "shiki-wasm": 39705251,
+          "shiki-js": 49855273,
+          "prism": 2562678,
+          "sugar-high": 2482265
+        },
+        "javascript:medium:html": {
+          "twinkleplop": 1368462,
+          "shiki-wasm": 44973096,
+          "shiki-js": 55439301,
+          "prism": 3870881,
+          "sugar-high": 6283825
+        },
+        "javascript:small:tokenize": {
+          "twinkleplop": 106423,
+          "shiki-wasm": 3255488,
+          "shiki-js": 4043092,
+          "prism": 127912,
+          "sugar-high": 184893
+        },
+        "javascript:small:html": {
+          "twinkleplop": 134200,
+          "shiki-wasm": 3648932,
+          "shiki-js": 4378945,
+          "prism": 221889,
+          "sugar-high": 470988
+        },
+        "json:large:tokenize": {
+          "twinkleplop": 2547252,
+          "shiki-wasm": 66854916,
+          "shiki-js": 53100509,
+          "prism": 8165536
+        },
+        "json:large:html": {
+          "twinkleplop": 4829932,
+          "shiki-wasm": 150454053,
+          "shiki-js": 115678226,
+          "prism": 46685996
+        },
+        "json:medium:tokenize": {
+          "twinkleplop": 224370,
+          "shiki-wasm": 6619336,
+          "shiki-js": 4861016,
+          "prism": 538666
+        },
+        "json:medium:html": {
+          "twinkleplop": 481059,
+          "shiki-wasm": 12544233,
+          "shiki-js": 11044396,
+          "prism": 1706251
+        },
+        "json:small:tokenize": {
+          "twinkleplop": 24400,
+          "shiki-wasm": 615101,
+          "shiki-js": 471455,
+          "prism": 51262
+        },
+        "json:small:html": {
+          "twinkleplop": 43321,
+          "shiki-wasm": 1406567,
+          "shiki-js": 1100628,
+          "prism": 156164
+        },
+        "markdown:large:tokenize": {
+          "twinkleplop": 3092939,
+          "shiki-wasm": 116358223,
+          "shiki-js": 271317912,
+          "prism": 110211432
+        },
+        "markdown:large:html": {
+          "twinkleplop": 4167719,
+          "shiki-wasm": 141820464,
+          "shiki-js": 289367203,
+          "prism": 127052704
+        },
+        "markdown:medium:tokenize": {
+          "twinkleplop": 354453,
+          "shiki-wasm": 17082001,
+          "shiki-js": 8030501,
+          "prism": 1145017
+        },
+        "markdown:medium:html": {
+          "twinkleplop": 479514,
+          "shiki-wasm": 23738383,
+          "shiki-js": 12764258,
+          "prism": 2714079
+        },
+        "markdown:small:tokenize": {
+          "twinkleplop": 41790,
+          "shiki-wasm": 1293289,
+          "shiki-js": 1073785,
+          "prism": 125295
+        },
+        "markdown:small:html": {
+          "twinkleplop": 54898,
+          "shiki-wasm": 1972553,
+          "shiki-js": 1747957,
+          "prism": 245878
+        },
+        "python:large:tokenize": {
+          "twinkleplop": 5955187,
+          "shiki-wasm": 327788813,
+          "shiki-js": 250743946,
+          "prism": 10728083
+        },
+        "python:large:html": {
+          "twinkleplop": 7880020,
+          "shiki-wasm": 407441656,
+          "shiki-js": 312537150,
+          "prism": 40716968
+        },
+        "python:medium:tokenize": {
+          "twinkleplop": 884610,
+          "shiki-wasm": 43360178,
+          "shiki-js": 31645330,
+          "prism": 1245340
+        },
+        "python:medium:html": {
+          "twinkleplop": 1231617,
+          "shiki-wasm": 54146469,
+          "shiki-js": 39621582,
+          "prism": 2791065
+        },
+        "python:small:tokenize": {
+          "twinkleplop": 55029,
+          "shiki-wasm": 3273317,
+          "shiki-js": 2047068,
+          "prism": 74124
+        },
+        "python:small:html": {
+          "twinkleplop": 79393,
+          "shiki-wasm": 3869356,
+          "shiki-js": 3011875,
+          "prism": 192631
+        },
+        "rust:large:tokenize": {
+          "twinkleplop": 7990110,
+          "shiki-wasm": 214322446,
+          "shiki-js": 168698727,
+          "prism": 14264320
+        },
+        "rust:large:html": {
+          "twinkleplop": 11294509,
+          "shiki-wasm": 293133491,
+          "shiki-js": 232055801,
+          "prism": 40118717
+        },
+        "rust:medium:tokenize": {
+          "twinkleplop": 815947,
+          "shiki-wasm": 27692104,
+          "shiki-js": 20745006,
+          "prism": 1529724
+        },
+        "rust:medium:html": {
+          "twinkleplop": 1270364,
+          "shiki-wasm": 36301730,
+          "shiki-js": 29216224,
+          "prism": 3250547
+        },
+        "rust:small:tokenize": {
+          "twinkleplop": 78947,
+          "shiki-wasm": 3065279,
+          "shiki-js": 2362598,
+          "prism": 106307
+        },
+        "rust:small:html": {
+          "twinkleplop": 109250,
+          "shiki-wasm": 4154640,
+          "shiki-js": 3378931,
+          "prism": 270810
+        },
+        "sql:large:tokenize": {
+          "twinkleplop": 2518205,
+          "shiki-wasm": 194297132,
+          "shiki-js": 131014671,
+          "prism": 4667835
+        },
+        "sql:large:html": {
+          "twinkleplop": 4118896,
+          "shiki-wasm": 239597512,
+          "shiki-js": 163425564,
+          "prism": 12342592
+        },
+        "sql:medium:tokenize": {
+          "twinkleplop": 292053,
+          "shiki-wasm": 28120961,
+          "shiki-js": 17748851,
+          "prism": 333825
+        },
+        "sql:medium:html": {
+          "twinkleplop": 485278,
+          "shiki-wasm": 31763769,
+          "shiki-js": 21429241,
+          "prism": 994237
+        },
+        "sql:small:tokenize": {
+          "twinkleplop": 44704,
+          "shiki-wasm": 3661162,
+          "shiki-js": 1977054,
+          "prism": 46029
+        },
+        "sql:small:html": {
+          "twinkleplop": 63534,
+          "shiki-wasm": 4419862,
+          "shiki-js": 2677098,
+          "prism": 139242
+        },
+        "svelte:large:tokenize": {
+          "twinkleplop": 18886156,
+          "shiki-wasm": 504810035,
+          "shiki-js": 1321031732
+        },
+        "svelte:large:html": {
+          "twinkleplop": 20465688,
+          "shiki-wasm": 588089942,
+          "shiki-js": 1395571480
+        },
+        "svelte:medium:tokenize": {
+          "twinkleplop": 1114778,
+          "shiki-wasm": 55286227,
+          "shiki-js": 139669930
+        },
+        "svelte:medium:html": {
+          "twinkleplop": 1384181,
+          "shiki-wasm": 63992421,
+          "shiki-js": 145945520
+        },
+        "svelte:small:tokenize": {
+          "twinkleplop": 147405,
+          "shiki-wasm": 4748407,
+          "shiki-js": 4764008
+        },
+        "svelte:small:html": {
+          "twinkleplop": 211284,
+          "shiki-wasm": 5323880,
+          "shiki-js": 5526469
+        },
+        "toml:large:tokenize": {
+          "twinkleplop": 2128657,
+          "shiki-wasm": 46820820,
+          "shiki-js": 27332593,
+          "prism": 5193585
+        },
+        "toml:large:html": {
+          "twinkleplop": 3789157,
+          "shiki-wasm": 100366331,
+          "shiki-js": 62053372,
+          "prism": 22902311
+        },
+        "toml:medium:tokenize": {
+          "twinkleplop": 196147,
+          "shiki-wasm": 5367979,
+          "shiki-js": 2718703,
+          "prism": 365148
+        },
+        "toml:medium:html": {
+          "twinkleplop": 427131,
+          "shiki-wasm": 8908661,
+          "shiki-js": 6140250,
+          "prism": 1323223
+        },
+        "toml:small:tokenize": {
+          "twinkleplop": 27440,
+          "shiki-wasm": 615792,
+          "shiki-js": 340095,
+          "prism": 46826
+        },
+        "toml:small:html": {
+          "twinkleplop": 47413,
+          "shiki-wasm": 1228289,
+          "shiki-js": 864744,
+          "prism": 155302
+        },
+        "tsx:large:tokenize": {
+          "twinkleplop": 12123725,
+          "shiki-wasm": 344496528,
+          "shiki-js": 1604078046,
+          "prism": 40364934,
+          "sugar-high": 34750596
+        },
+        "tsx:large:html": {
+          "twinkleplop": 15140389,
+          "shiki-wasm": 425664496,
+          "shiki-js": 1682165601,
+          "prism": 90023575,
+          "sugar-high": 94254371
+        },
+        "tsx:medium:tokenize": {
+          "twinkleplop": 1754521,
+          "shiki-wasm": 44568732,
+          "shiki-js": 197841263,
+          "prism": 5108852,
+          "sugar-high": 3514896
+        },
+        "tsx:medium:html": {
+          "twinkleplop": 2065090,
+          "shiki-wasm": 56637076,
+          "shiki-js": 205211243,
+          "prism": 7466330,
+          "sugar-high": 9866209
+        },
+        "tsx:small:tokenize": {
+          "twinkleplop": 133642,
+          "shiki-wasm": 3614515,
+          "shiki-js": 4147305,
+          "prism": 253216,
+          "sugar-high": 306421
+        },
+        "tsx:small:html": {
+          "twinkleplop": 162333,
+          "shiki-wasm": 4322115,
+          "shiki-js": 4933933,
+          "prism": 451250,
+          "sugar-high": 804974
+        },
+        "typescript:large:tokenize": {
+          "twinkleplop": 9106382,
+          "shiki-wasm": 254913676,
+          "shiki-js": 1345798948,
+          "prism": 55302814,
+          "sugar-high": 25619536
+        },
+        "typescript:large:html": {
+          "twinkleplop": 11138370,
+          "shiki-wasm": 310681916,
+          "shiki-js": 1399379096,
+          "prism": 72320488,
+          "sugar-high": 63860985
+        },
+        "typescript:medium:tokenize": {
+          "twinkleplop": 1215607,
+          "shiki-wasm": 26866456,
+          "shiki-js": 32645166,
+          "prism": 2251861,
+          "sugar-high": 2179128
+        },
+        "typescript:medium:html": {
+          "twinkleplop": 1592456,
+          "shiki-wasm": 32335258,
+          "shiki-js": 37077950,
+          "prism": 3303668,
+          "sugar-high": 5508297
+        },
+        "typescript:small:tokenize": {
+          "twinkleplop": 125148,
+          "shiki-wasm": 3374983,
+          "shiki-js": 4274450,
+          "prism": 129101,
+          "sugar-high": 215478
+        },
+        "typescript:small:html": {
+          "twinkleplop": 143410,
+          "shiki-wasm": 3801340,
+          "shiki-js": 4908504,
+          "prism": 233311,
+          "sugar-high": 507327
+        },
+        "yaml:large:tokenize": {
+          "twinkleplop": 3944362,
+          "shiki-wasm": 123372683,
+          "shiki-js": 86011527,
+          "prism": 6287428
+        },
+        "yaml:large:html": {
+          "twinkleplop": 5168118,
+          "shiki-wasm": 189609160,
+          "shiki-js": 136439309,
+          "prism": 29700053
+        },
+        "yaml:medium:tokenize": {
+          "twinkleplop": 331779,
+          "shiki-wasm": 10869294,
+          "shiki-js": 8102033,
+          "prism": 584982
+        },
+        "yaml:medium:html": {
+          "twinkleplop": 537469,
+          "shiki-wasm": 16348229,
+          "shiki-js": 13055901,
+          "prism": 1320440
+        },
+        "yaml:small:tokenize": {
+          "twinkleplop": 42358,
+          "shiki-wasm": 1471703,
+          "shiki-js": 933385,
+          "prism": 66119
+        },
+        "yaml:small:html": {
+          "twinkleplop": 61687,
+          "shiki-wasm": 2316145,
+          "shiki-js": 1753155,
+          "prism": 159526
+        },
+        "bash:upstream:tokenize": {
+          "twinkleplop": 22659,
+          "shiki-wasm": 980317,
+          "shiki-js": 571661,
+          "prism": 46996
+        },
+        "bash:upstream:html": {
+          "twinkleplop": 30308,
+          "shiki-wasm": 1294158,
+          "shiki-js": 852240,
+          "prism": 79018
+        },
+        "css:upstream:tokenize": {
+          "twinkleplop": 20809,
+          "shiki-wasm": 1142579,
+          "shiki-js": 303238,
+          "prism": 22647
+        },
+        "css:upstream:html": {
+          "twinkleplop": 31622,
+          "shiki-wasm": 1684788,
+          "shiki-js": 787291,
+          "prism": 73283
+        },
+        "diff:upstream:tokenize": {
+          "twinkleplop": 63516,
+          "shiki-wasm": 583236,
+          "shiki-js": 71807,
+          "prism": 19935
+        },
+        "diff:upstream:html": {
+          "twinkleplop": 81112,
+          "shiki-wasm": 736989,
+          "shiki-js": 227713,
+          "prism": 37398
+        },
+        "go:upstream:tokenize": {
+          "twinkleplop": 13805,
+          "shiki-wasm": 844680,
+          "shiki-js": 449680,
+          "prism": 16775
+        },
+        "go:upstream:html": {
+          "twinkleplop": 19087,
+          "shiki-wasm": 1066416,
+          "shiki-js": 720690,
+          "prism": 45438
+        },
+        "html:upstream:tokenize": {
+          "twinkleplop": 42083,
+          "shiki-wasm": 1659404,
+          "shiki-js": 1036904,
+          "prism": 119274
+        },
+        "html:upstream:html": {
+          "twinkleplop": 57926,
+          "shiki-wasm": 2421095,
+          "shiki-js": 1805437,
+          "prism": 236426
+        },
+        "javascript:upstream:tokenize": {
+          "twinkleplop": 276464,
+          "shiki-wasm": 11522386,
+          "shiki-js": 15927813,
+          "prism": 478127,
+          "sugar-high": 693678
+        },
+        "javascript:upstream:html": {
+          "twinkleplop": 363617,
+          "shiki-wasm": 12924724,
+          "shiki-js": 17837983,
+          "prism": 815972,
+          "sugar-high": 1806791
+        },
+        "json:upstream:tokenize": {
+          "twinkleplop": 18677,
+          "shiki-wasm": 374409,
+          "shiki-js": 246735,
+          "prism": 31004
+        },
+        "json:upstream:html": {
+          "twinkleplop": 30244,
+          "shiki-wasm": 828105,
+          "shiki-js": 610735,
+          "prism": 85875
+        },
+        "markdown:upstream:tokenize": {
+          "twinkleplop": 106485,
+          "shiki-wasm": 2250572,
+          "shiki-js": 1504253,
+          "prism": 361251
+        },
+        "markdown:upstream:html": {
+          "twinkleplop": 135156,
+          "shiki-wasm": 3420348,
+          "shiki-js": 2513907,
+          "prism": 447663
+        },
+        "python:upstream:tokenize": {
+          "twinkleplop": 13194,
+          "shiki-wasm": 529310,
+          "shiki-js": 315633,
+          "prism": 9914
+        },
+        "python:upstream:html": {
+          "twinkleplop": 17677,
+          "shiki-wasm": 614807,
+          "shiki-js": 508132,
+          "prism": 30159
+        },
+        "rust:upstream:tokenize": {
+          "twinkleplop": 40626,
+          "shiki-wasm": 1493736,
+          "shiki-js": 1004755,
+          "prism": 52131
+        },
+        "rust:upstream:html": {
+          "twinkleplop": 56918,
+          "shiki-wasm": 1781380,
+          "shiki-js": 1511729,
+          "prism": 123100
+        },
+        "sql:upstream:tokenize": {
+          "twinkleplop": 18009,
+          "shiki-wasm": 1235435,
+          "shiki-js": 571128,
+          "prism": 14781
+        },
+        "sql:upstream:html": {
+          "twinkleplop": 22737,
+          "shiki-wasm": 1488619,
+          "shiki-js": 850471,
+          "prism": 38562
+        },
+        "svelte:upstream:tokenize": {
+          "twinkleplop": 88326,
+          "shiki-wasm": 2968035,
+          "shiki-js": 3238202
+        },
+        "svelte:upstream:html": {
+          "twinkleplop": 115869,
+          "shiki-wasm": 3589700,
+          "shiki-js": 3740526
+        },
+        "toml:upstream:tokenize": {
+          "twinkleplop": 13139,
+          "shiki-wasm": 241445,
+          "shiki-js": 140409,
+          "prism": 17631
+        },
+        "toml:upstream:html": {
+          "twinkleplop": 20866,
+          "shiki-wasm": 525834,
+          "shiki-js": 381164,
+          "prism": 60237
+        },
+        "tsx:upstream:tokenize": {
+          "twinkleplop": 47164,
+          "shiki-wasm": 1177059,
+          "shiki-js": 1401354,
+          "prism": 61000,
+          "sugar-high": 87292
+        },
+        "tsx:upstream:html": {
+          "twinkleplop": 58811,
+          "shiki-wasm": 1478587,
+          "shiki-js": 1735964,
+          "prism": 108506,
+          "sugar-high": 236074
+        },
+        "typescript:upstream:tokenize": {
+          "twinkleplop": 196387,
+          "shiki-wasm": 5977860,
+          "shiki-js": 7462755,
+          "prism": 360054,
+          "sugar-high": 385471
+        },
+        "typescript:upstream:html": {
+          "twinkleplop": 248563,
+          "shiki-wasm": 6721872,
+          "shiki-js": 8466377,
+          "prism": 547351,
+          "sugar-high": 1004348
+        },
+        "yaml:upstream:tokenize": {
+          "twinkleplop": 28253,
+          "shiki-wasm": 1031647,
+          "shiki-js": 676721,
+          "prism": 48945
+        },
+        "yaml:upstream:html": {
+          "twinkleplop": 39236,
+          "shiki-wasm": 1530975,
+          "shiki-js": 1091081,
+          "prism": 95018
+        }
+      }
+    },
+    {
+      "version": "0.2.1",
+      "commit": "da65e4f0cdc685388a41f9dd1629410cf6453c73",
+      "commit_subject": "Merge pull request #91 from pngwn/p/favicon-colorful-t-bd4c4b",
+      "generated_at": "2026-09-25T11:09:56.439Z",
+      "runner": "bare-metal-epyc-8024p",
+      "cpu": "AMD EPYC 8024P 8-Core Processor",
+      "node": "v22.23.2",
+      "corpus_hash": "1bd8ef683ecb5fea",
+      "anchor_stable": true,
+      "libraries": {
+        "twinkleplop": "0.2.1",
+        "shiki-wasm": "3.23.0",
+        "shiki-js": "3.23.0",
+        "prism": "1.30.0",
+        "sugar-high": "1.1.0"
+      },
+      "cells": {
+        "bash:large:tokenize": {
+          "twinkleplop": 7974519,
+          "shiki-wasm": 68007080,
+          "shiki-js": 50843393,
+          "prism": 178871203
+        },
+        "bash:large:html": {
+          "twinkleplop": 10499154,
+          "shiki-wasm": 127905688,
+          "shiki-js": 91702272,
+          "prism": 217297943
+        },
+        "bash:medium:tokenize": {
+          "twinkleplop": 537748,
+          "shiki-wasm": 7853956,
+          "shiki-js": 5903776,
+          "prism": 4627296
+        },
+        "bash:medium:html": {
+          "twinkleplop": 876033,
+          "shiki-wasm": 13111323,
+          "shiki-js": 11133980,
+          "prism": 5863004
+        },
+        "bash:small:tokenize": {
+          "twinkleplop": 52637,
+          "shiki-wasm": 1943019,
+          "shiki-js": 1481594,
+          "prism": 197462
+        },
+        "bash:small:html": {
+          "twinkleplop": 72020,
+          "shiki-wasm": 3037958,
+          "shiki-js": 2417429,
+          "prism": 338881
+        },
+        "css:large:tokenize": {
+          "twinkleplop": 3636570,
+          "shiki-wasm": 217809553,
+          "shiki-js": 80894171,
+          "prism": 6408545
+        },
+        "css:large:html": {
+          "twinkleplop": 5363965,
+          "shiki-wasm": 297697281,
+          "shiki-js": 143662634,
+          "prism": 25213112
+        },
+        "css:medium:tokenize": {
+          "twinkleplop": 374273,
+          "shiki-wasm": 24130834,
+          "shiki-js": 5848474,
+          "prism": 538030
+        },
+        "css:medium:html": {
+          "twinkleplop": 628180,
+          "shiki-wasm": 31140591,
+          "shiki-js": 12884026,
+          "prism": 1535735
+        },
+        "css:small:tokenize": {
+          "twinkleplop": 44931,
+          "shiki-wasm": 3389675,
+          "shiki-js": 798978,
+          "prism": 78448
+        },
+        "css:small:html": {
+          "twinkleplop": 69091,
+          "shiki-wasm": 4262689,
+          "shiki-js": 1809770,
+          "prism": 194744
+        },
+        "diff:large:tokenize": {
+          "twinkleplop": 1975545,
+          "shiki-wasm": 26516139,
+          "shiki-js": 11109558,
+          "prism": 1865610
+        },
+        "diff:large:html": {
+          "twinkleplop": 2564269,
+          "shiki-wasm": 47884939,
+          "shiki-js": 31013670,
+          "prism": 6960593
+        },
+        "diff:medium:tokenize": {
+          "twinkleplop": 134141,
+          "shiki-wasm": 2523599,
+          "shiki-js": 956164,
+          "prism": 198534
+        },
+        "diff:medium:html": {
+          "twinkleplop": 221773,
+          "shiki-wasm": 4081639,
+          "shiki-js": 2777621,
+          "prism": 430768
+        },
+        "diff:small:tokenize": {
+          "twinkleplop": 15758,
+          "shiki-wasm": 256378,
+          "shiki-js": 110984,
+          "prism": 15467
+        },
+        "diff:small:html": {
+          "twinkleplop": 27299,
+          "shiki-wasm": 454512,
+          "shiki-js": 317955,
+          "prism": 43940
+        },
+        "diff-basic:large:tokenize": {
+          "twinkleplop": 1982831
+        },
+        "diff-basic:large:html": {
+          "twinkleplop": 3130827
+        },
+        "diff-basic:medium:tokenize": {
+          "twinkleplop": 177591
+        },
+        "diff-basic:medium:html": {
+          "twinkleplop": 298608
+        },
+        "diff-basic:small:tokenize": {
+          "twinkleplop": 20645
+        },
+        "diff-basic:small:html": {
+          "twinkleplop": 33404
+        },
+        "go:large:tokenize": {
+          "twinkleplop": 4540095,
+          "shiki-wasm": 312077613,
+          "shiki-js": 340403349,
+          "prism": 9469110
+        },
+        "go:large:html": {
+          "twinkleplop": 6832446,
+          "shiki-wasm": 406119719,
+          "shiki-js": 426323195,
+          "prism": 39717475
+        },
+        "go:medium:tokenize": {
+          "twinkleplop": 201190,
+          "shiki-wasm": 15842982,
+          "shiki-js": 16684257,
+          "prism": 365381
+        },
+        "go:medium:html": {
+          "twinkleplop": 353008,
+          "shiki-wasm": 22186739,
+          "shiki-js": 20794282,
+          "prism": 1038585
+        },
+        "go:small:tokenize": {
+          "twinkleplop": 38460,
+          "shiki-wasm": 3410616,
+          "shiki-js": 2389752,
+          "prism": 58856
+        },
+        "go:small:html": {
+          "twinkleplop": 59503,
+          "shiki-wasm": 4237019,
+          "shiki-js": 3255482,
+          "prism": 173349
+        },
+        "html:large:tokenize": {
+          "twinkleplop": 5955301,
+          "shiki-wasm": 231585294,
+          "shiki-js": 221895889,
+          "prism": 14105107
+        },
+        "html:large:html": {
+          "twinkleplop": 7762877,
+          "shiki-wasm": 303625343,
+          "shiki-js": 275779363,
+          "prism": 47662408
+        },
+        "html:medium:tokenize": {
+          "twinkleplop": 650984,
+          "shiki-wasm": 25634947,
+          "shiki-js": 22764376,
+          "prism": 1408862
+        },
+        "html:medium:html": {
+          "twinkleplop": 936106,
+          "shiki-wasm": 32072906,
+          "shiki-js": 28824204,
+          "prism": 3601522
+        },
+        "html:small:tokenize": {
+          "twinkleplop": 76461,
+          "shiki-wasm": 3031910,
+          "shiki-js": 2620024,
+          "prism": 155335
+        },
+        "html:small:html": {
+          "twinkleplop": 97354,
+          "shiki-wasm": 3547737,
+          "shiki-js": 3552092,
+          "prism": 327432
+        },
+        "javascript:large:tokenize": {
+          "twinkleplop": 10279720,
+          "shiki-wasm": 336297819,
+          "shiki-js": 1742940336,
+          "prism": 26315175,
+          "sugar-high": 27573365
+        },
+        "javascript:large:html": {
+          "twinkleplop": 14067504,
+          "shiki-wasm": 412529773,
+          "shiki-js": 1788176390,
+          "prism": 51675730,
+          "sugar-high": 80790006
+        },
+        "javascript:medium:tokenize": {
+          "twinkleplop": 1106515,
+          "shiki-wasm": 38825870,
+          "shiki-js": 49803833,
+          "prism": 2291614,
+          "sugar-high": 2452593
+        },
+        "javascript:medium:html": {
+          "twinkleplop": 1329730,
+          "shiki-wasm": 44769049,
+          "shiki-js": 55417195,
+          "prism": 3637842,
+          "sugar-high": 6163949
+        },
+        "javascript:small:tokenize": {
+          "twinkleplop": 140827,
+          "shiki-wasm": 3169549,
+          "shiki-js": 4005446,
+          "prism": 127859,
+          "sugar-high": 183341
+        },
+        "javascript:small:html": {
+          "twinkleplop": 139144,
+          "shiki-wasm": 3574044,
+          "shiki-js": 4354620,
+          "prism": 221787,
+          "sugar-high": 471319
+        },
+        "json:large:tokenize": {
+          "twinkleplop": 2487533,
+          "shiki-wasm": 66531623,
+          "shiki-js": 52664764,
+          "prism": 8065842
+        },
+        "json:large:html": {
+          "twinkleplop": 5158881,
+          "shiki-wasm": 151113167,
+          "shiki-js": 115241736,
+          "prism": 41681994
+        },
+        "json:medium:tokenize": {
+          "twinkleplop": 223551,
+          "shiki-wasm": 6442787,
+          "shiki-js": 5132164,
+          "prism": 563376
+        },
+        "json:medium:html": {
+          "twinkleplop": 452088,
+          "shiki-wasm": 12794080,
+          "shiki-js": 11562429,
+          "prism": 1777192
+        },
+        "json:small:tokenize": {
+          "twinkleplop": 24389,
+          "shiki-wasm": 616809,
+          "shiki-js": 469798,
+          "prism": 52554
+        },
+        "json:small:html": {
+          "twinkleplop": 43720,
+          "shiki-wasm": 1464524,
+          "shiki-js": 1166897,
+          "prism": 162333
+        },
+        "markdown:large:tokenize": {
+          "twinkleplop": 2992592,
+          "shiki-wasm": 115222390,
+          "shiki-js": 267572035,
+          "prism": 111021800
+        },
+        "markdown:large:html": {
+          "twinkleplop": 4150602,
+          "shiki-wasm": 139986693,
+          "shiki-js": 289260391,
+          "prism": 134941819
+        },
+        "markdown:medium:tokenize": {
+          "twinkleplop": 365034,
+          "shiki-wasm": 17204295,
+          "shiki-js": 7995965,
+          "prism": 1111457
+        },
+        "markdown:medium:html": {
+          "twinkleplop": 553976,
+          "shiki-wasm": 23709335,
+          "shiki-js": 12436790,
+          "prism": 2612495
+        },
+        "markdown:small:tokenize": {
+          "twinkleplop": 41494,
+          "shiki-wasm": 1272873,
+          "shiki-js": 1072333,
+          "prism": 125124
+        },
+        "markdown:small:html": {
+          "twinkleplop": 55114,
+          "shiki-wasm": 2006444,
+          "shiki-js": 1752265,
+          "prism": 243980
+        },
+        "python:large:tokenize": {
+          "twinkleplop": 5992794,
+          "shiki-wasm": 329345071,
+          "shiki-js": 249705139,
+          "prism": 10827448
+        },
+        "python:large:html": {
+          "twinkleplop": 8305252,
+          "shiki-wasm": 404870361,
+          "shiki-js": 308857924,
+          "prism": 38941376
+        },
+        "python:medium:tokenize": {
+          "twinkleplop": 868844,
+          "shiki-wasm": 43370990,
+          "shiki-js": 30961923,
+          "prism": 1247304
+        },
+        "python:medium:html": {
+          "twinkleplop": 1220200,
+          "shiki-wasm": 51974186,
+          "shiki-js": 39520855,
+          "prism": 2933079
+        },
+        "python:small:tokenize": {
+          "twinkleplop": 54937,
+          "shiki-wasm": 3232947,
+          "shiki-js": 2053612,
+          "prism": 73156
+        },
+        "python:small:html": {
+          "twinkleplop": 80418,
+          "shiki-wasm": 3988998,
+          "shiki-js": 3036224,
+          "prism": 192458
+        },
+        "rust:large:tokenize": {
+          "twinkleplop": 7685674,
+          "shiki-wasm": 214075202,
+          "shiki-js": 167251760,
+          "prism": 13713933
+        },
+        "rust:large:html": {
+          "twinkleplop": 10879894,
+          "shiki-wasm": 297172819,
+          "shiki-js": 233929771,
+          "prism": 41439706
+        },
+        "rust:medium:tokenize": {
+          "twinkleplop": 962115,
+          "shiki-wasm": 27334685,
+          "shiki-js": 20713724,
+          "prism": 1530936
+        },
+        "rust:medium:html": {
+          "twinkleplop": 1208012,
+          "shiki-wasm": 35683764,
+          "shiki-js": 28873487,
+          "prism": 2995722
+        },
+        "rust:small:tokenize": {
+          "twinkleplop": 77612,
+          "shiki-wasm": 3167021,
+          "shiki-js": 2308210,
+          "prism": 105988
+        },
+        "rust:small:html": {
+          "twinkleplop": 107933,
+          "shiki-wasm": 4086753,
+          "shiki-js": 3391466,
+          "prism": 266407
+        },
+        "sql:large:tokenize": {
+          "twinkleplop": 2453798,
+          "shiki-wasm": 194875185,
+          "shiki-js": 131491766,
+          "prism": 5139415
+        },
+        "sql:large:html": {
+          "twinkleplop": 3906337,
+          "shiki-wasm": 235314598,
+          "shiki-js": 164840771,
+          "prism": 14060936
+        },
+        "sql:medium:tokenize": {
+          "twinkleplop": 292359,
+          "shiki-wasm": 28520348,
+          "shiki-js": 17656479,
+          "prism": 336520
+        },
+        "sql:medium:html": {
+          "twinkleplop": 499070,
+          "shiki-wasm": 32030167,
+          "shiki-js": 21288980,
+          "prism": 1005088
+        },
+        "sql:small:tokenize": {
+          "twinkleplop": 44601,
+          "shiki-wasm": 3807339,
+          "shiki-js": 1959258,
+          "prism": 46778
+        },
+        "sql:small:html": {
+          "twinkleplop": 63769,
+          "shiki-wasm": 4310408,
+          "shiki-js": 2668238,
+          "prism": 142000
+        },
+        "svelte:large:tokenize": {
+          "twinkleplop": 18302506,
+          "shiki-wasm": 501495025,
+          "shiki-js": 1311385794
+        },
+        "svelte:large:html": {
+          "twinkleplop": 21255716,
+          "shiki-wasm": 580261566,
+          "shiki-js": 1401166406
+        },
+        "svelte:medium:tokenize": {
+          "twinkleplop": 1110701,
+          "shiki-wasm": 54629687,
+          "shiki-js": 138917765
+        },
+        "svelte:medium:html": {
+          "twinkleplop": 1353079,
+          "shiki-wasm": 62942009,
+          "shiki-js": 146882322
+        },
+        "svelte:small:tokenize": {
+          "twinkleplop": 121360,
+          "shiki-wasm": 4662150,
+          "shiki-js": 4847832
+        },
+        "svelte:small:html": {
+          "twinkleplop": 144646,
+          "shiki-wasm": 5413025,
+          "shiki-js": 5451496
+        },
+        "toml:large:tokenize": {
+          "twinkleplop": 2082708,
+          "shiki-wasm": 46212409,
+          "shiki-js": 26552923,
+          "prism": 4635925
+        },
+        "toml:large:html": {
+          "twinkleplop": 3545785,
+          "shiki-wasm": 96906580,
+          "shiki-js": 60816811,
+          "prism": 22983162
+        },
+        "toml:medium:tokenize": {
+          "twinkleplop": 196040,
+          "shiki-wasm": 5467851,
+          "shiki-js": 2699712,
+          "prism": 373731
+        },
+        "toml:medium:html": {
+          "twinkleplop": 384313,
+          "shiki-wasm": 8860434,
+          "shiki-js": 6255504,
+          "prism": 1235661
+        },
+        "toml:small:tokenize": {
+          "twinkleplop": 28230,
+          "shiki-wasm": 596090,
+          "shiki-js": 323116,
+          "prism": 45846
+        },
+        "toml:small:html": {
+          "twinkleplop": 47790,
+          "shiki-wasm": 1178451,
+          "shiki-js": 855178,
+          "prism": 151775
+        },
+        "tsx:large:tokenize": {
+          "twinkleplop": 11903045,
+          "shiki-wasm": 343264966,
+          "shiki-js": 1607367261,
+          "prism": 39137798,
+          "sugar-high": 35651457
+        },
+        "tsx:large:html": {
+          "twinkleplop": 14879746,
+          "shiki-wasm": 419082396,
+          "shiki-js": 1688760721,
+          "prism": 90363757,
+          "sugar-high": 91739637
+        },
+        "tsx:medium:tokenize": {
+          "twinkleplop": 1755232,
+          "shiki-wasm": 44180035,
+          "shiki-js": 196796385,
+          "prism": 5271477,
+          "sugar-high": 3497545
+        },
+        "tsx:medium:html": {
+          "twinkleplop": 2110669,
+          "shiki-wasm": 55896215,
+          "shiki-js": 204810715,
+          "prism": 7726696,
+          "sugar-high": 9453138
+        },
+        "tsx:small:tokenize": {
+          "twinkleplop": 133307,
+          "shiki-wasm": 3580833,
+          "shiki-js": 4162963,
+          "prism": 256644,
+          "sugar-high": 306415
+        },
+        "tsx:small:html": {
+          "twinkleplop": 163465,
+          "shiki-wasm": 4296365,
+          "shiki-js": 4895834,
+          "prism": 442711,
+          "sugar-high": 798342
+        },
+        "typescript:large:tokenize": {
+          "twinkleplop": 9376097,
+          "shiki-wasm": 254149090,
+          "shiki-js": 1341260185,
+          "prism": 55255568,
+          "sugar-high": 25357654
+        },
+        "typescript:large:html": {
+          "twinkleplop": 11140476,
+          "shiki-wasm": 307422816,
+          "shiki-js": 1389896894,
+          "prism": 72019479,
+          "sugar-high": 62988454
+        },
+        "typescript:medium:tokenize": {
+          "twinkleplop": 1266725,
+          "shiki-wasm": 26832679,
+          "shiki-js": 32237540,
+          "prism": 2206064,
+          "sugar-high": 2245071
+        },
+        "typescript:medium:html": {
+          "twinkleplop": 1470646,
+          "shiki-wasm": 32341729,
+          "shiki-js": 36894725,
+          "prism": 3499765,
+          "sugar-high": 5573034
+        },
+        "typescript:small:tokenize": {
+          "twinkleplop": 123333,
+          "shiki-wasm": 3326214,
+          "shiki-js": 4270487,
+          "prism": 128426,
+          "sugar-high": 215699
+        },
+        "typescript:small:html": {
+          "twinkleplop": 146856,
+          "shiki-wasm": 3922540,
+          "shiki-js": 4935349,
+          "prism": 229439,
+          "sugar-high": 554853
+        },
+        "yaml:large:tokenize": {
+          "twinkleplop": 3878865,
+          "shiki-wasm": 122707739,
+          "shiki-js": 87070827,
+          "prism": 6429031
+        },
+        "yaml:large:html": {
+          "twinkleplop": 5024889,
+          "shiki-wasm": 187173041,
+          "shiki-js": 135747929,
+          "prism": 25205221
+        },
+        "yaml:medium:tokenize": {
+          "twinkleplop": 333033,
+          "shiki-wasm": 10827982,
+          "shiki-js": 8076789,
+          "prism": 595060
+        },
+        "yaml:medium:html": {
+          "twinkleplop": 524367,
+          "shiki-wasm": 16229942,
+          "shiki-js": 13063356,
+          "prism": 1297826
+        },
+        "yaml:small:tokenize": {
+          "twinkleplop": 42070,
+          "shiki-wasm": 1459830,
+          "shiki-js": 925268,
+          "prism": 65768
+        },
+        "yaml:small:html": {
+          "twinkleplop": 61314,
+          "shiki-wasm": 2356160,
+          "shiki-js": 1736716,
+          "prism": 157057
+        },
+        "bash:upstream:tokenize": {
+          "twinkleplop": 21579,
+          "shiki-wasm": 954639,
+          "shiki-js": 566683,
+          "prism": 46166
+        },
+        "bash:upstream:html": {
+          "twinkleplop": 29253,
+          "shiki-wasm": 1287146,
+          "shiki-js": 839830,
+          "prism": 80364
+        },
+        "css:upstream:tokenize": {
+          "twinkleplop": 20662,
+          "shiki-wasm": 1135797,
+          "shiki-js": 304598,
+          "prism": 22615
+        },
+        "css:upstream:html": {
+          "twinkleplop": 31632,
+          "shiki-wasm": 1633357,
+          "shiki-js": 776507,
+          "prism": 72724
+        },
+        "diff:upstream:tokenize": {
+          "twinkleplop": 63182,
+          "shiki-wasm": 583498,
+          "shiki-js": 71120,
+          "prism": 19676
+        },
+        "diff:upstream:html": {
+          "twinkleplop": 81121,
+          "shiki-wasm": 765245,
+          "shiki-js": 225686,
+          "prism": 36809
+        },
+        "go:upstream:tokenize": {
+          "twinkleplop": 14315,
+          "shiki-wasm": 831547,
+          "shiki-js": 446044,
+          "prism": 16736
+        },
+        "go:upstream:html": {
+          "twinkleplop": 18524,
+          "shiki-wasm": 1067981,
+          "shiki-js": 729941,
+          "prism": 45748
+        },
+        "html:upstream:tokenize": {
+          "twinkleplop": 40939,
+          "shiki-wasm": 1590393,
+          "shiki-js": 1032181,
+          "prism": 130525
+        },
+        "html:upstream:html": {
+          "twinkleplop": 57830,
+          "shiki-wasm": 2358701,
+          "shiki-js": 1815118,
+          "prism": 236642
+        },
+        "javascript:upstream:tokenize": {
+          "twinkleplop": 274881,
+          "shiki-wasm": 11254025,
+          "shiki-js": 15699380,
+          "prism": 458055,
+          "sugar-high": 682784
+        },
+        "javascript:upstream:html": {
+          "twinkleplop": 358157,
+          "shiki-wasm": 12744305,
+          "shiki-js": 17903584,
+          "prism": 809355,
+          "sugar-high": 1814514
+        },
+        "json:upstream:tokenize": {
+          "twinkleplop": 17455,
+          "shiki-wasm": 376295,
+          "shiki-js": 244769,
+          "prism": 30390
+        },
+        "json:upstream:html": {
+          "twinkleplop": 29289,
+          "shiki-wasm": 811935,
+          "shiki-js": 632398,
+          "prism": 88146
+        },
+        "markdown:upstream:tokenize": {
+          "twinkleplop": 105752,
+          "shiki-wasm": 2232224,
+          "shiki-js": 1509193,
+          "prism": 359967
+        },
+        "markdown:upstream:html": {
+          "twinkleplop": 135344,
+          "shiki-wasm": 3363215,
+          "shiki-js": 2457929,
+          "prism": 443845
+        },
+        "python:upstream:tokenize": {
+          "twinkleplop": 12873,
+          "shiki-wasm": 510586,
+          "shiki-js": 314546,
+          "prism": 9825
+        },
+        "python:upstream:html": {
+          "twinkleplop": 18580,
+          "shiki-wasm": 626652,
+          "shiki-js": 509722,
+          "prism": 30517
+        },
+        "rust:upstream:tokenize": {
+          "twinkleplop": 40167,
+          "shiki-wasm": 1372918,
+          "shiki-js": 971134,
+          "prism": 51742
+        },
+        "rust:upstream:html": {
+          "twinkleplop": 55918,
+          "shiki-wasm": 1753959,
+          "shiki-js": 1478514,
+          "prism": 121491
+        },
+        "sql:upstream:tokenize": {
+          "twinkleplop": 17539,
+          "shiki-wasm": 1206553,
+          "shiki-js": 571120,
+          "prism": 15794
+        },
+        "sql:upstream:html": {
+          "twinkleplop": 21374,
+          "shiki-wasm": 1463244,
+          "shiki-js": 822823,
+          "prism": 37639
+        },
+        "svelte:upstream:tokenize": {
+          "twinkleplop": 90862,
+          "shiki-wasm": 3091042,
+          "shiki-js": 3188153
+        },
+        "svelte:upstream:html": {
+          "twinkleplop": 129809,
+          "shiki-wasm": 3532082,
+          "shiki-js": 3756418
+        },
+        "toml:upstream:tokenize": {
+          "twinkleplop": 13039,
+          "shiki-wasm": 245629,
+          "shiki-js": 141873,
+          "prism": 17558
+        },
+        "toml:upstream:html": {
+          "twinkleplop": 20811,
+          "shiki-wasm": 512390,
+          "shiki-js": 368915,
+          "prism": 60330
+        },
+        "tsx:upstream:tokenize": {
+          "twinkleplop": 50768,
+          "shiki-wasm": 1162108,
+          "shiki-js": 1389585,
+          "prism": 60439,
+          "sugar-high": 90332
+        },
+        "tsx:upstream:html": {
+          "twinkleplop": 62802,
+          "shiki-wasm": 1514194,
+          "shiki-js": 1710036,
+          "prism": 107259,
+          "sugar-high": 241154
+        },
+        "typescript:upstream:tokenize": {
+          "twinkleplop": 200232,
+          "shiki-wasm": 6049236,
+          "shiki-js": 7500182,
+          "prism": 354070,
+          "sugar-high": 387735
+        },
+        "typescript:upstream:html": {
+          "twinkleplop": 245578,
+          "shiki-wasm": 6688887,
+          "shiki-js": 8455577,
+          "prism": 562889,
+          "sugar-high": 1009694
+        },
+        "yaml:upstream:tokenize": {
+          "twinkleplop": 28052,
+          "shiki-wasm": 974190,
+          "shiki-js": 681165,
+          "prism": 48983
+        },
+        "yaml:upstream:html": {
+          "twinkleplop": 40396,
+          "shiki-wasm": 1466508,
+          "shiki-js": 1109223,
+          "prism": 94123
+        }
+      }
+    }
+  ]
+}
