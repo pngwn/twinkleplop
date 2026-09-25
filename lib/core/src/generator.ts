@@ -24,6 +24,23 @@ SCAN_TABLE[39] = SCAN_ESCAPE;
 SCAN_TABLE[60] = SCAN_ESCAPE;
 SCAN_TABLE[62] = SCAN_ESCAPE;
 
+const LINE_OPEN = '<span class="l">';
+const LINE_BREAK_OPEN = '</span>\n<span class="l">';
+const CLOSE_BREAK_OPEN = '</span></span>\n<span class="l">';
+
+// a span close, line break, line open and an indent of up to 32 spaces or
+// 8 tabs, built once so the default line shape writes them in one append.
+const MAX_INDENT_SPACES = 32;
+const MAX_INDENT_TABS = 8;
+const CLOSE_BREAK_SPACES: string[] = [];
+const CLOSE_BREAK_TABS: string[] = [];
+for (let k = 0; k <= MAX_INDENT_SPACES; k++) {
+  CLOSE_BREAK_SPACES.push(CLOSE_BREAK_OPEN + " ".repeat(k));
+}
+for (let k = 0; k <= MAX_INDENT_TABS; k++) {
+  CLOSE_BREAK_TABS.push(CLOSE_BREAK_OPEN + "\t".repeat(k));
+}
+
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
   // option items merge into a fresh result so the caller's tokenize result
   // is left untouched. items that resolve to nothing fall through so they
@@ -44,7 +61,11 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   const inline = options.structure === "inline";
   const line_hook = inline ? undefined : options.line;
   const token_hook = options.token;
-  const line_break = inline ? "<br>" : "</span>\n";
+  // with no line hook and no numbers every line opens the same way, so the
+  // break carries the next line open and begin_line has nothing to add.
+  const fused_break = !inline && line_hook === undefined && !line_numbers;
+  const line_break = inline ? "<br>" : fused_break ? LINE_BREAK_OPEN : "</span>\n";
+  const close_break = inline ? "</span><br>" : fused_break ? CLOSE_BREAK_OPEN : "</span></span>\n";
   const ws_mode = whitespace_mode(options.whitespace);
   const indent_size = indent_guide_size(options.indent_guides);
   const ws_active = ws_mode !== 0 || indent_size !== 0;
@@ -58,10 +79,11 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   // kept whole so a line break inside a decorated token reopens the same tag.
   let open_tag: string | null = null;
 
-  begin_line();
+  if (fused_break) out += LINE_OPEN;
+  else begin_line();
 
   function begin_line() {
-    if (inline) return;
+    if (inline || fused_break) return;
     if (line_hook === undefined) {
       out += open_line(line_no, line_numbers);
       return;
@@ -94,8 +116,21 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   // finding nothing.
   function emit_range(start: number, end: number, cls: string | null) {
     if (start >= end) return;
+    // most ranges hold no line break and nothing to escape. finding that
+    // first lets them go out as one substring with no chunk bookkeeping.
+    let first = start;
+    while (first < end) {
+      const code = input.charCodeAt(first);
+      if (code <= 62 && SCAN_TABLE[code] !== 0) break;
+      first++;
+    }
+    if (first === end) {
+      ensure_span(cls);
+      out += input.substring(start, end);
+      return;
+    }
     let chunk_start = start;
-    for (let i = start; i < end; i++) {
+    for (let i = first; i < end; i++) {
       const code = input.charCodeAt(i);
       if (code > 62) continue;
       const kind = SCAN_TABLE[code];
@@ -111,8 +146,11 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
         ensure_span(cls);
         out += input.substring(chunk_start, i);
       }
-      close_span();
-      out += line_break;
+      // a span still open at the break closes in the same append.
+      if (open_class !== null) {
+        out += close_break;
+        open_class = null;
+      } else out += line_break;
       line_no++;
       begin_line();
       chunk_start = i + 1;
@@ -159,6 +197,30 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     if (end > chunk_start) emit_range(chunk_start, end, null);
   }
 
+  // input[from..to) follows a line break. when it is all spaces or all tabs
+  // and short, the close, break, line open and indent are one append.
+  function emit_indent_break(from: number, to: number): boolean {
+    const n = to - from;
+    if (n === 0) {
+      out += CLOSE_BREAK_OPEN;
+      return true;
+    }
+    const c = input.charCodeAt(from);
+    if (c === 32) {
+      if (n > MAX_INDENT_SPACES) return false;
+      for (let i = from + 1; i < to; i++) if (input.charCodeAt(i) !== 32) return false;
+      out += CLOSE_BREAK_SPACES[n];
+      return true;
+    }
+    if (c === 9) {
+      if (n > MAX_INDENT_TABS) return false;
+      for (let i = from + 1; i < to; i++) if (input.charCodeAt(i) !== 9) return false;
+      out += CLOSE_BREAK_TABS[n];
+      return true;
+    }
+    return false;
+  }
+
   let last_end = 0;
   for (let i = 0; i < tokens.length; i += 3) {
     const cls = token_types[tokens[i]];
@@ -167,7 +229,20 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
 
     if (start > last_end) {
       if (ws_active) emit_gap(last_end, start);
-      else emit_range(last_end, start, null);
+      else if (open_class !== null && start === last_end + 1 && input.charCodeAt(last_end) === 32) {
+        // a lone space between tokens is the most common gap. closing the
+        // span and writing it is one append.
+        out += "</span> ";
+        open_class = null;
+      } else if (
+        fused_break &&
+        open_class !== null &&
+        input.charCodeAt(last_end) === 10 &&
+        emit_indent_break(last_end + 1, start)
+      ) {
+        open_class = null;
+        line_no++;
+      } else emit_range(last_end, start, null);
     }
     if (token_hook !== undefined) {
       const deco = hook_output(token_hook(cls, start, end), "token");
