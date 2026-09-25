@@ -384,6 +384,35 @@ interface ResolvedSignalTables {
 // ascii-only first-char bucket table size.
 const STMT_BUCKETS = 128;
 
+// first char buckets for transparent texts. unlike the stmt table nothing
+// is dropped: non ascii leads share the last slot, and an empty text sits
+// in every slot, so a lookup still sees every text that could match and
+// text_matches keeps the final say.
+const TEXT_BUCKETS = 128;
+const TEXT_OVERFLOW = TEXT_BUCKETS - 1;
+
+function bucket_text(by_char: (CompiledText[] | null)[], t: CompiledText): void {
+  if (t.codes.length === 0) {
+    for (let b = 0; b < TEXT_BUCKETS; b++) bucket_push(by_char, b, t);
+    return;
+  }
+  const first = t.codes[0];
+  bucket_push(by_char, first < TEXT_OVERFLOW ? first : TEXT_OVERFLOW, t);
+}
+
+function bucket_push(by_char: (CompiledText[] | null)[], b: number, t: CompiledText): void {
+  const list = by_char[b];
+  if (list === null) by_char[b] = [t];
+  else list.push(t);
+}
+
+// bucket for the token [s, e). an empty token only matches the empty
+// text, which sits in every bucket, so slot 0 serves it.
+function text_bucket(input: string, s: number, e: number): number {
+  const c = s < e ? input.charCodeAt(s) : 0;
+  return c < TEXT_OVERFLOW ? c : TEXT_OVERFLOW;
+}
+
 function resolve_signal_tables(
   compiled: CompiledFrameSpec,
   token_types: string[],
@@ -799,224 +828,115 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
   };
 }
 
-// dedicated signals pass: per-frame ternary counters and stmt flag masks,
-// walked over the same bracket structure as the main loop but in its own
-// tight function. kept OUT of the main walk on purpose -- signal branches
-// woven into that loop degraded its jit code for every frame_track
-// instance in the process once a signals-enabled tracker had run. module
-// level so the loop closes over nothing.
-function compute_signals(
-  input: string,
-  tokens: Uint32Array,
-  n: number,
-  compiled: CompiledFrameSpec,
-  tables: ResolvedSignalTables,
-  type_flags: Uint8Array,
-  punct_id: number,
-  signals: Uint8Array,
-): void {
-  const qmark_text = compiled.ternary_qmark_text;
-  const colon_code = compiled.ternary_colon_code;
-  const stmt_lists = tables.stmt_lists;
-  const clear_codes = compiled.stmt_clear_char_codes;
-  const clear_masks = compiled.stmt_clear_char_masks;
-  const clear_count = clear_codes.length;
-  const brace_close_clear_mask = compiled.stmt_brace_close_clear_mask;
-  const paren_open = compiled.paren_open;
-  const paren_close = compiled.paren_close;
-  const brace_open = compiled.brace_open;
-  const brace_close = compiled.brace_close;
-  const bracket_open = compiled.bracket_open;
-  const bracket_close = compiled.bracket_close;
-
-  // parallel per-frame stacks, mirroring the main walk's push / pop
-  // conditions exactly so frame identity lines up between the passes.
-  const stack_qmark: number[] = [0];
-  const stack_flags: number[] = [0];
-  // the last significant token was a counted qmark. a colon opening the
-  // next one is an optional marker (`x?: T`): a ternary has its
-  // consequent in between.
-  let after_qmark = false;
-
-  for (let i = 0; i < n; i++) {
-    const base = i * 3;
-    const ttype = tokens[base];
-    const flags = type_flags[ttype];
-    let signal = 0;
-    let qmark = false;
-
-    if ((flags & (FLAG_QMARK | FLAG_STMT)) !== 0) {
-      if ((flags & FLAG_QMARK) !== 0 && qmark_text !== null) {
-        const s = tokens[base + 1];
-        const e = tokens[base + 2];
-        if (text_matches(input, s, e, qmark_text)) {
-          stack_qmark[stack_qmark.length - 1]++;
-          qmark = true;
-        }
-      }
-      if ((flags & FLAG_STMT) !== 0) {
-        const by_char = stmt_lists[ttype];
-        if (by_char !== null) {
-          const s = tokens[base + 1];
-          const e = tokens[base + 2];
-          const first = input.charCodeAt(s);
-          const candidates = first < STMT_BUCKETS ? by_char[first] : null;
-          if (candidates !== null) {
-            for (let m = 0; m < candidates.length; m++) {
-              if (text_matches(input, s, e, candidates[m].text)) {
-                const top = stack_flags.length - 1;
-                stack_flags[top] =
-                  (stack_flags[top] | candidates[m].arm_mask) & ~candidates[m].clear_mask;
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (ttype === punct_id) {
-      const s = tokens[base + 1];
-      const e = tokens[base + 2];
-      for (let p = s; p < e; p++) {
-        const c = input.charCodeAt(p);
-        if (c === paren_open || c === brace_open || c === bracket_open) {
-          stack_qmark.push(0);
-          stack_flags.push(0);
-        } else if (c === paren_close || c === bracket_close) {
-          if (stack_qmark.length > 1) {
-            stack_qmark.pop();
-            stack_flags.pop();
-          }
-        } else if (c === brace_close) {
-          if (stack_qmark.length > 1) {
-            stack_qmark.pop();
-            stack_flags.pop();
-            // a closing brace ends the statement that armed any
-            // close-cleared flag on the parent frame.
-            stack_flags[stack_flags.length - 1] &= ~brace_close_clear_mask;
-          }
-        } else if (c === colon_code && stack_qmark[stack_qmark.length - 1] > 0) {
-          // an optional marker's colon still takes back its qmark's count.
-          stack_qmark[stack_qmark.length - 1]--;
-          if (!after_qmark || p !== s) signal |= SIGNAL_TERNARY_COLON;
-        } else if (clear_count > 0) {
-          for (let m = 0; m < clear_count; m++) {
-            if (c === clear_codes[m]) {
-              stack_flags[stack_flags.length - 1] &= ~clear_masks[m];
-              break;
-            }
-          }
-        }
-      }
-    }
-
-    signals[i] = signal | (stack_flags[stack_flags.length - 1] << 1);
-    if ((flags & FLAG_TRIVIA) === 0) after_qmark = qmark;
-  }
+// every per token_types table the walk reads, resolved once per vocabulary
+// and cached as one record, so a call costs a single WeakMap lookup.
+interface ResolvedTables {
+  punct_id: number;
+  kind_tables: ResolvedKindTables | null;
+  signal_tables: ResolvedSignalTables | null;
+  // single per type flags byte combining every per token table lookup
+  // (trivia, transparency, marker / angle membership). the hot loop
+  // reads one Uint8Array slot per token and branches off bits. the
+  // heavier candidate lists are only touched when their bit is set.
+  // computing the tables eagerly added noticeable cost on the disabled
+  // path (~30% slower on plain_js), so flags stays null when neither
+  // at_start nor brace_kinds is configured.
+  type_flags: Uint8Array | null;
+  transparent_texts: ((CompiledText[] | null)[] | null)[] | null;
 }
 
-// pre-compile spec once. closures over the compiled spec capture the
-// punct_type id lookup at first call, memoised against the token_types
-// array reference (the same trick the JS scanner uses for tag_name lookups).
+function resolve_tables(compiled: CompiledFrameSpec, types: string[]): ResolvedTables {
+  const punct_id = types.indexOf(compiled.punct_type);
+  if (punct_id < 0 && debug_enabled()) {
+    warn_once(
+      "frame_track",
+      `punct-type:${compiled.punct_type}`,
+      `punct_type "${compiled.punct_type}" is not in the token vocabulary; no frames will be tracked`,
+    );
+  }
+
+  const kinds = compiled.brace_kinds;
+  const kind_tables = kinds !== null ? resolve_kind_tables(kinds, types) : null;
+  const signal_tables = compiled.signals_enabled ? resolve_signal_tables(compiled, types) : null;
+
+  let type_flags: Uint8Array | null = null;
+  let transparent_texts: ((CompiledText[] | null)[] | null)[] | null = null;
+  if (compiled.at_start_enabled || kinds !== null || compiled.signals_enabled) {
+    type_flags = new Uint8Array(types.length);
+    const comment_id = types.indexOf("comment");
+    if (comment_id >= 0) type_flags[comment_id] |= FLAG_TRIVIA;
+    for (let i = 0; i < compiled.at_start_transparent.length; i++) {
+      const id = types.indexOf(compiled.at_start_transparent[i]);
+      if (id >= 0) type_flags[id] |= FLAG_TRANSPARENT;
+    }
+    for (const entry of compiled.at_start_transparent_texts) {
+      const id = types.indexOf(entry.type);
+      if (id >= 0) type_flags[id] |= FLAG_TRANSPARENT_TEXTS;
+    }
+    if (kind_tables !== null) {
+      for (let id = 0; id < kind_tables.marker_lists.length; id++) {
+        if (kind_tables.marker_lists[id] !== null) type_flags[id] |= FLAG_MARKER;
+      }
+      if (kind_tables.angle_type_id >= 0) {
+        type_flags[kind_tables.angle_type_id] |= FLAG_ANGLE;
+      }
+    }
+    if (signal_tables !== null) {
+      if (signal_tables.qmark_type_id >= 0) {
+        type_flags[signal_tables.qmark_type_id] |= FLAG_QMARK;
+      }
+      for (let id = 0; id < signal_tables.stmt_lists.length; id++) {
+        if (signal_tables.stmt_lists[id] !== null) type_flags[id] |= FLAG_STMT;
+      }
+    }
+    if (compiled.at_start_transparent_texts.length > 0) {
+      transparent_texts = new Array(types.length).fill(null);
+      for (const entry of compiled.at_start_transparent_texts) {
+        const id = types.indexOf(entry.type);
+        if (id < 0) continue;
+        let by_char = transparent_texts[id];
+        if (by_char === null) {
+          by_char = new Array(TEXT_BUCKETS).fill(null);
+          transparent_texts[id] = by_char;
+        }
+        for (const t of entry.texts) bucket_text(by_char, t);
+      }
+    }
+  }
+
+  return { punct_id, kind_tables, signal_tables, type_flags, transparent_texts };
+}
+
+// compile the spec once. the returned walk resolves its per vocabulary
+// tables at first call, memoised against the token_types array reference
+// (the same trick the JS scanner uses for tag_name lookups).
+//
+// there are two walks with the same bracket structure: walk_plain for
+// specs without signals, and walk_signals, which also keeps the per frame
+// ternary counters and stmt flag masks. they are separate function
+// literals on purpose. signal branches woven into one shared walk behind
+// a flag degraded its jit code for every frame_track instance in the
+// process once a signals enabled tracker had run, and a second signals
+// pass over the tokens costs a full extra walk. two literals keep their
+// own type feedback, so each pays only for what its spec configures.
+// a change to the bracket, kind or at_start logic must land in both.
 export function frame_track(spec: FrameSpec): Reclassifier {
   const compiled = compile_frame_spec(spec);
   const kind_names =
     compiled.brace_kinds !== null ? compiled.brace_kinds.kind_names : BUILTIN_KIND_NAMES;
-  const punct_cache = new WeakMap<string[], number>();
-  const flags_cache = new WeakMap<string[], Uint8Array>();
-  const kind_table_cache = new WeakMap<string[], ResolvedKindTables>();
-  const transparent_texts_cache = new WeakMap<string[], (CompiledText[] | null)[]>();
-  const signal_table_cache = new WeakMap<string[], ResolvedSignalTables>();
+  const tables_cache = new WeakMap<string[], ResolvedTables>();
 
-  return (input: string, result: TokenizeResult): TokenizeResult => {
-    let punct_id = punct_cache.get(result.token_types);
-    if (punct_id === undefined) {
-      punct_id = result.token_types.indexOf(compiled.punct_type);
-      punct_cache.set(result.token_types, punct_id);
-      if (punct_id < 0 && debug_enabled()) {
-        warn_once(
-          "frame_track",
-          `punct-type:${compiled.punct_type}`,
-          `punct_type "${compiled.punct_type}" is not in the token vocabulary; no frames will be tracked`,
-        );
-      }
+  const walk_plain = (input: string, result: TokenizeResult): TokenizeResult => {
+    let resolved = tables_cache.get(result.token_types);
+    if (resolved === undefined) {
+      resolved = resolve_tables(compiled, result.token_types);
+      tables_cache.set(result.token_types, resolved);
     }
-
+    const punct_id = resolved.punct_id;
+    const kind_tables = resolved.kind_tables;
+    const type_flags = resolved.type_flags;
+    const transparent_texts = resolved.transparent_texts;
     const kinds = compiled.brace_kinds;
-    let kind_tables: ResolvedKindTables | null = null;
-    if (kinds !== null) {
-      kind_tables = kind_table_cache.get(result.token_types) ?? null;
-      if (kind_tables === null) {
-        kind_tables = resolve_kind_tables(kinds, result.token_types);
-        kind_table_cache.set(result.token_types, kind_tables);
-      }
-    }
-
-    const signals_enabled = compiled.signals_enabled;
-    let signal_tables: ResolvedSignalTables | null = null;
-    if (signals_enabled) {
-      signal_tables = signal_table_cache.get(result.token_types) ?? null;
-      if (signal_tables === null) {
-        signal_tables = resolve_signal_tables(compiled, result.token_types);
-        signal_table_cache.set(result.token_types, signal_tables);
-      }
-    }
-
-    // single per-type flags byte combining every per-token table lookup
-    // (trivia, transparency, marker / angle membership) -- the hot loop
-    // reads one Uint8Array slot per token and branches off bits. the
-    // heavier candidate lists are only touched when their bit is set.
-    // computing the tables eagerly added noticeable cost on the disabled
-    // path (~30% slower on plain_js), so flags stays null when neither
-    // at_start nor brace_kinds is configured.
-    let type_flags: Uint8Array | null = null;
-    let transparent_texts: (CompiledText[] | null)[] | null = null;
-    if (compiled.at_start_enabled || kinds !== null || signals_enabled) {
-      type_flags = flags_cache.get(result.token_types) ?? null;
-      if (type_flags === null) {
-        const types = result.token_types;
-        type_flags = new Uint8Array(types.length);
-        const comment_id = types.indexOf("comment");
-        if (comment_id >= 0) type_flags[comment_id] |= FLAG_TRIVIA;
-        for (let i = 0; i < compiled.at_start_transparent.length; i++) {
-          const id = types.indexOf(compiled.at_start_transparent[i]);
-          if (id >= 0) type_flags[id] |= FLAG_TRANSPARENT;
-        }
-        for (const entry of compiled.at_start_transparent_texts) {
-          const id = types.indexOf(entry.type);
-          if (id >= 0) type_flags[id] |= FLAG_TRANSPARENT_TEXTS;
-        }
-        if (kind_tables !== null) {
-          for (let id = 0; id < kind_tables.marker_lists.length; id++) {
-            if (kind_tables.marker_lists[id] !== null) type_flags[id] |= FLAG_MARKER;
-          }
-          if (kind_tables.angle_type_id >= 0) {
-            type_flags[kind_tables.angle_type_id] |= FLAG_ANGLE;
-          }
-        }
-        if (signal_tables !== null) {
-          if (signal_tables.qmark_type_id >= 0) {
-            type_flags[signal_tables.qmark_type_id] |= FLAG_QMARK;
-          }
-          for (let id = 0; id < signal_tables.stmt_lists.length; id++) {
-            if (signal_tables.stmt_lists[id] !== null) type_flags[id] |= FLAG_STMT;
-          }
-        }
-        flags_cache.set(result.token_types, type_flags);
-      }
-      if (compiled.at_start_transparent_texts.length > 0) {
-        transparent_texts = transparent_texts_cache.get(result.token_types) ?? null;
-        if (transparent_texts === null) {
-          transparent_texts = new Array(result.token_types.length).fill(null);
-          for (const entry of compiled.at_start_transparent_texts) {
-            const id = result.token_types.indexOf(entry.type);
-            if (id >= 0) transparent_texts[id] = entry.texts;
-          }
-          transparent_texts_cache.set(result.token_types, transparent_texts);
-        }
-      }
-    }
 
     // hoist hot-path config reads to locals so V8 does not re-read object
     // properties on every iteration.
@@ -1032,23 +952,24 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     const rearm_kind_ids = compiled.rearm_kind_ids;
     const marker_lists = kind_tables !== null ? kind_tables.marker_lists : null;
 
-    const { tokens, token_types } = result;
+    const { tokens } = result;
     const n = tokens.length / 3;
     const active_frame = new Uint32Array(n);
     const depths = new Uint8Array(n * 3);
     // skip allocating the at_start array when tracking is disabled. consumers
     // gate their use on whether the spec configured at_start to begin with.
     const at_start = at_start_enabled ? new Uint8Array(n) : EMPTY_U8;
-    const signals = signals_enabled ? new Uint8Array(n) : EMPTY_U8;
     const frames: FrameRecord[] = [
       { bracket: -1, kind: FRAME_KIND_TOP, enter_idx: -1, parent: -1 },
     ];
-    const stack: number[] = [0];
-    // parallel stack of `at_start` flags per frame entry. always allocated
-    // (it is small) so the inner loop can write to it unconditionally when
-    // tracking is enabled. when disabled, the conditional writes are skipped
-    // by the at_start_enabled guard and the array stays at length 1.
-    const stack_at_start: number[] = [1];
+    // the active frame and its at_start flag live in locals, the arrays
+    // hold only the saved parents, so the per token reads touch no array.
+    // at_start is pushed and popped even when tracking is disabled; the
+    // at_start_enabled guard only skips the writes that change it.
+    let cur_frame = 0;
+    let cur_at_start = 1;
+    const saved_frame: number[] = [];
+    const saved_at_start: number[] = [];
 
     let paren_depth = 0;
     let brace_depth = 0;
@@ -1085,15 +1006,21 @@ export function frame_track(spec: FrameSpec): Reclassifier {
       let is_transparent = false;
       if (at_start_enabled) {
         is_transparent = (flags & FLAG_TRANSPARENT) !== 0;
+        at_start[i] = cur_at_start;
+        // transparency only matters for keeping at_start set. once the
+        // frame has cleared it the text match cannot change anything, and
+        // that is where most modifier keyword texts sit.
         if (
+          cur_at_start !== 0 &&
           !is_transparent &&
           (flags & FLAG_TRANSPARENT_TEXTS) !== 0 &&
           transparent_texts !== null
         ) {
-          const text_candidates = transparent_texts[ttype];
+          const by_char = transparent_texts[ttype];
+          const s = tokens[base + 1];
+          const e = tokens[base + 2];
+          const text_candidates = by_char !== null ? by_char[text_bucket(input, s, e)] : null;
           if (text_candidates !== null) {
-            const s = tokens[base + 1];
-            const e = tokens[base + 2];
             for (let t = 0; t < text_candidates.length; t++) {
               if (text_matches(input, s, e, text_candidates[t])) {
                 is_transparent = true;
@@ -1102,7 +1029,6 @@ export function frame_track(spec: FrameSpec): Reclassifier {
             }
           }
         }
-        at_start[i] = stack_at_start[stack_at_start.length - 1];
       }
 
       // brace-kind bookkeeping: body markers arm the pending kind, angle
@@ -1147,26 +1073,28 @@ export function frame_track(spec: FrameSpec): Reclassifier {
         for (let p = s; p < e; p++) {
           const c = input.charCodeAt(p);
           if (c === paren_open) {
-            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
+            if (at_start_enabled) cur_at_start = 0;
             const idx = frames.length;
             frames.push({
               bracket: FRAME_BRACKET_PAREN,
               kind: FRAME_KIND_PAREN,
               enter_idx: i,
-              parent: stack[stack.length - 1],
+              parent: cur_frame,
             });
-            stack.push(idx);
-            stack_at_start.push(0);
+            saved_frame.push(cur_frame);
+            saved_at_start.push(cur_at_start);
+            cur_frame = idx;
+            cur_at_start = 0;
             paren_depth++;
           } else if (c === paren_close) {
-            if (stack.length > 1) {
-              stack.pop();
-              stack_at_start.pop();
+            if (saved_frame.length > 0) {
+              cur_frame = saved_frame.pop()!;
+              cur_at_start = saved_at_start.pop()!;
             }
             if (paren_depth > 0) paren_depth--;
-            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
+            if (at_start_enabled) cur_at_start = 0;
           } else if (c === brace_open) {
-            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
+            if (at_start_enabled) cur_at_start = 0;
             // declarative kind resolution: a pending body marker claims a
             // top-level brace (and is consumed); a marker under angle
             // nesting yields the constraint-literal kind without consuming;
@@ -1195,7 +1123,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
                   kind_tables,
                   prev_significant,
                   frames,
-                  stack[stack.length - 1],
+                  cur_frame,
                   punct_id,
                   p > s ? input.charCodeAt(p - 1) : -1,
                 );
@@ -1206,17 +1134,19 @@ export function frame_track(spec: FrameSpec): Reclassifier {
               bracket: FRAME_BRACKET_BRACE,
               kind,
               enter_idx: i,
-              parent: stack[stack.length - 1],
+              parent: cur_frame,
             });
-            stack.push(idx);
-            stack_at_start.push(1);
+            saved_frame.push(cur_frame);
+            saved_at_start.push(cur_at_start);
+            cur_frame = idx;
+            cur_at_start = 1;
             brace_depth++;
           } else if (c === brace_close) {
             angle_depth = 0;
             let popped = false;
-            if (stack.length > 1) {
-              stack.pop();
-              stack_at_start.pop();
+            if (saved_frame.length > 0) {
+              cur_frame = saved_frame.pop()!;
+              cur_at_start = saved_at_start.pop()!;
               popped = true;
             }
             if (brace_depth > 0) brace_depth--;
@@ -1226,30 +1156,31 @@ export function frame_track(spec: FrameSpec): Reclassifier {
               // pop re-arms at_start when the parent is such a body.
               let rearm = 0;
               if (popped && rearm_kind_ids !== null) {
-                const parent_frame = frames[stack[stack.length - 1]];
-                if (rearm_kind_ids.has(parent_frame.kind)) rearm = 1;
+                if (rearm_kind_ids.has(frames[cur_frame].kind)) rearm = 1;
               }
-              stack_at_start[stack_at_start.length - 1] = rearm;
+              cur_at_start = rearm;
             }
           } else if (c === bracket_open) {
-            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
+            if (at_start_enabled) cur_at_start = 0;
             const idx = frames.length;
             frames.push({
               bracket: FRAME_BRACKET_BRACKET,
               kind: FRAME_KIND_BRACKET,
               enter_idx: i,
-              parent: stack[stack.length - 1],
+              parent: cur_frame,
             });
-            stack.push(idx);
-            stack_at_start.push(0);
+            saved_frame.push(cur_frame);
+            saved_at_start.push(cur_at_start);
+            cur_frame = idx;
+            cur_at_start = 0;
             bracket_depth++;
           } else if (c === bracket_close) {
-            if (stack.length > 1) {
-              stack.pop();
-              stack_at_start.pop();
+            if (saved_frame.length > 0) {
+              cur_frame = saved_frame.pop()!;
+              cur_at_start = saved_at_start.pop()!;
             }
             if (bracket_depth > 0) bracket_depth--;
-            if (at_start_enabled) stack_at_start[stack_at_start.length - 1] = 0;
+            if (at_start_enabled) cur_at_start = 0;
           } else {
             for (let r = 0; r < angle_reset_len; r++) {
               if (c === angle_reset[r]) {
@@ -1274,30 +1205,20 @@ export function frame_track(spec: FrameSpec): Reclassifier {
                   break;
                 }
               }
-              stack_at_start[stack_at_start.length - 1] = is_reset ? 1 : 0;
+              cur_at_start = is_reset ? 1 : 0;
             }
           }
         }
       } else if (at_start_enabled && !is_trivia && !is_transparent) {
-        stack_at_start[stack_at_start.length - 1] = 0;
+        cur_at_start = 0;
       }
 
       if (!is_trivia) prev_significant = i;
 
-      active_frame[i] = stack[stack.length - 1];
+      active_frame[i] = cur_frame;
       depths[base] = paren_depth;
       depths[base + 1] = brace_depth;
       depths[base + 2] = bracket_depth;
-    }
-
-    // signals run as a second, self-contained pass so the main walk's code
-    // is untouched for the (vastly more common) configs that don't track
-    // them. weaving the signal branches into the loop above measurably
-    // degraded the jit code shared by ALL frame_track instances once one
-    // signals-enabled tracker had run (~14% on signal-free pipelines);
-    // the dedicated pass keeps that cost on the opted-in pipeline only.
-    if (signals_enabled && type_flags !== null && signal_tables !== null) {
-      compute_signals(input, tokens, n, compiled, signal_tables, type_flags, punct_id, signals);
     }
 
     const table: FrameTable = {
@@ -1306,7 +1227,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
       at_start,
       frames,
       kind_names,
-      signals,
+      signals: EMPTY_U8,
       flag_names: compiled.stmt_flag_names,
     };
     // attach to result -- callers must clone result.tokens before mutating
@@ -1321,4 +1242,367 @@ export function frame_track(spec: FrameSpec): Reclassifier {
       frames: table,
     };
   };
+
+  // the walk above plus per frame ternary counters and stmt flag masks.
+  // the counters are saved and restored with the frame, so a ternary or a
+  // statement flag never leaks out of the bracket it was opened in.
+  const walk_signals = (input: string, result: TokenizeResult): TokenizeResult => {
+    let resolved = tables_cache.get(result.token_types);
+    if (resolved === undefined) {
+      resolved = resolve_tables(compiled, result.token_types);
+      tables_cache.set(result.token_types, resolved);
+    }
+    const punct_id = resolved.punct_id;
+    const kind_tables = resolved.kind_tables;
+    // signals imply the flags byte, see resolve_tables.
+    const type_flags = resolved.type_flags!;
+    const transparent_texts = resolved.transparent_texts;
+    const stmt_lists = resolved.signal_tables!.stmt_lists;
+    const kinds = compiled.brace_kinds;
+
+    const at_start_enabled = compiled.at_start_enabled;
+    const paren_open = compiled.paren_open;
+    const paren_close = compiled.paren_close;
+    const brace_open = compiled.brace_open;
+    const brace_close = compiled.brace_close;
+    const bracket_open = compiled.bracket_open;
+    const bracket_close = compiled.bracket_close;
+    const reset_chars = compiled.at_start_reset_chars;
+    const reset_chars_len = reset_chars.length;
+    const rearm_kind_ids = compiled.rearm_kind_ids;
+    const marker_lists = kind_tables !== null ? kind_tables.marker_lists : null;
+    const qmark_text = compiled.ternary_qmark_text;
+    const colon_code = compiled.ternary_colon_code;
+    const clear_codes = compiled.stmt_clear_char_codes;
+    const clear_masks = compiled.stmt_clear_char_masks;
+    const clear_count = clear_codes.length;
+    const brace_close_clear_mask = compiled.stmt_brace_close_clear_mask;
+
+    const { tokens } = result;
+    const n = tokens.length / 3;
+    const active_frame = new Uint32Array(n);
+    const depths = new Uint8Array(n * 3);
+    const at_start = at_start_enabled ? new Uint8Array(n) : EMPTY_U8;
+    const signals = new Uint8Array(n);
+    const frames: FrameRecord[] = [
+      { bracket: -1, kind: FRAME_KIND_TOP, enter_idx: -1, parent: -1 },
+    ];
+    let cur_frame = 0;
+    let cur_at_start = 1;
+    const saved_frame: number[] = [];
+    const saved_at_start: number[] = [];
+    // open ternaries and armed stmt flags of the active frame.
+    let cur_qmark = 0;
+    let cur_flags = 0;
+    const saved_qmark: number[] = [];
+    const saved_flags: number[] = [];
+    // the last significant token was a counted qmark. a colon opening the
+    // next one is an optional marker (`x?: T`): a ternary has its
+    // consequent in between.
+    let after_qmark = false;
+
+    let paren_depth = 0;
+    let brace_depth = 0;
+    let bracket_depth = 0;
+    let angle_depth = 0;
+    const angle_reset = kinds !== null ? kinds.angle_reset_chars : EMPTY_CODES;
+    const angle_reset_len = angle_reset.length;
+    let pending_kind = -1;
+    let pending_depth = -1;
+    const marker_reset = kinds !== null ? kinds.marker_reset_chars : EMPTY_CODES;
+    const marker_reset_len = marker_reset.length;
+    let prev_significant = -1;
+
+    for (let i = 0; i < n; i++) {
+      const base = i * 3;
+      const ttype = tokens[base];
+
+      const flags = type_flags[ttype];
+      const is_trivia = (flags & FLAG_TRIVIA) !== 0;
+      let is_transparent = false;
+      if (at_start_enabled) {
+        is_transparent = (flags & FLAG_TRANSPARENT) !== 0;
+        at_start[i] = cur_at_start;
+        if (
+          cur_at_start !== 0 &&
+          !is_transparent &&
+          (flags & FLAG_TRANSPARENT_TEXTS) !== 0 &&
+          transparent_texts !== null
+        ) {
+          const by_char = transparent_texts[ttype];
+          const s = tokens[base + 1];
+          const e = tokens[base + 2];
+          const text_candidates = by_char !== null ? by_char[text_bucket(input, s, e)] : null;
+          if (text_candidates !== null) {
+            for (let t = 0; t < text_candidates.length; t++) {
+              if (text_matches(input, s, e, text_candidates[t])) {
+                is_transparent = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if ((flags & (FLAG_MARKER | FLAG_ANGLE)) !== 0 && marker_lists !== null) {
+        if ((flags & FLAG_MARKER) !== 0) {
+          const candidates = marker_lists[ttype];
+          if (candidates !== null) {
+            const s = tokens[base + 1];
+            const e = tokens[base + 2];
+            for (let m = 0; m < candidates.length; m++) {
+              if (text_matches(input, s, e, candidates[m].text)) {
+                pending_kind = candidates[m].kind_id;
+                pending_depth = brace_depth;
+                break;
+              }
+            }
+          }
+        }
+        if ((flags & FLAG_ANGLE) !== 0 && kinds !== null) {
+          const s = tokens[base + 1];
+          const e = tokens[base + 2];
+          if (kinds.angle_open !== null && text_matches(input, s, e, kinds.angle_open)) {
+            angle_depth++;
+          } else {
+            const closes = kinds.angle_closes;
+            for (let c = 0; c < closes.length; c++) {
+              if (text_matches(input, s, e, closes[c].text)) {
+                angle_depth = Math.max(0, angle_depth - closes[c].pops);
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      let signal = 0;
+      let qmark = false;
+      if ((flags & (FLAG_QMARK | FLAG_STMT)) !== 0) {
+        if ((flags & FLAG_QMARK) !== 0 && qmark_text !== null) {
+          if (text_matches(input, tokens[base + 1], tokens[base + 2], qmark_text)) {
+            cur_qmark++;
+            qmark = true;
+          }
+        }
+        if ((flags & FLAG_STMT) !== 0) {
+          const by_char = stmt_lists[ttype];
+          if (by_char !== null) {
+            const s = tokens[base + 1];
+            const e = tokens[base + 2];
+            const first = input.charCodeAt(s);
+            const candidates = first < STMT_BUCKETS ? by_char[first] : null;
+            if (candidates !== null) {
+              for (let m = 0; m < candidates.length; m++) {
+                if (text_matches(input, s, e, candidates[m].text)) {
+                  cur_flags = (cur_flags | candidates[m].arm_mask) & ~candidates[m].clear_mask;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (punct_id >= 0 && ttype === punct_id) {
+        const s = tokens[base + 1];
+        const e = tokens[base + 2];
+        for (let p = s; p < e; p++) {
+          const c = input.charCodeAt(p);
+          if (c === paren_open) {
+            if (at_start_enabled) cur_at_start = 0;
+            const idx = frames.length;
+            frames.push({
+              bracket: FRAME_BRACKET_PAREN,
+              kind: FRAME_KIND_PAREN,
+              enter_idx: i,
+              parent: cur_frame,
+            });
+            saved_frame.push(cur_frame);
+            saved_at_start.push(cur_at_start);
+            saved_qmark.push(cur_qmark);
+            saved_flags.push(cur_flags);
+            cur_frame = idx;
+            cur_at_start = 0;
+            cur_qmark = 0;
+            cur_flags = 0;
+            paren_depth++;
+          } else if (c === paren_close) {
+            if (saved_frame.length > 0) {
+              cur_frame = saved_frame.pop()!;
+              cur_at_start = saved_at_start.pop()!;
+              cur_qmark = saved_qmark.pop()!;
+              cur_flags = saved_flags.pop()!;
+            }
+            if (paren_depth > 0) paren_depth--;
+            if (at_start_enabled) cur_at_start = 0;
+          } else if (c === brace_open) {
+            if (at_start_enabled) cur_at_start = 0;
+            let kind = FRAME_KIND_TOP;
+            if (kinds !== null && kind_tables !== null) {
+              if (
+                pending_kind >= 0 &&
+                angle_depth === 0 &&
+                paren_depth === 0 &&
+                bracket_depth === 0
+              ) {
+                kind = pending_kind;
+                pending_kind = -1;
+              } else if (pending_kind >= 0 && angle_depth > 0) {
+                kind =
+                  kinds.pending_in_angles_kind >= 0
+                    ? kinds.pending_in_angles_kind
+                    : kinds.default_kind;
+              } else {
+                kind = classify_by_prev(
+                  input,
+                  tokens,
+                  type_flags,
+                  kinds,
+                  kind_tables,
+                  prev_significant,
+                  frames,
+                  cur_frame,
+                  punct_id,
+                  p > s ? input.charCodeAt(p - 1) : -1,
+                );
+              }
+            }
+            const idx = frames.length;
+            frames.push({
+              bracket: FRAME_BRACKET_BRACE,
+              kind,
+              enter_idx: i,
+              parent: cur_frame,
+            });
+            saved_frame.push(cur_frame);
+            saved_at_start.push(cur_at_start);
+            saved_qmark.push(cur_qmark);
+            saved_flags.push(cur_flags);
+            cur_frame = idx;
+            cur_at_start = 1;
+            cur_qmark = 0;
+            cur_flags = 0;
+            brace_depth++;
+          } else if (c === brace_close) {
+            angle_depth = 0;
+            let popped = false;
+            if (saved_frame.length > 0) {
+              cur_frame = saved_frame.pop()!;
+              cur_at_start = saved_at_start.pop()!;
+              cur_qmark = saved_qmark.pop()!;
+              // a closing brace ends the statement that armed any
+              // close cleared flag on the parent frame.
+              cur_flags = saved_flags.pop()! & ~brace_close_clear_mask;
+              popped = true;
+            }
+            if (brace_depth > 0) brace_depth--;
+            if (at_start_enabled) {
+              let rearm = 0;
+              if (popped && rearm_kind_ids !== null) {
+                if (rearm_kind_ids.has(frames[cur_frame].kind)) rearm = 1;
+              }
+              cur_at_start = rearm;
+            }
+          } else if (c === bracket_open) {
+            if (at_start_enabled) cur_at_start = 0;
+            const idx = frames.length;
+            frames.push({
+              bracket: FRAME_BRACKET_BRACKET,
+              kind: FRAME_KIND_BRACKET,
+              enter_idx: i,
+              parent: cur_frame,
+            });
+            saved_frame.push(cur_frame);
+            saved_at_start.push(cur_at_start);
+            saved_qmark.push(cur_qmark);
+            saved_flags.push(cur_flags);
+            cur_frame = idx;
+            cur_at_start = 0;
+            cur_qmark = 0;
+            cur_flags = 0;
+            bracket_depth++;
+          } else if (c === bracket_close) {
+            if (saved_frame.length > 0) {
+              cur_frame = saved_frame.pop()!;
+              cur_at_start = saved_at_start.pop()!;
+              cur_qmark = saved_qmark.pop()!;
+              cur_flags = saved_flags.pop()!;
+            }
+            if (bracket_depth > 0) bracket_depth--;
+            if (at_start_enabled) cur_at_start = 0;
+          } else {
+            if (c === colon_code && cur_qmark > 0) {
+              // an optional marker's colon still takes back its qmark's count.
+              cur_qmark--;
+              if (!after_qmark || p !== s) signal |= SIGNAL_TERNARY_COLON;
+            } else if (clear_count > 0) {
+              for (let m = 0; m < clear_count; m++) {
+                if (c === clear_codes[m]) {
+                  cur_flags &= ~clear_masks[m];
+                  break;
+                }
+              }
+            }
+            for (let r = 0; r < angle_reset_len; r++) {
+              if (c === angle_reset[r]) {
+                angle_depth = 0;
+                break;
+              }
+            }
+            if (pending_kind >= 0 && brace_depth === pending_depth) {
+              for (let r = 0; r < marker_reset_len; r++) {
+                if (c === marker_reset[r]) {
+                  pending_kind = -1;
+                  pending_depth = -1;
+                  break;
+                }
+              }
+            }
+            if (at_start_enabled) {
+              let is_reset = false;
+              for (let r = 0; r < reset_chars_len; r++) {
+                if (c === reset_chars[r]) {
+                  is_reset = true;
+                  break;
+                }
+              }
+              cur_at_start = is_reset ? 1 : 0;
+            }
+          }
+        }
+      } else if (at_start_enabled && !is_trivia && !is_transparent) {
+        cur_at_start = 0;
+      }
+
+      if (!is_trivia) {
+        prev_significant = i;
+        after_qmark = qmark;
+      }
+
+      active_frame[i] = cur_frame;
+      signals[i] = signal | (cur_flags << 1);
+      depths[base] = paren_depth;
+      depths[base + 1] = brace_depth;
+      depths[base + 2] = bracket_depth;
+    }
+
+    const table: FrameTable = {
+      active_frame,
+      depths,
+      at_start,
+      frames,
+      kind_names,
+      signals,
+      flag_names: compiled.stmt_flag_names,
+    };
+    return {
+      tokens: result.tokens,
+      token_types: result.token_types,
+      overlays: result.overlays,
+      frames: table,
+    };
+  };
+
+  return compiled.signals_enabled ? walk_signals : walk_plain;
 }
