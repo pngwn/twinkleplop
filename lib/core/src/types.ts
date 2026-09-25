@@ -72,12 +72,19 @@ export interface CompiledGrammar {
   // unicode identifier character covers 65408 of them, and materialising that
   // per codepoint dominated compile time for the grammars that do it.
   non_ascii_ranges: Map<number, Int32Array>;
+  // dense per state copies of patterns and non_ascii_ranges
+  patterns_by_state: ((PatternInfo[] | null)[] | undefined)[];
+  non_ascii_by_state: (Int32Array | undefined)[];
   // retain set for external tooling, but also include fast mask for hot path
   probe_states: Set<number>;
   probe_mask?: Uint8Array;
   probe_fallbacks?: Map<number, number>;
   // track which rules require boundary checking (state * 256 + rule_idx)
   boundary_rules?: Set<number>;
+  // boundary_rules as a dense array
+  boundary_flags?: Uint8Array;
+  // indexed like boundary_rules, holds one of the run kind codes below
+  run_kinds: Uint8Array;
   // true when any rule sets seal: true or boundary: true. lets the
   // tokenizer skip the per-emission seal lookup on grammars that don't
   // opt in — most grammars don't.
@@ -88,6 +95,13 @@ export interface CompiledGrammar {
   seal_flags?: Uint8Array;
   fallback_seal_flags?: Uint8Array;
 }
+
+// run_kinds codes, a rule that keeps its state and stack loops on itself, so
+// the tokenizer consumes its whole run of characters in one go
+export const RUN_NONE = 0;
+export const RUN_EMITTING = 1;
+// a self loop that emits nothing, so its run is skipped outright
+export const RUN_TOKENLESS = 2;
 
 // Tokenizer types
 export interface TokenizeResult {
@@ -1238,6 +1252,17 @@ export interface EmbedInterleavedConfig {
    * "neutral" for the sub-language's tokenizer. Default: " ".
    */
   hole_char?: string;
+  /**
+   * token type names a group can start on, when set scan only runs on tokens
+   * of these types so it must return null everywhere else, types missing
+   * from the stream are ignored
+   */
+  trigger_types?: string[];
+  /**
+   * whole input precheck, false skips the pass so it must be true for every
+   * input scan could find a group in
+   */
+  may_match?: (input: string) => boolean;
 }
 
 // Introspector types

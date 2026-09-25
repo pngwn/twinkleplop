@@ -12,6 +12,7 @@
 
 import { build_annotation_extractor } from "./annotation";
 import { debug_enabled, warn_once } from "./debug";
+import { fuse_ident_producers } from "./fidelity";
 import { tokenize } from "./tokenizer";
 import { FRAME_BRACKET_BRACE, FRAME_KIND_TOP, SIGNAL_TERNARY_COLON } from "./types";
 import type {
@@ -2885,6 +2886,31 @@ function merge_and_apply_buffer(tokens: Uint32Array, buf: ClaimBuffer): void {
   }
 }
 
+// one sink per nesting depth, a user ClaimFn may run another apply mode
+// producer inside its own run
+const apply_sinks: ClaimBuffer[] = [];
+let apply_depth = 0;
+
+// the ClaimFn contract forbids mutating token slots, so the token copy waits
+// until a claim fires
+function apply_claims(claim_fn: ClaimFn, input: string, result: TokenizeResult): TokenizeResult {
+  if (apply_depth === apply_sinks.length) apply_sinks.push(new ClaimBuffer(256));
+  const sink = apply_sinks[apply_depth++];
+  sink.reset();
+  const token_types = result.token_types.slice();
+  try {
+    claim_fn(input, result.tokens, token_types, sink, result.frames);
+    if (sink.count === 0) {
+      return { tokens: result.tokens, token_types, frames: result.frames };
+    }
+    const tokens = new Uint32Array(result.tokens);
+    merge_and_apply_buffer(tokens, sink);
+    return { tokens, token_types, frames: result.frames };
+  } finally {
+    apply_depth--;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // rewrite_types
 // ---------------------------------------------------------------------------
@@ -2980,6 +3006,17 @@ interface CompiledRewriteState {
   compiled: CompiledRule[];
   anchor_offset: Int32Array;
   anchor_count: Uint8Array;
+  // per-anchor dispatch pre-filtered by the anchor token's last char. most
+  // rules pin `anchor_last_char`, and rejecting them one at a time was half
+  // of all rule visits. `slot_base[type]` is -1 when the type has no rules,
+  // otherwise the first of 1 slot (no rule pins a last char) or 129 slots
+  // (ascii last char 0..127, then one for non-ascii). each slot is a range of
+  // `slot_rules`, which holds rule_table indices in the original order.
+  slot_base: Int32Array;
+  slot_by_char: Uint8Array;
+  slot_start: Int32Array;
+  slot_len: Uint8Array;
+  slot_rules: Int32Array;
   rule_table: CompiledRule[];
   trivia: Uint8Array;
   program: Int32Array;
@@ -3248,6 +3285,42 @@ function compile_rewrite(
     for (const r of list) rule_table.push(r);
   }
 
+  const slot_base = new Int32Array(type_count).fill(-1);
+  const slot_by_char = new Uint8Array(type_count);
+  const slot_start_list: number[] = [];
+  const slot_len_list: number[] = [];
+  const slot_rule_list: number[] = [];
+  const push_slot = (from: number, n: number, accept: (r: CompiledRule) => boolean) => {
+    slot_start_list.push(slot_rule_list.length);
+    let len = 0;
+    for (let g = from; g < from + n; g++) {
+      if (accept(rule_table[g])) {
+        slot_rule_list.push(g);
+        len++;
+      }
+    }
+    slot_len_list.push(len);
+  };
+  for (const [anchor_id] of buckets) {
+    const from = anchor_offset[anchor_id];
+    const n = anchor_count[anchor_id];
+    slot_base[anchor_id] = slot_start_list.length;
+    let pins = false;
+    for (let g = from; g < from + n; g++) if (rule_table[g].anchor_last_char >= 0) pins = true;
+    if (!pins) {
+      push_slot(from, n, () => true);
+      continue;
+    }
+    slot_by_char[anchor_id] = 1;
+    for (let c = 0; c < 128; c++) {
+      push_slot(from, n, (r) => r.anchor_last_char < 0 || r.anchor_last_char === c);
+    }
+    push_slot(from, n, (r) => r.anchor_last_char < 0 || r.anchor_last_char >= 128);
+  }
+  const slot_start = Int32Array.from(slot_start_list);
+  const slot_len = Uint8Array.from(slot_len_list);
+  const slot_rules = Int32Array.from(slot_rule_list);
+
   const trivia = new Uint8Array(Math.max(256, scratch.length));
   if (options.trivia) {
     for (const name of options.trivia) {
@@ -3266,6 +3339,11 @@ function compile_rewrite(
     compiled,
     anchor_offset,
     anchor_count,
+    slot_base,
+    slot_by_char,
+    slot_start,
+    slot_len,
+    slot_rules,
     rule_table,
     trivia,
     program,
@@ -3446,22 +3524,12 @@ export function rewrite_types(
     run_rewrite_loop_claims(input, tokens, token_types, state, remap, sink, frames);
   }
 
-  const apply_fn: Reclassifier = (input, result) => {
-    const tokens = new Uint32Array(result.tokens);
-    const token_types = result.token_types.slice();
-    const state = get_state(result.token_types);
-    // local sink — apply_fn may be called reentrantly while the shared
-    // sink is in use by an outer batch.
-    const sink = new ClaimBuffer(256);
-    collect(input, tokens, token_types, state, sink, result.frames);
-    merge_and_apply_buffer(tokens, sink);
-    return { tokens, token_types, frames: result.frames };
-  };
-
   const claim_fn: ClaimFn = (input, tokens, token_types, sink, frames) => {
     const state = get_state(token_types);
     collect(input, tokens, token_types, state, sink, frames);
   };
+
+  const apply_fn: Reclassifier = (input, result) => apply_claims(claim_fn, input, result);
 
   const fn = apply_fn as ClaimingReclassifier;
   fn.__claim = claim_fn;
@@ -3485,8 +3553,11 @@ function run_rewrite_loop_claims(
 ): void {
   const count = tokens.length / 3;
   const {
-    anchor_offset,
-    anchor_count,
+    slot_base,
+    slot_by_char,
+    slot_start,
+    slot_len,
+    slot_rules,
     rule_table,
     trivia,
     program,
@@ -3535,12 +3606,18 @@ function run_rewrite_loop_claims(
   for (let i = 0; i < count; i++) {
     const type = tokens[i * 3];
     if (trivia[type]) continue;
-    const offset = anchor_offset[type];
-    if (offset < 0) continue;
-    const rcount = anchor_count[type];
+    let slot = slot_base[type];
+    if (slot < 0) continue;
+    if (slot_by_char[type] === 1) {
+      const last = input.charCodeAt(tokens[i * 3 + 2] - 1);
+      slot += last < 128 ? last : 128;
+    }
+    const rfrom = slot_start[slot];
+    const rend = rfrom + slot_len[slot];
 
-    for (let r = 0; r < rcount; r++) {
-      const rule = rule_table[offset + r];
+    for (let q = rfrom; q < rend; q++) {
+      const g = slot_rules[q];
+      const rule = rule_table[g];
       // text constraints run before the gates: a one-char trailing test
       // and the value sets are far cheaper than frame walks, and value
       // anchors on common types (punctuation `:`) reject most tokens.
@@ -3568,7 +3645,7 @@ function run_rewrite_loop_claims(
         if (frames === undefined) continue;
         if (rule.anchor_at_start && frames.at_start[i] !== 1) continue;
         if (rule.anchor_frame_kinds !== null) {
-          const wanted = resolved_kinds![offset + r]!;
+          const wanted = resolved_kinds![g]!;
           let kind: number;
           if (rule.anchor_frame_direct) {
             // direct mode: the token's innermost frame, no parent walk.
@@ -3610,9 +3687,9 @@ function run_rewrite_loop_claims(
           if ((sig & SIGNAL_TERNARY_COLON) !== rule.anchor_ternary_colon) continue;
         }
         if (flags_all_masks !== null) {
-          const all = flags_all_masks[offset + r];
+          const all = flags_all_masks[g];
           if ((sig & all) !== all) continue;
-          if ((sig & flags_none_masks![offset + r]) !== 0) continue;
+          if ((sig & flags_none_masks![g]) !== 0) continue;
         } else if (rule.anchor_flags_all !== null || rule.anchor_flags_none !== null) {
           continue;
         }
@@ -3873,19 +3950,25 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
       return id;
     };
 
-    // build a per-embed remap: sub_type_id -> merged_type_id. cache by sub
-    // token_types reference so repeated embeds of the same language reuse
-    // one remap table (which also catches cached languages returning the
-    // same token_types array).
-    const remap_cache = new WeakMap<string[], Uint32Array>();
+    // keyed by content since every sub pipeline call returns a freshly sliced
+    // vocabulary whose names repeat embed to embed
+    const remap_keys: string[][] = [];
+    const remap_vals: Uint32Array[] = [];
     const remap_for = (sub_types: string[]): Uint32Array => {
-      let remap = remap_cache.get(sub_types);
-      if (remap) return remap;
-      remap = new Uint32Array(sub_types.length);
+      outer: for (let c = remap_keys.length - 1; c >= 0; c--) {
+        const key = remap_keys[c];
+        if (key.length !== sub_types.length) continue;
+        for (let k = 0; k < key.length; k++) {
+          if (key[k] !== sub_types[k]) continue outer;
+        }
+        return remap_vals[c];
+      }
+      const remap = new Uint32Array(sub_types.length);
       for (let i = 0; i < sub_types.length; i++) {
         remap[i] = ensure_id(sub_types[i]);
       }
-      remap_cache.set(sub_types, remap);
+      remap_keys.push(sub_types);
+      remap_vals.push(remap);
       return remap;
     };
 
@@ -3986,7 +4069,9 @@ const MAX_EMBED_ITERATIONS = 16;
 
 export function embed_interleaved(config: EmbedInterleavedConfig): Reclassifier {
   const hole_char = config.hole_char ?? " ";
+  const may_match = config.may_match;
   return (input: string, result: TokenizeResult): TokenizeResult => {
+    if (may_match !== undefined && !may_match(input)) return result;
     // iterate the single-pass transform until it reaches a fixed point.
     //
     // why iterate: the scan loop advances past each matched group via
@@ -4020,6 +4105,20 @@ function embed_interleaved_once(
   const host_tokens = result.tokens;
   const host_types = result.token_types;
   const host_count = host_tokens.length / 3;
+
+  // resolved per pass since a pass that finds a group extends token_types
+  let triggers: Uint8Array | null = null;
+  if (config.trigger_types !== undefined) {
+    triggers = new Uint8Array(host_types.length);
+    let any_trigger = false;
+    for (const name of config.trigger_types) {
+      const id = host_types.indexOf(name);
+      if (id < 0) continue;
+      triggers[id] = 1;
+      any_trigger = true;
+    }
+    if (!any_trigger) return result;
+  }
 
   // the vocabulary merge is deferred until a group is actually found.
   // every host stream without an embedded region pays this function, and
@@ -4069,6 +4168,10 @@ function embed_interleaved_once(
   let new_count = host_count;
   let i = 0;
   while (i < host_count) {
+    if (triggers !== null && triggers[host_tokens[i * 3]] === 0) {
+      i++;
+      continue;
+    }
     const desc = config.scan(host_tokens, input, i, token_types);
     if (desc === null) {
       i++;
@@ -4127,12 +4230,11 @@ function embed_interleaved_once(
       host_idx = g.token_end;
       continue;
     }
-    const base = host_idx * 3;
-    tokens[write_idx * 3] = host_tokens[base];
-    tokens[write_idx * 3 + 1] = host_tokens[base + 1];
-    tokens[write_idx * 3 + 2] = host_tokens[base + 2];
-    write_idx++;
-    host_idx++;
+    const next_start = group_idx < groups.length ? groups[group_idx].token_start : host_count;
+    const run_end = next_start > host_idx ? next_start : host_count;
+    tokens.set(host_tokens.subarray(host_idx * 3, run_end * 3), write_idx * 3);
+    write_idx += run_end - host_idx;
+    host_idx = run_end;
   }
 
   return {
@@ -4327,12 +4429,12 @@ function plan_pipeline(pipeline: ReclassifierPipeline): PipelineStep[] {
       continue;
     }
     if (batch.length > 0) {
-      steps.push({ batch, fn: null });
+      steps.push({ batch: fuse_ident_producers(batch), fn: null });
       batch = [];
     }
     steps.push({ batch: null, fn });
   }
-  if (batch.length > 0) steps.push({ batch, fn: null });
+  if (batch.length > 0) steps.push({ batch: fuse_ident_producers(batch), fn: null });
   return steps;
 }
 
@@ -4448,8 +4550,9 @@ export function always(reclassifier: Reclassifier, layer: ReclassifierLayer): Ta
 
 /**
  * wrap a raw ClaimFn into a ClaimingReclassifier — callable as a plain
- * Reclassifier (apply mode: clone tokens+token_types, run claim_fn, merge
- * by precedence, apply) and also exposes a `__claim` method so the
+ * Reclassifier, apply mode clones token_types, runs claim_fn, merges by
+ * precedence and copies tokens only when a claim fired, and also exposes
+ * a __claim method so the
  * pipeline runner can batch this pass alongside other claim producers.
  *
  * apply mode runs merge_claims before applying so a single pass that
@@ -4457,14 +4560,7 @@ export function always(reclassifier: Reclassifier, layer: ReclassifierLayer): Ta
  * emit at most one per position) produces deterministic output.
  */
 export function as_claim_producer(claim_fn: ClaimFn): ClaimingReclassifier {
-  const apply_fn: Reclassifier = (input, result) => {
-    const tokens = new Uint32Array(result.tokens);
-    const token_types = result.token_types.slice();
-    const sink = new ClaimBuffer(256);
-    claim_fn(input, tokens, token_types, sink, result.frames);
-    merge_and_apply_buffer(tokens, sink);
-    return { tokens, token_types, frames: result.frames };
-  };
+  const apply_fn: Reclassifier = (input, result) => apply_claims(claim_fn, input, result);
   const fn = apply_fn as ClaimingReclassifier;
   fn.__claim = claim_fn;
   return fn;

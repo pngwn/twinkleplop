@@ -1,5 +1,6 @@
 import type { CompiledGrammar, PatternInfo, TokenizeResult } from "./types";
 import type { TokenizerIntrospector } from "./introspector";
+import { RUN_NONE, RUN_TOKENLESS } from "./types";
 
 // every field is set in the literal that creates an entry, and none is added
 // later: adding a property after creation moves the object to a map that only
@@ -20,9 +21,10 @@ interface ProbeEntry {
 
 declare const INTROSPECTION: boolean;
 
-// one 4k page worth of Uint32 slots. below this there is nothing worth
-// reclaiming from the scan scratch buffer and the copy is pure cost.
-const MIN_RECLAIMED_SLOTS = 1024;
+// shared by every call since tokenize never calls out while holding it, a
+// larger input gets its own buffer so this one is not pinned
+const MAX_RETAINED_TOKEN_SLOTS = 1 << 20;
+let scratch_tokens = new Uint32Array(4096);
 
 // stands in for the fallback rule index in probe keys, a range rule never matches where the fallback does
 const FALLBACK_RULE = 255;
@@ -38,6 +40,21 @@ function is_identifier_char(char_code: number): boolean {
   );
 }
 
+// typed arrays over 64 bytes get an off-heap backing store, which costs
+// several microseconds to allocate. that was most of the fixed cost of a
+// call on short inputs, so the state stack is reused. a pool rather than one
+// shared stack keeps a nested call safe. every read is below stack_ptr, so
+// stale contents from an earlier call are never seen.
+const stack_pool: Uint16Array[] = [];
+
+function scratch_token_buffer(slots: number): Uint32Array {
+  if (slots <= scratch_tokens.length) return scratch_tokens;
+  if (slots > MAX_RETAINED_TOKEN_SLOTS) return new Uint32Array(slots);
+  const grown = Math.max(slots, scratch_tokens.length * 2);
+  scratch_tokens = new Uint32Array(Math.min(grown, MAX_RETAINED_TOKEN_SLOTS));
+  return scratch_tokens;
+}
+
 export function tokenize(
   input: string,
   compiled_grammar: CompiledGrammar,
@@ -47,31 +64,32 @@ export function tokenize(
     transitions,
     char_maps,
     token_types,
-    patterns,
+    patterns_by_state,
     fallback_transitions,
-    non_ascii_ranges,
+    non_ascii_by_state,
     probe_states,
     probe_mask,
     probe_fallbacks,
-    boundary_rules,
+    boundary_flags,
+    run_kinds,
     has_seals,
     seal_flags,
     fallback_seal_flags,
   } = compiled_grammar;
 
   const len = input.length;
-  const tokens = new Uint32Array(len * 3);
+  const tokens = introspector === null ? scratch_token_buffer(len * 3) : new Uint32Array(len * 3);
   let token_count = 0;
 
-  const state_stack = new Uint16Array(256);
+  const state_stack = stack_pool.pop() ?? new Uint16Array(256);
   let stack_ptr = 0;
   let current_state = 0;
 
   // cache per-state hot references to avoid Map.get and multiplies per char
-  let state_buckets: (PatternInfo[] | null)[] | undefined = patterns && patterns.get(0);
+  let state_buckets: (PatternInfo[] | null)[] | undefined = patterns_by_state[0];
   let char_map_base: number = 0; // current_state * 128
   let trans_base3: number = 0; // (current_state * 256) * 3
-  let non_ascii_state: Int32Array | undefined = non_ascii_ranges && non_ascii_ranges.get(0 as any);
+  let non_ascii_state: Int32Array | undefined = non_ascii_by_state[0];
 
   let pos = 0;
   let prev_advanced_pos = -1;
@@ -85,145 +103,8 @@ export function tokenize(
 
   // track failed probe attempts - use numeric key for performance
   // key = (pos << 16) | (state << 8) | rule_idx
-  const failed_probes = new Set<number>();
+  let failed_probes: Set<number> | null = null;
   let has_failed_probes = false;
-
-  // helpers: probe fallback paths. extracted because the fallback-exists and
-  // fallback-missing rewinds each appear three times (ASCII end-of-input,
-  // ASCII no-match-at-end-of-input, non-ASCII no-match-at-end-of-input) with
-  // identical state-machine plumbing. close over the let-bound locals.
-  //
-  // behaviour-preserving extraction: the introspector.probe_failed event is
-  // only emitted at one of the three rewind sites in the original code, so it
-  // stays at that call site rather than moving into the helper. the helper
-  // owns only the mechanical rewind plus the failed_probes mark.
-  function enter_probe_fallback(fallback_state: number): void {
-    if (!probe_entry) return;
-    pos = probe_entry.pos;
-    state_stack[probe_entry.stack_ptr] = probe_entry.state;
-    stack_ptr = probe_entry.stack_ptr + 1;
-
-    // INTROSPECTION_START
-    if (INTROSPECTION && introspector) {
-      // record the transition to fallback state
-      // use the probe entry position (where we entered the probe)
-      introspector.pushed_state({
-        from_state: probe_entry.state,
-        to_state: fallback_state,
-        stack_ptr,
-        pos: probe_entry.entry_pos,
-      });
-    }
-    // INTROSPECTION_END
-
-    current_state = fallback_state;
-    probe_entry = null;
-
-    // refresh caches for new state
-    state_buckets = patterns && patterns.get(current_state);
-    char_map_base = current_state * 128;
-    trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
-  }
-
-  // resolves a probe left open at the end of input, true means restart the loop
-  function settle_probe_at_end(): boolean {
-    if (!probe_entry || !probe_states || !probe_states.has(current_state)) return false;
-    const fallback_state = probe_fallbacks?.get(current_state);
-    if (fallback_state !== undefined) enter_probe_fallback(fallback_state);
-    else rewind_to_probe_entry();
-    return true;
-  }
-
-  // false when the probe already failed here, otherwise it reopens on its own trigger forever
-  function open_probe(rule_idx: number, probe_state: number): boolean {
-    if (has_failed_probes && failed_probes.has((pos << 16) | (current_state << 8) | rule_idx)) {
-      // INTROSPECTION_START
-      if (INTROSPECTION && introspector) {
-        const char = input.charCodeAt(pos);
-        introspector.no_match({
-          char,
-          char_str: String.fromCharCode(char),
-          pos,
-          current_state: current_state,
-          is_non_ascii: true,
-        });
-      }
-      // INTROSPECTION_END
-      return false;
-    }
-    probe_entry = {
-      pos: pos,
-      entry_pos: pos + 1,
-      state: current_state,
-      stack_ptr: stack_ptr,
-      rule_idx: rule_idx,
-      probe_state: probe_state,
-      resolved_state: -1,
-      resolved_pos: -1,
-    };
-    // INTROSPECTION_START
-    if (INTROSPECTION && introspector) {
-      introspector.enter_probe_mode({
-        char_class: rule_idx,
-        pos,
-        current_state: current_state,
-        stack_ptr,
-      });
-    }
-    // INTROSPECTION_END
-    return true;
-  }
-
-  // rewinds to where the probe opened and keeps the state it resolved to
-  function close_probe(stack_op: number): void {
-    if (!probe_entry) return;
-    pos = probe_entry.pos;
-    stack_ptr = probe_entry.stack_ptr;
-    if (stack_op === 1) {
-      state_stack[stack_ptr++] = probe_entry.state;
-    }
-
-    // INTROSPECTION_START
-    if (INTROSPECTION && introspector) {
-      introspector.exit_probe_mode({
-        success: true,
-        reset_pos: probe_entry.pos,
-        current_state: current_state,
-        pos: probe_entry.pos,
-      });
-      if (stack_op === 1 && probe_entry.resolved_state > 0) {
-        introspector.pushed_state({
-          from_state: probe_entry.probe_state ?? probe_entry.state,
-          to_state: probe_entry.resolved_state,
-          stack_ptr,
-          pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
-        });
-      }
-    }
-    // INTROSPECTION_END
-    probe_entry = null;
-  }
-
-  function rewind_to_probe_entry(): void {
-    if (!probe_entry) return;
-    const key = (probe_entry.pos << 16) | (probe_entry.state << 8) | probe_entry.rule_idx;
-    failed_probes.add(key);
-    has_failed_probes = true;
-
-    // reset to entry point
-    pos = probe_entry.pos;
-    current_state = probe_entry.state;
-    stack_ptr = probe_entry.stack_ptr;
-
-    probe_entry = null;
-
-    // refresh caches
-    state_buckets = patterns && patterns.get(current_state);
-    char_map_base = current_state * 128;
-    trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
-  }
 
   // INTROSPECTION_START
   if (INTROSPECTION && introspector) {
@@ -235,11 +116,58 @@ export function tokenize(
   }
   // INTROSPECTION_END
 
-  while (pos < len) {
+  // probe handling stays inline, an inner function closing over the hot locals
+  // turns every pos++ into a context store, a probe can only be left open at
+  // end of input so that case is resolved at the loop head
+  for (;;) {
+    if (pos >= len) {
+      if (probe_entry === null || !probe_states || !probe_states.has(current_state)) break;
+      const fallback_state = probe_fallbacks?.get(current_state);
+      if (fallback_state !== undefined) {
+        pos = probe_entry.pos;
+        state_stack[probe_entry.stack_ptr] = probe_entry.state;
+        stack_ptr = probe_entry.stack_ptr + 1;
+        // INTROSPECTION_START
+        if (INTROSPECTION && introspector) {
+          introspector.pushed_state({
+            from_state: probe_entry.state,
+            to_state: fallback_state,
+            stack_ptr,
+            pos: probe_entry.entry_pos,
+          });
+        }
+        // INTROSPECTION_END
+        current_state = fallback_state;
+      } else {
+        const key = (probe_entry.pos << 16) | (probe_entry.state << 8) | probe_entry.rule_idx;
+        // INTROSPECTION_START
+        if (INTROSPECTION && introspector) {
+          introspector.probe_failed({
+            key,
+            reason: "reached_end",
+            probeEntry: probe_entry,
+          });
+        }
+        // INTROSPECTION_END
+        if (failed_probes === null) failed_probes = new Set<number>();
+        failed_probes.add(key);
+        has_failed_probes = true;
+        pos = probe_entry.pos;
+        current_state = probe_entry.state;
+        stack_ptr = probe_entry.stack_ptr;
+      }
+      probe_entry = null;
+      state_buckets = patterns_by_state[current_state];
+      char_map_base = current_state * 128;
+      trans_base3 = current_state * 256 * 3;
+      non_ascii_state = non_ascii_by_state[current_state];
+      continue;
+    }
+
     // if we advanced since last iteration, clear failed probe cache
     if (pos > prev_advanced_pos) {
       if (has_failed_probes) {
-        failed_probes.clear();
+        failed_probes!.clear();
         has_failed_probes = false;
       }
       prev_advanced_pos = pos;
@@ -263,10 +191,7 @@ export function tokenize(
         state_stack: state_stack.slice(0, stack_ptr),
         probe_mode: is_in_probe_state,
       });
-      if (stack_ptr > 100) {
-        pos = len;
-        continue;
-      }
+      if (stack_ptr > 100) break;
     }
     // INTROSPECTION_END
 
@@ -313,7 +238,7 @@ export function tokenize(
               // check if this rule has failed before (only if we have failed probes)
               if (has_failed_probes) {
                 const test_key = (pos << 16) | (current_state << 8) | pat.rule_idx;
-                if (failed_probes.has(test_key)) {
+                if (failed_probes!.has(test_key)) {
                   // INTROSPECTION_START
                   if (INTROSPECTION && introspector) {
                     introspector.skipped_failed_probe({
@@ -343,8 +268,8 @@ export function tokenize(
         // check boundary for single-character matches if required
         if (
           matched_rule_idx === 65535 &&
-          boundary_rules &&
-          boundary_rules.has(current_state * 256 + char_class)
+          boundary_flags !== undefined &&
+          boundary_flags[(current_state << 8) + char_class] === 1
         ) {
           // this is a single-char match that requires boundary checking
           if (pos + 1 < len) {
@@ -367,40 +292,41 @@ export function tokenize(
         // char_maps matches reach here without going through that loop.
         if (matched_rule_idx === 65535 && has_failed_probes && char_class !== 65535) {
           const test_key = (pos << 16) | (current_state << 8) | char_class;
-          if (failed_probes.has(test_key)) {
+          if (failed_probes!.has(test_key)) {
             char_class = 65535;
           }
         }
       }
 
       if (char_class !== 65535) {
-        const t_base = trans_base3 + char_class * 3;
-        const transition = transitions[t_base];
-        const token_type = transitions[t_base + 1];
-        const stack_op = transitions[t_base + 2];
-
-        // run fast path. the three table reads above already say whether this
-        // rule can change state; one that cannot is a self-loop, so the whole
-        // run of characters it matches can be consumed here instead of paying
-        // a full dispatch per character. string bodies, comment bodies,
-        // identifier runs and digit runs are all this shape, which is why a
-        // hand-written lexer's inner loops beat the table walk.
+        // run fast path, a self loop rule consumes its whole run of characters
+        // here instead of a dispatch per character, run_kinds folds every static
+        // condition of this path into one byte at compile time
         //
-        // the run stops at a character that maps to a different rule, at a
-        // character that begins one of this state's multi-char patterns (the
-        // bucket is consulted before the char map, so it would have won), and
-        // at non-ascii (the fallback path owns those).
+        // the run stops at a char mapping to another rule, at a char starting one
+        // of the state multi char patterns since the bucket would have won, and
+        // at non ascii which the fallback path owns
+        const run_kind = run_kinds[(current_state << 8) + char_class];
         if (
-          transition === 65535 &&
-          stack_op === 0 &&
-          token_type !== 65535 &&
+          run_kind !== RUN_NONE &&
           matched_length === 0 &&
-          !is_in_probe_state &&
           !has_failed_probes &&
-          (!has_seals || !seal_flags![current_state * 256 + char_class]) &&
-          (!boundary_rules || !boundary_rules.has(current_state * 256 + char_class)) &&
           !(INTROSPECTION && introspector)
         ) {
+          // a tokenless run is skipped outright, the slow path also leaves the
+          // last_token fields alone for tokenless rules
+          if (run_kind === RUN_TOKENLESS) {
+            pos++;
+            while (pos < len) {
+              const next = input.charCodeAt(pos);
+              if (next > 127) break;
+              if (char_maps[char_map_base + next] !== char_class) break;
+              if (state_buckets !== undefined && state_buckets[next] !== null) break;
+              pos++;
+            }
+            continue;
+          }
+          const token_type = transitions[trans_base3 + char_class * 3 + 1];
           if (token_type === last_token_type && pos === last_token_end) {
             pos++;
           } else {
@@ -422,6 +348,11 @@ export function tokenize(
           last_token_end = pos;
           continue;
         }
+
+        const t_base = trans_base3 + char_class * 3;
+        const transition = transitions[t_base];
+        const token_type = transitions[t_base + 1];
+        const stack_op = transitions[t_base + 2];
 
         // determine target state
         let target_state = current_state;
@@ -587,10 +518,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state << 7; // *128
           trans_base3 = (current_state << 8) * 3; // *256*3
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -635,10 +566,10 @@ export function tokenize(
           }
 
           // refresh caches
-          state_buckets = patterns ? patterns.get(current_state) : undefined;
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -656,10 +587,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         }
 
         // check if exiting probe state
@@ -697,38 +628,10 @@ export function tokenize(
           // INTROSPECTION_END
           probe_entry = null; // clear probe entry
           // refresh caches again in case state changed
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state << 7;
           trans_base3 = (current_state << 8) * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
-        }
-
-        // check if we've reached the end while in probe mode
-        // this needs to be after state transition so current_state is updated
-        if (probe_states && probe_states.has(current_state) && pos >= len && probe_entry) {
-          // check if this probe state has a fallback
-          const fallback_state = probe_fallbacks?.get(current_state);
-          if (fallback_state !== undefined) {
-            // transition to fallback state and exit probe mode
-            enter_probe_fallback(fallback_state);
-            // continue from the beginning of the while loop
-            continue;
-          } else {
-            // no fallback - probe failed, mark and reset
-            // INTROSPECTION_START
-            if (INTROSPECTION && introspector && probe_entry) {
-              const key = (probe_entry.pos << 16) | (probe_entry.state << 8) | probe_entry.rule_idx;
-              introspector.probe_failed({
-                key,
-                reason: "reached_end",
-                probeEntry: probe_entry,
-              });
-            }
-            // INTROSPECTION_END
-            rewind_to_probe_entry();
-            // continue from the beginning of the while loop
-            continue;
-          }
+          non_ascii_state = non_ascii_by_state[current_state];
         }
       } else {
         // no match found
@@ -736,17 +639,6 @@ export function tokenize(
           // in probe mode, skip the non-matching character and continue scanning
           // probe mode should skip characters until it finds a disambiguating match
           pos++;
-          // if we reached end while probing, resolve via fallback or mark failure
-          if (pos >= len) {
-            const fallback_state = probe_fallbacks?.get(current_state);
-            if (fallback_state !== undefined) {
-              enter_probe_fallback(fallback_state);
-              continue;
-            } else {
-              rewind_to_probe_entry();
-              continue;
-            }
-          }
           // INTROSPECTION_START
           if (INTROSPECTION && introspector) {
             // introspector.skippedCharInProbe({
@@ -824,13 +716,46 @@ export function tokenize(
         // INTROSPECTION_END
 
         // handle probe state entry
-        if (
-          !is_in_probe_state &&
-          is_target_probe_state &&
-          !open_probe(matched_rule_idx, target_state)
-        ) {
-          pos++;
-          continue;
+        if (!is_in_probe_state && is_target_probe_state) {
+          // a probe that already failed here would reopen on its own trigger forever
+          if (
+            has_failed_probes &&
+            failed_probes!.has((pos << 16) | (current_state << 8) | matched_rule_idx)
+          ) {
+            // INTROSPECTION_START
+            if (INTROSPECTION && introspector) {
+              introspector.no_match({
+                char,
+                char_str: String.fromCharCode(char),
+                pos,
+                current_state: current_state,
+                is_non_ascii: true,
+              });
+            }
+            // INTROSPECTION_END
+            pos++;
+            continue;
+          }
+          probe_entry = {
+            pos: pos,
+            entry_pos: pos + 1,
+            state: current_state,
+            stack_ptr: stack_ptr,
+            rule_idx: matched_rule_idx,
+            probe_state: target_state,
+            resolved_state: -1,
+            resolved_pos: -1,
+          };
+          // INTROSPECTION_START
+          if (INTROSPECTION && introspector) {
+            introspector.enter_probe_mode({
+              char_class: matched_rule_idx,
+              pos,
+              current_state: current_state,
+              stack_ptr,
+            });
+          }
+          // INTROSPECTION_END
         }
 
         // emit token only if not in probe state
@@ -914,10 +839,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -962,10 +887,10 @@ export function tokenize(
           }
 
           // refresh caches
-          state_buckets = patterns ? patterns.get(current_state) : undefined;
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -983,15 +908,38 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         }
 
         // check if exiting probe state
-        if (is_in_probe_state && !is_target_probe_state && probe_entry) close_probe(stack_op);
-        if (pos >= len && settle_probe_at_end()) continue;
+        if (is_in_probe_state && !is_target_probe_state && probe_entry) {
+          // rewind to where the probe opened and keep the state it resolved to
+          pos = probe_entry.pos;
+          stack_ptr = probe_entry.stack_ptr;
+          if (stack_op === 1) state_stack[stack_ptr++] = probe_entry.state;
+          // INTROSPECTION_START
+          if (INTROSPECTION && introspector) {
+            introspector.exit_probe_mode({
+              success: true,
+              reset_pos: probe_entry.pos,
+              current_state: current_state,
+              pos: probe_entry.pos,
+            });
+            if (stack_op === 1 && probe_entry.resolved_state > 0) {
+              introspector.pushed_state({
+                from_state: probe_entry.probe_state ?? probe_entry.state,
+                to_state: probe_entry.resolved_state,
+                stack_ptr,
+                pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
+              });
+            }
+          }
+          // INTROSPECTION_END
+          probe_entry = null;
+        }
       } else if (fallback_transitions) {
         // no specific match, use fallback transitions
         const idx = current_state * 3;
@@ -1026,13 +974,46 @@ export function tokenize(
         }
         // INTROSPECTION_END
 
-        if (
-          !is_in_probe_state &&
-          is_target_probe_state &&
-          !open_probe(FALLBACK_RULE, target_state)
-        ) {
-          pos++;
-          continue;
+        if (!is_in_probe_state && is_target_probe_state) {
+          // a probe that already failed here would reopen on its own trigger forever
+          if (
+            has_failed_probes &&
+            failed_probes!.has((pos << 16) | (current_state << 8) | FALLBACK_RULE)
+          ) {
+            // INTROSPECTION_START
+            if (INTROSPECTION && introspector) {
+              introspector.no_match({
+                char,
+                char_str: String.fromCharCode(char),
+                pos,
+                current_state: current_state,
+                is_non_ascii: true,
+              });
+            }
+            // INTROSPECTION_END
+            pos++;
+            continue;
+          }
+          probe_entry = {
+            pos: pos,
+            entry_pos: pos + 1,
+            state: current_state,
+            stack_ptr: stack_ptr,
+            rule_idx: FALLBACK_RULE,
+            probe_state: target_state,
+            resolved_state: -1,
+            resolved_pos: -1,
+          };
+          // INTROSPECTION_START
+          if (INTROSPECTION && introspector) {
+            introspector.enter_probe_mode({
+              char_class: FALLBACK_RULE,
+              pos,
+              current_state: current_state,
+              stack_ptr,
+            });
+          }
+          // INTROSPECTION_END
         }
 
         // emit token only if not in probe state
@@ -1111,10 +1092,10 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (stack_op === 2) {
           // exit operation - either pop to parent or sideways transition
           const prev_state = current_state;
@@ -1159,10 +1140,10 @@ export function tokenize(
           }
 
           // refresh caches
-          state_buckets = patterns ? patterns.get(current_state) : undefined;
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         } else if (transition !== 65535) {
           const prev_state = current_state;
           current_state = transition;
@@ -1180,31 +1161,43 @@ export function tokenize(
           }
           // INTROSPECTION_END
           // refresh caches
-          state_buckets = patterns && patterns.get(current_state);
+          state_buckets = patterns_by_state[current_state];
           char_map_base = current_state * 128;
           trans_base3 = current_state * 256 * 3;
-          non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+          non_ascii_state = non_ascii_by_state[current_state];
         }
 
-        if (is_in_probe_state && !is_target_probe_state && probe_entry) close_probe(stack_op);
-        if (pos >= len && settle_probe_at_end()) continue;
+        if (is_in_probe_state && !is_target_probe_state && probe_entry) {
+          // rewind to where the probe opened and keep the state it resolved to
+          pos = probe_entry.pos;
+          stack_ptr = probe_entry.stack_ptr;
+          if (stack_op === 1) state_stack[stack_ptr++] = probe_entry.state;
+          // INTROSPECTION_START
+          if (INTROSPECTION && introspector) {
+            introspector.exit_probe_mode({
+              success: true,
+              reset_pos: probe_entry.pos,
+              current_state: current_state,
+              pos: probe_entry.pos,
+            });
+            if (stack_op === 1 && probe_entry.resolved_state > 0) {
+              introspector.pushed_state({
+                from_state: probe_entry.probe_state ?? probe_entry.state,
+                to_state: probe_entry.resolved_state,
+                stack_ptr,
+                pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
+              });
+            }
+          }
+          // INTROSPECTION_END
+          probe_entry = null;
+        }
       } else {
         // no match found
         if (is_in_probe_state && probe_entry) {
           // in probe mode, skip the non-matching character and continue scanning
           // probe mode should skip characters until it finds a disambiguating match
           pos++;
-          // if end reached during probe, resolve fallback or reset
-          if (pos >= len) {
-            const fallback_state = probe_fallbacks?.get(current_state);
-            if (fallback_state !== undefined) {
-              enter_probe_fallback(fallback_state);
-              continue;
-            } else {
-              rewind_to_probe_entry();
-              continue;
-            }
-          }
           // INTROSPECTION_START
           // if (INTROSPECTION && introspector) {
           // 	introspector.skippedCharInProbe({
@@ -1242,24 +1235,17 @@ export function tokenize(
   }
   // INTROSPECTION_END
 
+  stack_pool.push(state_stack);
+
   // return token_types by reference. reclassifiers that mutate the array
   // (promote_by_text_set, interface_member_promoter, class_name_promoter,
   // ...) are responsible for cloning before they push new names. cloning
   // here penalised every tokenize call, including reclassifier-free ones.
   //
-  // copy out rather than returning a view. the scratch buffer is sized at
-  // 3 slots per input character but real grammars fill 13-15% of it, so a
-  // subarray keeps 12 bytes per input character reachable for as long as the
-  // caller holds the result. a consumer that highlights many blocks and keeps
-  // the streams pays that on every one.
-  //
-  // the copy costs one allocation, which is measurable on inputs small enough
-  // that the whole call is a microsecond, so keep the view when the memory it
-  // pins is under a page and reclaiming it would not return anything to the
-  // allocator anyway.
+  // always copy out since the next call reuses the scratch buffer
   const used = token_count * 3;
   return {
-    tokens: len * 3 - used > MIN_RECLAIMED_SLOTS ? tokens.slice(0, used) : tokens.subarray(0, used),
+    tokens: tokens.slice(0, used),
     token_types,
   };
 }
