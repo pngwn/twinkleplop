@@ -55,6 +55,7 @@ interface HistoryEntry {
 	corpus_hash: string;
 	libraries: Record<string, string>;
 	cells: Record<string, Record<string, number>>;
+	bytes: Record<string, number>;
 }
 
 export type Mode = "tokenize" | "html";
@@ -86,8 +87,16 @@ export interface Chart {
 	bars: Bar[];
 }
 
+/** geometric mean of twinkleplop's MB/s across a set of charts, per mode */
+export interface Throughput {
+	tokenize: number | null;
+	html: number | null;
+}
+
 export interface VersionChange {
 	lang: string;
+	before: Throughput;
+	after: Throughput;
 	tokenize: number | null;
 	html: number | null;
 }
@@ -100,10 +109,9 @@ export interface VersionStep {
 	date: string;
 	node: string;
 	previous: { version: string | null; commit: string } | null;
+	mb_per_sec: Throughput;
 	tokenize: number | null;
 	html: number | null;
-	/** speed relative to the first entry of this chain, 1 for that entry */
-	index: { tokenize: number; html: number };
 	/** the same ratio for libraries whose version did not change, the part of a move that is the machine */
 	reference: number | null;
 	languages: VersionChange[];
@@ -210,25 +218,39 @@ function geomean(ratios: number[]): number | null {
 
 // a step only compares with the latest earlier entry on the same cpu and corpus
 function version_steps(entries: HistoryEntry[]): VersionStep[] {
-	const indexes = new Map<string, { tokenize: number; html: number }>();
 	const steps = entries.map((entry, i) => {
 		const previous = entries
 			.slice(0, i)
 			.reverse()
 			.find((e) => e.cpu === entry.cpu && e.corpus_hash === entry.corpus_hash);
 
-		const ratios = (mode: Mode, lang: string | null) => {
-			if (!previous) return null;
-			const out: number[] = [];
-			for (const [key, row] of Object.entries(entry.cells)) {
+		const keys = (mode: Mode, lang: string | null) =>
+			Object.keys(entry.cells).filter((key) => {
 				const [cell_lang, , cell_mode] = key.split(":");
-				if (cell_mode !== mode || (lang !== null && cell_lang !== lang)) continue;
-				const before = previous.cells[key]?.twinkleplop;
-				const after = row.twinkleplop;
-				if (before && after) out.push(before / after);
-			}
-			return geomean(out);
-		};
+				return cell_mode === mode && (lang === null || cell_lang === lang);
+			});
+
+		const mb_per_sec = (e: HistoryEntry, cells: string[]) =>
+			geomean(
+				cells
+					.filter((key) => e.cells[key]?.twinkleplop && e.bytes?.[key])
+					.map((key) => (e.bytes[key] * 1000) / e.cells[key].twinkleplop)
+			);
+
+		// both sides are measured over the charts present in both runs
+		const shared = (mode: Mode, lang: string | null) =>
+			keys(mode, lang).filter(
+				(key) => previous?.cells[key]?.twinkleplop && entry.cells[key]?.twinkleplop
+			);
+
+		const ratio = (mode: Mode, lang: string | null) =>
+			previous
+				? geomean(
+						shared(mode, lang).map(
+							(key) => previous.cells[key].twinkleplop / entry.cells[key].twinkleplop
+						)
+					)
+				: null;
 
 		let reference: number | null = null;
 		if (previous) {
@@ -247,16 +269,19 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 
 		const languages = [...new Set(Object.keys(entry.cells).map((k) => k.split(":")[0]))]
 			.sort()
-			.map((lang) => ({ lang, tokenize: ratios("tokenize", lang), html: ratios("html", lang) }));
-
-		const tokenize = ratios("tokenize", null);
-		const html = ratios("html", null);
-		const base = previous ? indexes.get(previous.commit) : undefined;
-		const index = {
-			tokenize: base && tokenize !== null ? base.tokenize * tokenize : 1,
-			html: base && html !== null ? base.html * html : 1
-		};
-		indexes.set(entry.commit, index);
+			.map((lang) => ({
+				lang,
+				before: {
+					tokenize: previous ? mb_per_sec(previous, shared("tokenize", lang)) : null,
+					html: previous ? mb_per_sec(previous, shared("html", lang)) : null
+				},
+				after: {
+					tokenize: mb_per_sec(entry, previous ? shared("tokenize", lang) : keys("tokenize", lang)),
+					html: mb_per_sec(entry, previous ? shared("html", lang) : keys("html", lang))
+				},
+				tokenize: ratio("tokenize", lang),
+				html: ratio("html", lang)
+			}));
 
 		return {
 			version: entry.version,
@@ -265,9 +290,12 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 			date: entry.generated_at.slice(0, 10),
 			node: entry.node,
 			previous: previous ? { version: previous.version, commit: previous.commit } : null,
-			tokenize,
-			html,
-			index,
+			mb_per_sec: {
+				tokenize: mb_per_sec(entry, keys("tokenize", null)),
+				html: mb_per_sec(entry, keys("html", null))
+			},
+			tokenize: ratio("tokenize", null),
+			html: ratio("html", null),
 			reference,
 			languages
 		};

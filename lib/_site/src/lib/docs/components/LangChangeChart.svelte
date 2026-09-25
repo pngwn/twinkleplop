@@ -1,36 +1,45 @@
 <script lang="ts">
-	import type { VersionChange } from "../../../routes/docs/benchmarks/+page.server";
+	import type { Mode, VersionChange } from "../../../routes/docs/benchmarks/+page.server";
 
 	let {
 		languages,
+		mode,
+		before_label,
+		after_label,
 		title,
-		subtitle,
 	}: {
 		languages: VersionChange[];
+		mode: Mode;
+		before_label: string;
+		after_label: string;
 		title: string;
-		subtitle: string;
 	} = $props();
 
-	const PLOT_HEIGHT = 140;
+	const PLOT_HEIGHT = 150;
 
-	const pcts = $derived(
-		languages.flatMap((l) => [l.tokenize, l.html]).filter((r) => r !== null).map((r) => (r - 1) * 100),
+	const max = $derived(
+		Math.max(...languages.flatMap((l) => [l.before[mode] ?? 0, l.after[mode] ?? 0]), 1),
 	);
-	const top = $derived(Math.max(0, ...pcts));
-	const bottom = $derived(Math.max(0, ...pcts.map((p) => -p)));
-	const span = $derived(top + bottom || 1);
-	const zero = $derived((top / span) * PLOT_HEIGHT);
 
-	function bar(ratio: number | null): { y: number; h: number } {
-		if (ratio === null) return { y: zero, h: 0 };
-		const h = (Math.abs(ratio - 1) * 100 * PLOT_HEIGHT) / span;
-		return ratio >= 1 ? { y: zero - h, h } : { y: zero, h };
+	function height(mbps: number | null): number {
+		return Math.max(((mbps ?? 0) / max) * PLOT_HEIGHT, 1);
+	}
+
+	function format_mbps(mbps: number | null): string {
+		if (mbps === null) return "";
+		return `${mbps >= 100 ? mbps.toFixed(0) : mbps.toFixed(1)} MB/s`;
 	}
 
 	function format_change(ratio: number | null): string {
 		if (ratio === null) return "";
 		const pct = (ratio - 1) * 100;
 		return `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
+	}
+
+	// moves this small repeat run to run on the same box
+	function tone(ratio: number | null): string {
+		if (ratio === null || Math.abs(ratio - 1) < 0.02) return "flat";
+		return ratio > 1 ? "up" : "down";
 	}
 </script>
 
@@ -39,38 +48,30 @@
 		<span class="dot"></span>
 		<span class="lbl">{title}</span>
 		<span class="legend">
-			<span class="key tokenize">tokenise</span>
-			<span class="key html">tokenise + render</span>
+			<span class="key before">{before_label}</span>
+			<span class="key after">{after_label}</span>
 		</span>
-		<span class="meta">{subtitle}</span>
+		<span class="meta">MB/s</span>
 	</div>
 
 	<div class="scroll">
 		<ul class="cols" style:--plot="{PLOT_HEIGHT}px">
 			{#each languages as l (l.lang)}
-				{@const t = bar(l.tokenize)}
-				{@const h = bar(l.html)}
 				<li class="col">
 					<div class="plot">
-						<div class="zero" style:top="{zero}px"></div>
 						<div
-							class="fill tokenize"
-							class:neg={l.tokenize !== null && l.tokenize < 1}
-							style:top="{t.y}px"
-							style:height="{Math.max(t.h, 1)}px"
-							title="{l.lang} tokenise {format_change(l.tokenize)}"
+							class="fill before"
+							style:height="{height(l.before[mode])}px"
+							title="{l.lang} {before_label} {format_mbps(l.before[mode])}"
 						></div>
 						<div
-							class="fill html"
-							class:neg={l.html !== null && l.html < 1}
-							style:top="{h.y}px"
-							style:height="{Math.max(h.h, 1)}px"
-							title="{l.lang} tokenise + render {format_change(l.html)}"
+							class="fill after"
+							style:height="{height(l.after[mode])}px"
+							title="{l.lang} {after_label} {format_mbps(l.after[mode])}"
 						></div>
 					</div>
 					<span class="lang">{l.lang}</span>
-					<span class="num tokenize">{format_change(l.tokenize)}</span>
-					<span class="num html">{format_change(l.html)}</span>
+					<span class="num {tone(l[mode])}">{format_change(l[mode])}</span>
 				</li>
 			{/each}
 		</ul>
@@ -121,11 +122,12 @@
 		border-radius: 1px;
 		vertical-align: -1px;
 	}
-	.key.tokenize::before {
-		background: var(--docs-accent);
+	.key.before::before {
+		background: var(--docs-fg-mute);
+		opacity: 0.5;
 	}
-	.key.html::before {
-		background: var(--t-blue);
+	.key.after::before {
+		background: var(--docs-accent);
 	}
 	.head .meta {
 		margin-left: auto;
@@ -156,37 +158,27 @@
 		font-size: var(--docs-fs-xs);
 	}
 	.plot {
-		position: relative;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		gap: 2px;
 		width: 100%;
 		height: var(--plot);
 		margin-bottom: 6px;
-	}
-	.zero {
-		position: absolute;
-		left: -3px;
-		right: -3px;
-		height: 1px;
-		background: var(--docs-line-2);
+		border-bottom: 1px solid var(--docs-line-2);
 	}
 	.fill {
-		position: absolute;
 		width: 12px;
-		border-radius: 1px;
-		opacity: 0.8;
-		transition:
-			top 0.3s ease,
-			height 0.3s ease;
+		border-radius: 1px 1px 0 0;
+		transition: height 0.3s ease;
 	}
-	.fill.tokenize {
-		right: calc(50% + 1px);
+	.fill.before {
+		background: var(--docs-fg-mute);
+		opacity: 0.5;
+	}
+	.fill.after {
 		background: var(--docs-accent);
-	}
-	.fill.html {
-		left: calc(50% + 1px);
-		background: var(--t-blue);
-	}
-	.fill.neg {
-		background: var(--t-yellow);
+		opacity: 0.85;
 	}
 	.lang {
 		color: var(--docs-fg-dim);
@@ -194,12 +186,14 @@
 	}
 	.num {
 		white-space: nowrap;
-		font-size: 10px;
 	}
-	.num.tokenize {
+	.num.up {
 		color: var(--docs-accent);
 	}
-	.num.html {
-		color: var(--t-blue);
+	.num.down {
+		color: var(--t-yellow);
+	}
+	.num.flat {
+		color: var(--docs-fg-mute);
 	}
 </style>

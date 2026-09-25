@@ -162,8 +162,8 @@
 		<Section id="versions" title="version history" num="§ 02">
 			<p>
 				How twinkleplop's own speed changed between published runs on the same CPU and inputs.
-				Each bar is the speed across every chart above, relative to the first run, with the change
-				from the previous version on the right.
+				Speed is throughput in MB/s, the geometric mean across every chart above, with the change
+				from the previous version beside it.
 			</p>
 			<p>
 				The other libraries keep the same versions between runs, so how far they moved shows how
@@ -189,9 +189,10 @@
 				{#if latest_step && latest_step.previous}
 					<LangChangeChart
 						languages={latest_step.languages}
+						mode={version_mode}
 						title="by language"
-						subtitle="{latest_step.version ?? latest_step.commit.slice(0, 7)} against {latest_step
-							.previous.version ?? latest_step.previous.commit.slice(0, 7)}"
+						before_label={latest_step.previous.version ?? latest_step.previous.commit.slice(0, 7)}
+						after_label={latest_step.version ?? latest_step.commit.slice(0, 7)}
 					/>
 				{/if}
 			{/if}

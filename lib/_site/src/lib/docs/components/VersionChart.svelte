@@ -11,8 +11,12 @@
 		title: string;
 	} = $props();
 
-	const max = $derived(Math.max(...steps.map((s) => s.index[mode])));
-	const base = $derived(steps.at(-1));
+	const max = $derived(Math.max(...steps.map((s) => s.mb_per_sec[mode] ?? 0)));
+
+	function format_mbps(mbps: number | null): string {
+		if (mbps === null) return "";
+		return `${mbps >= 100 ? mbps.toFixed(0) : mbps.toFixed(1)} MB/s`;
+	}
 
 	function format_change(ratio: number | null): string {
 		if (ratio === null) return "";
@@ -31,14 +35,12 @@
 	<div class="head">
 		<span class="dot"></span>
 		<span class="lbl">{title}</span>
-		{#if base}
-			<span class="meta">speed against {base.version ?? base.commit.slice(0, 8)}</span>
-		{/if}
+		<span class="meta">throughput across every chart</span>
 	</div>
 
 	<ul class="bars">
 		{#each steps as step, i (step.commit)}
-			{@const pct = Math.max((step.index[mode] / max) * 100, 0.75)}
+			{@const pct = Math.max(((step.mb_per_sec[mode] ?? 0) / max) * 100, 0.75)}
 			{@const change = step[mode]}
 			<li class="bar" class:latest={i === 0}>
 				<span class="name">
@@ -49,7 +51,7 @@
 				</span>
 				<div class="track" title="measured {step.date}, node {step.node}">
 					<div class="fill" style:width="{pct}%"></div>
-					<span class="value">{step.index[mode].toFixed(2)}x</span>
+					<span class="value">{format_mbps(step.mb_per_sec[mode])}</span>
 				</div>
 				{#if step.previous}
 					<span
