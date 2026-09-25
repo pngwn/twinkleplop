@@ -102,6 +102,8 @@ export interface VersionStep {
 	previous: { version: string | null; commit: string } | null;
 	tokenize: number | null;
 	html: number | null;
+	/** speed relative to the first entry of this chain, 1 for that entry */
+	index: { tokenize: number; html: number };
 	/** the same ratio for libraries whose version did not change, the part of a move that is the machine */
 	reference: number | null;
 	languages: VersionChange[];
@@ -208,6 +210,7 @@ function geomean(ratios: number[]): number | null {
 
 // a step only compares with the latest earlier entry on the same cpu and corpus
 function version_steps(entries: HistoryEntry[]): VersionStep[] {
+	const indexes = new Map<string, { tokenize: number; html: number }>();
 	const steps = entries.map((entry, i) => {
 		const previous = entries
 			.slice(0, i)
@@ -246,6 +249,15 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 			.sort()
 			.map((lang) => ({ lang, tokenize: ratios("tokenize", lang), html: ratios("html", lang) }));
 
+		const tokenize = ratios("tokenize", null);
+		const html = ratios("html", null);
+		const base = previous ? indexes.get(previous.commit) : undefined;
+		const index = {
+			tokenize: base && tokenize !== null ? base.tokenize * tokenize : 1,
+			html: base && html !== null ? base.html * html : 1
+		};
+		indexes.set(entry.commit, index);
+
 		return {
 			version: entry.version,
 			commit: entry.commit,
@@ -253,8 +265,9 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 			date: entry.generated_at.slice(0, 10),
 			node: entry.node,
 			previous: previous ? { version: previous.version, commit: previous.commit } : null,
-			tokenize: ratios("tokenize", null),
-			html: ratios("html", null),
+			tokenize,
+			html,
+			index,
 			reference,
 			languages
 		};
