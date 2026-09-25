@@ -67,6 +67,21 @@
 	function run_date(iso: string): string {
 		return iso ? iso.slice(0, 10) : "";
 	}
+
+	function throughput_change(ratio: number | null): string {
+		if (ratio === null) return "";
+		const pct = (ratio - 1) * 100;
+		return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+	}
+
+	// moves this small repeat run to run on the same box
+	function tone(ratio: number | null): string {
+		if (ratio === null || Math.abs(ratio - 1) < 0.02) return "flat";
+		return ratio > 1 ? "up" : "down";
+	}
+
+	const history = $derived(data.history ?? []);
+	const latest_step = $derived(history.find((s) => s.previous !== null) ?? null);
 </script>
 
 <ArticleMain
@@ -153,7 +168,81 @@
 			{/if}
 		</Section>
 
-		<Section id="inputs" title="input files" num="§ 02">
+		<Section id="versions" title="version history" num="§ 02">
+			<p>
+				How twinkleplop's own speed changed between published runs. Each row compares a run with
+				the previous run on the same CPU and inputs, as a change in throughput across every chart
+				above.
+			</p>
+			<p>
+				The other libraries are the same versions in both runs, so the <em>reference</em> column
+				shows how far the machine moved between runs. Treat a twinkleplop change that is close to
+				it as noise.
+			</p>
+			{#if history.length === 0}
+				<Callout variant="warn" mark="!">
+					<strong>No version history in this build.</strong> Record a published run with
+					<code>node lib/bench/compare/bin/history.mjs</code>.
+				</Callout>
+			{:else}
+				<table class="versions">
+					<thead>
+						<tr>
+							<th>version</th>
+							<th>measured</th>
+							<th>tokenise</th>
+							<th>tokenise + render</th>
+							<th>reference</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each history as step (step.commit)}
+							<tr>
+								<td
+									><code>{step.version ?? "?"}</code>
+									<a href="https://github.com/pngwn/twinkleplop/commit/{step.commit}"
+										>{step.commit.slice(0, 8)}</a
+									></td
+								>
+								<td>{step.date}</td>
+								{#if step.previous}
+									<td class="delta {tone(step.tokenize)}">{throughput_change(step.tokenize)}</td>
+									<td class="delta {tone(step.html)}">{throughput_change(step.html)}</td>
+									<td class="delta ref">{throughput_change(step.reference)}</td>
+								{:else}
+									<td colspan="3" class="first">first recorded run</td>
+								{/if}
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+
+				{#if latest_step && latest_step.previous}
+					<details class="by-lang">
+						<summary>
+							by language, <code>{latest_step.commit.slice(0, 8)}</code> against
+							<code>{latest_step.previous.commit.slice(0, 8)}</code>
+						</summary>
+						<table class="versions">
+							<thead>
+								<tr><th>language</th><th>tokenise</th><th>tokenise + render</th></tr>
+							</thead>
+							<tbody>
+								{#each latest_step.languages as l (l.lang)}
+									<tr>
+										<td>{l.lang}</td>
+										<td class="delta {tone(l.tokenize)}">{throughput_change(l.tokenize)}</td>
+										<td class="delta {tone(l.html)}">{throughput_change(l.html)}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</details>
+				{/if}
+			{/if}
+		</Section>
+
+		<Section id="inputs" title="input files" num="§ 03">
 			<p>
 				Each language has Twinkleplop samples of roughly 1KB, 10KB and 100KB, plus sample files from
 				Shiki's benchmarks.
@@ -182,7 +271,7 @@
 			{/if}
 		</Section>
 
-		<Section id="reading" title="interpreting results" num="§ 03">
+		<Section id="reading" title="interpreting results" num="§ 04">
 			<p>
 				These numbers are intended as a rough ballpark. I've done my best to make them accurate but
 				benchmarks are tricky.
@@ -208,7 +297,7 @@
 			</p>
 		</Section>
 
-		<Section id="libraries" title="libraries" num="§ 04">
+		<Section id="libraries" title="libraries" num="§ 05">
 			<table>
 				<thead>
 					<tr><th>library</th><th>version</th><th>note</th></tr>
@@ -320,6 +409,30 @@
 	}
 	.lib.ours {
 		color: var(--docs-accent);
+	}
+
+	.versions .delta {
+		font-family: var(--docs-mono);
+		white-space: nowrap;
+	}
+	.delta.up {
+		color: var(--docs-accent);
+	}
+	.delta.down {
+		color: var(--t-yellow);
+	}
+	.delta.flat,
+	.delta.ref,
+	.versions .first {
+		color: var(--docs-fg-mute);
+	}
+	.by-lang {
+		margin-top: 12px;
+		font-size: var(--docs-fs-sm);
+	}
+	.by-lang summary {
+		cursor: pointer;
+		color: var(--docs-fg-dim);
 	}
 
 	@media (max-width: 760px) {

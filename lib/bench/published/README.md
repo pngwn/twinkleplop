@@ -28,9 +28,15 @@ From a clean checkout of the commit you want to publish:
 pnpm install --frozen-lockfile
 pnpm build
 node lib/bench/compare/bin/compare.mjs --out lib/bench/published/comparison.json
+node lib/bench/compare/bin/history.mjs
 ```
 
-Then commit the file. Before trusting a new machine, measure its noise first:
+Then commit both files. `history.json` keeps the per chart medians of every
+published run, one entry per commit, and the benchmarks page compares each
+entry with the previous one from the same CPU and corpus. Publish a run for
+each release so the page can show the change from version to version.
+
+Before trusting a new machine, measure its noise first:
 
 ```bash
 node lib/bench/perf/bin/setup-baseline.mjs --ref HEAD
@@ -38,14 +44,15 @@ node --expose-gc lib/bench/perf/bin/calibrate.mjs --suite ci --rounds 15
 ```
 
 The reported noise floor estimates the smallest measurable change. The EPYC
-8024P above calibrated at 8.9% per workload with a median A/A deviation of
-1.5% and anchor drift of 0.2%; the earlier 7232P calibrated at 5.4% and 1.1%.
-The wider floor on the newer part is not machine noise: about half its rows
-show a consistent offset between two builds of identical source, worst 36%,
-which is the JIT and memory placement lottery that only an A/B sees. The
-comparison measures one build per library, so it is unaffected, and repeats
-to about 1% on the same box. A shared CI runner is typically 6 to 20% with
-anchor drift in the tens of percent.
+8024P that produced the current run calibrated at 3.3% per workload with a
+median A/A deviation of 0.6% and anchor drift of 0.2%. An earlier box of the
+same model calibrated at 8.9%, with about half its rows showing a consistent
+offset between two builds of identical source, which is the JIT and memory
+placement lottery that only an A/B sees. The 7232P before it calibrated at
+5.4% and 1.1%. The comparison measures one build per library, so it is
+unaffected, and the reference libraries repeated to about 1% between the two
+8024P boxes. A shared CI runner is typically 6 to 20% with anchor drift in
+the tens of percent.
 
 ## Checking results
 

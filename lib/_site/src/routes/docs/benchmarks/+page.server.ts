@@ -44,6 +44,19 @@ interface RawComparison {
 	results: RawCell[];
 }
 
+interface HistoryEntry {
+	version: string | null;
+	commit: string;
+	commit_subject: string | null;
+	generated_at: string;
+	runner: string;
+	cpu: string;
+	node: string;
+	corpus_hash: string;
+	libraries: Record<string, string>;
+	cells: Record<string, Record<string, number>>;
+}
+
 export type Mode = "tokenize" | "html";
 
 // the three size tiers of our own corpus plus shiki's sample files, which
@@ -71,6 +84,27 @@ export interface Chart {
 	bytes: number;
 	lines: number;
 	bars: Bar[];
+}
+
+export interface VersionChange {
+	lang: string;
+	tokenize: number | null;
+	html: number | null;
+}
+
+// speedups are previous time over current time, above 1 is faster
+export interface VersionStep {
+	version: string | null;
+	commit: string;
+	subject: string | null;
+	date: string;
+	node: string;
+	previous: { version: string | null; commit: string } | null;
+	tokenize: number | null;
+	html: number | null;
+	/** the same ratio for libraries whose version did not change, the part of a move that is the machine */
+	reference: number | null;
+	languages: VersionChange[];
 }
 
 export interface ModeOption {
@@ -167,6 +201,85 @@ function build(raw: RawComparison) {
 	};
 }
 
+function geomean(ratios: number[]): number | null {
+	if (ratios.length === 0) return null;
+	return Math.exp(ratios.reduce((sum, r) => sum + Math.log(r), 0) / ratios.length);
+}
+
+// a step only compares with the latest earlier entry on the same cpu and corpus
+function version_steps(entries: HistoryEntry[]): VersionStep[] {
+	const steps = entries.map((entry, i) => {
+		const previous = entries
+			.slice(0, i)
+			.reverse()
+			.find((e) => e.cpu === entry.cpu && e.corpus_hash === entry.corpus_hash);
+
+		const ratios = (mode: Mode, lang: string | null) => {
+			if (!previous) return null;
+			const out: number[] = [];
+			for (const [key, row] of Object.entries(entry.cells)) {
+				const [cell_lang, , cell_mode] = key.split(":");
+				if (cell_mode !== mode || (lang !== null && cell_lang !== lang)) continue;
+				const before = previous.cells[key]?.twinkleplop;
+				const after = row.twinkleplop;
+				if (before && after) out.push(before / after);
+			}
+			return geomean(out);
+		};
+
+		let reference: number | null = null;
+		if (previous) {
+			const unchanged = Object.keys(entry.libraries).filter(
+				(id) => id !== "twinkleplop" && previous.libraries[id] === entry.libraries[id]
+			);
+			const out: number[] = [];
+			for (const [key, row] of Object.entries(entry.cells)) {
+				for (const id of unchanged) {
+					const before = previous.cells[key]?.[id];
+					if (before && row[id]) out.push(before / row[id]);
+				}
+			}
+			reference = geomean(out);
+		}
+
+		const languages = [...new Set(Object.keys(entry.cells).map((k) => k.split(":")[0]))]
+			.sort()
+			.map((lang) => ({ lang, tokenize: ratios("tokenize", lang), html: ratios("html", lang) }));
+
+		return {
+			version: entry.version,
+			commit: entry.commit,
+			subject: entry.commit_subject,
+			date: entry.generated_at.slice(0, 10),
+			node: entry.node,
+			previous: previous ? { version: previous.version, commit: previous.commit } : null,
+			tokenize: ratios("tokenize", null),
+			html: ratios("html", null),
+			reference,
+			languages
+		};
+	});
+	return steps.reverse();
+}
+
+function read_history(): VersionStep[] {
+	for (const parts of [
+		["..", "bench", "published", "history.json"],
+		["lib", "bench", "published", "history.json"]
+	]) {
+		const candidate = path.resolve(process.cwd(), ...parts);
+		if (!fs.existsSync(candidate)) continue;
+		try {
+			const raw = JSON.parse(fs.readFileSync(candidate, "utf-8")) as { entries: HistoryEntry[] };
+			return version_steps(raw.entries);
+		} catch (err) {
+			console.error(`[benchmarks] ${candidate} could not be read: ${(err as Error).message}`);
+			return [];
+		}
+	}
+	return [];
+}
+
 // import.meta.dirname is not usable here: this module is bundled into
 // .svelte-kit/output/server/ before prerendering runs, so every relative hop
 // from it lands somewhere that does not exist. resolve from the working
@@ -230,7 +343,7 @@ export const load = async () => {
 				path.resolve(process.cwd(), ...c.parts)
 			).join(", ")}). The benchmarks page will render its empty state.`
 		);
-		return { benchmarks: null, missing: true as const, source: null, behind: null };
+		return { benchmarks: null, missing: true as const, source: null, behind: null, history: [] };
 	}
 
 	const { json_path, source } = found;
@@ -241,12 +354,13 @@ export const load = async () => {
 			benchmarks: build(raw),
 			missing: false as const,
 			source,
-			behind: commits_behind(raw.meta.commit)
+			behind: commits_behind(raw.meta.commit),
+			history: read_history()
 		};
 	} catch (err) {
 		// a malformed file is a different problem from a missing one, and
 		// swallowing it into the same empty state hides a broken artifact.
 		console.error(`[benchmarks] ${json_path} could not be read: ${(err as Error).message}`);
-		return { benchmarks: null, missing: true as const, source: null, behind: null };
+		return { benchmarks: null, missing: true as const, source: null, behind: null, history: [] };
 	}
 };
