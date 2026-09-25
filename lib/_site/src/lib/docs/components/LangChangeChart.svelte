@@ -79,23 +79,25 @@
 	<div class="scroll" onscroll={hide}>
 		<ul class="cols" style:--plot="{PLOT_HEIGHT}px">
 			{#each languages as l (l.lang)}
-				<li
-					class="col"
-					tabindex="0"
-					aria-label="{l.lang}, {before_label} {format_mbps(l.before[mode])}, {after_label} {format_mbps(
-						l.after[mode],
-					)}, {format_delta(l)}"
-					onpointerenter={(e) => show(l.lang, e.currentTarget)}
-					onpointerleave={hide}
-					onfocus={(e) => show(l.lang, e.currentTarget)}
-					onblur={hide}
-				>
-					<div class="plot">
-						<div class="fill before" style:height="{height(l, l.before[mode])}px"></div>
-						<div class="fill after" style:height="{height(l, l.after[mode])}px"></div>
-					</div>
-					<span class="lang">{l.lang}</span>
-					<span class="num {tone(l[mode])}">{format_change(l[mode])}</span>
+				<li class="col">
+					<button
+						type="button"
+						class="hit"
+						aria-label="{l.lang}, {before_label} {format_mbps(l.before[mode])}, {after_label} {format_mbps(
+							l.after[mode],
+						)}, {format_delta(l)}"
+						onpointerenter={(e) => show(l.lang, e.currentTarget)}
+						onpointerleave={hide}
+						onfocus={(e) => show(l.lang, e.currentTarget)}
+						onblur={hide}
+					>
+						<span class="plot">
+							<span class="fill before" style:height="{height(l, l.before[mode])}px"></span>
+							<span class="fill after" style:height="{height(l, l.after[mode])}px"></span>
+						</span>
+						<span class="lang">{l.lang}</span>
+						<span class="num {tone(l[mode])}">{format_change(l[mode])}</span>
+					</button>
 				</li>
 			{/each}
 		</ul>
@@ -191,24 +193,37 @@
 	.cols .col {
 		flex: 1 0 58px;
 		margin: 0;
-		padding: 0 4px;
-		border-radius: 2px;
-		cursor: default;
+		display: flex;
+	}
+	.hit {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 2px;
+		margin: 0 3px;
+		padding: 0 2px;
+		border: 0;
+		border-radius: 2px;
+		background: none;
+		font: inherit;
 		font-size: var(--docs-fs-xs);
+		color: inherit;
+		cursor: default;
 	}
 	.cols .col + .col {
-		border-left: 1px dotted var(--docs-line-2);
+		border-left: 1px dotted var(--docs-fg-ghost);
 	}
-	.col:hover,
-	.col:focus-visible {
+	.hit:hover,
+	.hit:focus-visible {
 		background: var(--docs-bg-2);
 		outline: none;
 	}
+	.hit:focus-visible {
+		box-shadow: inset 0 0 0 1px var(--docs-accent-dim);
+	}
 	.plot {
+		box-sizing: border-box;
 		display: flex;
 		align-items: flex-end;
 		justify-content: center;
@@ -219,6 +234,7 @@
 		border-bottom: 1px solid var(--docs-line-2);
 	}
 	.fill {
+		display: block;
 		width: 12px;
 		border-radius: 1px 1px 0 0;
 		transition: height 0.3s ease;
