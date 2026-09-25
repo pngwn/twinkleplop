@@ -72,6 +72,9 @@ export interface CompiledGrammar {
   // unicode identifier character covers 65408 of them, and materialising that
   // per codepoint dominated compile time for the grammars that do it.
   non_ascii_ranges: Map<number, Int32Array>;
+  // dense per state copies of patterns and non_ascii_ranges
+  patterns_by_state: ((PatternInfo[] | null)[] | undefined)[];
+  non_ascii_by_state: (Int32Array | undefined)[];
   // retain set for external tooling, but also include fast mask for hot path
   probe_states: Set<number>;
   probe_mask?: Uint8Array;
