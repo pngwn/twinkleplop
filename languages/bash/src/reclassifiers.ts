@@ -29,7 +29,13 @@
 //    keyword classification to a post-pass that only inspects whole
 //    identifier tokens sidesteps every mid-word false-positive.
 
-import { always, promote_function_calls, tag } from "@twinkleplop/core";
+import {
+  always,
+  compile_word_table,
+  promote_function_calls,
+  tag,
+  word_table_get,
+} from "@twinkleplop/core";
 import type { LanguagePipeline, Reclassifier, TokenizeResult } from "@twinkleplop/core";
 import { RESERVED_SET, BUILTIN_SET, BOOLEAN_SET } from "./grammar.js";
 
@@ -104,6 +110,8 @@ export const extend_variables: Reclassifier = (
   return { tokens: new_tokens, token_types };
 };
 
+const BASH_WORDS = compile_word_table([RESERVED_SET, BUILTIN_SET, BOOLEAN_SET]);
+
 export const promote_keywords: Reclassifier = (
   input: string,
   result: TokenizeResult,
@@ -132,10 +140,10 @@ export const promote_keywords: Reclassifier = (
     if (tokens[i * 3] !== identifier_id) continue;
     const start = tokens[i * 3 + 1];
     const end = tokens[i * 3 + 2];
-    const text = input.slice(start, end);
-    if (RESERVED_SET.has(text)) tokens[i * 3] = keyword_id;
-    else if (BUILTIN_SET.has(text)) tokens[i * 3] = builtin_id;
-    else if (BOOLEAN_SET.has(text)) tokens[i * 3] = boolean_id;
+    const word = word_table_get(BASH_WORDS, input, start, end);
+    if (word === 1) tokens[i * 3] = keyword_id;
+    else if (word === 2) tokens[i * 3] = builtin_id;
+    else if (word === 3) tokens[i * 3] = boolean_id;
   }
 
   return { tokens, token_types };

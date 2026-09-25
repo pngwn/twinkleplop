@@ -143,7 +143,12 @@ export function promote_by_text_set(
       }
     }
   };
-  return as_claim_producer(claim_fn);
+  return as_ident_promoter(claim_fn, {
+    kind: IDENT_TEXT_SET,
+    source_type,
+    target_type,
+    set,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -188,29 +193,28 @@ export function promote_pascal_case(
       if (tokens[i * 3] !== source_id) continue;
       const s = tokens[i * 3 + 1];
       const e = tokens[i * 3 + 2];
-      const first = input.charCodeAt(s);
-      if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) continue;
-      // reject all-upper multi-char names (`MAX_SIZE`, `PI`). these are
-      // UPPER_SNAKE constants by convention, not PascalCase types. the
-      // constant promoter (promote_by_upper_snake_case) is the right
-      // home for them. single-char uppercase (generic params `T`, `X`)
-      // still promote so languages that treat them as types don't lose
-      // coverage.
-      if (e - s > 1) {
-        let has_lower = false;
-        for (let k = s; k < e; k++) {
-          const c = input.charCodeAt(k);
-          if (c >= 0x61 && c <= 0x7a) {
-            has_lower = true;
-            break;
-          }
-        }
-        if (!has_lower) continue;
-      }
-      sink.emit(i, target_id, prec);
+      if (is_pascal_case(input, s, e)) sink.emit(i, target_id, prec);
     }
   };
-  return as_claim_producer(claim_fn);
+  return as_ident_promoter(claim_fn, {
+    kind: IDENT_PASCAL_CASE,
+    source_type,
+    target_type,
+    set: null,
+  });
+}
+
+function is_pascal_case(input: string, s: number, e: number): boolean {
+  const first = input.charCodeAt(s);
+  if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) return false;
+  // multi char names with no lowercase belong to promote_by_upper_snake_case,
+  // shorter names such as a generic T or a zero length span still promote
+  if (e - s < 2) return true;
+  for (let k = s; k < e; k++) {
+    const c = input.charCodeAt(k);
+    if (c >= 0x61 && c <= 0x7a) return true;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -267,20 +271,122 @@ export function promote_by_upper_snake_case(
       if (tokens[i * 3] !== source_id) continue;
       const s = tokens[i * 3 + 1];
       const e = tokens[i * 3 + 2];
-      if (e - s < 2) continue;
-      const first = input.charCodeAt(s);
-      if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) continue;
-      let all_ok = true;
-      for (let k = s + 1; k < e; k++) {
-        if (!is_upper_snake_char(input.charCodeAt(k))) {
-          all_ok = false;
-          break;
-        }
+      if (is_upper_snake_case(input, s, e)) sink.emit(i, target_id, prec);
+    }
+  };
+  return as_ident_promoter(claim_fn, {
+    kind: IDENT_UPPER_SNAKE_CASE,
+    source_type,
+    target_type,
+    set: null,
+  });
+}
+
+function is_upper_snake_case(input: string, s: number, e: number): boolean {
+  if (e - s < 2) return false;
+  const first = input.charCodeAt(s);
+  if (first < ASCII_UPPER_MIN || first > ASCII_UPPER_MAX) return false;
+  for (let k = s + 1; k < e; k++) {
+    if (!is_upper_snake_char(input.charCodeAt(k))) return false;
+  }
+  return true;
+}
+
+// claims tie to the first emitted, so one walk testing the members in their
+// original order per token keeps the winners and target ids of separate walks
+
+const IDENT_TEXT_SET = 0;
+const IDENT_PASCAL_CASE = 1;
+const IDENT_UPPER_SNAKE_CASE = 2;
+
+interface IdentSpec {
+  kind: number;
+  source_type: string;
+  target_type: string;
+  set: CompiledTextSet | null;
+}
+
+type IdentPromoter = ClaimingReclassifier & { __ident: IdentSpec };
+
+function as_ident_promoter(claim_fn: ClaimFn, spec: IdentSpec): ClaimingReclassifier {
+  const fn = as_claim_producer(claim_fn) as IdentPromoter;
+  fn.__ident = spec;
+  return fn;
+}
+
+function ident_spec_of(fn: ClaimingReclassifier): IdentSpec | null {
+  return (fn as Partial<IdentPromoter>).__ident ?? null;
+}
+
+function ident_matches(spec: IdentSpec, input: string, s: number, e: number): boolean {
+  if (spec.kind === IDENT_TEXT_SET) return text_set_has(spec.set!, input, s, e);
+  if (spec.kind === IDENT_PASCAL_CASE) return is_pascal_case(input, s, e);
+  return is_upper_snake_case(input, s, e);
+}
+
+function fuse_ident_run(run: IdentSpec[]): ClaimingReclassifier {
+  const source_type = run[0].source_type;
+  const count = run.length;
+  const precs = new Int32Array(count);
+  for (let m = 0; m < count; m++) precs[m] = precedence_for(run[m].target_type);
+  // one scratch array per run is safe since calls are synchronous and never nested
+  const target_ids = new Int32Array(count);
+  const claim_fn: ClaimFn = (input, tokens, token_types, sink) => {
+    const source_id = token_types.indexOf(source_type);
+    if (source_id < 0) {
+      if (debug_enabled()) {
+        warn_once(
+          "fidelity",
+          `source-type:${source_type}`,
+          `source type "${source_type}" is not in the token vocabulary; pass disabled`,
+        );
       }
-      if (all_ok) sink.emit(i, target_id, prec);
+      return;
+    }
+    for (let m = 0; m < count; m++) {
+      const target_type = run[m].target_type;
+      let target_id = token_types.indexOf(target_type);
+      if (target_id < 0) {
+        target_id = token_types.length;
+        token_types.push(target_type);
+      }
+      target_ids[m] = target_id;
+    }
+    const n = tokens.length / 3;
+    for (let i = 0; i < n; i++) {
+      if (tokens[i * 3] !== source_id) continue;
+      const s = tokens[i * 3 + 1];
+      const e = tokens[i * 3 + 2];
+      for (let m = 0; m < count; m++) {
+        if (ident_matches(run[m], input, s, e)) sink.emit(i, target_ids[m], precs[m]);
+      }
     }
   };
   return as_claim_producer(claim_fn);
+}
+
+// a batch with no run of adjacent promoters sharing a source type comes back
+// as the same array
+export function fuse_ident_producers(batch: ClaimingReclassifier[]): ClaimingReclassifier[] {
+  let fused: ClaimingReclassifier[] | null = null;
+  let i = 0;
+  while (i < batch.length) {
+    const spec = ident_spec_of(batch[i]);
+    let j = i + 1;
+    if (spec !== null) {
+      while (j < batch.length && ident_spec_of(batch[j])?.source_type === spec.source_type) j++;
+    }
+    if (j - i > 1) {
+      fused ??= batch.slice(0, i);
+      const run: IdentSpec[] = [];
+      for (let k = i; k < j; k++) run.push(ident_spec_of(batch[k])!);
+      fused.push(fuse_ident_run(run));
+    } else if (fused !== null) {
+      fused.push(batch[i]);
+    }
+    i = j;
+  }
+  return fused ?? batch;
 }
 
 // ---------------------------------------------------------------------------

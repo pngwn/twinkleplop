@@ -1,5 +1,40 @@
 # @twinkleplop/core
 
+## 0.2.2
+### Patch Changes
+
+
+
+- [#110](https://github.com/pngwn/twinkleplop/pull/110) [`1e813c5`](https://github.com/pngwn/twinkleplop/commit/1e813c5785391363b4c846621fdad77b4b489df1) Thanks [@pngwn](https://github.com/pngwn)! - Rendering highlighted code to HTML is faster. Span tags are built once per token type and reused, and line breaks and indentation are written in a single step. Output is unchanged.
+
+
+
+- [#110](https://github.com/pngwn/twinkleplop/pull/110) [`a2b669d`](https://github.com/pngwn/twinkleplop/commit/a2b669ddfddfc8cc2be4867a8c6d3fef3b154a84) Thanks [@pngwn](https://github.com/pngwn)! - JavaScript, TypeScript and Svelte highlight faster. Sources and tokens that cannot hold embedded HTML, CSS or JSDoc are no longer scanned for them, repeated embedded regions reuse their type mappings, and TypeScript generics are found without rescanning whole blocks after a comparison. Output is unchanged.
+
+
+
+- [#110](https://github.com/pngwn/twinkleplop/pull/110) [`ebb0a14`](https://github.com/pngwn/twinkleplop/commit/ebb0a1476fcb384f61dd0a6283d231c89279fdc6) Thanks [@pngwn](https://github.com/pngwn)! - SQL, Bash and YAML highlight faster. Keywords are recognised straight from the source text instead of copying every identifier first. Output is unchanged.
+
+
+
+- [#110](https://github.com/pngwn/twinkleplop/pull/110) [`56c345b`](https://github.com/pngwn/twinkleplop/commit/56c345b2146ec0a8e01b5bcb56e2425f726107e0) Thanks [@pngwn](https://github.com/pngwn)! - Markdown with bold, italic and other inline styles highlights faster. Output is unchanged.
+
+
+
+- [#110](https://github.com/pngwn/twinkleplop/pull/110) [`3dc045b`](https://github.com/pngwn/twinkleplop/commit/3dc045b7b6443377cd4e8a52f3a1d859adfb4067) Thanks [@pngwn](https://github.com/pngwn)! - Rust and Python highlight faster. Identifier promotions that each walked the whole file now share one walk, and Rust lifetimes are merged without rebuilding the token stream. Output is unchanged.
+
+
+
+- [#110](https://github.com/pngwn/twinkleplop/pull/110) [`f8c77c9`](https://github.com/pngwn/twinkleplop/commit/f8c77c9f7f8bb63900a4b2e10cf602dd1f638166) Thanks [@pngwn](https://github.com/pngwn)! - Tokenizing is much faster for every language. Runs of characters that produce no token are skipped in one step, the rules that can take the fast path are worked out once when a grammar is compiled, and each call allocates far less. Compiling a grammar takes a few microseconds longer. Output is unchanged.
+
+
+
+- [#110](https://github.com/pngwn/twinkleplop/pull/110) [`6c55db8`](https://github.com/pngwn/twinkleplop/commit/6c55db84a8eb2ebf0f9436af7c547147db4ff9b5) Thanks [@pngwn](https://github.com/pngwn)! - Short snippets highlight faster. The tokenizer's state stack and the claim buffers used by unbatched reclassifier passes are now reused across calls instead of allocated on every call. Each one was large enough to need a slow off-heap allocation, which made up most of the fixed cost of highlighting a one-line snippet. Languages that embed others, like Svelte, gain the most because every embedded region is another call. Output is unchanged.
+
+
+
+- [#110](https://github.com/pngwn/twinkleplop/pull/110) [`7586aee`](https://github.com/pngwn/twinkleplop/commit/7586aee11fcd77ce1ca8440039420f28448bbb86) Thanks [@anzal1](https://github.com/anzal1)! - Highlighting is about 3% faster for JavaScript and TypeScript. `rewrite_types` now picks a token's candidate rules by its last character up front, and the tagged-template and JSDoc scanners no longer allocate a string or look up a WeakMap at every token. Output is unchanged.
+
 ## 0.2.1
 ### Patch Changes
 

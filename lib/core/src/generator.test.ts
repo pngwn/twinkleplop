@@ -322,6 +322,105 @@ describe("to_html with hand-built overlays", () => {
   });
 });
 
+describe("to_html with type ids past token_types", () => {
+  const input = "abcdef";
+  const variants: [string, RenderOptions][] = [
+    ["default", {}],
+    ["inline", { structure: "inline" }],
+    ["line_numbers", { line_numbers: true }],
+    ["token hook", { token: (_, start) => (start === 2 ? { class: "x" } : undefined) }],
+  ];
+
+  function render_ids(token_types: string[], tokens: number[], options: RenderOptions): string {
+    return to_html(input, { tokens: new Uint32Array(tokens), token_types }, options);
+  }
+
+  function wrap(name: string, body: string): string {
+    if (name === "inline") return body;
+    const ln = name === "line_numbers" ? '<span class="ln">1</span>' : "";
+    return `<pre class="twinkleplop"><code><span class="l">${ln}${body}</span></code></pre>`;
+  }
+
+  test.each(variants)("empty token_types, %s", (name, options) => {
+    const hooked = name === "token hook";
+    expect(render_ids([], [0, 0, 2, 1, 2, 4], options)).toBe(
+      wrap(
+        name,
+        hooked
+          ? '<span class="tok undefined">ab</span><span class="tok undefined x">cd</span>ef'
+          : '<span class="tok undefined">abcd</span>ef',
+      ),
+    );
+    expect(render_ids([], [0, 0, 2, 1, 2, 4, 5, 4, 6], options)).toBe(
+      wrap(
+        name,
+        hooked
+          ? '<span class="tok undefined">ab</span><span class="tok undefined x">cd</span><span class="tok undefined">ef</span>'
+          : '<span class="tok undefined">abcdef</span>',
+      ),
+    );
+  });
+
+  test.each(variants)("known id next to an unknown one, %s", (name, options) => {
+    const hooked = name === "token hook";
+    expect(render_ids(["a"], [0, 0, 2, 1, 2, 4, 5, 4, 6], options)).toBe(
+      wrap(
+        name,
+        hooked
+          ? '<span class="tok a">ab</span><span class="tok undefined x">cd</span><span class="tok undefined">ef</span>'
+          : '<span class="tok a">ab</span><span class="tok undefined">cdef</span>',
+      ),
+    );
+  });
+
+  test("an id keeps no tag from an earlier call with other classes", () => {
+    const tokens = [0, 0, 2, 300, 2, 4];
+    for (const token_types of [["a"], ["b"], [""], ["a"]]) {
+      token_types[300] = token_types[0] + "z";
+      const cls = token_types[0];
+      expect(render_ids(token_types, tokens, {})).toBe(
+        wrap("default", `<span class="tok ${cls}">ab</span><span class="tok ${cls}z">cd</span>ef`),
+      );
+    }
+  });
+});
+
+describe("to_html with one char tokens", () => {
+  function render_chars(input: string, token_types: string[], tokens: number[]): string {
+    return to_html(input, { tokens: new Uint32Array(tokens), token_types }, {});
+  }
+
+  function wrap(body: string): string {
+    return `<pre class="twinkleplop"><code><span class="l">${body}</span></code></pre>`;
+  }
+
+  test("open, swap and same class one char tokens", () => {
+    expect(render_chars("<a> b", ["p", "n"], [0, 0, 1, 1, 1, 2, 0, 2, 3, 0, 4, 5])).toBe(
+      wrap(
+        '<span class="tok p">&lt;</span><span class="tok n">a</span>' +
+          '<span class="tok p">&gt;</span> <span class="tok p">b</span>',
+      ),
+    );
+    expect(render_chars("\"'&", ["s"], [0, 0, 1, 0, 1, 2, 0, 2, 3])).toBe(
+      wrap('<span class="tok s">&quot;&#39;&amp;</span>'),
+    );
+  });
+
+  test("a one char line break still breaks the line", () => {
+    expect(render_chars("a\nb", ["x"], [0, 0, 1, 0, 1, 2, 0, 2, 3])).toBe(
+      wrap('<span class="tok x">a</span></span>\n<span class="l"><span class="tok x">b</span>'),
+    );
+  });
+
+  test("an id keeps no char tag from an earlier call with other classes", () => {
+    for (const cls of ["a", "b", "", "a"]) {
+      expect(render_chars("<<", [cls, "q"], [1, 0, 1, 0, 1, 2])).toBe(
+        wrap(`<span class="tok q">&lt;</span><span class="tok ${cls}">&lt;</span>`),
+      );
+    }
+  });
+});
+
 // the no-option output is pinned byte for byte because every render option
 // has to be invisible when it is absent.
 describe("render options", () => {

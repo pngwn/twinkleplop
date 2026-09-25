@@ -538,30 +538,64 @@ export const js_frame_track = frame_track(js_frame_spec);
 // The backticks at the start and end of the template are emitted as
 // synthetic `template` tokens so they stay styled.
 
-// per-token_types type_id cache. The scanner is called once per host token
-// position in the stream, which means a naive `token_types.indexOf(...)` per
-// call costs O(n * m) per tokenize pass (n = token count, m = types per
-// lookup). We memoize on the token_types array reference — a WeakMap lets
-// different compiled grammars share one scanner without holding onto their
-// token_types arrays once they go out of scope.
+// every sub pipeline call hands the scanners a freshly sliced vocabulary, so
+// these caches match by content, keys are snapshot copies so a vocabulary
+// that grows after caching never matches a stale entry
 interface TypeIds {
   identifier_id: number;
   template_id: number;
   punctuation_id: number;
 }
 
-const type_id_cache = new WeakMap<string[], TypeIds>();
+const VOCAB_CACHE_SIZE = 4;
+const type_id_keys: string[][] = [];
+const type_id_vals: TypeIds[] = [];
+// the scanner sees the same token_types array at every position of a stream
+let last_type_ids_key: string[] | null = null;
+let last_type_ids: TypeIds | null = null;
+
+export function find_vocab(keys: string[][], token_types: string[]): number {
+  const len = token_types.length;
+  outer: for (let c = keys.length - 1; c >= 0; c--) {
+    const key = keys[c];
+    if (key.length !== len) continue;
+    for (let k = 0; k < len; k++) {
+      if (key[k] !== token_types[k]) continue outer;
+    }
+    return c;
+  }
+  return -1;
+}
+
+export function remember_vocab<T>(
+  keys: string[][],
+  vals: T[],
+  token_types: string[],
+  val: T,
+): void {
+  if (keys.length === VOCAB_CACHE_SIZE) {
+    keys.shift();
+    vals.shift();
+  }
+  keys.push(token_types.slice());
+  vals.push(val);
+}
 
 function get_type_ids(token_types: string[]): TypeIds {
-  let ids = type_id_cache.get(token_types);
-  if (ids === undefined) {
+  if (token_types === last_type_ids_key) return last_type_ids!;
+  const hit = find_vocab(type_id_keys, token_types);
+  let ids: TypeIds;
+  if (hit >= 0) ids = type_id_vals[hit];
+  else {
     ids = {
       identifier_id: token_types.indexOf("identifier"),
       template_id: token_types.indexOf("template"),
       punctuation_id: token_types.indexOf("punctuation"),
     };
-    type_id_cache.set(token_types, ids);
+    remember_vocab(type_id_keys, type_id_vals, token_types, ids);
   }
+  last_type_ids_key = token_types;
+  last_type_ids = ids;
   return ids;
 }
 
@@ -586,10 +620,11 @@ export function scan_tagged_template(
   if (tokens[i * 3] !== identifier_id) return null;
   const tag_start = tokens[i * 3 + 1];
   const tag_end = tokens[i * 3 + 2];
-  const tag_name = input.slice(tag_start, tag_end);
+  // compare in place: slicing here allocated a string for every identifier.
   let language: LanguageFn;
-  if (tag_name === "html") language = html_default;
-  else if (tag_name === "css") language = css_default;
+  const tag_len = tag_end - tag_start;
+  if (tag_len === 4 && input.startsWith("html", tag_start)) language = html_default;
+  else if (tag_len === 3 && input.startsWith("css", tag_start)) language = css_default;
   else return null;
 
   const first_chunk = i + 1;
@@ -659,7 +694,7 @@ export function scan_tagged_template(
             language,
           };
         }
-      } else if (tk === punctuation_id && input.slice(ts, te) === "${") {
+      } else if (tk === punctuation_id && te - ts === 2 && input.startsWith("${", ts)) {
         // start of interpolation hole. Brace depth begins at 1.
         in_hole = true;
         hole_tok_start = k;
@@ -718,14 +753,22 @@ export function scan_tagged_template(
 // per-token_types comment id cache, same rationale as get_type_ids above:
 // the scanner runs once per host token position, so the lookup must not
 // be an indexOf per call.
-const comment_id_cache = new WeakMap<string[], number>();
+const comment_id_keys: string[][] = [];
+const comment_id_vals: number[] = [];
+let last_comment_key: string[] | null = null;
+let last_comment_id = -1;
 
 function get_comment_id(token_types: string[]): number {
-  let id = comment_id_cache.get(token_types);
-  if (id === undefined) {
+  if (token_types === last_comment_key) return last_comment_id;
+  const hit = find_vocab(comment_id_keys, token_types);
+  let id: number;
+  if (hit >= 0) id = comment_id_vals[hit];
+  else {
     id = token_types.indexOf("comment");
-    comment_id_cache.set(token_types, id);
+    remember_vocab(comment_id_keys, comment_id_vals, token_types, id);
   }
+  last_comment_key = token_types;
+  last_comment_id = id;
   return id;
 }
 
@@ -1361,6 +1404,36 @@ export function scan_embedded_groups(
   );
 }
 
+export const EMBEDDED_GROUP_TRIGGERS = ["identifier", "comment"];
+
+function is_ascii_word_char(code: number): boolean {
+  return (
+    (code >= 0x61 && code <= 0x7a) ||
+    (code >= 0x41 && code <= 0x5a) ||
+    (code >= 0x30 && code <= 0x39) ||
+    code === 0x5f ||
+    code === 0x24
+  );
+}
+
+/**
+ * true whenever scan_embedded_groups could find a group, a doc comment
+ * opener or a backtick whose nearest preceding word ends in html or css
+ */
+export function may_embed_groups(input: string): boolean {
+  if (input.includes("/**")) return true;
+  let tick = input.indexOf("`");
+  while (tick !== -1) {
+    // the grammar drops some characters without a token, so skipping every
+    // non word character keeps this a superset
+    let end = tick;
+    while (end > 0 && !is_ascii_word_char(input.charCodeAt(end - 1))) end--;
+    if (input.startsWith("css", end - 3) || input.startsWith("html", end - 4)) return true;
+    tick = input.indexOf("`", tick + 1);
+  }
+  return false;
+}
+
 export const reclassifiers: LanguagePipeline = [
   // frame_track first: every subsequent claim reclassifier that needs
   // scope-aware data reads from `result.frames`. languages that reuse
@@ -1393,5 +1466,12 @@ export const reclassifiers: LanguagePipeline = [
   tag(promote_js_namespaces, ["namespace"]),
   // tagged templates and doc comments are both embeds, so they run at
   // every fidelity setting -- same rule as CSS inside a `<style>` tag.
-  always(embed_interleaved({ scan: scan_embedded_groups }), "embed"),
+  always(
+    embed_interleaved({
+      scan: scan_embedded_groups,
+      trigger_types: EMBEDDED_GROUP_TRIGGERS,
+      may_match: may_embed_groups,
+    }),
+    "embed",
+  ),
 ];

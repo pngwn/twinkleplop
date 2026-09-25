@@ -23,7 +23,7 @@
 //
 // Anything that does not match stays as `identifier`.
 
-import { tag } from "@twinkleplop/core";
+import { compile_word_table, tag, word_table_get } from "@twinkleplop/core";
 import type { LanguagePipeline, Reclassifier, TokenizeResult } from "@twinkleplop/core";
 
 const BOOLEAN_VALUES = new Set([
@@ -148,6 +148,13 @@ function is_float_after_sign(text: string, start: number): boolean {
   return pos === n;
 }
 
+const SCALAR_WORDS = compile_word_table([BOOLEAN_VALUES, NULL_VALUES]);
+
+// is_number only accepts text starting with a sign, a dot or a digit
+function may_be_number(code: number): boolean {
+  return code === 43 || code === 45 || code === 46 || (code >= 48 && code <= 57);
+}
+
 // rewrite identifier tokens based on their source text.
 export const classify_scalars: Reclassifier = (
   input: string,
@@ -177,10 +184,12 @@ export const classify_scalars: Reclassifier = (
     if (tokens[i * 3] !== ident_id) continue;
     const start = tokens[i * 3 + 1];
     const end = tokens[i * 3 + 2];
-    const text = input.slice(start, end);
-    if (BOOLEAN_VALUES.has(text)) tokens[i * 3] = boolean_id;
-    else if (NULL_VALUES.has(text)) tokens[i * 3] = null_id;
-    else if (is_number(text)) tokens[i * 3] = number_id;
+    const word = word_table_get(SCALAR_WORDS, input, start, end);
+    if (word === 1) tokens[i * 3] = boolean_id;
+    else if (word === 2) tokens[i * 3] = null_id;
+    else if (may_be_number(input.charCodeAt(start)) && is_number(input.slice(start, end))) {
+      tokens[i * 3] = number_id;
+    }
   }
   return { tokens, token_types };
 };

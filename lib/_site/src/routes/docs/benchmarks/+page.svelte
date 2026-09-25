@@ -4,6 +4,8 @@
 	import Callout from "$lib/docs/components/Callout.svelte";
 	import PillToggle from "$lib/docs/components/PillToggle.svelte";
 	import BenchChart from "$lib/docs/components/BenchChart.svelte";
+	import VersionChart from "$lib/docs/components/VersionChart.svelte";
+	import LangChangeChart from "$lib/docs/components/LangChangeChart.svelte";
 	import type { Mode, Size } from "./+page.server";
 
 	let { data } = $props();
@@ -67,6 +69,10 @@
 	function run_date(iso: string): string {
 		return iso ? iso.slice(0, 10) : "";
 	}
+
+	const history = $derived(data.history ?? []);
+	const latest_step = $derived(history.find((s) => s.previous !== null) ?? null);
+	let version_mode = $state<Mode>("tokenize");
 </script>
 
 <ArticleMain
@@ -153,7 +159,46 @@
 			{/if}
 		</Section>
 
-		<Section id="inputs" title="input files" num="§ 02">
+		<Section id="versions" title="version history" num="§ 02">
+			<p>
+				How twinkleplop's own speed changed between published runs on the same CPU and inputs.
+				Speed is throughput in MB/s, the geometric mean across every chart above, with the change
+				from the previous version beside it.
+			</p>
+			<p>
+				The other libraries keep the same versions between runs, so how far they moved shows how
+				much the machine itself changed. Hover a change to see it, and treat a twinkleplop change
+				close to it as noise.
+			</p>
+			{#if history.length === 0}
+				<Callout variant="warn" mark="!">
+					<strong>No version history in this build.</strong> Record a published run with
+					<code>node lib/bench/compare/bin/history.mjs</code>.
+				</Callout>
+			{:else}
+				<div class="controls">
+					<PillToggle
+						label="measure"
+						options={mode_options}
+						value={version_mode}
+						onchange={(m) => (version_mode = m)}
+					/>
+				</div>
+				<VersionChart steps={history} mode={version_mode} title="twinkleplop by version" />
+
+				{#if latest_step && latest_step.previous}
+					<LangChangeChart
+						languages={latest_step.languages}
+						mode={version_mode}
+						title="by language"
+						before_label={latest_step.previous.version ?? latest_step.previous.commit.slice(0, 7)}
+						after_label={latest_step.version ?? latest_step.commit.slice(0, 7)}
+					/>
+				{/if}
+			{/if}
+		</Section>
+
+		<Section id="inputs" title="input files" num="§ 03">
 			<p>
 				Each language has Twinkleplop samples of roughly 1KB, 10KB and 100KB, plus sample files from
 				Shiki's benchmarks.
@@ -182,7 +227,7 @@
 			{/if}
 		</Section>
 
-		<Section id="reading" title="interpreting results" num="§ 03">
+		<Section id="reading" title="interpreting results" num="§ 04">
 			<p>
 				These numbers are intended as a rough ballpark. I've done my best to make them accurate but
 				benchmarks are tricky.
@@ -208,7 +253,7 @@
 			</p>
 		</Section>
 
-		<Section id="libraries" title="libraries" num="§ 04">
+		<Section id="libraries" title="libraries" num="§ 05">
 			<table>
 				<thead>
 					<tr><th>library</th><th>version</th><th>note</th></tr>
@@ -321,6 +366,7 @@
 	.lib.ours {
 		color: var(--docs-accent);
 	}
+
 
 	@media (max-width: 760px) {
 		.control {
