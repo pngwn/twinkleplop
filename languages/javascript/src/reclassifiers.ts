@@ -538,34 +538,69 @@ export const js_frame_track = frame_track(js_frame_spec);
 // The backticks at the start and end of the template are emitted as
 // synthetic `template` tokens so they stay styled.
 
-// per-token_types type_id cache. The scanner is called once per host token
-// position in the stream, which means a naive `token_types.indexOf(...)` per
-// call costs O(n * m) per tokenize pass (n = token count, m = types per
-// lookup). We memoize on the token_types array reference — a WeakMap lets
-// different compiled grammars share one scanner without holding onto their
-// token_types arrays once they go out of scope.
+// per token_types id caches. the scanners run once per host token position,
+// so a naive token_types.indexOf per call costs O(n * m) per tokenize pass
+// (n = token count, m = types per lookup). every sub pipeline call hands the
+// scanners a freshly sliced vocabulary, so an identity keyed cache would miss
+// once per call (149 times per svelte fixture highlight). the names repeat
+// call to call, so a small newest first cache matches by content instead:
+// same length and the same string at every index. keys are snapshot copies,
+// so a vocabulary that grows after it was cached can never match a stale
+// entry, and different compiled grammars can share one scanner.
 interface TypeIds {
   identifier_id: number;
   template_id: number;
   punctuation_id: number;
 }
 
-const type_id_cache = new WeakMap<string[], TypeIds>();
+const VOCAB_CACHE_SIZE = 4;
+const type_id_keys: string[][] = [];
+const type_id_vals: TypeIds[] = [];
 // the scanner sees the same token_types array at every position of a
-// stream, so remembering the last one skips the WeakMap on all but the first.
+// stream, so remembering the last one skips the content compare on all but
+// the first.
 let last_type_ids_key: string[] | null = null;
 let last_type_ids: TypeIds | null = null;
 
+export function find_vocab(keys: string[][], token_types: string[]): number {
+  const len = token_types.length;
+  outer: for (let c = keys.length - 1; c >= 0; c--) {
+    const key = keys[c];
+    if (key.length !== len) continue;
+    for (let k = 0; k < len; k++) {
+      if (key[k] !== token_types[k]) continue outer;
+    }
+    return c;
+  }
+  return -1;
+}
+
+export function remember_vocab<T>(
+  keys: string[][],
+  vals: T[],
+  token_types: string[],
+  val: T,
+): void {
+  if (keys.length === VOCAB_CACHE_SIZE) {
+    keys.shift();
+    vals.shift();
+  }
+  keys.push(token_types.slice());
+  vals.push(val);
+}
+
 function get_type_ids(token_types: string[]): TypeIds {
   if (token_types === last_type_ids_key) return last_type_ids!;
-  let ids = type_id_cache.get(token_types);
-  if (ids === undefined) {
+  const hit = find_vocab(type_id_keys, token_types);
+  let ids: TypeIds;
+  if (hit >= 0) ids = type_id_vals[hit];
+  else {
     ids = {
       identifier_id: token_types.indexOf("identifier"),
       template_id: token_types.indexOf("template"),
       punctuation_id: token_types.indexOf("punctuation"),
     };
-    type_id_cache.set(token_types, ids);
+    remember_vocab(type_id_keys, type_id_vals, token_types, ids);
   }
   last_type_ids_key = token_types;
   last_type_ids = ids;
@@ -726,16 +761,19 @@ export function scan_tagged_template(
 // per-token_types comment id cache, same rationale as get_type_ids above:
 // the scanner runs once per host token position, so the lookup must not
 // be an indexOf per call.
-const comment_id_cache = new WeakMap<string[], number>();
+const comment_id_keys: string[][] = [];
+const comment_id_vals: number[] = [];
 let last_comment_key: string[] | null = null;
 let last_comment_id = -1;
 
 function get_comment_id(token_types: string[]): number {
   if (token_types === last_comment_key) return last_comment_id;
-  let id = comment_id_cache.get(token_types);
-  if (id === undefined) {
+  const hit = find_vocab(comment_id_keys, token_types);
+  let id: number;
+  if (hit >= 0) id = comment_id_vals[hit];
+  else {
     id = token_types.indexOf("comment");
-    comment_id_cache.set(token_types, id);
+    remember_vocab(comment_id_keys, comment_id_vals, token_types, id);
   }
   last_comment_key = token_types;
   last_comment_id = id;
