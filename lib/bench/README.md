@@ -5,7 +5,7 @@ Use the harness that matches what you want to measure:
 | directory | measures | use for |
 | --- | --- | --- |
 | `perf/` | Candidate and reference builds, with calibrated noise thresholds and output parity checks | Performance changes and pull request benchmarks |
-| `compare/` | Twinkleplop, Shiki, Prism and sugar-high across languages and input sizes | Cross-library comparisons |
+| `compare/` | Twinkleplop, Shiki, Prism, sugar-high and speed-highlight across languages and input sizes | Cross-library comparisons |
 | `coldstart/` | Module loading, grammar compilation and the first highlight | Import and startup costs |
 
 `perf/` and `compare/` share a machine-wide lock, a fixed corpus with recorded
