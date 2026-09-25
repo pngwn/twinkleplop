@@ -18,6 +18,14 @@
 		return `${mbps >= 100 ? mbps.toFixed(0) : mbps.toFixed(1)} MB/s`;
 	}
 
+	function format_delta(step: VersionStep): string {
+		const before = steps.find((s) => s.commit === step.previous?.commit)?.mb_per_sec[mode];
+		const after = step.mb_per_sec[mode];
+		if (before == null || after == null) return "";
+		const delta = after - before;
+		return `${delta >= 0 ? "+" : ""}${delta.toFixed(1)} MB/s`;
+	}
+
 	function format_change(ratio: number | null): string {
 		if (ratio === null) return "";
 		const pct = (ratio - 1) * 100;
@@ -56,7 +64,7 @@
 				{#if step.previous}
 					<span
 						class="ratio {tone(change)}"
-						title="other libraries moved {format_change(step.reference)} between the same two runs"
+						title="{format_delta(step)} from {step.previous.version ?? step.previous.commit.slice(0, 7)}, other libraries moved {format_change(step.reference)} between the same two runs"
 						>{format_change(change)}</span
 					>
 				{:else}
