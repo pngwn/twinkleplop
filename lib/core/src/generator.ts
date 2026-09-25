@@ -24,6 +24,19 @@ SCAN_TABLE[39] = SCAN_ESCAPE;
 SCAN_TABLE[60] = SCAN_ESCAPE;
 SCAN_TABLE[62] = SCAN_ESCAPE;
 
+// span tags kept across calls per type id, so a type's tag is built once per
+// class instead of once per token. a slot is valid while TAG_CLS holds the
+// class this call maps the id to, and every slot starts out valid for "".
+const TAG_CAP = 256;
+const TAG_CLS: string[] = [];
+const TAG_OPEN: string[] = [];
+const TAG_SWAP: string[] = [];
+for (let k = 0; k < TAG_CAP; k++) {
+  TAG_CLS.push("");
+  TAG_OPEN.push('<span class="tok ">');
+  TAG_SWAP.push('</span><span class="tok ">');
+}
+
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
   // option items merge into a fresh result so the caller's tokenize result
   // is left untouched. items that resolve to nothing fall through so they
@@ -55,8 +68,10 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   const first_line = inline ? 1 : first_line_number(options.line_numbers);
   let line_no = first_line;
   let open_class: string | null = null;
-  // kept whole so a line break inside a decorated token reopens the same tag.
-  let open_tag: string | null = null;
+  // the tags for the token being written, kept whole so a line break inside
+  // a token reopens the same tag. swap_tag closes the open span first.
+  let open_tag = "";
+  let swap_tag = "";
 
   begin_line();
 
@@ -81,21 +96,22 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
 
   function ensure_span(cls: string | null) {
     if (cls === open_class) return;
-    close_span();
-    if (cls !== null) {
-      out += open_tag !== null ? open_tag : `<span class="tok ${cls}">`;
-      open_class = cls;
+    if (cls === null) {
+      close_span();
+      return;
     }
+    out += open_class === null ? open_tag : swap_tag;
+    open_class = cls;
   }
 
   // line breaks and escapable bytes are found in the same pass. splitting
   // them costs a second walk over every byte, and escapable bytes are rare
   // enough (about one per 100) that the escaper would spend that walk
-  // finding nothing.
-  function emit_range(start: number, end: number, cls: string | null) {
-    if (start >= end) return;
+  // finding nothing. the scan starts at first, so a caller that has already
+  // walked past plain bytes does not walk them again.
+  function emit_chunks(start: number, first: number, end: number, cls: string | null) {
     let chunk_start = start;
-    for (let i = start; i < end; i++) {
+    for (let i = first; i < end; i++) {
       const code = input.charCodeAt(i);
       if (code > 62) continue;
       const kind = SCAN_TABLE[code];
@@ -125,7 +141,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
 
   // text between tokens is the only place source whitespace can be wrapped.
   // runs of spaces and tabs are classified against the line they sit on and
-  // everything else falls through to emit_range one chunk at a time.
+  // everything else falls through to emit_chunks one chunk at a time.
   function emit_gap(start: number, end: number) {
     close_span();
     let chunk_start = start;
@@ -133,7 +149,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     while (i < end) {
       const code = input.charCodeAt(i);
       if (code === 32 || code === 9) {
-        if (i > chunk_start) emit_range(chunk_start, i, null);
+        if (i > chunk_start) emit_chunks(chunk_start, chunk_start, i, null);
         let r = i + 1;
         while (r < end) {
           const c = input.charCodeAt(r);
@@ -146,7 +162,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
         continue;
       }
       if (code === 10) {
-        if (i > chunk_start) emit_range(chunk_start, i, null);
+        if (i > chunk_start) emit_chunks(chunk_start, chunk_start, i, null);
         out += line_break;
         line_no++;
         begin_line();
@@ -156,38 +172,65 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
       }
       i++;
     }
-    if (end > chunk_start) emit_range(chunk_start, end, null);
+    if (end > chunk_start) emit_chunks(chunk_start, chunk_start, end, null);
   }
 
   let last_end = 0;
   for (let i = 0; i < tokens.length; i += 3) {
-    const cls = token_types[tokens[i]];
+    const type = tokens[i];
+    const cls = token_types[type];
     const start = tokens[i + 1];
     const end = tokens[i + 2];
+    if (type < TAG_CAP) {
+      if (TAG_CLS[type] !== cls) {
+        TAG_CLS[type] = cls;
+        TAG_OPEN[type] = `<span class="tok ${cls}">`;
+        TAG_SWAP[type] = "</span>" + TAG_OPEN[type];
+      }
+      open_tag = TAG_OPEN[type];
+      swap_tag = TAG_SWAP[type];
+    } else {
+      open_tag = `<span class="tok ${cls}">`;
+      swap_tag = "</span>" + open_tag;
+    }
 
     if (start > last_end) {
       if (ws_active) emit_gap(last_end, start);
-      else emit_range(last_end, start, null);
+      else emit_chunks(last_end, last_end, start, null);
     }
     if (token_hook !== undefined) {
       const deco = hook_output(token_hook(cls, start, end), "token");
       if (deco !== null) {
         close_span();
         open_tag = token_tag(cls, deco);
-        emit_range(start, end, cls);
+        emit_chunks(start, start, end, cls);
         close_span();
-        open_tag = null;
         last_end = end;
         continue;
       }
     }
-    emit_range(start, end, cls);
+    // most tokens are one plain substring, so they are written here and only
+    // a token with a line break or an escapable byte pays for the call.
+    let first = start;
+    while (first < end) {
+      const code = input.charCodeAt(first);
+      if (code <= 62 && SCAN_TABLE[code] !== 0) break;
+      first++;
+    }
+    if (first !== end) emit_chunks(start, first, end, cls);
+    else if (start < end) {
+      if (cls !== open_class) {
+        out += open_class === null ? open_tag : swap_tag;
+        open_class = cls;
+      }
+      out += input.substring(start, end);
+    }
     last_end = end;
   }
 
   if (last_end < input.length) {
     if (ws_active) emit_gap(last_end, input.length);
-    else emit_range(last_end, input.length, null);
+    else emit_chunks(last_end, last_end, input.length, null);
   }
 
   close_span();
