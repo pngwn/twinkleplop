@@ -87,7 +87,7 @@ export interface Chart {
 	bars: Bar[];
 }
 
-/** geometric mean of twinkleplop's MB/s across a set of charts, per mode */
+/** geometric mean of twinkleplop MB/s across a set of charts, per mode */
 export interface Throughput {
 	tokenize: number | null;
 	html: number | null;
