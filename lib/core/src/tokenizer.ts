@@ -85,145 +85,9 @@ export function tokenize(
 
   // track failed probe attempts - use numeric key for performance
   // key = (pos << 16) | (state << 8) | rule_idx
-  const failed_probes = new Set<number>();
+  // most inputs never fail a probe, so the set is only built on the first failure
+  let failed_probes: Set<number> | null = null;
   let has_failed_probes = false;
-
-  // helpers: probe fallback paths. extracted because the fallback-exists and
-  // fallback-missing rewinds each appear three times (ASCII end-of-input,
-  // ASCII no-match-at-end-of-input, non-ASCII no-match-at-end-of-input) with
-  // identical state-machine plumbing. close over the let-bound locals.
-  //
-  // behaviour-preserving extraction: the introspector.probe_failed event is
-  // only emitted at one of the three rewind sites in the original code, so it
-  // stays at that call site rather than moving into the helper. the helper
-  // owns only the mechanical rewind plus the failed_probes mark.
-  function enter_probe_fallback(fallback_state: number): void {
-    if (!probe_entry) return;
-    pos = probe_entry.pos;
-    state_stack[probe_entry.stack_ptr] = probe_entry.state;
-    stack_ptr = probe_entry.stack_ptr + 1;
-
-    // INTROSPECTION_START
-    if (INTROSPECTION && introspector) {
-      // record the transition to fallback state
-      // use the probe entry position (where we entered the probe)
-      introspector.pushed_state({
-        from_state: probe_entry.state,
-        to_state: fallback_state,
-        stack_ptr,
-        pos: probe_entry.entry_pos,
-      });
-    }
-    // INTROSPECTION_END
-
-    current_state = fallback_state;
-    probe_entry = null;
-
-    // refresh caches for new state
-    state_buckets = patterns && patterns.get(current_state);
-    char_map_base = current_state * 128;
-    trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
-  }
-
-  // resolves a probe left open at the end of input, true means restart the loop
-  function settle_probe_at_end(): boolean {
-    if (!probe_entry || !probe_states || !probe_states.has(current_state)) return false;
-    const fallback_state = probe_fallbacks?.get(current_state);
-    if (fallback_state !== undefined) enter_probe_fallback(fallback_state);
-    else rewind_to_probe_entry();
-    return true;
-  }
-
-  // false when the probe already failed here, otherwise it reopens on its own trigger forever
-  function open_probe(rule_idx: number, probe_state: number): boolean {
-    if (has_failed_probes && failed_probes.has((pos << 16) | (current_state << 8) | rule_idx)) {
-      // INTROSPECTION_START
-      if (INTROSPECTION && introspector) {
-        const char = input.charCodeAt(pos);
-        introspector.no_match({
-          char,
-          char_str: String.fromCharCode(char),
-          pos,
-          current_state: current_state,
-          is_non_ascii: true,
-        });
-      }
-      // INTROSPECTION_END
-      return false;
-    }
-    probe_entry = {
-      pos: pos,
-      entry_pos: pos + 1,
-      state: current_state,
-      stack_ptr: stack_ptr,
-      rule_idx: rule_idx,
-      probe_state: probe_state,
-      resolved_state: -1,
-      resolved_pos: -1,
-    };
-    // INTROSPECTION_START
-    if (INTROSPECTION && introspector) {
-      introspector.enter_probe_mode({
-        char_class: rule_idx,
-        pos,
-        current_state: current_state,
-        stack_ptr,
-      });
-    }
-    // INTROSPECTION_END
-    return true;
-  }
-
-  // rewinds to where the probe opened and keeps the state it resolved to
-  function close_probe(stack_op: number): void {
-    if (!probe_entry) return;
-    pos = probe_entry.pos;
-    stack_ptr = probe_entry.stack_ptr;
-    if (stack_op === 1) {
-      state_stack[stack_ptr++] = probe_entry.state;
-    }
-
-    // INTROSPECTION_START
-    if (INTROSPECTION && introspector) {
-      introspector.exit_probe_mode({
-        success: true,
-        reset_pos: probe_entry.pos,
-        current_state: current_state,
-        pos: probe_entry.pos,
-      });
-      if (stack_op === 1 && probe_entry.resolved_state > 0) {
-        introspector.pushed_state({
-          from_state: probe_entry.probe_state ?? probe_entry.state,
-          to_state: probe_entry.resolved_state,
-          stack_ptr,
-          pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
-        });
-      }
-    }
-    // INTROSPECTION_END
-    probe_entry = null;
-  }
-
-  function rewind_to_probe_entry(): void {
-    if (!probe_entry) return;
-    const key = (probe_entry.pos << 16) | (probe_entry.state << 8) | probe_entry.rule_idx;
-    failed_probes.add(key);
-    has_failed_probes = true;
-
-    // reset to entry point
-    pos = probe_entry.pos;
-    current_state = probe_entry.state;
-    stack_ptr = probe_entry.stack_ptr;
-
-    probe_entry = null;
-
-    // refresh caches
-    state_buckets = patterns && patterns.get(current_state);
-    char_map_base = current_state * 128;
-    trans_base3 = current_state * 256 * 3;
-    non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
-  }
 
   // INTROSPECTION_START
   if (INTROSPECTION && introspector) {
@@ -235,11 +99,61 @@ export function tokenize(
   }
   // INTROSPECTION_END
 
-  while (pos < len) {
+  // keep the probe handling inline. an inner function closing over the hot
+  // locals moves them into a heap context, so every pos++ becomes a context
+  // store. a probe can only be left open at end of input, so that one case
+  // is resolved here at the loop head rather than after every advance
+  for (;;) {
+    if (pos >= len) {
+      if (probe_entry === null || !probe_states || !probe_states.has(current_state)) break;
+      // a probe still open at end of input takes its fallback state, or
+      // rewinds to where it opened and marks that entry failed
+      const fallback_state = probe_fallbacks?.get(current_state);
+      if (fallback_state !== undefined) {
+        pos = probe_entry.pos;
+        state_stack[probe_entry.stack_ptr] = probe_entry.state;
+        stack_ptr = probe_entry.stack_ptr + 1;
+        // INTROSPECTION_START
+        if (INTROSPECTION && introspector) {
+          introspector.pushed_state({
+            from_state: probe_entry.state,
+            to_state: fallback_state,
+            stack_ptr,
+            pos: probe_entry.entry_pos,
+          });
+        }
+        // INTROSPECTION_END
+        current_state = fallback_state;
+      } else {
+        const key = (probe_entry.pos << 16) | (probe_entry.state << 8) | probe_entry.rule_idx;
+        // INTROSPECTION_START
+        if (INTROSPECTION && introspector) {
+          introspector.probe_failed({
+            key,
+            reason: "reached_end",
+            probeEntry: probe_entry,
+          });
+        }
+        // INTROSPECTION_END
+        if (failed_probes === null) failed_probes = new Set<number>();
+        failed_probes.add(key);
+        has_failed_probes = true;
+        pos = probe_entry.pos;
+        current_state = probe_entry.state;
+        stack_ptr = probe_entry.stack_ptr;
+      }
+      probe_entry = null;
+      state_buckets = patterns && patterns.get(current_state);
+      char_map_base = current_state * 128;
+      trans_base3 = current_state * 256 * 3;
+      non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
+      continue;
+    }
+
     // if we advanced since last iteration, clear failed probe cache
     if (pos > prev_advanced_pos) {
       if (has_failed_probes) {
-        failed_probes.clear();
+        failed_probes!.clear();
         has_failed_probes = false;
       }
       prev_advanced_pos = pos;
@@ -263,10 +177,7 @@ export function tokenize(
         state_stack: state_stack.slice(0, stack_ptr),
         probe_mode: is_in_probe_state,
       });
-      if (stack_ptr > 100) {
-        pos = len;
-        continue;
-      }
+      if (stack_ptr > 100) break;
     }
     // INTROSPECTION_END
 
@@ -313,7 +224,7 @@ export function tokenize(
               // check if this rule has failed before (only if we have failed probes)
               if (has_failed_probes) {
                 const test_key = (pos << 16) | (current_state << 8) | pat.rule_idx;
-                if (failed_probes.has(test_key)) {
+                if (failed_probes!.has(test_key)) {
                   // INTROSPECTION_START
                   if (INTROSPECTION && introspector) {
                     introspector.skipped_failed_probe({
@@ -367,7 +278,7 @@ export function tokenize(
         // char_maps matches reach here without going through that loop.
         if (matched_rule_idx === 65535 && has_failed_probes && char_class !== 65535) {
           const test_key = (pos << 16) | (current_state << 8) | char_class;
-          if (failed_probes.has(test_key)) {
+          if (failed_probes!.has(test_key)) {
             char_class = 65535;
           }
         }
@@ -702,51 +613,12 @@ export function tokenize(
           trans_base3 = (current_state << 8) * 3;
           non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
-
-        // check if we've reached the end while in probe mode
-        // this needs to be after state transition so current_state is updated
-        if (probe_states && probe_states.has(current_state) && pos >= len && probe_entry) {
-          // check if this probe state has a fallback
-          const fallback_state = probe_fallbacks?.get(current_state);
-          if (fallback_state !== undefined) {
-            // transition to fallback state and exit probe mode
-            enter_probe_fallback(fallback_state);
-            // continue from the beginning of the while loop
-            continue;
-          } else {
-            // no fallback - probe failed, mark and reset
-            // INTROSPECTION_START
-            if (INTROSPECTION && introspector && probe_entry) {
-              const key = (probe_entry.pos << 16) | (probe_entry.state << 8) | probe_entry.rule_idx;
-              introspector.probe_failed({
-                key,
-                reason: "reached_end",
-                probeEntry: probe_entry,
-              });
-            }
-            // INTROSPECTION_END
-            rewind_to_probe_entry();
-            // continue from the beginning of the while loop
-            continue;
-          }
-        }
       } else {
         // no match found
         if (is_in_probe_state && probe_entry) {
           // in probe mode, skip the non-matching character and continue scanning
           // probe mode should skip characters until it finds a disambiguating match
           pos++;
-          // if we reached end while probing, resolve via fallback or mark failure
-          if (pos >= len) {
-            const fallback_state = probe_fallbacks?.get(current_state);
-            if (fallback_state !== undefined) {
-              enter_probe_fallback(fallback_state);
-              continue;
-            } else {
-              rewind_to_probe_entry();
-              continue;
-            }
-          }
           // INTROSPECTION_START
           if (INTROSPECTION && introspector) {
             // introspector.skippedCharInProbe({
@@ -824,13 +696,46 @@ export function tokenize(
         // INTROSPECTION_END
 
         // handle probe state entry
-        if (
-          !is_in_probe_state &&
-          is_target_probe_state &&
-          !open_probe(matched_rule_idx, target_state)
-        ) {
-          pos++;
-          continue;
+        if (!is_in_probe_state && is_target_probe_state) {
+          // a probe that already failed here would reopen on its own trigger forever
+          if (
+            has_failed_probes &&
+            failed_probes!.has((pos << 16) | (current_state << 8) | matched_rule_idx)
+          ) {
+            // INTROSPECTION_START
+            if (INTROSPECTION && introspector) {
+              introspector.no_match({
+                char,
+                char_str: String.fromCharCode(char),
+                pos,
+                current_state: current_state,
+                is_non_ascii: true,
+              });
+            }
+            // INTROSPECTION_END
+            pos++;
+            continue;
+          }
+          probe_entry = {
+            pos: pos,
+            entry_pos: pos + 1,
+            state: current_state,
+            stack_ptr: stack_ptr,
+            rule_idx: matched_rule_idx,
+            probe_state: target_state,
+            resolved_state: -1,
+            resolved_pos: -1,
+          };
+          // INTROSPECTION_START
+          if (INTROSPECTION && introspector) {
+            introspector.enter_probe_mode({
+              char_class: matched_rule_idx,
+              pos,
+              current_state: current_state,
+              stack_ptr,
+            });
+          }
+          // INTROSPECTION_END
         }
 
         // emit token only if not in probe state
@@ -990,8 +895,31 @@ export function tokenize(
         }
 
         // check if exiting probe state
-        if (is_in_probe_state && !is_target_probe_state && probe_entry) close_probe(stack_op);
-        if (pos >= len && settle_probe_at_end()) continue;
+        if (is_in_probe_state && !is_target_probe_state && probe_entry) {
+          // rewind to where the probe opened and keep the state it resolved to
+          pos = probe_entry.pos;
+          stack_ptr = probe_entry.stack_ptr;
+          if (stack_op === 1) state_stack[stack_ptr++] = probe_entry.state;
+          // INTROSPECTION_START
+          if (INTROSPECTION && introspector) {
+            introspector.exit_probe_mode({
+              success: true,
+              reset_pos: probe_entry.pos,
+              current_state: current_state,
+              pos: probe_entry.pos,
+            });
+            if (stack_op === 1 && probe_entry.resolved_state > 0) {
+              introspector.pushed_state({
+                from_state: probe_entry.probe_state ?? probe_entry.state,
+                to_state: probe_entry.resolved_state,
+                stack_ptr,
+                pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
+              });
+            }
+          }
+          // INTROSPECTION_END
+          probe_entry = null;
+        }
       } else if (fallback_transitions) {
         // no specific match, use fallback transitions
         const idx = current_state * 3;
@@ -1026,13 +954,46 @@ export function tokenize(
         }
         // INTROSPECTION_END
 
-        if (
-          !is_in_probe_state &&
-          is_target_probe_state &&
-          !open_probe(FALLBACK_RULE, target_state)
-        ) {
-          pos++;
-          continue;
+        if (!is_in_probe_state && is_target_probe_state) {
+          // a probe that already failed here would reopen on its own trigger forever
+          if (
+            has_failed_probes &&
+            failed_probes!.has((pos << 16) | (current_state << 8) | FALLBACK_RULE)
+          ) {
+            // INTROSPECTION_START
+            if (INTROSPECTION && introspector) {
+              introspector.no_match({
+                char,
+                char_str: String.fromCharCode(char),
+                pos,
+                current_state: current_state,
+                is_non_ascii: true,
+              });
+            }
+            // INTROSPECTION_END
+            pos++;
+            continue;
+          }
+          probe_entry = {
+            pos: pos,
+            entry_pos: pos + 1,
+            state: current_state,
+            stack_ptr: stack_ptr,
+            rule_idx: FALLBACK_RULE,
+            probe_state: target_state,
+            resolved_state: -1,
+            resolved_pos: -1,
+          };
+          // INTROSPECTION_START
+          if (INTROSPECTION && introspector) {
+            introspector.enter_probe_mode({
+              char_class: FALLBACK_RULE,
+              pos,
+              current_state: current_state,
+              stack_ptr,
+            });
+          }
+          // INTROSPECTION_END
         }
 
         // emit token only if not in probe state
@@ -1186,25 +1147,38 @@ export function tokenize(
           non_ascii_state = non_ascii_ranges && (non_ascii_ranges as any).get(current_state);
         }
 
-        if (is_in_probe_state && !is_target_probe_state && probe_entry) close_probe(stack_op);
-        if (pos >= len && settle_probe_at_end()) continue;
+        // check if exiting probe state
+        if (is_in_probe_state && !is_target_probe_state && probe_entry) {
+          // rewind to where the probe opened and keep the state it resolved to
+          pos = probe_entry.pos;
+          stack_ptr = probe_entry.stack_ptr;
+          if (stack_op === 1) state_stack[stack_ptr++] = probe_entry.state;
+          // INTROSPECTION_START
+          if (INTROSPECTION && introspector) {
+            introspector.exit_probe_mode({
+              success: true,
+              reset_pos: probe_entry.pos,
+              current_state: current_state,
+              pos: probe_entry.pos,
+            });
+            if (stack_op === 1 && probe_entry.resolved_state > 0) {
+              introspector.pushed_state({
+                from_state: probe_entry.probe_state ?? probe_entry.state,
+                to_state: probe_entry.resolved_state,
+                stack_ptr,
+                pos: probe_entry.resolved_pos >= 0 ? probe_entry.resolved_pos : probe_entry.pos,
+              });
+            }
+          }
+          // INTROSPECTION_END
+          probe_entry = null;
+        }
       } else {
         // no match found
         if (is_in_probe_state && probe_entry) {
           // in probe mode, skip the non-matching character and continue scanning
           // probe mode should skip characters until it finds a disambiguating match
           pos++;
-          // if end reached during probe, resolve fallback or reset
-          if (pos >= len) {
-            const fallback_state = probe_fallbacks?.get(current_state);
-            if (fallback_state !== undefined) {
-              enter_probe_fallback(fallback_state);
-              continue;
-            } else {
-              rewind_to_probe_entry();
-              continue;
-            }
-          }
           // INTROSPECTION_START
           // if (INTROSPECTION && introspector) {
           // 	introspector.skippedCharInProbe({
