@@ -1,5 +1,11 @@
 # @twinkleplop/dotenv
 
+## 0.1.5
+### Patch Changes
+
+- Updated dependencies [[`1e813c5`](https://github.com/pngwn/twinkleplop/commit/1e813c5785391363b4c846621fdad77b4b489df1), [`a2b669d`](https://github.com/pngwn/twinkleplop/commit/a2b669ddfddfc8cc2be4867a8c6d3fef3b154a84), [`ebb0a14`](https://github.com/pngwn/twinkleplop/commit/ebb0a1476fcb384f61dd0a6283d231c89279fdc6), [`56c345b`](https://github.com/pngwn/twinkleplop/commit/56c345b2146ec0a8e01b5bcb56e2425f726107e0), [`3dc045b`](https://github.com/pngwn/twinkleplop/commit/3dc045b7b6443377cd4e8a52f3a1d859adfb4067), [`f8c77c9`](https://github.com/pngwn/twinkleplop/commit/f8c77c9f7f8bb63900a4b2e10cf602dd1f638166), [`6c55db8`](https://github.com/pngwn/twinkleplop/commit/6c55db84a8eb2ebf0f9436af7c547147db4ff9b5), [`7586aee`](https://github.com/pngwn/twinkleplop/commit/7586aee11fcd77ce1ca8440039420f28448bbb86)]:
+  - @twinkleplop/core@0.2.2
+
 ## 0.1.4
 ### Patch Changes
 
