@@ -322,6 +322,44 @@ describe("to_html with hand-built overlays", () => {
   });
 });
 
+// one char tokens write a tag and char cached per type id and char, so the
+// cache has to follow class changes across calls and still escape.
+describe("to_html with one char tokens", () => {
+  function render_chars(input: string, token_types: string[], tokens: number[]): string {
+    return to_html(input, { tokens: new Uint32Array(tokens), token_types }, {});
+  }
+
+  function wrap(body: string): string {
+    return `<pre class="twinkleplop"><code><span class="l">${body}</span></code></pre>`;
+  }
+
+  test("open, swap and same class one char tokens", () => {
+    expect(render_chars("<a> b", ["p", "n"], [0, 0, 1, 1, 1, 2, 0, 2, 3, 0, 4, 5])).toBe(
+      wrap(
+        '<span class="tok p">&lt;</span><span class="tok n">a</span>' +
+          '<span class="tok p">&gt;</span> <span class="tok p">b</span>',
+      ),
+    );
+    expect(render_chars("\"'&", ["s"], [0, 0, 1, 0, 1, 2, 0, 2, 3])).toBe(
+      wrap('<span class="tok s">&quot;&#39;&amp;</span>'),
+    );
+  });
+
+  test("a one char line break still breaks the line", () => {
+    expect(render_chars("a\nb", ["x"], [0, 0, 1, 0, 1, 2, 0, 2, 3])).toBe(
+      wrap('<span class="tok x">a</span></span>\n<span class="l"><span class="tok x">b</span>'),
+    );
+  });
+
+  test("an id keeps no char tag from an earlier call with other classes", () => {
+    for (const cls of ["a", "b", "", "a"]) {
+      expect(render_chars("<<", [cls, "q"], [1, 0, 1, 0, 1, 2])).toBe(
+        wrap(`<span class="tok q">&lt;</span><span class="tok ${cls}">&lt;</span>`),
+      );
+    }
+  });
+});
+
 // the no-option output is pinned byte for byte because every render option
 // has to be invisible when it is absent.
 describe("render options", () => {

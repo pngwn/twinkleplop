@@ -24,6 +24,16 @@ SCAN_TABLE[39] = SCAN_ESCAPE;
 SCAN_TABLE[60] = SCAN_ESCAPE;
 SCAN_TABLE[62] = SCAN_ESCAPE;
 
+// about half of all tokens are one char. a one char token writes its tag and
+// its escaped char as one string cached per type id and ascii char, so it
+// skips building the tag and the scan in emit_range. grammars use well under
+// 64 type ids. a slot is valid while CHAR_CLS holds the class this call maps
+// the id to, and no class is null so every slot starts out stale.
+const CHAR_TYPES = 64;
+const CHAR_CLS: (string | null)[] = new Array(CHAR_TYPES << 7).fill(null);
+const CHAR_OPEN: string[] = new Array(CHAR_TYPES << 7).fill("");
+const CHAR_SWAP: string[] = new Array(CHAR_TYPES << 7).fill("");
+
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
   // option items merge into a fresh result so the caller's tokenize result
   // is left untouched. items that resolve to nothing fall through so they
@@ -161,7 +171,8 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
 
   let last_end = 0;
   for (let i = 0; i < tokens.length; i += 3) {
-    const cls = token_types[tokens[i]];
+    const type = tokens[i];
+    const cls = token_types[type];
     const start = tokens[i + 1];
     const end = tokens[i + 2];
 
@@ -177,6 +188,24 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
         emit_range(start, end, cls);
         close_span();
         open_tag = null;
+        last_end = end;
+        continue;
+      }
+    }
+    if (end - start === 1 && type < CHAR_TYPES) {
+      const c = input.charCodeAt(start);
+      if (c < 128 && c !== 10) {
+        if (cls === open_class) out += ESCAPE_TABLE[c];
+        else {
+          const k = (type << 7) | c;
+          if (CHAR_CLS[k] !== cls) {
+            CHAR_CLS[k] = cls;
+            CHAR_OPEN[k] = `<span class="tok ${cls}">` + ESCAPE_TABLE[c];
+            CHAR_SWAP[k] = "</span>" + CHAR_OPEN[k];
+          }
+          out += open_class === null ? CHAR_OPEN[k] : CHAR_SWAP[k];
+          open_class = cls;
+        }
         last_end = end;
         continue;
       }
