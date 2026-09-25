@@ -730,6 +730,115 @@ export const claim_ts_property_scope: ClaimingReclassifier = as_claim_producer(
   },
 );
 
+// scans a `<` opened type argument group from the token after `open` and
+// returns the index of the operator that closes it, or a negative index
+// when a `;` or an unmatched `}` at brace depth zero ends the scan first.
+// reads char codes rather than token text: after a comparison the scan
+// crosses whole statement blocks, so a slice per token dominated both
+// angle passes. when `angles` is given every `<` and closing `>` run seen
+// is pushed to it.
+function scan_angle_group(
+  view: View,
+  input: string,
+  tokens: Uint32Array,
+  open: number,
+  operator_id: number,
+  punctuation_id: number,
+  angles: number[] | null,
+): number {
+  const n = view.count;
+  let depth = 1;
+  let brace_depth = 0;
+  for (let j = open + 1; j < n; j++) {
+    if (view.is_trivia(j)) continue;
+    const kk = tokens[j * 3];
+    const s = tokens[j * 3 + 1];
+    const e = tokens[j * 3 + 2];
+    if (kk === operator_id) {
+      const len = e - s;
+      const c = input.charCodeAt(s);
+      if (len === 1 && c === 60) {
+        depth++;
+        if (angles !== null) angles.push(j);
+      } else if (
+        brace_depth === 0 &&
+        c === 62 &&
+        len >= 1 &&
+        len <= 3 &&
+        is_close_run(input, s, e)
+      ) {
+        // a run of `>` coalesces into one shift operator, so
+        // `make<T extends Record<string, unknown>>(` closes both
+        // groups on a single token.
+        depth -= len;
+        if (angles !== null) angles.push(j);
+        if (depth <= 0) return j;
+      }
+    } else if (kk === punctuation_id) {
+      for (let k = s; k < e; k++) {
+        const ch = input.charCodeAt(k);
+        if (ch === 123) brace_depth++;
+        else if (ch === 125) {
+          if (brace_depth === 0) return -1;
+          brace_depth--;
+        } else if (ch === 59 && brace_depth === 0) return -1;
+      }
+    }
+  }
+  return -1;
+}
+
+function is_close_run(input: string, s: number, e: number): boolean {
+  for (let k = s + 1; k < e; k++) {
+    if (input.charCodeAt(k) !== 62) return false;
+  }
+  return true;
+}
+
+// index of the first token at or after `from` that ends past `pos`. ends
+// ascend with starts, so zero width tokens sitting at `pos` are skipped.
+function token_ending_after(tokens: Uint32Array, from: number, n: number, pos: number): number {
+  let lo = from;
+  let hi = n;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (tokens[mid * 3 + 2] > pos) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo;
+}
+
+// next single char `<` operator token after `from`, found by searching the
+// source rather than walking every token: both angle passes only start at
+// one and most files carry a few dozen against thousands of tokens.
+function next_lt_operator(
+  view: View,
+  input: string,
+  tokens: Uint32Array,
+  from: number,
+  operator_id: number,
+): number {
+  const n = view.count;
+  if (from >= n) return -1;
+  let pos = input.indexOf("<", tokens[from * 3 + 1]);
+  let cursor = from;
+  while (pos >= 0) {
+    cursor = token_ending_after(tokens, cursor, n, pos);
+    if (cursor >= n) return -1;
+    if (
+      tokens[cursor * 3 + 1] === pos &&
+      tokens[cursor * 3] === operator_id &&
+      tokens[cursor * 3 + 2] - pos === 1 &&
+      !view.is_trivia(cursor)
+    ) {
+      return cursor;
+    }
+    const start = tokens[cursor * 3 + 1];
+    pos = input.indexOf("<", start > pos ? start : tokens[cursor * 3 + 2]);
+  }
+  return -1;
+}
+
 // promote_ts_generic_calls
 // ---------------------------------------------------------------------------
 //
@@ -755,62 +864,31 @@ export const promote_ts_generic_calls: Reclassifier = (input, result) => {
     token_types.push("function");
   }
   const view = make_token_view(input, tokens, token_types);
-  const n = view.count;
 
-  for (let i = 0; i < n; i++) {
-    if (view.is_trivia(i)) continue;
-    if (view.kind_of(i) !== identifier_id) continue;
-    const lt = view.next_non_trivia(i + 1);
-    if (lt < 0) continue;
-    if (view.kind_of(lt) !== operator_id || view.text_of(lt) !== "<") continue;
-
-    let depth = 1;
-    let brace_depth = 0;
-    let j = lt + 1;
-    let matched_close = -1;
-    let bail = false;
-    while (j < n) {
-      if (view.is_trivia(j)) {
-        j++;
-        continue;
-      }
-      const kk = view.kind_of(j);
-      const tt = view.text_of(j);
-      if (kk === operator_id) {
-        if (tt === "<") {
-          depth++;
-        } else if (brace_depth === 0 && (tt === ">" || tt === ">>" || tt === ">>>")) {
-          // a run of `>` coalesces into one right-shift operator, so
-          // `make<T extends Record<string, unknown>>(` closes both
-          // groups on a single token.
-          depth -= tt.length;
-          if (depth <= 0) {
-            matched_close = j;
-            break;
-          }
-        }
-      } else if (kk === punctuation_id) {
-        for (const ch of tt) {
-          if (ch === "{") brace_depth++;
-          else if (ch === "}") {
-            if (brace_depth === 0) {
-              bail = true;
-              break;
-            }
-            brace_depth--;
-          } else if (ch === ";" && brace_depth === 0) {
-            bail = true;
-            break;
-          }
-        }
-        if (bail) break;
-      }
-      j++;
-    }
+  for (
+    let lt = next_lt_operator(view, input, tokens, 0, operator_id);
+    lt >= 0;
+    lt = next_lt_operator(view, input, tokens, lt + 1, operator_id)
+  ) {
+    const i = view.prev_non_trivia(lt - 1);
+    if (i < 0 || view.kind_of(i) !== identifier_id) continue;
+    const matched_close = scan_angle_group(
+      view,
+      input,
+      tokens,
+      lt,
+      operator_id,
+      punctuation_id,
+      null,
+    );
     if (matched_close < 0) continue;
     const after = view.next_non_trivia(matched_close + 1);
     if (after < 0) continue;
-    if (view.kind_of(after) !== punctuation_id || !view.text_of(after).startsWith("(")) {
+    if (
+      view.kind_of(after) !== punctuation_id ||
+      tokens[after * 3 + 2] === tokens[after * 3 + 1] ||
+      input.charCodeAt(tokens[after * 3 + 1]) !== 40
+    ) {
       continue;
     }
     tokens[i * 3] = function_id;
@@ -844,7 +922,6 @@ export const retag_generic_angles: Reclassifier = (input, result) => {
   const function_id = token_types.indexOf("function");
   const keyword_id = token_types.indexOf("keyword");
   const view = make_token_view(input, tokens, token_types);
-  const n = view.count;
 
   const is_name_kind = (k: number): boolean =>
     k === identifier_id || k === type_id || k === class_name_id || k === function_id;
@@ -888,78 +965,29 @@ export const retag_generic_angles: Reclassifier = (input, result) => {
     return false;
   };
 
-  let i = 0;
-  while (i < n) {
-    if (view.is_trivia(i)) {
-      i++;
-      continue;
-    }
-    if (view.kind_of(i) !== operator_id || view.text_of(i) !== "<") {
-      i++;
-      continue;
-    }
+  let i = next_lt_operator(view, input, tokens, 0, operator_id);
+  while (i >= 0) {
     const prev = view.prev_non_trivia(i - 1);
     if (prev < 0 || !is_name_kind(view.kind_of(prev))) {
-      i++;
+      i = next_lt_operator(view, input, tokens, i + 1, operator_id);
       continue;
     }
 
-    let depth = 1;
-    let brace_depth = 0;
-    let j = i + 1;
-    let close_idx = -1;
     const angles: number[] = [i];
-    let bail = false;
-    while (j < n) {
-      if (view.is_trivia(j)) {
-        j++;
-        continue;
-      }
-      const k = view.kind_of(j);
-      const t = view.text_of(j);
-      if (k === operator_id) {
-        if (t === "<") {
-          depth++;
-          angles.push(j);
-        } else if (brace_depth === 0 && (t === ">" || t === ">>" || t === ">>>")) {
-          depth -= t.length;
-          angles.push(j);
-          if (depth <= 0) {
-            close_idx = j;
-            break;
-          }
-        }
-      } else if (k === punctuation_id) {
-        for (const ch of t) {
-          if (ch === "{") brace_depth++;
-          else if (ch === "}") {
-            if (brace_depth === 0) {
-              bail = true;
-              break;
-            }
-            brace_depth--;
-          } else if (ch === ";" && brace_depth === 0) {
-            bail = true;
-            break;
-          }
-        }
-        if (bail) break;
-      }
-      j++;
-    }
-    if (bail || close_idx < 0) {
-      i++;
+    const close_idx = scan_angle_group(view, input, tokens, i, operator_id, punctuation_id, angles);
+    if (close_idx < 0) {
+      i = next_lt_operator(view, input, tokens, i + 1, operator_id);
       continue;
     }
     const after = view.next_non_trivia(close_idx + 1);
     if (!after_acceptable(after)) {
-      i++;
+      i = next_lt_operator(view, input, tokens, i + 1, operator_id);
       continue;
     }
     for (const idx of angles) {
       tokens[idx * 3] = punctuation_id;
     }
-    i = close_idx + 1;
+    i = next_lt_operator(view, input, tokens, close_idx + 1, operator_id);
   }
 
   return result;
