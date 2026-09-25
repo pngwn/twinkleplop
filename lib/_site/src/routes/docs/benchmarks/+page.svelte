@@ -238,8 +238,9 @@
 				mean better output.
 			</p>
 			<p>
-				<strong>The HTML numbers are not measuring identical output.</strong> twinkleplop and Prism emit
-				classes, Shiki resolves a theme and writes inline styles (in this configuration).
+				<strong>The HTML numbers are not measuring identical output.</strong> twinkleplop, Prism and
+				speed-highlight emit classes, Shiki resolves a theme and writes inline styles (in this
+				configuration).
 			</p>
 			<p>
 				<strong>Compare results within the same chart.</strong> Results from different runs, machines

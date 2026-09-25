@@ -17,6 +17,7 @@
 		"shiki-js": "var(--t-blue)",
 		prism: "var(--t-yellow)",
 		"sugar-high": "var(--t-pink)",
+		"speed-highlight": "var(--t-orange)",
 	};
 	const DEFAULT_COLOR = "var(--t-purple)";
 	const color_for = (id: string) => LIBRARY_COLORS[id] ?? DEFAULT_COLOR;
