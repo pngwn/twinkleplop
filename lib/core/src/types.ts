@@ -81,6 +81,10 @@ export interface CompiledGrammar {
   probe_fallbacks?: Map<number, number>;
   // track which rules require boundary checking (state * 256 + rule_idx)
   boundary_rules?: Set<number>;
+  // boundary_rules as a dense array
+  boundary_flags?: Uint8Array;
+  // indexed like boundary_rules, holds one of the run kind codes below
+  run_kinds: Uint8Array;
   // true when any rule sets seal: true or boundary: true. lets the
   // tokenizer skip the per-emission seal lookup on grammars that don't
   // opt in — most grammars don't.
@@ -91,6 +95,13 @@ export interface CompiledGrammar {
   seal_flags?: Uint8Array;
   fallback_seal_flags?: Uint8Array;
 }
+
+// run_kinds codes, a rule that keeps its state and stack loops on itself, so
+// the tokenizer consumes its whole run of characters in one go
+export const RUN_NONE = 0;
+export const RUN_EMITTING = 1;
+// a self loop that emits nothing, so its run is skipped outright
+export const RUN_TOKENLESS = 2;
 
 // Tokenizer types
 export interface TokenizeResult {

@@ -1,5 +1,6 @@
 import type { CompiledGrammar, PatternInfo, TokenizeResult } from "./types";
 import type { TokenizerIntrospector } from "./introspector";
+import { RUN_NONE, RUN_TOKENLESS } from "./types";
 
 // every field is set in the literal that creates an entry, and none is added
 // later: adding a property after creation moves the object to a map that only
@@ -69,7 +70,8 @@ export function tokenize(
     probe_states,
     probe_mask,
     probe_fallbacks,
-    boundary_rules,
+    boundary_flags,
+    run_kinds,
     has_seals,
     seal_flags,
     fallback_seal_flags,
@@ -266,8 +268,8 @@ export function tokenize(
         // check boundary for single-character matches if required
         if (
           matched_rule_idx === 65535 &&
-          boundary_rules &&
-          boundary_rules.has(current_state * 256 + char_class)
+          boundary_flags !== undefined &&
+          boundary_flags[(current_state << 8) + char_class] === 1
         ) {
           // this is a single-char match that requires boundary checking
           if (pos + 1 < len) {
@@ -297,59 +299,34 @@ export function tokenize(
       }
 
       if (char_class !== 65535) {
-        const t_base = trans_base3 + char_class * 3;
-        const transition = transitions[t_base];
-        const token_type = transitions[t_base + 1];
-        const stack_op = transitions[t_base + 2];
-
-        // tokenless self loop: the rule neither emits nor changes state, so
-        // every character of its run would take the full dispatch below only
-        // to advance pos by one. skip the run with the same stop conditions
-        // as the emitting fast path. last_token_* stay untouched because the
-        // slow path leaves them alone for tokenless rules too.
-        if (
-          transition === 65535 &&
-          stack_op === 0 &&
-          token_type === 65535 &&
-          matched_length === 0 &&
-          !is_in_probe_state &&
-          !has_failed_probes &&
-          (!boundary_rules || !boundary_rules.has(current_state * 256 + char_class)) &&
-          !(INTROSPECTION && introspector)
-        ) {
-          pos++;
-          while (pos < len) {
-            const next = input.charCodeAt(pos);
-            if (next > 127) break;
-            if (char_maps[char_map_base + next] !== char_class) break;
-            if (state_buckets !== undefined && state_buckets[next] !== null) break;
-            pos++;
-          }
-          continue;
-        }
-
-        // run fast path. the three table reads above already say whether this
-        // rule can change state; one that cannot is a self-loop, so the whole
-        // run of characters it matches can be consumed here instead of paying
-        // a full dispatch per character. string bodies, comment bodies,
-        // identifier runs and digit runs are all this shape, which is why a
-        // hand-written lexer's inner loops beat the table walk.
+        // run fast path, a self loop rule consumes its whole run of characters
+        // here instead of a dispatch per character, run_kinds folds every static
+        // condition of this path into one byte at compile time
         //
-        // the run stops at a character that maps to a different rule, at a
-        // character that begins one of this state's multi-char patterns (the
-        // bucket is consulted before the char map, so it would have won), and
-        // at non-ascii (the fallback path owns those).
+        // the run stops at a char mapping to another rule, at a char starting one
+        // of the state multi char patterns since the bucket would have won, and
+        // at non ascii which the fallback path owns
+        const run_kind = run_kinds[(current_state << 8) + char_class];
         if (
-          transition === 65535 &&
-          stack_op === 0 &&
-          token_type !== 65535 &&
+          run_kind !== RUN_NONE &&
           matched_length === 0 &&
-          !is_in_probe_state &&
           !has_failed_probes &&
-          (!has_seals || !seal_flags![current_state * 256 + char_class]) &&
-          (!boundary_rules || !boundary_rules.has(current_state * 256 + char_class)) &&
           !(INTROSPECTION && introspector)
         ) {
+          // a tokenless run is skipped outright, the slow path also leaves the
+          // last_token fields alone for tokenless rules
+          if (run_kind === RUN_TOKENLESS) {
+            pos++;
+            while (pos < len) {
+              const next = input.charCodeAt(pos);
+              if (next > 127) break;
+              if (char_maps[char_map_base + next] !== char_class) break;
+              if (state_buckets !== undefined && state_buckets[next] !== null) break;
+              pos++;
+            }
+            continue;
+          }
+          const token_type = transitions[trans_base3 + char_class * 3 + 1];
           if (token_type === last_token_type && pos === last_token_end) {
             pos++;
           } else {
@@ -371,6 +348,11 @@ export function tokenize(
           last_token_end = pos;
           continue;
         }
+
+        const t_base = trans_base3 + char_class * 3;
+        const transition = transitions[t_base];
+        const token_type = transitions[t_base + 1];
+        const stack_op = transitions[t_base + 2];
 
         // determine target state
         let target_state = current_state;
