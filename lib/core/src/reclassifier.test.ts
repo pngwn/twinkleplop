@@ -1168,6 +1168,42 @@ describe("reclassifier — embedGrammars", () => {
     expect(calls).toBe(4);
     expect(got).toEqual(want);
   });
+
+  test("contiguous same-type host tokens are sub-tokenized as one slice", () => {
+    const seen: string[] = [];
+    const recording: LanguageFn = (src) => {
+      seen.push(src);
+      return sub_language(src);
+    };
+    const src = "abcdefgh";
+    const raw: TokenizeResult = {
+      token_types: ["raw", "text"],
+      tokens: new Uint32Array([0, 0, 2, 0, 2, 4, 0, 4, 5, 1, 5, 6, 0, 6, 8]),
+    };
+    const enriched = reclassify([embed_grammars({ raw: recording })])(src, raw);
+    expect(seen).toEqual(["abcde", "gh"]);
+    const tokens = as_tokens(enriched, src);
+    expect(tokens.map((t) => t.value).join("")).toBe(src);
+    expect(tokens.find((t) => t.value === "f")?.type).toBe("text");
+  });
+
+  test("entries with a trim embed each host token on its own", () => {
+    const seen: string[] = [];
+    const recording: LanguageFn = (src) => {
+      seen.push(src);
+      return sub_language(src);
+    };
+    const src = "`ab``cd`";
+    const raw: TokenizeResult = {
+      token_types: ["raw"],
+      tokens: new Uint32Array([0, 0, 4, 0, 4, 8]),
+    };
+    reclassify([embed_grammars({ raw: { language: recording, trim_start: 1, trim_end: 1 } })])(
+      src,
+      raw,
+    );
+    expect(seen).toEqual(["ab", "cd"]);
+  });
 });
 
 describe("reclassifier — capture-based rewrites", () => {

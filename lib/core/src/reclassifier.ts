@@ -3826,6 +3826,9 @@ function run_rewrite_loop_claims(
 // slice. each sub token's start/end is shifted by the host token's start
 // so that positions remain global to the original `input`.
 //
+// touching tokens of one type embed as one slice since within splits its delimiters into separate atoms
+// entries with a trim stay per token because a trim strips the delimiters of one token
+//
 // **sub reclassifiers.** the sub's reclassifiers run inside its own
 // language function before splicing, so they only see sub tokens and the
 // isolation is automatic. host-level transforms that run AFTER embedding
@@ -3893,6 +3896,7 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
     // token count so we can allocate the output Uint32Array once.
     interface Embed {
       host_idx: number;
+      host_end_idx: number; // exclusive
       sub: TokenizeResult;
       content_start: number; // input-global start of sub content
       entry: NormalizedEmbedEntry;
@@ -3906,8 +3910,19 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
       const entry_idx = type_id < by_type_id.length ? by_type_id[type_id] : -1;
       if (entry_idx < 0) continue;
       const entry = entries[entry_idx];
+      const host_idx = i;
       const host_start = host_tokens[i * 3 + 1];
-      const host_end = host_tokens[i * 3 + 2];
+      let host_end = host_tokens[i * 3 + 2];
+      if (entry.trim_start === 0 && entry.trim_end === 0) {
+        while (
+          i + 1 < host_count &&
+          host_tokens[(i + 1) * 3] === type_id &&
+          host_tokens[(i + 1) * 3 + 1] === host_end
+        ) {
+          i++;
+          host_end = host_tokens[i * 3 + 2];
+        }
+      }
       // trim a fixed number of chars from each end before sub-tokenizing.
       // guards against the trim being larger than the token itself.
       const content_start = Math.min(host_start + entry.trim_start, host_end);
@@ -3916,7 +3931,8 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
       const sub = entry.language(content);
       const sub_count = sub.tokens.length / 3;
       embeds.push({
-        host_idx: i,
+        host_idx,
+        host_end_idx: i + 1,
         sub,
         content_start,
         entry,
@@ -3931,7 +3947,7 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
         if (entry.trim_start > 0) replacement++;
         if (entry.trim_end > 0) replacement++;
       }
-      new_count = new_count - 1 + replacement;
+      new_count = new_count - (i + 1 - host_idx) + replacement;
     }
 
     if (embeds.length === 0) return result;
@@ -3978,7 +3994,9 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
     let embed_idx = 0;
     for (let i = 0; i < host_count; i++) {
       if (embed_idx < embeds.length && embeds[embed_idx].host_idx === i) {
-        const { sub, content_start, entry, host_start, host_end } = embeds[embed_idx++];
+        const { sub, content_start, entry, host_start, host_end, host_end_idx } =
+          embeds[embed_idx++];
+        i = host_end_idx - 1;
         const remap = remap_for(sub.token_types);
         const wrap_id = entry.wrap_token !== null ? ensure_id(entry.wrap_token) : -1;
 

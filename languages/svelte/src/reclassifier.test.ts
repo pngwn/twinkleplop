@@ -92,6 +92,30 @@ describe("Svelte language — `{expression}` interpolations", () => {
     // Template tokens are present.
     expect(tokens.some((t) => t.type === "template")).toBe(true);
   });
+
+  it("block comment inside an expression closes as a comment: {a /* b */}", () => {
+    const src = "<p>{count /* résumé */}</p>";
+    const tokens = enrich(src);
+    expect(type_of(tokens, "count")).toBe("identifier");
+    const comment = tokens
+      .filter((t) => t.type === "comment")
+      .map((t) => t.value)
+      .join("");
+    expect(comment).toBe("/* résumé */");
+  });
+});
+
+describe("Svelte language — non-ascii content", () => {
+  it("keeps an HTML comment whole", () => {
+    const src = "<!-- café — naïve ✓ -->\n<p>x</p>";
+    const tokens = enrich(src);
+    const comment = tokens
+      .filter((t) => t.type === "comment")
+      .map((t) => t.value)
+      .join("");
+    expect(comment).toBe("<!-- café — naïve ✓ -->");
+    expect(tokens.filter((t) => t.start < 23).every((t) => t.type === "comment")).toBe(true);
+  });
 });
 
 describe("Svelte language — block expressions", () => {
