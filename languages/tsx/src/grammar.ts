@@ -73,8 +73,6 @@ import {
   SINGLE_LINE_COMMENT,
   SPECIAL_VALUES,
   js_common,
-  js_numbers_arg,
-  js_strings,
   js_tmpl_common,
 } from "@twinkleplop/javascript";
 
@@ -236,10 +234,9 @@ export default define_grammar({
     },
 
     // call arguments stay here only at argument start, so a bare `<` may open jsx
-    // numbers and strings detour through call_operand so `foo(1<n)` stays less-than
+    // numbers, strings and groups detour through call_operand so foo(1<n) stays less than
     function_body: {
       rules: [
-        on([DIGIT, '"', "'", "`"], goto("call_operand")),
         tsx_compound_lt,
         on("<", enter("jsx_or_lt_probe")),
         ...ts_grammar.states.function_body.rules,
@@ -248,19 +245,10 @@ export default define_grammar({
 
     function_body_tmpl: {
       rules: [
-        on([DIGIT, '"', "'", "`"], goto("call_operand_tmpl")),
         tsx_compound_lt,
         on("<", enter("jsx_or_lt_probe")),
         ...ts_grammar.states.function_body_tmpl.rules,
       ],
-    },
-
-    call_operand: {
-      rules: [...js_strings, ...js_numbers_arg, fallback(goto("division"))],
-    },
-
-    call_operand_tmpl: {
-      rules: [...js_strings, ...js_numbers_arg, fallback(goto("tmpl_division"))],
     },
 
     // -------------------------------------------------------------------
