@@ -260,17 +260,17 @@ export default [
 		"end": 189
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 202,
 		"end": 203
 	},
 	{
-		"type": "identifier",
+		"type": "tag_name",
 		"start": 203,
 		"end": 205
 	},
 	{
-		"type": "identifier",
+		"type": "attr_name",
 		"start": 206,
 		"end": 209
 	},
@@ -292,16 +292,6 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 212,
-		"end": 213
-	},
-	{
-		"type": "operator",
-		"start": 213,
-		"end": 214
-	},
-	{
-		"type": "punctuation",
-		"start": 214,
 		"end": 215
 	},
 	{
@@ -315,17 +305,17 @@ export default [
 		"end": 217
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 217,
 		"end": 219
 	},
 	{
-		"type": "identifier",
+		"type": "tag_name",
 		"start": 219,
 		"end": 221
 	},
 	{
-		"type": "operator",
+		"type": "punctuation",
 		"start": 221,
 		"end": 222
 	},

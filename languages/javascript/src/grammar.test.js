@@ -73,4 +73,18 @@ describe("stack balance", () => {
       ["punctuation", "{}"],
     ]);
   });
+
+  it("tokenizes the tail after 300 grouped call arguments", () => {
+    const unit = "f((a) / 2, 1 / 3);\n`${g((b) / 2)}`;\n";
+    const input = `${unit.repeat(300)}x = /re/;`;
+    const tail = get_tokens(input)
+      .slice(-4)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["identifier", "x"],
+      ["operator", "="],
+      ["regex", "/re/"],
+      ["punctuation", ";"],
+    ]);
+  });
 });

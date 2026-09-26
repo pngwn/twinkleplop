@@ -300,13 +300,13 @@ export const member_access_entry = (state: string) => [
 // out would strand the frame on the stack.
 export const function_body_state = (keywords: object[]) => ({
   rules: [
+    // a value opening an argument reads through call_operand so a following slash is division
+    on(CALL_OPERAND_START, goto("call_operand")),
     ...js_body_common,
     ...keywords,
 
     // End of arguments
     match(")", TOKENS.punctuation, goto("division")),
-    // Nested parentheses
-    match("(", TOKENS.punctuation, enter("paren_group")),
     // Argument separator
     match(",", TOKENS.punctuation),
 
@@ -324,6 +324,17 @@ export const function_body_state = (keywords: object[]) => ({
 
     // Identifiers (recursive probe for nested function calls)
     on(["_", "$", LETTER], goto("identifier_probe")),
+  ],
+});
+
+// returning here from a pushed operand means a value just ended, so dest is a division state
+export const CALL_OPERAND_START = ["(", DIGIT, '"', "'", "`"];
+export const call_operand_state = (dest: "division" | "tmpl_division") => ({
+  rules: [
+    ...js_strings,
+    ...js_numbers_arg,
+    match("(", TOKENS.punctuation, enter("paren_group")),
+    fallback(goto(dest)),
   ],
 });
 
@@ -449,6 +460,9 @@ export default define_grammar({
     // paren_group — nested parentheses inside function arguments
     // -------------------------------------------------------------------------
     paren_group: paren_group_state(keywordsLiterals(null, null)),
+
+    call_operand: call_operand_state("division"),
+    call_operand_tmpl: call_operand_state("tmpl_division"),
 
     member_access_paren,
 
@@ -809,10 +823,10 @@ export default define_grammar({
     // -------------------------------------------------------------------------
     function_body_tmpl: {
       rules: [
+        on(CALL_OPERAND_START, goto("call_operand_tmpl")),
         ...js_body_common,
 
         match(")", TOKENS.punctuation, goto("tmpl_division")),
-        match("(", TOKENS.punctuation, enter("paren_group")),
         match(",", TOKENS.punctuation),
 
         match(["===", "!=="], TOKENS.operator),
