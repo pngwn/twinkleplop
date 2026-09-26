@@ -14,20 +14,8 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 77,
-		"end": 106,
-		"match": "<!-- and `'` strings plus `//"
-	},
-	{
-		"type": "comment",
-		"start": 107,
-		"end": 118,
-		"match": "\\n` and `/*"
-	},
-	{
-		"type": "comment",
-		"start": 119,
 		"end": 151,
-		"match": "*/` comments, and tracks nested "
+		"match": "<!-- and `'` strings plus `//…\\n` and `/*…*/` comments, and tracks nested "
 	},
 	{
 		"type": "comment",

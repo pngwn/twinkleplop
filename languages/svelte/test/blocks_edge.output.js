@@ -14,20 +14,8 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 79,
-		"end": 87,
-		"match": "<!-- `//"
-	},
-	{
-		"type": "comment",
-		"start": 88,
-		"end": 97,
-		"match": "\\n` / `/*"
-	},
-	{
-		"type": "comment",
-		"start": 98,
 		"end": 150,
-		"match": "*/` comments, and nested `{...}` are handled. regex "
+		"match": "<!-- `//…\\n` / `/*…*/` comments, and nested `{...}` are handled. regex "
 	},
 	{
 		"type": "comment",
