@@ -105,6 +105,10 @@ const ALL_DIVISION_KEYWORDS = ALL_KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWOR
 const ts_operators = (after: string | null) =>
   match(OP_ALL_OUTSIDE_MEMBER, TOKENS.operator, to(after));
 
+// a bare ! after a value asserts non null so / stays division
+// it must precede the operator set to win the tie on !
+const non_null_assertion = (div_dest: string | null) => match("!", TOKENS.operator, to(div_dest));
+
 const ts_keywords_literals = (regex_dest: string | null, div_dest: string | null) => [
   keyword(REGEX_PRECEDING_KEYWORDS, to(regex_dest)),
   keyword(ALL_DIVISION_KEYWORDS, to(div_dest)),
@@ -133,6 +137,13 @@ export default define_grammar({
     // ---------------------------------------------------------------------
     decorator: {
       rules: [match(["_", "$", ".", ALNUM], TOKENS.decorator), fallback(leave())],
+    },
+
+    identifier: {
+      rules: [non_null_assertion("division"), ...js_grammar.states.identifier.rules],
+    },
+    identifier_tmpl: {
+      rules: [non_null_assertion("tmpl_division"), ...js_grammar.states.identifier_tmpl.rules],
     },
 
     // ---------------------------------------------------------------------
@@ -181,6 +192,7 @@ export default define_grammar({
     division: {
       rules: [
         ...js_common,
+        non_null_assertion(null),
         ts_operators("regex_allow"),
         ...ts_keywords_literals("regex_allow", null),
 
@@ -240,6 +252,7 @@ export default define_grammar({
     tmpl_division: {
       rules: [
         ...js_tmpl_common,
+        non_null_assertion(null),
         ts_operators("tmpl_regex_allow"),
         ...ts_keywords_literals("tmpl_regex_allow", null),
 
