@@ -96,24 +96,6 @@ const TS_KEYWORDS = [
 const ALL_KEYWORDS = [...KEYWORDS, ...TS_KEYWORDS];
 const ALL_DIVISION_KEYWORDS = ALL_KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k));
 
-// built-in type names highlighted with the TOKENS.type token.
-// void, undefined, null are already handled by JS keywords/special values.
-// exported so the reclassifier can promote them to `type` post-hoc. used to
-// be routed through keyword() at grammar time; stripped out so the grammar
-// emits them as plain `identifier` and consumers can opt in to the type
-// annotation by including promote_builtin_types in their pipeline.
-export const BUILTIN_TYPES = [
-  "number",
-  "string",
-  "boolean",
-  "any",
-  "never",
-  "unknown",
-  "object",
-  "symbol",
-  "bigint",
-];
-
 // ---------------------------------------------------------------------------
 // parameterized rule factories (extended for TypeScript)
 // ---------------------------------------------------------------------------

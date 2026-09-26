@@ -75,18 +75,43 @@ function escape_html(text: string): string {
  */
 function highlight_fragment(text: string): string {
   if (!text) return "";
-  const { tokens, token_types } = language(text);
+  const kind = QUICKINFO_KIND.exec(text);
+  if (!kind) return highlight_tokens(text, "");
+  // quickinfo after the kind label is not typescript alone, a throwaway
+  // declaration keyword gives its annotation a type position
+  const rest = text.substring(kind[0].length);
+  const context = DECLARATION_START.test(rest)
+    ? ""
+    : CALLABLE_KINDS.has(kind[1])
+      ? "function "
+      : "let ";
+  return highlight_tokens(kind[0], "") + highlight_tokens(rest, context);
+}
+
+const QUICKINFO_KIND = /^\(([a-z][a-z ]*)\) /;
+const CALLABLE_KINDS = new Set(["method", "function", "local function", "constructor"]);
+const DECLARATION_START =
+  /^(?:type|interface|class|enum|namespace|module|const|let|var|function|import|export|declare)\b/;
+
+/**
+ * Highlight `text` as if `context` preceded it, emitting spans for `text`
+ * only.
+ */
+function highlight_tokens(text: string, context: string): string {
+  const { tokens, token_types } = language(context + text);
+  const offset = context.length;
   let out = "";
   let last_end = 0;
   for (let i = 0; i < tokens.length; i += 3) {
     const type_id = tokens[i];
-    const start = tokens[i + 1];
-    const end = tokens[i + 2];
+    const start = tokens[i + 1] - offset;
+    const end = tokens[i + 2] - offset;
+    if (end <= 0) continue;
     if (start > last_end) {
       out += escape_html(text.substring(last_end, start));
     }
     out += `<span class="${token_types[type_id]}">${escape_html(
-      text.substring(start, end),
+      text.substring(Math.max(start, 0), end),
     )}</span>`;
     last_end = end;
   }

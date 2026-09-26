@@ -330,9 +330,7 @@ export const claim_property_scope: ClaimingReclassifier = rewrite_types(property
 });
 
 // keywords the grammar emits that can sit inside a type expression.
-// `string` / `number` / `boolean` and the rest of the builtin type names
-// are plain identifiers at this stage -- builtin-type promotion is a
-// reclassifier that runs downstream of frame_track.
+// builtin type names are plain identifiers at this stage
 const TYPE_EXPR_KEYWORDS = [
   "void",
   "null",
@@ -350,18 +348,11 @@ const TYPE_EXPR_KEYWORDS = [
 // the token a body brace actually follows.
 const TYPE_TAIL_KEYWORDS = ["void", "null", "undefined", "this"];
 
-// walk back over a return-type annotation to the `):` that opened it.
-// `.` and `,` come in through `chars` rather than a text list because the
-// grammar coalesces adjacent punctuation. bracket groups -- `T[]`, an
-// inline `{ a: T }`, a tuple, a parenthesised union -- are stepped over
-// whole, so `(): { a: T }[] {` still reaches its `):`.
+// walk back over a return type to the colon that opened it, stepping over
+// bracket groups whole, chars survive punctuation coalescing
 const RETURN_TYPE_SCAN: BraceKindScan = {
   over: [
     { type: "identifier" },
-    // the TSX grammar tags the builtin type names (`string`, `number`)
-    // as `type` directly, where the TS grammar leaves them identifiers
-    // for a downstream pass. the walk has to accept both.
-    { type: "type" },
     { type: "keyword", texts: TYPE_EXPR_KEYWORDS },
     { type: "string" },
     { type: "number" },
@@ -478,7 +469,6 @@ export const js_frame_spec: FrameSpec = {
       // literals that reach these rules (`= {`, `, {`, `return {` all
       // fail them without a step).
       { prev_type: "identifier", scan_back: RETURN_TYPE_SCAN, kind: "block" },
-      { prev_type: "type", scan_back: RETURN_TYPE_SCAN, kind: "block" },
       {
         prev_type: "keyword",
         prev_texts: TYPE_TAIL_KEYWORDS,

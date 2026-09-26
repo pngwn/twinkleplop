@@ -25,7 +25,7 @@ export default [
 		"end": 23
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 24,
 		"end": 30
 	},
@@ -125,7 +125,7 @@ export default [
 		"end": 91
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 92,
 		"end": 98
 	},
@@ -210,7 +210,7 @@ export default [
 		"end": 143
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 144,
 		"end": 151
 	},

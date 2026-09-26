@@ -114,18 +114,6 @@ const TS_KEYWORDS = [
 const ALL_KEYWORDS = [...KEYWORDS, ...TS_KEYWORDS];
 const ALL_DIVISION_KEYWORDS = ALL_KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k));
 
-const BUILTIN_TYPES = [
-  "number",
-  "string",
-  "boolean",
-  "any",
-  "never",
-  "unknown",
-  "object",
-  "symbol",
-  "bigint",
-];
-
 // ---------------------------------------------------------------------------
 // operator handling for tsx
 //
@@ -149,7 +137,6 @@ const tsx_keywords_literals = (regex_dest: string | null, div_dest: string | nul
   keyword(ALL_DIVISION_KEYWORDS, to(div_dest)),
   keyword(BOOLEAN_LITERALS, to(div_dest), TOKENS.boolean),
   keyword(SPECIAL_VALUES, to(div_dest)),
-  keyword(BUILTIN_TYPES, to(div_dest), TOKENS.type),
 ];
 
 // characters that, seen as the first char AFTER `<`, mean `<` is a less-than

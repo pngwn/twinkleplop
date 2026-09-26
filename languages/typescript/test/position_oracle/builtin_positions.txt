@@ -1,0 +1,130 @@
+// builtin type names (string, number, boolean, any, never, unknown, object,
+// symbol, bigint) are contextual in TypeScript: plain names in value
+// positions, types only in type positions. every construct below appears
+// in both roles.
+
+// ---- value positions ----
+class Hi {
+  any = 10;
+  string = 11;
+  static number = 1;
+  private boolean = true;
+  #symbol = 2;
+  never() {
+    return this.never;
+  }
+  get unknown() {
+    return 1;
+  }
+  set bigint(v) {}
+}
+new Hi().any;
+Hi.number;
+const o = { number: 1, string: "a", any, symbol() {}, [object]: 2 };
+o.number;
+o?.string;
+o["any"];
+let symbol = Symbol();
+function f(object, string = "x", ...number) {
+  return object ?? string ?? number;
+}
+const g = (any) => any + 1;
+const { string: s2, number: n2 = 0 } = o;
+const [boolean, never] = [true, 1];
+import { any as any_alias, unknown } from "mod";
+export { symbol as string };
+switch (string) {
+  case number:
+    break;
+}
+outer: for (const bigint of []) {
+  continue outer;
+}
+string.length;
+number.toFixed(2);
+any(1);
+new object();
+typeof string === "string";
+x = cond ? any : never;
+call(string, number, { boolean });
+
+// ---- type positions ----
+let a1: string = "";
+let a2: number[] = [];
+let a3: Array<boolean> = [];
+let a4: string | number | undefined;
+let a5: { any: any; string?: string; readonly number: number };
+let a6: [name: string, age?: number, ...rest: boolean[]];
+let a7: (x: unknown) => never;
+let a8: new (...args: any[]) => object;
+let a9: Record<string, symbol>;
+let a10: `prefix-${string}`;
+let a11: keyof typeof o & string;
+let a12: readonly bigint[];
+let a13: (number | [number, string])[] = [];
+declare const a14: unique symbol;
+function h(a: string, b?: number, ...c: boolean[]): unknown {
+  return a;
+}
+function h2<T extends object = {}>(x: T): asserts x is T & { any: any } {}
+function h3(x: unknown): x is string {
+  return typeof x === "string";
+}
+const cast = v as unknown as string;
+const sat = v satisfies object;
+const call_args = foo<string, number>(1);
+type A = string;
+type B<T> = T extends string ? "s" : T extends number ? "n" : never;
+type C = { [key: string]: any; [index: number]: boolean };
+type D<T> = { [K in keyof T]: string };
+type E<T> = T extends Array<infer U extends string> ? U : never;
+type F = (typeof o)["number"];
+type G = abstract new () => object;
+interface I extends Base<string>, Other<number> {
+  any: any;
+  string: string;
+  m?(x: number): boolean;
+  new <T = any>(v?: T[]): I;
+  [key: string]: unknown;
+  readonly number?: number;
+}
+abstract class K<T = string> extends Base implements I, J<number> {
+  declare field: string;
+  private p?: number;
+  static s: boolean = false;
+  constructor(
+    public x: string,
+    private readonly y?: number,
+  ) {
+    super();
+  }
+  method(this: K<T>, a: symbol): object {
+    const local: bigint = 1n;
+    return {};
+  }
+  abstract am(): never;
+}
+namespace NS {
+  export let v: string;
+  export type T = number;
+}
+declare module "m" {
+  export function fn(a: string): number;
+  const c: boolean;
+}
+declare global {
+  var g1: object;
+}
+function body() {
+  let local: string = "";
+  const arr: (number | string)[] = [];
+  type Local = { a: boolean };
+  {
+    const inner: symbol[] = [];
+  }
+  it("x", () => {
+    const keys: string[][] = [];
+    let cb: (code: string) => string;
+  });
+  return (x: number): string => String(x);
+}

@@ -26,7 +26,6 @@ import {
   frame_track,
   make_token_view,
   precedence_for,
-  promote_by_text_set,
   rewrite_types,
   seq,
   tag,
@@ -53,8 +52,6 @@ import {
   scan_tagged_template,
 } from "@twinkleplop/javascript";
 
-import { BUILTIN_TYPES } from "./grammar.js";
-
 export {
   claim_property_scope,
   class_name_promoter,
@@ -66,15 +63,6 @@ export {
   scan_jsdoc,
   scan_tagged_template,
 };
-
-// restore the `type` token that the grammar no longer emits directly.
-// BUILTIN_TYPES words used to be matched via a keyword() rule emitting
-// TOKENS.type; we moved the classification out so consumers can opt in.
-export const promote_builtin_types: Reclassifier = promote_by_text_set(
-  "identifier",
-  "type",
-  BUILTIN_TYPES,
-);
 
 // keywords that reset the statement-context flags (start a fresh
 // statement). deliberately excludes let / const / var / type, matching
@@ -1073,10 +1061,6 @@ export const reclassifiers: LanguagePipeline = [
   // assertion cast, and X gets tagged as `type`. claiming it as
   // `namespace` first forecloses the false positive.
   tag(promote_js_namespaces, ["namespace"]),
-  // boolean and call-site function are emitted directly by the shared JS
-  // grammar now. builtin type promotion stays as a reclassifier — a
-  // simple text-set that runs after the grammar.
-  tag(promote_builtin_types, ["type"]),
   // claim_property_scope batches with function_variable_rules above —
   // both see the base stream, their claims merge by precedence. interface
   // members claim at prec 35 (beats function's 30) so `cb: () => X` in

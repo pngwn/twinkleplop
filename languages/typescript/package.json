@@ -25,6 +25,9 @@
     "@twinkleplop/core": "workspace:*",
     "@twinkleplop/javascript": "workspace:*"
   },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/pngwn/twinkleplop",

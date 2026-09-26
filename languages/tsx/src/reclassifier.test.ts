@@ -53,10 +53,6 @@ describe("TSX optional annotations", () => {
 });
 
 describe("TSX frame kinds — return types", () => {
-  // the TSX grammar tags `string` / `number` as `type`, where the
-  // TypeScript grammar leaves them identifiers for a later pass. a rule
-  // that only knew about identifiers left these bodies on the fallback
-  // kind, and a `switch` opening one then read as a method name.
   it("a body brace behind a builtin-typed return is a block", () => {
     expect(brace_kinds('function f(u: S["unit"]): string { return ""; }')).toEqual(["block"]);
     expect(brace_kinds("function f(): number { return 1; }")).toEqual(["block"]);

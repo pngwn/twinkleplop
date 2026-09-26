@@ -206,6 +206,10 @@ importers:
       '@twinkleplop/javascript':
         specifier: workspace:*
         version: link:../javascript
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
 
   languages/whitespace:
     dependencies:

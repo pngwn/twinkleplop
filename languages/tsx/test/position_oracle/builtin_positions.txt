@@ -1,0 +1,45 @@
+// builtin type names in TSX: JSX attributes, children and expressions are
+// value positions; annotations around them are type positions.
+import { useState } from "react";
+
+type Props = { string: string; number?: number; render: (any: unknown) => never };
+
+interface Row {
+  any: any;
+  object: object;
+  symbol?: symbol;
+}
+
+export function Table({ string, number = 0 }: Props) {
+  const [boolean, set_boolean] = useState<boolean>(false);
+  const rows: Row[] = [];
+  const pick = <T extends object>(value: T): T => value;
+  const handle = (event: unknown, bigint: bigint) => {
+    const never: never[] = [];
+    return event as string;
+  };
+  return (
+    <div title={string} data-number={number} onClick={() => set_boolean(!boolean)}>
+      {rows.map((row) => (
+        <span key={String(row.any)}>{row.object ? string : number}</span>
+      ))}
+      <Child any={any} string="string" />
+      {pick({ unknown: 1 }).unknown}
+    </div>
+  );
+}
+
+class Store<T = unknown> {
+  any = 1;
+  string: string = "";
+  get number(): number {
+    return this.any;
+  }
+}
+
+// `<` with no name before it: type parameters, never a jsx tag.
+interface Ctor {
+  new <T = any>(values?: T[]): Ctor;
+}
+const identity = <T = unknown,>(x: T): T => x;
+const boxed = <T extends object>(x: T) => <Box value={x} />;
