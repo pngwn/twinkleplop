@@ -12,8 +12,6 @@
 //   - Style data: same treatment for `<style>…</style>` → `raw_style`
 //
 // Known limitations (acceptable for MVP):
-//   - Tag name matching is case-sensitive; `<SCRIPT>` is NOT recognized as
-//     a script element. Real HTML is ASCII case-insensitive for tag names.
 //   - `</script ` (whitespace before `>`) is not recognized as the end of
 //     script data — we only match literal `</script>`.
 //   - `<script-*>` custom elements (rare) will be mis-tokenized as script
@@ -36,6 +34,24 @@ const NAME_CHARS = range([
   ["_", "_"],
   [":", ":"],
 ]);
+
+// tag names ignore ascii case and rules cannot fold case, so spell out every casing
+const ascii_cases = (word: string): string[] => {
+  const out: string[] = [];
+  for (let mask = 0; mask < 1 << word.length; mask++) {
+    let s = "";
+    for (let i = 0; i < word.length; i++) {
+      s += mask & (1 << i) ? word[i].toUpperCase() : word[i];
+    }
+    out.push(s);
+  }
+  return out;
+};
+
+const SCRIPT = ascii_cases("script");
+const STYLE = ascii_cases("style");
+const SCRIPT_CLOSE = SCRIPT.map((name) => name + ">");
+const STYLE_CLOSE = STYLE.map((name) => name + ">");
 
 // Shared rules for any "inside a tag's opening `<...>`" state — attributes
 // and whitespace. Different tag states layer their own `>` / `/>` handling
@@ -77,8 +93,8 @@ export default define_grammar({
     // document as raw_script.
     tag_start: {
       rules: [
-        keyword(["script"], goto("script_attrs"), TOKENS.tag_name),
-        keyword(["style"], goto("style_attrs"), TOKENS.tag_name),
+        keyword(SCRIPT, goto("script_attrs"), TOKENS.tag_name),
+        keyword(STYLE, goto("style_attrs"), TOKENS.tag_name),
         match("/>", TOKENS.punctuation, leave()),
         match(">", TOKENS.punctuation, leave()),
         on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
@@ -164,7 +180,7 @@ export default define_grammar({
     script_close_probe: {
       mode: "probe",
       fallback: "script_close_fail",
-      rules: [on("script>", goto("script_close_emit"))],
+      rules: [on(SCRIPT_CLOSE, goto("script_close_emit"))],
     },
 
     script_close_fail: {
@@ -176,7 +192,7 @@ export default define_grammar({
     },
 
     script_close_name: {
-      rules: [match("script", TOKENS.tag_name, goto("script_close_gt"))],
+      rules: [match(SCRIPT, TOKENS.tag_name, goto("script_close_gt"))],
     },
 
     script_close_gt: {
@@ -205,7 +221,7 @@ export default define_grammar({
     style_close_probe: {
       mode: "probe",
       fallback: "style_close_fail",
-      rules: [on("style>", goto("style_close_emit"))],
+      rules: [on(STYLE_CLOSE, goto("style_close_emit"))],
     },
 
     style_close_fail: {
@@ -217,7 +233,7 @@ export default define_grammar({
     },
 
     style_close_name: {
-      rules: [match("style", TOKENS.tag_name, goto("style_close_gt"))],
+      rules: [match(STYLE, TOKENS.tag_name, goto("style_close_gt"))],
     },
 
     style_close_gt: {
