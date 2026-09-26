@@ -238,6 +238,9 @@ export interface TernarySpec {
   // single colon character consumed against pending qmarks during the
   // punct_type char walk.
   colon_char: string;
+  // brace kinds where a qmark after a member start token is an optional
+  // marker, not a ternary
+  optional_member_kinds?: string[];
 }
 
 // a named statement-context flag. armed by exact-text tokens, cleared by
@@ -332,6 +335,9 @@ export interface BraceKindScan {
   };
   // give up after this many steps. defaults to 16.
   max?: number;
+  // token type whose closing brackets start a group the walk skips as one
+  // step, walked by char so coalesced punctuation works
+  skip_groups?: string;
 }
 
 export interface BraceKindScanStep {

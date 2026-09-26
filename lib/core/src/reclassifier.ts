@@ -1979,11 +1979,11 @@ function type_span_verify_angle(
 }
 
 // does the token before `idx` read as the END of a type expression?
-// used by the brace-exit check so `(): T {`, `(): T | undefined {` and
-// `extends Foo<T> {` terminate at the body brace. mirrors the imperative
-// promoter: a punctuation token ending in `]` / `)`, an identifier (or
-// already-promoted type), a `>` run, or a terminal keyword (`this`,
-// `void`, ...).
+// used by the brace-exit check so `(): T {`, `(): T | undefined {`,
+// `(): { a: T } {` and `extends Foo<T> {` terminate at the body brace. mirrors
+// the imperative promoter: a punctuation token ending in `]` / `)` / `}`, an
+// identifier (or already-promoted type), a `>` run, or a terminal keyword
+// (`this`, `void`, ...).
 function type_span_prev_is_closer(
   spec: CompiledTypeSpanSpec,
   tokens: Uint32Array,
@@ -2001,7 +2001,7 @@ function type_span_prev_is_closer(
   const pe = tokens[base + 2];
   if (pt === spec.punct_id) {
     const last = input.charCodeAt(pe - 1);
-    return last === CH_BRACKET_CLOSE || last === CH_PAREN_CLOSE;
+    return last === CH_BRACKET_CLOSE || last === CH_PAREN_CLOSE || last === CH_BRACE_CLOSE;
   }
   if (pt === spec.ident_id || (spec.type_id >= 0 && pt === spec.type_id)) return true;
   if (pt === spec.operator_id && angle_pops(input, ps, pe) > 0) return true;

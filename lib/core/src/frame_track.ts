@@ -82,6 +82,9 @@ function text_matches(input: string, s: number, e: number, t: CompiledText): boo
 // cover a long literal run.
 const DEFAULT_SCAN_MAX = 16;
 
+// bound on the tokens one skipped group may span
+const MAX_GROUP_TOKENS = 256;
+
 // compiled, token_types-independent form of a BraceKindScan step / landing
 // shape. type names resolve per token_types like the rest of the spec.
 interface CompiledScanStep {
@@ -97,6 +100,7 @@ interface CompiledScan {
   to_last_chars: number[] | null;
   to_prev_chars: number[] | null;
   max: number;
+  skip_groups: string | null;
 }
 
 function compile_scan(scan: BraceKindScan): CompiledScan {
@@ -112,6 +116,7 @@ function compile_scan(scan: BraceKindScan): CompiledScan {
     to_prev_chars:
       scan.to.preceded_by_char_in !== undefined ? char_codes(scan.to.preceded_by_char_in) : null,
     max: scan.max !== undefined ? scan.max : DEFAULT_SCAN_MAX,
+    skip_groups: scan.skip_groups ?? null,
   };
 }
 
@@ -259,6 +264,8 @@ interface ResolvedScan {
   to_last_chars: number[] | null;
   to_prev_chars: number[] | null;
   max: number;
+  // type id whose bracket groups are skipped whole, -1 when off
+  group_type_id: number;
 }
 
 function resolve_scan(scan: CompiledScan, token_types: string[]): ResolvedScan {
@@ -303,6 +310,7 @@ function resolve_scan(scan: CompiledScan, token_types: string[]): ResolvedScan {
     to_last_chars: scan.to_last_chars,
     to_prev_chars: scan.to_prev_chars,
     max: scan.max,
+    group_type_id: scan.skip_groups !== null ? token_types.indexOf(scan.skip_groups) : -1,
   };
 }
 
@@ -486,10 +494,9 @@ function scan_lands(
   type_flags: Uint8Array,
   scan: ResolvedScan,
   j: number,
+  e: number,
 ): boolean {
-  const base = j * 3;
-  const s = tokens[base + 1];
-  const e = tokens[base + 2];
+  const s = tokens[j * 3 + 1];
   if (scan.to_texts !== null) {
     let hit = false;
     for (let t = 0; t < scan.to_texts.length; t++) {
@@ -520,26 +527,42 @@ function scan_lands(
 // until one matches the landing shape. the `over` set is what actually
 // bounds the walk in practice -- `max` only catches a set that happens to
 // cover a long literal run.
+// with skip_groups a closing bracket skips its whole group, then the walk
+// resumes before the opener, which may share its token
 function scan_back_matches(
   input: string,
   tokens: Uint32Array,
   type_flags: Uint8Array,
   scan: ResolvedScan,
   from: number,
+  from_end = -1,
 ): boolean {
   const over = scan.over;
   let j = from;
+  // end offset inside token j when the walk resumes mid token, else -1
+  let end = from_end;
   for (let steps = 0; steps < scan.max; steps++) {
-    j = prev_non_trivia(tokens, type_flags, j);
-    if (j < 0) return false;
+    if (end < 0) {
+      j = prev_non_trivia(tokens, type_flags, j);
+      if (j < 0) return false;
+    }
     const base = j * 3;
     const ttype = tokens[base];
-    if (ttype === scan.to_type_id && scan_lands(input, tokens, type_flags, scan, j)) return true;
+    const s = tokens[base + 1];
+    const e = end >= 0 ? end : tokens[base + 2];
+    end = -1;
+    if (ttype === scan.to_type_id && scan_lands(input, tokens, type_flags, scan, j, e)) return true;
+    if (ttype === scan.group_type_id && is_closer(input.charCodeAt(e - 1))) {
+      const open = group_open_before(input, tokens, type_flags, scan.group_type_id, j, e);
+      if (open < 0) return false;
+      j = open_token;
+      if (open > tokens[j * 3 + 1]) end = open;
+      else j--;
+      continue;
+    }
     const step = over[ttype] ?? null;
     if (step === null) return false;
     if (!step.any) {
-      const s = tokens[base + 1];
-      const e = tokens[base + 2];
       let hit = false;
       if (step.texts !== null) {
         for (let t = 0; t < step.texts.length; t++) {
@@ -565,6 +588,55 @@ function scan_back_matches(
   return false;
 }
 
+const CLOSE_PAREN = ")".charCodeAt(0);
+const CLOSE_BRACKET = "]".charCodeAt(0);
+const CLOSE_BRACE = "}".charCodeAt(0);
+const OPEN_PAREN = "(".charCodeAt(0);
+const OPEN_BRACKET = "[".charCodeAt(0);
+const OPEN_BRACE = "{".charCodeAt(0);
+
+function is_closer(c: number): boolean {
+  return c === CLOSE_PAREN || c === CLOSE_BRACKET || c === CLOSE_BRACE;
+}
+
+function is_opener(c: number): boolean {
+  return c === OPEN_PAREN || c === OPEN_BRACKET || c === OPEN_BRACE;
+}
+
+// second return value of group_open_before, module level to avoid allocating
+let open_token = -1;
+
+// brackets count only in group_type tokens, so a brace in a string is text
+function group_open_before(
+  input: string,
+  tokens: Uint32Array,
+  type_flags: Uint8Array,
+  group_type: number,
+  j: number,
+  e: number,
+): number {
+  let depth = 0;
+  let k = j;
+  let p = e - 1;
+  for (let crossed = 0; crossed < MAX_GROUP_TOKENS; crossed++) {
+    if (tokens[k * 3] === group_type) {
+      const s = tokens[k * 3 + 1];
+      for (; p >= s; p--) {
+        const c = input.charCodeAt(p);
+        if (is_closer(c)) depth++;
+        else if (is_opener(c) && --depth === 0) {
+          open_token = k;
+          return p;
+        }
+      }
+    }
+    k = prev_non_trivia(tokens, type_flags, k - 1);
+    if (k < 0) return -1;
+    p = tokens[k * 3 + 2] - 1;
+  }
+  return -1;
+}
+
 // prev-token classification for a `{` with no pending marker claim. module
 // level (no captures) so the walk loop's depth counters stay in registers
 // instead of a closure context. called once per opening brace.
@@ -583,6 +655,8 @@ function classify_by_prev(
   parent_idx: number,
   punct_id: number,
   prev_char: number,
+  brace_tok: number,
+  brace_off: number,
 ): number {
   // a brace that is not the first character of its own token: grammars
   // coalesce adjacent punctuation, so `) {` is two tokens and `){` is
@@ -611,9 +685,12 @@ function classify_by_prev(
       // the separator is inside the brace's OWN token here, so the
       // previous token is still part of the shape the walk steps over --
       // the walk starts at it rather than one before it.
+      // a bracket group sharing the brace token starts the walk inside it
       if (
         rule.scan !== null &&
-        !scan_back_matches(input, tokens, type_flags, rule.scan, prev_significant)
+        !(rule.scan.group_type_id === punct_id && is_closer(prev_char)
+          ? scan_back_matches(input, tokens, type_flags, rule.scan, brace_tok, brace_off)
+          : scan_back_matches(input, tokens, type_flags, rule.scan, prev_significant))
       ) {
         continue;
       }
@@ -647,9 +724,18 @@ function classify_by_prev(
       if (!code_in(rule.last_chars, input.charCodeAt(pe - 1))) continue;
     }
     if (rule.in_kind_ids !== null && !rule.in_kind_ids.has(frames[parent_idx].kind)) continue;
+    // start past the matched previous token unless it closes a group to skip
     if (
       rule.scan !== null &&
-      !scan_back_matches(input, tokens, type_flags, rule.scan, prev_significant - 1)
+      !scan_back_matches(
+        input,
+        tokens,
+        type_flags,
+        rule.scan,
+        ptype === rule.scan.group_type_id && is_closer(input.charCodeAt(pe - 1))
+          ? prev_significant
+          : prev_significant - 1,
+      )
     ) {
       continue;
     }
@@ -698,6 +784,8 @@ interface CompiledFrameSpec {
   ternary_qmark_type: string | null;
   ternary_qmark_text: CompiledText | null;
   ternary_colon_code: number;
+  // kind ids whose member start qmark is an optional marker, null when unset
+  optional_kind_ids: Set<number> | null;
   // stmt flag tracking. flag i occupies mask bit i (signals bit i + 1).
   stmt_flag_names: string[];
   stmt_rules: CompiledStmtRule[];
@@ -707,6 +795,36 @@ interface CompiledFrameSpec {
   // true when ternary or stmt_flags is configured -- gates the signals
   // array allocation and all per-frame counter work.
   signals_enabled: boolean;
+}
+
+// kind names resolve against the spec, unknown names fail closed
+function resolve_kind_ids(
+  names: string[] | undefined,
+  brace_kinds: CompiledBraceKinds | null,
+  option: string,
+): Set<number> | null {
+  if (names === undefined) return null;
+  if (brace_kinds === null) {
+    warn_once(
+      "frame_track",
+      `${option}-without-kinds`,
+      `${option} is set but brace_kinds is not configured; it never matches`,
+    );
+    return null;
+  }
+  const ids = new Set<number>();
+  for (const name of names) {
+    const id = brace_kinds.kind_names.indexOf(name);
+    if (id >= 0) ids.add(id);
+    else {
+      warn_once(
+        "frame_track",
+        `${option}:${name}`,
+        `${option} kind "${name}" is not declared by the brace_kinds spec; it never matches`,
+      );
+    }
+  }
+  return ids;
 }
 
 function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
@@ -725,28 +843,16 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
   const brace_kinds = spec.brace_kinds !== undefined ? compile_brace_kinds(spec.brace_kinds) : null;
   // rearm kinds resolve against the spec's own interned names. unknown
   // names (or a missing brace_kinds spec) resolve to nothing -- fail closed.
-  let rearm_kind_ids: Set<number> | null = null;
-  const rearm_names = spec.at_start?.rearm_after_close_kinds;
-  if (rearm_names !== undefined && brace_kinds !== null) {
-    rearm_kind_ids = new Set();
-    for (const name of rearm_names) {
-      const id = brace_kinds.kind_names.indexOf(name);
-      if (id >= 0) rearm_kind_ids.add(id);
-      else {
-        warn_once(
-          "frame_track",
-          `rearm-kind:${name}`,
-          `rearm_after_close_kinds kind "${name}" is not declared by the brace_kinds spec; it can never re-arm`,
-        );
-      }
-    }
-  } else if (rearm_names !== undefined && brace_kinds === null) {
-    warn_once(
-      "frame_track",
-      "rearm-without-kinds",
-      "rearm_after_close_kinds is set but brace_kinds is not configured; re-arm never happens",
-    );
-  }
+  const rearm_kind_ids = resolve_kind_ids(
+    spec.at_start?.rearm_after_close_kinds,
+    brace_kinds,
+    "rearm_after_close_kinds",
+  );
+  const optional_kind_ids = resolve_kind_ids(
+    spec.ternary?.optional_member_kinds,
+    brace_kinds,
+    "optional_member_kinds",
+  );
 
   const stmt_specs = spec.stmt_flags ?? [];
   if (stmt_specs.length > MAX_STMT_FLAGS) {
@@ -816,6 +922,7 @@ function compile_frame_spec(spec: FrameSpec): CompiledFrameSpec {
       spec.ternary !== undefined && spec.ternary.colon_char.length > 0
         ? spec.ternary.colon_char.charCodeAt(0)
         : -1,
+    optional_kind_ids,
     stmt_flag_names,
     stmt_rules: Array.from(stmt_rule_map.values()),
     stmt_clear_char_codes,
@@ -964,7 +1071,9 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     let pending_kind = -1;
     // depth the pending marker was armed at, so a separator at that same
     // depth can discard it -- see `marker_reset_chars`.
+    // nesting counts too, a colon in the head parens is not a key separator
     let pending_depth = -1;
+    let pending_nest = -1;
     const marker_reset = kinds !== null ? kinds.marker_reset_chars : EMPTY_CODES;
     const marker_reset_len = marker_reset.length;
 
@@ -1022,6 +1131,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
               if (text_matches(input, s, e, candidates[m].text)) {
                 pending_kind = candidates[m].kind_id;
                 pending_depth = brace_depth;
+                pending_nest = paren_depth | (bracket_depth << 8) | (angle_depth << 16);
                 break;
               }
             }
@@ -1103,6 +1213,8 @@ export function frame_track(spec: FrameSpec): Reclassifier {
                   cur_frame,
                   punct_id,
                   p > s ? input.charCodeAt(p - 1) : -1,
+                  i,
+                  p,
                 );
               }
             }
@@ -1165,7 +1277,11 @@ export function frame_track(spec: FrameSpec): Reclassifier {
                 break;
               }
             }
-            if (pending_kind >= 0 && brace_depth === pending_depth) {
+            if (
+              pending_kind >= 0 &&
+              brace_depth === pending_depth &&
+              (paren_depth | (bracket_depth << 8) | (angle_depth << 16)) === pending_nest
+            ) {
               for (let r = 0; r < marker_reset_len; r++) {
                 if (c === marker_reset[r]) {
                   pending_kind = -1;
@@ -1249,6 +1365,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     const marker_lists = kind_tables !== null ? kind_tables.marker_lists : null;
     const qmark_text = compiled.ternary_qmark_text;
     const colon_code = compiled.ternary_colon_code;
+    const optional_kind_ids = compiled.optional_kind_ids;
     const clear_codes = compiled.stmt_clear_char_codes;
     const clear_masks = compiled.stmt_clear_char_masks;
     const clear_count = clear_codes.length;
@@ -1284,6 +1401,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
     const angle_reset_len = angle_reset.length;
     let pending_kind = -1;
     let pending_depth = -1;
+    let pending_nest = -1;
     const marker_reset = kinds !== null ? kinds.marker_reset_chars : EMPTY_CODES;
     const marker_reset_len = marker_reset.length;
     let prev_significant = -1;
@@ -1329,6 +1447,7 @@ export function frame_track(spec: FrameSpec): Reclassifier {
               if (text_matches(input, s, e, candidates[m].text)) {
                 pending_kind = candidates[m].kind_id;
                 pending_depth = brace_depth;
+                pending_nest = paren_depth | (bracket_depth << 8) | (angle_depth << 16);
                 break;
               }
             }
@@ -1355,7 +1474,16 @@ export function frame_track(spec: FrameSpec): Reclassifier {
       let qmark = false;
       if ((flags & (FLAG_QMARK | FLAG_STMT)) !== 0) {
         if ((flags & FLAG_QMARK) !== 0 && qmark_text !== null) {
-          if (text_matches(input, tokens[base + 1], tokens[base + 2], qmark_text)) {
+          if (
+            text_matches(input, tokens[base + 1], tokens[base + 2], qmark_text) &&
+            !(
+              optional_kind_ids !== null &&
+              at_start_enabled &&
+              prev_significant >= 0 &&
+              at_start[prev_significant] === 1 &&
+              optional_kind_ids.has(frames[cur_frame].kind)
+            )
+          ) {
             cur_qmark++;
             qmark = true;
           }
@@ -1440,6 +1568,8 @@ export function frame_track(spec: FrameSpec): Reclassifier {
                   cur_frame,
                   punct_id,
                   p > s ? input.charCodeAt(p - 1) : -1,
+                  i,
+                  p,
                 );
               }
             }
@@ -1525,7 +1655,11 @@ export function frame_track(spec: FrameSpec): Reclassifier {
                 break;
               }
             }
-            if (pending_kind >= 0 && brace_depth === pending_depth) {
+            if (
+              pending_kind >= 0 &&
+              brace_depth === pending_depth &&
+              (paren_depth | (bracket_depth << 8) | (angle_depth << 16)) === pending_nest
+            ) {
               for (let r = 0; r < marker_reset_len; r++) {
                 if (c === marker_reset[r]) {
                   pending_kind = -1;

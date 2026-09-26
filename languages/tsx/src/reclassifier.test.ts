@@ -53,10 +53,6 @@ describe("TSX optional annotations", () => {
 });
 
 describe("TSX frame kinds — return types", () => {
-  // the TSX grammar tags `string` / `number` as `type`, where the
-  // TypeScript grammar leaves them identifiers for a later pass. a rule
-  // that only knew about identifiers left these bodies on the fallback
-  // kind, and a `switch` opening one then read as a method name.
   it("a body brace behind a builtin-typed return is a block", () => {
     expect(brace_kinds('function f(u: S["unit"]): string { return ""; }')).toEqual(["block"]);
     expect(brace_kinds("function f(): number { return 1; }")).toEqual(["block"]);
@@ -102,5 +98,28 @@ describe("TSX tuple labels", () => {
     expect(type_of(src, "rest")).toBe("property");
     expect(type_of(src, "string")).toBe("type");
     expect(type_of(src, "number")).toBe("type");
+  });
+});
+
+describe("TSX casts in expression containers", () => {
+  it("a cast in a jsx expression container keeps its type", () => {
+    expect(type_of("const el = <p>Count: {count as Foo}</p>;", "Foo")).toBe("type");
+  });
+
+  it("an import rename is not a cast", () => {
+    expect(type_of('import { a as b } from "m";', "b")).toBe("identifier");
+  });
+});
+
+describe("TSX `<` after whitespace in a would-be tag", () => {
+  it("a defaulted type parameter is not a jsx tag", () => {
+    expect(type_of("interface S { new <T = any>(v?: T[]): S; }", "any")).toBe("type");
+    expect(type_of("const g = <T = unknown,>(x: T) => x;", "unknown")).toBe("type");
+  });
+
+  it("attributes after whitespace still open a tag", () => {
+    expect(type_of('const el = <div className="x" />;', "div")).toBe("tag_name");
+    expect(type_of("const el = <Foo bar = {1} />;", "bar")).toBe("attr_name");
+    expect(type_of("const el = <Foo\n  bar={1}\n/>;", "bar")).toBe("attr_name");
   });
 });

@@ -19,12 +19,13 @@ import {
   FRAME_BRACKET_BRACE,
   FRAME_BRACKET_BRACKET,
   always,
+  any_of,
+  balanced_parens,
   as_claim_producer,
   embed_interleaved,
   frame_track,
   make_token_view,
   precedence_for,
-  promote_by_text_set,
   rewrite_types,
   seq,
   tag,
@@ -51,8 +52,6 @@ import {
   scan_tagged_template,
 } from "@twinkleplop/javascript";
 
-import { BUILTIN_TYPES } from "./grammar.js";
-
 export {
   claim_property_scope,
   class_name_promoter,
@@ -64,15 +63,6 @@ export {
   scan_jsdoc,
   scan_tagged_template,
 };
-
-// restore the `type` token that the grammar no longer emits directly.
-// BUILTIN_TYPES words used to be matched via a keyword() rule emitting
-// TOKENS.type; we moved the classification out so consumers can opt in.
-export const promote_builtin_types: Reclassifier = promote_by_text_set(
-  "identifier",
-  "type",
-  BUILTIN_TYPES,
-);
 
 // keywords that reset the statement-context flags (start a fresh
 // statement). deliberately excludes let / const / var / type, matching
@@ -117,7 +107,25 @@ const STMT_STARTERS = [
 // mode-aware walker.
 export const ts_frame_track = frame_track({
   ...js_frame_spec,
-  ternary: { qmark: { type: "operator", text: "?" }, colon_char: ":" },
+  // namespace and module bodies hold statements, so they are blocks
+  brace_kinds: {
+    ...js_frame_spec.brace_kinds!,
+    // declare global, a name before a brace is otherwise a return type tail
+    prev_rules: [
+      { prev_type: "identifier", prev_texts: ["global"], kind: "block" },
+      ...js_frame_spec.brace_kinds!.prev_rules!,
+    ],
+    body_markers: [
+      ...js_frame_spec.brace_kinds!.body_markers!,
+      { type: "keyword", text: "namespace", kind: "block" },
+      { type: "keyword", text: "module", kind: "block" },
+    ],
+  },
+  ternary: {
+    qmark: { type: "operator", text: "?" },
+    colon_char: ":",
+    optional_member_kinds: ["class", "interface", "type_literal", "object"],
+  },
   stmt_flags: [
     {
       name: "var_decl",
@@ -284,7 +292,7 @@ export const promote_ts_type_only_bindings: Reclassifier = (input, result) => {
 // entries:
 //   - `): T` return types (coalesced `):`  and spaced `) :` forms)
 //   - `x: T` annotations, gated by position: parameter (paren frame),
-//     field (class / interface frame), variable (top frame + var_decl).
+//     field (class / interface frame), variable (top or block frame + var_decl).
 //     an optional `x?: T` is the same colon token behind a `?`
 //   - `as` / `satisfies` casts (end at a ternary `?`)
 //   - `extends` in interface heads (iface_head armed) and type-parameter
@@ -293,7 +301,7 @@ export const promote_ts_type_only_bindings: Reclassifier = (input, result) => {
 //   - `implements` lists
 //   - `Foo<T, U>` generic type arguments (verified angle group after a
 //     name; `a < b` comparisons fail the verification)
-//   - `type X = ...` alias right-hand sides (alias_head + top frame; the
+//   - `type X = ...` alias right-hand sides (alias_head + top or block frame; the
 //     generic `type X<T> = ...` form anchors on the `>` before the `=`)
 //
 // known limitations carried over from the imperative walker:
@@ -393,6 +401,9 @@ const TYPE_TERMINAL_KEYWORDS = [
   "object",
 ];
 
+// frames whose direct children are statements
+const STATEMENT_FRAME_KINDS = ["top", "block"];
+
 const TS_SPAN_BASE = {
   into: "types",
   value_op_terminators: VALUE_OP_TERMINATORS,
@@ -473,18 +484,52 @@ export const type_position_rules: RewriteRule[] = [
     when: annotation_span,
     rewrite: { types: "type" },
   },
-  // variable annotation: a colon at top level with a declarator armed.
+  // index signature key, a colon directly in a bracket has no value reading
   {
     anchor: {
       type_name: "punctuation",
       value_ends_with: ":",
       ternary_colon: false,
-      frame_kinds: ["top"],
+      frame_kinds: ["bracket"],
+      frame_direct: true,
+    },
+    when: annotation_span,
+    rewrite: { types: "type" },
+  },
+  // variable annotation, a destructuring colon sits in its own brace so it
+  // is never direct here
+  {
+    anchor: {
+      type_name: "punctuation",
+      value_ends_with: ":",
+      ternary_colon: false,
+      frame_kinds: STATEMENT_FRAME_KINDS,
       frame_direct: true,
       stmt_flags_all: ["var_decl"],
     },
     when: annotation_span,
     rewrite: { types: "type" },
+  },
+  // an import or export rename is not a cast, claiming the as ends the rule
+  // search, any other brace here is a tsx expression container
+  {
+    anchor: {
+      type_name: "keyword",
+      value: "as",
+      frame_kinds: ["object"],
+      frame_direct: true,
+    },
+    before: seq(
+      any_of(
+        seq(
+          any_of(type("keyword", ["import", "export", "type"]), type("punctuation", ",")),
+          type("punctuation", "{"),
+        ),
+        type("punctuation", ","),
+      ),
+      any_of(type("identifier"), type("keyword"), type("type")),
+    ),
+    rewrite: "keyword",
   },
   // `as` / `satisfies` casts.
   {
@@ -531,6 +576,18 @@ export const type_position_rules: RewriteRule[] = [
     when: generics_span,
     rewrite: { types: "type" },
   },
+  // a less than after no value opens a type parameter list, the parameter
+  // list that must follow keeps out a tsx tag lexed as less than
+  {
+    anchor: { type_name: "operator", value: "<" },
+    before: any_of(
+      type("operator"),
+      type("keyword"),
+      type("punctuation", ["(", ",", "[", "{", ":", ";"]),
+    ),
+    when: seq(generics_span, type("operator", ">"), balanced_parens("(", ")")),
+    rewrite: { types: "type" },
+  },
   // alias right-hand side: `type X = ...`. the alias_head flag survives
   // the name and a generic parameter group, whose closing `>` directly
   // precedes the `=` in the second form.
@@ -539,7 +596,7 @@ export const type_position_rules: RewriteRule[] = [
       type_name: "operator",
       value: "=",
       stmt_flags_all: ["alias_head"],
-      frame_kinds: ["top"],
+      frame_kinds: STATEMENT_FRAME_KINDS,
       frame_direct: true,
     },
     before: type("identifier"),
@@ -551,7 +608,7 @@ export const type_position_rules: RewriteRule[] = [
       type_name: "operator",
       value: "=",
       stmt_flags_all: ["alias_head"],
-      frame_kinds: ["top"],
+      frame_kinds: STATEMENT_FRAME_KINDS,
       frame_direct: true,
     },
     before: type("operator", ">"),
@@ -1004,10 +1061,6 @@ export const reclassifiers: LanguagePipeline = [
   // assertion cast, and X gets tagged as `type`. claiming it as
   // `namespace` first forecloses the false positive.
   tag(promote_js_namespaces, ["namespace"]),
-  // boolean and call-site function are emitted directly by the shared JS
-  // grammar now. builtin type promotion stays as a reclassifier — a
-  // simple text-set that runs after the grammar.
-  tag(promote_builtin_types, ["type"]),
   // claim_property_scope batches with function_variable_rules above —
   // both see the base stream, their claims merge by precedence. interface
   // members claim at prec 35 (beats function's 30) so `cb: () => X` in

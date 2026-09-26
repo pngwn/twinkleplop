@@ -115,7 +115,7 @@ export default [
 		"end": 61
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 61,
 		"end": 67
 	},
@@ -175,7 +175,7 @@ export default [
 		"end": 92
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 92,
 		"end": 98
 	},

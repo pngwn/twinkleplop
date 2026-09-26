@@ -674,7 +674,33 @@ describe("TypeScript frame kinds — return types and switch labels", () => {
   it("object literals reached through the new rules keep their kind", () => {
     expect(brace_kinds("const o = { a: 1 };")).toEqual(["object"]);
     expect(brace_kinds("const y = c ? f(x) : g({ b: 1 });")).toEqual(["object"]);
-    expect(brace_kinds("namespace Foo { const a = 1; }")).toEqual(["object"]);
+  });
+
+  it("namespace and ambient module bodies are blocks", () => {
+    expect(brace_kinds("namespace Foo { const a = 1; }")).toEqual(["block"]);
+    expect(brace_kinds('declare module "x" { const a = 1; }')).toEqual(["block"]);
+    expect(brace_kinds("const o = { module: { a: 1 } };")).toEqual(["object", "type_literal"]);
+  });
+
+  it("a body brace behind an inline object return type is a block", () => {
+    expect(brace_kinds("function f(): { a: T } { g(); }")).toEqual(["type_literal", "block"]);
+    expect(brace_kinds("function f(): { a: T }[] { g(); }")).toEqual(["type_literal", "block"]);
+    expect(brace_kinds("function f():{a:T}[]{g();}")).toEqual(["type_literal", "block"]);
+    expect(brace_kinds("class C { m(): { a: T } { g(); } }")).toEqual([
+      "class",
+      "type_literal",
+      "block",
+    ]);
+  });
+
+  it("a colon inside a generic head keeps the body kind", () => {
+    expect(brace_kinds("interface C<T extends (a: A) => B> { a: T }")).toEqual(["interface"]);
+  });
+
+  it("a heritage list keeps the body kind", () => {
+    expect(brace_kinds("interface I extends A, B { a: T }")).toEqual(["interface"]);
+    expect(brace_kinds("class C implements A, B { a = 1 }")).toEqual(["class"]);
+    expect(brace_kinds("class C<T, U> { a = 1 }")).toEqual(["class"]);
   });
 });
 
@@ -925,5 +951,69 @@ describe("TypeScript reclassifier — parameter properties", () => {
   it("modifiers on a method parameter reach the name too", () => {
     const tokens = enrich("class A { m(public x: T) {} }");
     expect(type_of(tokens, "x")).toBe("parameter");
+  });
+});
+
+describe("TypeScript type positions outside the top level", () => {
+  it("variable annotations inside blocks", () => {
+    expect(type_of(enrich("function f() {\n  let a: Foo = x;\n}"), "Foo")).toBe("type");
+    expect(type_of(enrich('it("x", () => {\n  const k: Foo[] = [];\n});'), "Foo")).toBe("type");
+    expect(type_of(enrich("a();\n{\n  const k: Foo = x;\n}"), "Foo")).toBe("type");
+  });
+
+  it("namespace, ambient module and global bodies", () => {
+    expect(type_of(enrich("namespace N {\n  export let v: Foo;\n}"), "Foo")).toBe("type");
+    expect(type_of(enrich('declare module "m" {\n  const c: Foo;\n}'), "Foo")).toBe("type");
+    expect(type_of(enrich("declare global {\n  var g: Foo;\n}"), "Foo")).toBe("type");
+  });
+
+  it("type aliases inside blocks", () => {
+    expect(type_of(enrich("function f() {\n  type L = Foo;\n}"), "Foo")).toBe("type");
+  });
+
+  it("index signature keys", () => {
+    expect(type_of(enrich("interface I { [key: Foo]: Bar }"), "Foo")).toBe("type");
+  });
+
+  it("members after a heritage list", () => {
+    expect(type_of(enrich("interface I extends A, B {\n  x: Foo;\n}"), "Foo")).toBe("type");
+  });
+
+  it("a return type ending in a type literal stops at the body brace", () => {
+    const tokens = enrich("function f(pos: number): { a: A } {\n  if (pos >= 1) return x;\n}");
+    expect(tokens.filter((t) => t.value === "pos").map((t) => t.type)).toEqual([
+      "parameter",
+      "identifier",
+    ]);
+  });
+
+  it("annotations inside a body behind an object return type", () => {
+    const src = "function f(): { a: T }[] {\n  const out: Foo[] = [];\n}";
+    expect(type_of(enrich(src), "Foo")).toBe("type");
+  });
+
+  it("an optional method's return type", () => {
+    const tokens = enrich("interface P { get?(t: T): Foo; set?(t: T): Bar }");
+    expect(type_of(tokens, "Foo")).toBe("type");
+    expect(type_of(tokens, "Bar")).toBe("type");
+  });
+
+  it("type parameters after a reserved word or a non-value", () => {
+    expect(type_of(enrich("interface S { new <Foo>(v: Foo): S }"), "Foo")).toBe("type");
+    expect(type_of(enrich("const g = <Foo,>(x: Foo) => x;"), "Foo")).toBe("type");
+  });
+});
+
+describe("TypeScript import / export renames", () => {
+  it("the local name of a specifier rename is not a type", () => {
+    expect(type_of(enrich('import { a as b } from "m";'), "b")).toBe("identifier");
+    expect(type_of(enrich('import D, { a as b } from "m";'), "b")).toBe("identifier");
+    expect(type_of(enrich("export { a as b };"), "b")).toBe("identifier");
+  });
+
+  it("casts keep their type", () => {
+    expect(type_of(enrich("const o = { k: v as Foo };"), "Foo")).toBe("type");
+    expect(type_of(enrich("f(a, b as Foo);"), "Foo")).toBe("type");
+    expect(type_of(enrich('import type { A as B } from "m";'), "B")).toBe("type");
   });
 });

@@ -30,7 +30,7 @@ export default [
 		"end": 21
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 22,
 		"end": 28
 	},
@@ -50,7 +50,7 @@ export default [
 		"end": 36
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 37,
 		"end": 43
 	},
@@ -190,7 +190,7 @@ export default [
 		"end": 132
 	},
 	{
-		"type": "type",
+		"type": "identifier",
 		"start": 132,
 		"end": 138
 	},
