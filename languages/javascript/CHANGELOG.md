@@ -1,5 +1,29 @@
 # @twinkleplop/javascript
 
+## 0.1.6
+### Patch Changes
+
+
+
+- [#136](https://github.com/pngwn/twinkleplop/pull/136) [`975c44f`](https://github.com/pngwn/twinkleplop/commit/975c44ff1ebc830f2963ea7b3c71ffa55e699966) Thanks [@pngwn](https://github.com/pngwn)! - A `/` after a parenthesised group, number or string at the start of call arguments is read as division, so `f((a) / 2)`, `Math.sin((hue * Math.PI) / 180)` and `f(1 / 2)` no longer open a regex that swallows the closing `)`. In TSX this also lets JSX in an arrow body inside call arguments, such as `items.map((x) => (<li />))`, read as JSX.
+
+
+
+- [#137](https://github.com/pngwn/twinkleplop/pull/137) [`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac) Thanks [@pngwn](https://github.com/pngwn)! - A `<` that is not followed by a letter is highlighted as text, so `<p>a < b</p>` no longer shows `b` as an attribute. `` html`<${Tag}>` `` tagged templates still highlight the tag.
+
+
+
+- [#140](https://github.com/pngwn/twinkleplop/pull/140) [`dbcd96d`](https://github.com/pngwn/twinkleplop/commit/dbcd96d923b692326bdff824eec941ace40be69f) Thanks [@pngwn](https://github.com/pngwn)! - Numbers with a leading dot, such as `.5` or `.25e3`, are read as a single number. A spread in call arguments, as in `f(...args)`, now reads `...` as an operator.
+
+
+
+- [#138](https://github.com/pngwn/twinkleplop/pull/138) [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5) Thanks [@pngwn](https://github.com/pngwn)! - Type annotations are highlighted as types in more places: variables declared inside functions and callbacks, `namespace`, `declare module` and `declare global` bodies, index signature keys, members of an interface that extends several others, optional method return types, generic arrow type parameters, and function bodies after an inline object return type.
+
+- Updated dependencies [[`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac), [`f0ce6c5`](https://github.com/pngwn/twinkleplop/commit/f0ce6c52995fd94008d20652076c7bf2c2fe8448), [`82aaf5f`](https://github.com/pngwn/twinkleplop/commit/82aaf5f9f477de4237beed4e2263b07ae5430e7a), [`8394d2b`](https://github.com/pngwn/twinkleplop/commit/8394d2b69e340af554496ff7760fa59792aee7a7), [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5), [`725f37d`](https://github.com/pngwn/twinkleplop/commit/725f37d87db16abcfe32dad4247d1938a858f6b8)]:
+  - @twinkleplop/html@0.1.6
+  - @twinkleplop/core@0.2.3
+  - @twinkleplop/css@0.1.6
+
 ## 0.1.5
 ### Patch Changes
 

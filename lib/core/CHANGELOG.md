@@ -1,5 +1,28 @@
 # @twinkleplop/core
 
+## 0.2.3
+### Patch Changes
+
+
+
+- [#137](https://github.com/pngwn/twinkleplop/pull/137) [`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac) Thanks [@pngwn](https://github.com/pngwn)! - A `<` that is not followed by a letter is highlighted as text, so `<p>a < b</p>` no longer shows `b` as an attribute. `` html`<${Tag}>` `` tagged templates still highlight the tag.
+
+
+
+- [#132](https://github.com/pngwn/twinkleplop/pull/132) [`82aaf5f`](https://github.com/pngwn/twinkleplop/commit/82aaf5f9f477de4237beed4e2263b07ae5430e7a) Thanks [@pngwn](https://github.com/pngwn)! - A block comment inside a Svelte expression, such as `{count /* note */}`, is highlighted as a comment. The closing `*/` used to show up as an operator followed by a regex.
+
+
+
+- [#134](https://github.com/pngwn/twinkleplop/pull/134) [`8394d2b`](https://github.com/pngwn/twinkleplop/commit/8394d2b69e340af554496ff7760fa59792aee7a7) Thanks [@pngwn](https://github.com/pngwn)! - A nested generic closed with `>>` or `>>>` right before a body brace, as in `class Q implements Iterable<Job<T>> {`, now ends the type there. The class body used to be highlighted as types.
+
+
+
+- [#138](https://github.com/pngwn/twinkleplop/pull/138) [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5) Thanks [@pngwn](https://github.com/pngwn)! - Type annotations are highlighted as types in more places: variables declared inside functions and callbacks, `namespace`, `declare module` and `declare global` bodies, index signature keys, members of an interface that extends several others, optional method return types, generic arrow type parameters, and function bodies after an inline object return type.
+
+
+
+- [#132](https://github.com/pngwn/twinkleplop/pull/132) [`725f37d`](https://github.com/pngwn/twinkleplop/commit/725f37d87db16abcfe32dad4247d1938a858f6b8) Thanks [@pngwn](https://github.com/pngwn)! - Comments and strings that contain accented letters, dashes, symbols or emoji are highlighted as one token instead of leaving those characters unhighlighted. This affects HTML and Svelte comments as well as comments and strings in Bash, JavaScript, TypeScript, TOML and CSS.
+
 ## 0.2.2
 ### Patch Changes
 

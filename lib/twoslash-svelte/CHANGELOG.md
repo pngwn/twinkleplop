@@ -1,5 +1,13 @@
 # @twinkleplop/twoslash-svelte
 
+## 0.2.2
+### Patch Changes
+
+- Updated dependencies [[`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac), [`82aaf5f`](https://github.com/pngwn/twinkleplop/commit/82aaf5f9f477de4237beed4e2263b07ae5430e7a), [`8394d2b`](https://github.com/pngwn/twinkleplop/commit/8394d2b69e340af554496ff7760fa59792aee7a7), [`f26235b`](https://github.com/pngwn/twinkleplop/commit/f26235b76a40ed15f3af7e3d175b7737a854de38), [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5), [`725f37d`](https://github.com/pngwn/twinkleplop/commit/725f37d87db16abcfe32dad4247d1938a858f6b8)]:
+  - @twinkleplop/svelte@0.1.6
+  - @twinkleplop/core@0.2.3
+  - @twinkleplop/twoslash@0.2.2
+
 ## 0.2.1
 ### Patch Changes
 
