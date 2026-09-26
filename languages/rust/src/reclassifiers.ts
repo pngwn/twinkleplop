@@ -11,18 +11,12 @@
 //
 // Also rewrites `<` / `>` / `>>` from `operator` to `punctuation` when they
 // delimit type-position generics (Option<T>, fn foo<'a>, impl<T>, Foo::<U>).
-//
-// Finally, extends a lifetime token forward to absorb an immediately-
-// following identifier (the referenced type), so `&'a str` yields one
-// `lifetime` token spanning `a str`, one `punctuation` token for `'`, and
-// one `operator` token for `&`.
 
 import {
   always,
   any_of,
   balanced_parens,
   make_token_view,
-  merge_adjacent,
   promote_by_text_set,
   promote_by_upper_snake_case,
   promote_pascal_case,
@@ -437,38 +431,11 @@ const reclassify_generics = (): Reclassifier => {
   };
 };
 
-// merges a lifetime token with the immediately-following identifier /
-// class_name token into one lifetime-typed token. applies only when the
-// two tokens are directly adjacent in the stream (possibly separated by
-// source-level whitespace, which is tokenless, but not by any other token).
-//
-// refuses to merge if the candidate identifier is itself immediately
-// followed by a `(` punctuation, i.e. it's a function call target. this
-// keeps the pass order-independent with respect to `function_call_rules`:
-// whether function_call runs first (turning the identifier into `function`,
-// which isn't a type token and wouldn't be absorbed anyway) or lifetime
-// extension runs first (seeing the identifier but refusing because of the
-// trailing paren), the result is the same.
-// extend lifetimes forward to absorb an immediately-following type token.
-// `&'a str` -> single `lifetime` token spanning `'a str`. refuses when the
-// token after the type starts with `(`, because that's `'a Fn(...)` (a
-// function-trait generic) where the type token is a call target, not a
-// fused part of the lifetime annotation.
-const extend_lifetime_over_type = merge_adjacent({
-  anchor_type: "lifetime",
-  consume_next_types: ["identifier", "class_name"],
-  refuse_if: { offset: 2, type_must_be: "punctuation", first_char_in: "(" },
-});
-
 // order: restoration passes run first so downstream passes see a stream
 // that already has `boolean`, primitive-type `class_name`, and PascalCase
 // `class_name` classified. then the correctness `reclassify_generics` can
 // recognise type-position `<` by looking back at `class_name` tokens. then
-// fidelity passes for function calls and lifetime absorption.
-//
-// extend_lifetime_over_type now refuses to absorb an identifier that is
-// itself followed by `(`, so it commutes with function_call_rules — either
-// ordering produces the same output.
+// the fidelity pass for function calls.
 // reclassify_generics is a correctness pass — it rewrites operator `<`/`>`
 // to punctuation at type-generic boundaries so downstream consumers can
 // distinguish generic brackets from comparison operators. it runs at every
@@ -486,5 +453,4 @@ export const reclassifiers: LanguagePipeline = [
   tag(promote_rust_parameters, ["parameter"]),
   always(reclassify_generics(), "type_claim"),
   tag(rewrite_types(function_call_rules, { trivia: ["comment"] }), ["function"]),
-  tag(extend_lifetime_over_type, ["lifetime"], "shape"),
 ];

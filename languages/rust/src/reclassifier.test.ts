@@ -104,12 +104,9 @@ describe("Rust reclassifier — type-position angle brackets", () => {
     expect(types_of(tokens, ">")).toEqual(["punctuation"]);
     // `&` stays an operator
     expect(type_of(tokens, "&")).toBe("operator");
-    // `'` is punctuation; in generics the `'a` lifetime has no trailing
-    // type so its body stays `a`, while in the reference `&'a str` the
-    // lifetime extends to cover the following identifier as `a str`.
     expect(types_of(tokens, "'")).toEqual(["punctuation", "punctuation"]);
-    expect(type_of(tokens, "a")).toBe("lifetime");
-    expect(type_of(tokens, "a str")).toBe("lifetime");
+    expect(types_of(tokens, "a")).toEqual(["lifetime", "lifetime"]);
+    expect(type_of(tokens, "str")).toBe("class_name");
   });
 
   it("impl<T> Trait<T> for Foo<T>", () => {
@@ -148,25 +145,35 @@ describe("Rust reclassifier — lifetimes", () => {
     expect(type_of(tokens, "a")).toBe("lifetime");
   });
 
-  it("&'a str extends lifetime over trailing type", () => {
+  it("&'a str keeps the lifetime and the type separate", () => {
     const tokens = enrich("&'a str");
     expect(type_of(tokens, "&")).toBe("operator");
     expect(type_of(tokens, "'")).toBe("punctuation");
-    expect(type_of(tokens, "a str")).toBe("lifetime");
+    expect(type_of(tokens, "a")).toBe("lifetime");
+    expect(type_of(tokens, "str")).toBe("class_name");
   });
 
-  it("&'a i32 extends lifetime over trailing primitive", () => {
+  it("&'a i32 keeps the lifetime and the type separate", () => {
     const tokens = enrich("&'a i32");
     expect(type_of(tokens, "&")).toBe("operator");
     expect(type_of(tokens, "'")).toBe("punctuation");
-    expect(type_of(tokens, "a i32")).toBe("lifetime");
+    expect(type_of(tokens, "a")).toBe("lifetime");
+    expect(type_of(tokens, "i32")).toBe("class_name");
   });
 
-  it("&'static str extends lifetime over trailing type", () => {
+  it("&'static str keeps the lifetime and the type separate", () => {
     const tokens = enrich("&'static str");
     expect(type_of(tokens, "&")).toBe("operator");
     expect(type_of(tokens, "'")).toBe("punctuation");
-    expect(type_of(tokens, "static str")).toBe("lifetime");
+    expect(type_of(tokens, "static")).toBe("lifetime");
+    expect(type_of(tokens, "str")).toBe("class_name");
+  });
+
+  it("fn f<'a>(s: &'a str) -> &'a str never merges lifetime and type", () => {
+    const tokens = enrich("fn f<'a>(s: &'a str) -> &'a str { s }");
+    expect(types_of(tokens, "a")).toEqual(["lifetime", "lifetime", "lifetime"]);
+    expect(types_of(tokens, "str")).toEqual(["class_name", "class_name"]);
+    expect(tokens.some((t) => t.value.includes(" ") && t.type === "lifetime")).toBe(false);
   });
 
   it("'a without trailing type stays as the lifetime name only", () => {
