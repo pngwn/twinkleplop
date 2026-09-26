@@ -117,7 +117,25 @@ const STMT_STARTERS = [
 // mode-aware walker.
 export const ts_frame_track = frame_track({
   ...js_frame_spec,
-  ternary: { qmark: { type: "operator", text: "?" }, colon_char: ":" },
+  // namespace and module bodies hold statements, so they are blocks
+  brace_kinds: {
+    ...js_frame_spec.brace_kinds!,
+    // declare global, a name before a brace is otherwise a return type tail
+    prev_rules: [
+      { prev_type: "identifier", prev_texts: ["global"], kind: "block" },
+      ...js_frame_spec.brace_kinds!.prev_rules!,
+    ],
+    body_markers: [
+      ...js_frame_spec.brace_kinds!.body_markers!,
+      { type: "keyword", text: "namespace", kind: "block" },
+      { type: "keyword", text: "module", kind: "block" },
+    ],
+  },
+  ternary: {
+    qmark: { type: "operator", text: "?" },
+    colon_char: ":",
+    optional_member_kinds: ["class", "interface", "type_literal", "object"],
+  },
   stmt_flags: [
     {
       name: "var_decl",

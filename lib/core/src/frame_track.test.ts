@@ -352,6 +352,12 @@ describe("frame_track — declarative brace kinds", () => {
     return f.kind_names[f.frames[frame_idx].kind];
   }
 
+  test("a separator nested inside the head keeps the marker", () => {
+    expect(kind_of(run_kinds("interface I < T = ( a : b ) > { x }"), 2)).toBe("interface");
+    expect(kind_of(run_kinds("interface I ( a : b ) { x }"), 2)).toBe("interface");
+    expect(kind_of(run_kinds("a = { class : b }"), 1)).toBe("object");
+  });
+
   test("kind_names exposes builtins followed by spec kinds", () => {
     const f = run_kinds("x");
     expect(f.kind_names.slice(0, 3)).toEqual(["top", "paren", "bracket"]);
@@ -623,6 +629,37 @@ describe("frame_track — scan_back and in_kinds prev rules", () => {
     });
     expect(kinds_of("a : { x }", t)).toEqual(["object"]);
   });
+
+  test("skip_groups steps over a bracket group whole", () => {
+    const grouped = {
+      ...return_scan,
+      over: return_scan.over.slice(0, 3),
+      skip_groups: "punctuation",
+    };
+    const t = frame_track({
+      punct_type: "punctuation",
+      brackets: {
+        paren: { open: "(", close: ")" },
+        brace: { open: "{", close: "}" },
+        bracket: { open: "[", close: "]" },
+      },
+      brace_kinds: {
+        prev_rules: [
+          { prev_type: "punctuation", prev_last_char_in: ":", kind: "type_literal" },
+          { prev_type: "punctuation", prev_last_char_in: ")", kind: "block" },
+          { prev_type: "identifier", scan_back: grouped, kind: "block" },
+          { prev_type: "punctuation", prev_last_char_in: "]}", scan_back: grouped, kind: "block" },
+        ],
+        default_kind: "object",
+        start_kind: "block",
+      },
+    });
+    expect(kinds_of("f ( a ) : { b : c } { x }", t)).toEqual(["type_literal", "block"]);
+    expect(kinds_of("f ( a ) : { b : c } [ ] { x }", t)).toEqual(["type_literal", "block"]);
+    expect(kinds_of("f(a):{b:c}[]{x}", t)).toEqual(["type_literal", "block"]);
+    expect(kinds_of("f ( a ) : [ A , B ] { x }", t)).toEqual(["block"]);
+    expect(kinds_of("a = { b } { x }", t)).toEqual(["object", "object"]);
+  });
 });
 
 describe("frame_track — ternary and stmt flag signals", () => {
@@ -784,5 +821,67 @@ describe("frame_track — ternary and stmt flag signals", () => {
     const f = run_frames("a ( b )");
     expect(f.signals.length).toBe(0);
     expect(f.flag_names).toEqual([]);
+  });
+});
+
+describe("frame_track: optional member markers", () => {
+  const opt: Grammar = {
+    name: "opt",
+    states: {
+      root: {
+        rules: [
+          { match: ["interface"], boundary: true, token: "keyword" },
+          {
+            range: [
+              ["a", "z"],
+              ["A", "Z"],
+            ],
+            token: "identifier",
+          },
+          { match: ["?", "="], token: "operator" },
+          { match: ["(", ")", "{", "}", ",", ";", ":"], token: "punctuation" },
+          { match: [" ", "\n"] },
+        ],
+      },
+    },
+  };
+  const opt_compiled = compile(opt);
+
+  function colon_signals(src: string, optional_member_kinds?: string[]): number[] {
+    const tracker = frame_track({
+      punct_type: "punctuation",
+      brackets: {
+        paren: { open: "(", close: ")" },
+        brace: { open: "{", close: "}" },
+      },
+      brace_kinds: {
+        body_markers: [{ type: "keyword", text: "interface", kind: "interface" }],
+        default_kind: "object",
+        start_kind: "block",
+      },
+      at_start: { reset_chars: ",;" },
+      ternary: { qmark: { type: "operator", text: "?" }, colon_char: ":", optional_member_kinds },
+    });
+    const out = reclassify([tracker])(src, tokenize(src, opt_compiled));
+    const table = out.frames as FrameTable;
+    const found: number[] = [];
+    for (let i = 0; i < out.tokens.length / 3; i++) {
+      const text = src.slice(out.tokens[i * 3 + 1], out.tokens[i * 3 + 2]);
+      if (text.includes(":")) found.push(table.signals[i] & SIGNAL_TERNARY_COLON);
+    }
+    return found;
+  }
+
+  test("an optional method's qmark does not count as a ternary", () => {
+    const src = "interface I { m ? ( ) : T ; n : U }";
+    expect(colon_signals(src)).toEqual([SIGNAL_TERNARY_COLON, 0]);
+    expect(colon_signals(src, ["interface"])).toEqual([0, 0]);
+  });
+
+  test("a qmark after a non-start token still counts", () => {
+    expect(colon_signals("x = a ? b : c", ["interface"])).toEqual([SIGNAL_TERNARY_COLON]);
+    expect(colon_signals("interface I { m = a ? b : c }", ["interface"])).toEqual([
+      SIGNAL_TERNARY_COLON,
+    ]);
   });
 });

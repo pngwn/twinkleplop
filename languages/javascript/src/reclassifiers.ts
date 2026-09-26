@@ -351,9 +351,10 @@ const TYPE_EXPR_KEYWORDS = [
 const TYPE_TAIL_KEYWORDS = ["void", "null", "undefined", "this"];
 
 // walk back over a return-type annotation to the `):` that opened it.
-// `[`, `]` and `,` come in through `chars` rather than a text list
-// because the grammar coalesces adjacent punctuation -- `readonly T[] {`
-// arrives with a single `[]` token.
+// `.` and `,` come in through `chars` rather than a text list because the
+// grammar coalesces adjacent punctuation. bracket groups -- `T[]`, an
+// inline `{ a: T }`, a tuple, a parenthesised union -- are stepped over
+// whole, so `(): { a: T }[] {` still reaches its `):`.
 const RETURN_TYPE_SCAN: BraceKindScan = {
   over: [
     { type: "identifier" },
@@ -365,10 +366,11 @@ const RETURN_TYPE_SCAN: BraceKindScan = {
     { type: "string" },
     { type: "number" },
     { type: "boolean" },
-    { type: "operator", texts: ["|", "&", "<", ">", ">>", ">>>"] },
-    { type: "punctuation", chars: ".[]," },
+    { type: "operator", texts: ["|", "&", "<", ">", ">>", ">>>", "=>"] },
+    { type: "punctuation", chars: ".," },
   ],
   to: { type: "punctuation", last_char_in: ":", preceded_by_char_in: ")" },
+  skip_groups: "punctuation",
 };
 
 // walk back over a switch label's expression to the `case` keyword.
@@ -423,10 +425,9 @@ export const js_frame_spec: FrameSpec = {
       { type: "keyword", text: "class", kind: "class" },
       { type: "keyword", text: "interface", kind: "interface" },
     ],
-    // `class` and `interface` are legal property names, so a key arms a
-    // marker that never finds a brace of its own; discard it at the
-    // separator that ends the member.
-    marker_reset_chars: ";,:",
+    // a key named class or interface arms a marker with no brace, its colon
+    // or the statement end drops it, a comma does not since heads hold commas
+    marker_reset_chars: ";:",
     // a `{` inside a generic constraint while a body marker is armed is a
     // type literal -- `class C<T extends { id: V }> { ... }`.
     pending_in_angles_kind: "type_literal",
@@ -444,6 +445,8 @@ export const js_frame_spec: FrameSpec = {
     },
     prev_rules: [
       { prev_type: "operator", prev_texts: ["=>"], kind: "block" },
+      // a brace at statement start is a bare block
+      { prev_type: "punctuation", prev_last_char_in: ";", kind: "block" },
       // `${` in a template: the brace opens an interpolated expression.
       // it shares a token with the `$`, so this matches on that character.
       { prev_type: "punctuation", prev_last_char_in: "$", kind: "block" },
@@ -461,9 +464,8 @@ export const js_frame_spec: FrameSpec = {
         scan_back: CASE_LABEL_SCAN,
         kind: "block",
       },
-      // `:` is punctuation in the grammar (separator, not operator); a
-      // brace after it is an annotation / return-position type literal.
-      { prev_type: "punctuation", prev_texts: [":"], kind: "type_literal" },
+      // a brace after a colon, even a coalesced one, is a type literal
+      { prev_type: "punctuation", prev_last_char_in: ":", kind: "type_literal" },
       { prev_type: "keyword", prev_texts: ["do", "try", "else", "finally"], kind: "block" },
       { prev_type: "punctuation", prev_last_char_in: ")", kind: "block" },
       // a return-type annotation hides the parameter list from the rule
@@ -491,7 +493,7 @@ export const js_frame_spec: FrameSpec = {
       },
       {
         prev_type: "punctuation",
-        prev_last_char_in: "]",
+        prev_last_char_in: "])}",
         scan_back: RETURN_TYPE_SCAN,
         kind: "block",
       },
