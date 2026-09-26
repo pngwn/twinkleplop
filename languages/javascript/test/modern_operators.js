@@ -672,6 +672,11 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 660,
+		"end": 661
+	},
+	{
+		"type": "operator",
+		"start": 661,
 		"end": 664
 	},
 	{
@@ -692,6 +697,11 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 676,
+		"end": 677
+	},
+	{
+		"type": "operator",
+		"start": 677,
 		"end": 680
 	},
 	{
@@ -722,6 +732,11 @@ export default [
 	{
 		"type": "punctuation",
 		"start": 719,
+		"end": 720
+	},
+	{
+		"type": "operator",
+		"start": 720,
 		"end": 723
 	},
 	{

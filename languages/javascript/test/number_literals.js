@@ -35,13 +35,8 @@ export default [
 		"end": 65
 	},
 	{
-		"type": "punctuation",
-		"start": 66,
-		"end": 67
-	},
-	{
 		"type": "number",
-		"start": 67,
+		"start": 66,
 		"end": 68
 	},
 	{
