@@ -1,0 +1,17 @@
+steps:
+  - run: |
+      echo hi
+
+      echo there
+  - name: next # comment
+    if: true
+  - with:
+      script: >-
+        folded
+          more indented
+    
+        after whitespace-only line
+    env: x
+top: |
+  body
+done: 1
