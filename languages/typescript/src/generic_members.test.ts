@@ -145,3 +145,18 @@ describe("a comparison is still not a generic", () => {
     expect(pick(src, "c")).toBe("identifier");
   });
 });
+
+describe("a coalesced close before a body brace", () => {
+  for (const [label, src] of [
+    ["implements", "class Q<T> implements Iterable<B<T>> {\n  state = 0;\n}"],
+    ["implements >>>", "class Q<T> implements A<B<C<T>>> {\n  state = 0;\n}"],
+    ["implements list", "class Q<T> implements A<B<T>>, D<E<T>> {\n  state = 0;\n}"],
+    ["interface extends", "interface I extends A<B<T>> {\n  state: number;\n}"],
+    ["return type", "function f(): A<B<T>> {\n  state = 0;\n}"],
+  ] as const) {
+    it(`${label} stops at the body`, () => {
+      expect(pick(src, "B")).toBe("type");
+      expect(pick(src, "state")).not.toBe("type");
+    });
+  }
+});

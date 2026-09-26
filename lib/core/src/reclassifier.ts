@@ -1982,7 +1982,7 @@ function type_span_verify_angle(
 // used by the brace-exit check so `(): T {`, `(): T | undefined {` and
 // `extends Foo<T> {` terminate at the body brace. mirrors the imperative
 // promoter: a punctuation token ending in `]` / `)`, an identifier (or
-// already-promoted type), a lone `>`, or a terminal keyword (`this`,
+// already-promoted type), a `>` run, or a terminal keyword (`this`,
 // `void`, ...).
 function type_span_prev_is_closer(
   spec: CompiledTypeSpanSpec,
@@ -2004,7 +2004,7 @@ function type_span_prev_is_closer(
     return last === CH_BRACKET_CLOSE || last === CH_PAREN_CLOSE;
   }
   if (pt === spec.ident_id || (spec.type_id >= 0 && pt === spec.type_id)) return true;
-  if (pt === spec.operator_id && pe - ps === 1 && input.charCodeAt(ps) === CH_GT) return true;
+  if (pt === spec.operator_id && angle_pops(input, ps, pe) > 0) return true;
   if (pt === spec.keyword_id && spec.terminal_keywords_id >= 0) {
     return value_set_matches(value_pool, value_offsets, spec.terminal_keywords_id, input, ps, pe);
   }
