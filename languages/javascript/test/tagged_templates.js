@@ -7,11 +7,6 @@ export default [
 	{
 		"type": "comment",
 		"start": 78,
-		"end": 106
-	},
-	{
-		"type": "comment",
-		"start": 107,
 		"end": 153
 	},
 	{

@@ -422,14 +422,8 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 383,
-		"end": 398,
-		"match": "# mixed concat "
-	},
-	{
-		"type": "comment",
-		"start": 399,
 		"end": 449,
-		"match": " bash treats adjacent quoted/unquoted as one word\n"
+		"match": "# mixed concat — bash treats adjacent quoted/unquoted as one word\n"
 	},
 	{
 		"type": "identifier",

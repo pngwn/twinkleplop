@@ -998,14 +998,8 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 1331,
-		"end": 1345,
-		"match": "# same as [j.\""
-	},
-	{
-		"type": "comment",
-		"start": 1346,
 		"end": 1353,
-		"match": "\".'l']\n"
+		"match": "# same as [j.\"ʞ\".'l']\n"
 	},
 	{
 		"type": "comment",

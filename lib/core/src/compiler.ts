@@ -115,7 +115,7 @@ function preprocess_grammar(grammar: Grammar): Grammar {
           generated_states[`${content_state_name}_escape`] = {
             rules: [
               {
-                range: [0, 127],
+                range: [0, 0xffff],
                 token: rule.token,
                 exit: true,
               },
@@ -130,15 +130,15 @@ function preprocess_grammar(grammar: Grammar): Grammar {
           exit: true,
         });
 
-        // add default rule to consume any other character
+        // add default rule to consume any other character, 0xffff covers utf-16 surrogate halves
         // when multiline is false, exclude \n (charCode 10) so strings don't span lines
         const content_range: [number, number] | [number, number][] =
           rule.match_within.multiline === false
             ? [
                 [0, 9],
-                [11, 127],
+                [11, 0xffff],
               ]
-            : [0, 127];
+            : [0, 0xffff];
         content_rules.push({
           range: content_range,
           token: rule.token,

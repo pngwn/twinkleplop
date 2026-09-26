@@ -266,6 +266,46 @@ describe("C1: match_within begin vs start", () => {
   });
 });
 
+describe("match_within: non-ascii content", () => {
+  const grammar: Grammar = {
+    name: "match-within-non-ascii",
+    states: {
+      main: {
+        rules: [
+          { match_within: { start: "<!--", end: "-->" }, token: "comment" },
+          {
+            match_within: { start: '"', end: '"', escape: "\\", multiline: false },
+            token: "string",
+          },
+          { range: ["a", "z"], token: "word" },
+        ],
+      },
+    },
+  };
+  const compiled = compile(grammar);
+
+  test("non-ascii and astral characters stay inside the token", () => {
+    const src = "<!-- café — naïve ✓ 🎉 -->";
+    const tokens = token_values(tokenize(src, compiled), src);
+    expect(tokens.map((t) => t.value).join("")).toBe(src);
+    expect(tokens.every((t) => t.type === "comment")).toBe(true);
+    expect(tokens[0].value).toBe("<!-- café — naïve ✓ 🎉 ");
+  });
+
+  test("escape consumes a non-ascii character", () => {
+    const src = '"a\\é" b';
+    const tokens = token_values(tokenize(src, compiled), src);
+    expect(tokens).toContainEqual({ type: "string", value: '"a\\é"' });
+    expect(tokens).toContainEqual({ type: "word", value: "b" });
+  });
+
+  test("single-line content still stops at a newline after non-ascii", () => {
+    const src = '"é\nb';
+    const tokens = token_values(tokenize(src, compiled), src);
+    expect(tokens[0]).toEqual({ type: "string", value: '"é' });
+  });
+});
+
 // ---------------------------------------------------------------------------
 // M3 — "No token → no advance" claim in grammar.md is wrong
 // ---------------------------------------------------------------------------

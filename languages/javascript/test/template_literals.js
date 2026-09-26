@@ -602,11 +602,6 @@ export default [
 	{
 		"type": "comment",
 		"start": 690,
-		"end": 729
-	},
-	{
-		"type": "comment",
-		"start": 730,
 		"end": 764
 	},
 	{

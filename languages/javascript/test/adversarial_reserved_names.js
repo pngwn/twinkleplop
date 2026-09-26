@@ -2,11 +2,6 @@ export default [
 	{
 		"type": "comment",
 		"start": 0,
-		"end": 32
-	},
-	{
-		"type": "comment",
-		"start": 33,
 		"end": 73
 	},
 	{
@@ -1157,11 +1152,6 @@ export default [
 	{
 		"type": "comment",
 		"start": 1621,
-		"end": 1649
-	},
-	{
-		"type": "comment",
-		"start": 1650,
 		"end": 1689
 	},
 	{
@@ -1617,11 +1607,6 @@ export default [
 	{
 		"type": "comment",
 		"start": 2311,
-		"end": 2362
-	},
-	{
-		"type": "comment",
-		"start": 2363,
 		"end": 2384
 	},
 	{
@@ -2412,11 +2397,6 @@ export default [
 	{
 		"type": "comment",
 		"start": 3554,
-		"end": 3613
-	},
-	{
-		"type": "comment",
-		"start": 3614,
 		"end": 3623
 	},
 	{
