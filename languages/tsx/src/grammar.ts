@@ -329,7 +329,25 @@ export default define_grammar({
       rules: [
         on(",", enter("jsx_lt_emit")),
         keyword(["extends"], enter("jsx_lt_emit")),
+        on([" ", "\t", "\n", "\r"], enter("jsx_after_name_probe")),
         on([">", "/", "=", "{", ":", ".", "(", ")", "[", "]", "}", ";"], enter("jsx_tag_start")),
+        on(
+          ['"', "'", "`", "!", "?", "|", "&", "*", "+", "%", "^", "~", "@", "#", "\\"],
+          enter("jsx_tag_start"),
+        ),
+      ],
+    },
+
+    // a jsx attribute has a name before its equals sign, so a bare one here
+    // is a type parameter default
+    jsx_after_name_probe: {
+      mode: "probe",
+      fallback: "jsx_tag_start",
+      rules: [
+        on([",", "="], enter("jsx_lt_emit")),
+        keyword(["extends"], enter("jsx_lt_emit")),
+        on([LETTER, DIGIT, "_", "$"], enter("jsx_tag_start")),
+        on([">", "/", "{", ":", ".", "(", ")", "[", "]", "}", ";"], enter("jsx_tag_start")),
         on(
           ['"', "'", "`", "!", "?", "|", "&", "*", "+", "%", "^", "~", "@", "#", "\\"],
           enter("jsx_tag_start"),

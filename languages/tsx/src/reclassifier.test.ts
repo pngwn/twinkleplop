@@ -114,3 +114,16 @@ describe("TSX casts in expression containers", () => {
     expect(type_of('import { a as b } from "m";', "b")).toBe("identifier");
   });
 });
+
+describe("TSX `<` after whitespace in a would-be tag", () => {
+  it("a defaulted type parameter is not a jsx tag", () => {
+    expect(type_of("interface S { new <T = any>(v?: T[]): S; }", "any")).toBe("type");
+    expect(type_of("const g = <T = unknown,>(x: T) => x;", "unknown")).toBe("type");
+  });
+
+  it("attributes after whitespace still open a tag", () => {
+    expect(type_of('const el = <div className="x" />;', "div")).toBe("tag_name");
+    expect(type_of("const el = <Foo bar = {1} />;", "bar")).toBe("attr_name");
+    expect(type_of("const el = <Foo\n  bar={1}\n/>;", "bar")).toBe("attr_name");
+  });
+});
