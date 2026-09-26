@@ -66,6 +66,11 @@ const TAG_NAME_CHARS = range([
   [":", ":"],
 ]);
 
+const ASCII_ALPHA = range([
+  ["a", "z"],
+  ["A", "Z"],
+]);
+
 // Attribute name chars do NOT include `:` or `|` — directive prefixes and
 // modifier separators get their own tokens.
 const ATTR_NAME_CHARS = range([
@@ -148,7 +153,7 @@ export default define_grammar({
         within("<!--", "-->", TOKENS.comment),
         match(["<!DOCTYPE", "<!doctype"], TOKENS.doctype, enter("doctype")),
         match("</", TOKENS.punctuation, enter("close_tag")),
-        match("<", TOKENS.punctuation, enter("tag_start")),
+        on("<", enter("lt_probe")),
         // `{` always emits `expression`; brace_start dispatches on
         // the sigil that follows.
         match("{", TOKENS.expression, enter("brace_start")),
@@ -197,6 +202,31 @@ export default define_grammar({
       ],
     },
 
+    // a < only opens a tag when an ascii letter follows, so a < b and <3 stay text
+    lt_probe: {
+      mode: "probe",
+      fallback: "lt_text",
+      rules: [
+        on(ASCII_ALPHA, enter("lt_tag")),
+        on("<", enter("lt_text_before_lt")),
+        fallback(enter("lt_text")),
+      ],
+    },
+
+    lt_tag: {
+      rules: [match("<", TOKENS.punctuation, goto("tag_start"))],
+    },
+
+    // never entered when the next char is <, so on("<") eats only the one
+    lt_text: {
+      rules: [on("<"), fallback(leave())],
+    },
+
+    // a tokenless pop cannot consume, so the text < of << is emitted as punctuation
+    lt_text_before_lt: {
+      rules: [match("<", TOKENS.punctuation, leave())],
+    },
+
     // -------------------------------------------------------------------
     // tag_start — fires ONCE, just consumed `<`
     // -------------------------------------------------------------------
@@ -216,9 +246,6 @@ export default define_grammar({
           boundary: true,
           ...goto("tag_svelte_ns"),
         }),
-        match("/>", TOKENS.punctuation, leave()),
-        match(">", TOKENS.punctuation, leave()),
-        on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
         match(TAG_NAME_CHARS, TOKENS.tag_name, goto("tag_open")),
       ],
     },

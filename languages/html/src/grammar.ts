@@ -53,6 +53,11 @@ const STYLE = ascii_cases("style");
 const SCRIPT_CLOSE = SCRIPT.map((name) => name + ">");
 const STYLE_CLOSE = STYLE.map((name) => name + ">");
 
+const ASCII_ALPHA = range([
+  ["a", "z"],
+  ["A", "Z"],
+]);
+
 // Shared rules for any "inside a tag's opening `<...>`" state — attributes
 // and whitespace. Different tag states layer their own `>` / `/>` handling
 // on top so the exit target can vary (attrs → leave vs script → content).
@@ -76,9 +81,34 @@ export default define_grammar({
         within("<!--", "-->", TOKENS.comment),
         match(["<!DOCTYPE", "<!doctype"], TOKENS.doctype, enter("doctype")),
         match("</", TOKENS.punctuation, enter("close_tag")),
-        match("<", TOKENS.punctuation, enter("tag_start")),
+        on("<", enter("lt_probe")),
         fallback({}),
       ],
+    },
+
+    // a < only opens a tag when an ascii letter follows, so a < b and <3 stay text
+    lt_probe: {
+      mode: "probe",
+      fallback: "lt_text",
+      rules: [
+        on(ASCII_ALPHA, enter("lt_tag")),
+        on("<", enter("lt_text_before_lt")),
+        fallback(enter("lt_text")),
+      ],
+    },
+
+    lt_tag: {
+      rules: [match("<", TOKENS.punctuation, goto("tag_start"))],
+    },
+
+    // never entered when the next char is <, so on("<") eats only the one
+    lt_text: {
+      rules: [on("<"), fallback(leave())],
+    },
+
+    // a tokenless pop cannot consume, so the text < of << is emitted as punctuation
+    lt_text_before_lt: {
+      rules: [match("<", TOKENS.punctuation, leave())],
     },
 
     // -------------------------------------------------------------------
@@ -95,9 +125,6 @@ export default define_grammar({
       rules: [
         keyword(SCRIPT, goto("script_attrs"), TOKENS.tag_name),
         keyword(STYLE, goto("style_attrs"), TOKENS.tag_name),
-        match("/>", TOKENS.punctuation, leave()),
-        match(">", TOKENS.punctuation, leave()),
-        on([" ", "\t", "\n", "\r"], goto("tag_attrs")),
         match(NAME_CHARS, TOKENS.tag_name, goto("tag_open")),
       ],
     },
