@@ -220,6 +220,9 @@ export const js_comments = [SINGLE_LINE_COMMENT, MULTI_LINE_COMMENT];
 export const js_strings = [STRING_DOUBLE, STRING_SINGLE, TEMPLATE_LITERAL];
 export const js_whitespace = [on([" ", "\t", "\n", "\r"])];
 
+// a leading dot number like .5, longer than the member access dot so it wins
+const DOT_DIGIT = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => `.${d}`);
+
 // Numbers in top-level contexts — sideways-transition to the number state
 // (which eventually exits to `division`).
 export const js_numbers_top = [
@@ -227,6 +230,7 @@ export const js_numbers_top = [
   match(["0b", "0B"], TOKENS.number, goto("binary_number")),
   match(["0o", "0O"], TOKENS.number, goto("octal_number")),
   match(DIGIT, TOKENS.number, goto(TOKENS.number)),
+  match(DOT_DIGIT, TOKENS.number, goto("decimal_number")),
 ];
 
 // Numbers in argument/group contexts — push nested number states (pop back
@@ -237,6 +241,9 @@ export const js_numbers_arg = [
   match(["0o", "0O"], TOKENS.number, enter("octal_number_arg")),
   match(DIGIT, TOKENS.number, enter("number_arg")),
 ];
+
+// kept out of js_numbers_arg so call arguments reach it through call_operand
+export const js_dot_number_arg = match(DOT_DIGIT, TOKENS.number, enter("decimal_number_arg"));
 
 // Shared foundation for main / regex_allow / division / tmpl_* states.
 // Excludes operators, punctuation, keywords, identifiers, and slash handling —
@@ -251,7 +258,13 @@ export const js_body_common = [...js_comments, ...js_strings, ...js_numbers_arg]
 // states (push semantics → pop back to the tmpl context instead of sideways to
 // base `division`) and keeps template literals in the strings set so nested
 // `${...}` can push a fresh `template_literal`.
-export const js_tmpl_common = [...js_comments, ...js_strings, ...js_numbers_arg, ...js_whitespace];
+export const js_tmpl_common = [
+  ...js_comments,
+  ...js_strings,
+  ...js_numbers_arg,
+  js_dot_number_arg,
+  ...js_whitespace,
+];
 
 // Member access. After a `.` or `?.` only a name can follow, so the
 // keyword rules must not apply — `obj.default` is a property, not a
@@ -328,11 +341,12 @@ export const function_body_state = (keywords: object[]) => ({
 });
 
 // returning here from a pushed operand means a value just ended, so dest is a division state
-export const CALL_OPERAND_START = ["(", DIGIT, '"', "'", "`"];
+export const CALL_OPERAND_START = ["(", ".", DIGIT, '"', "'", "`"];
 export const call_operand_state = (dest: "division" | "tmpl_division") => ({
   rules: [
     ...js_strings,
     ...js_numbers_arg,
+    js_dot_number_arg,
     match("(", TOKENS.punctuation, enter("paren_group")),
     fallback(goto(dest)),
   ],
@@ -341,6 +355,7 @@ export const call_operand_state = (dest: "division" | "tmpl_division") => ({
 export const paren_group_state = (keywords: object[]) => ({
   rules: [
     ...js_body_common,
+    js_dot_number_arg,
     ...keywords,
     match(")", TOKENS.punctuation, leave()),
     match(",", TOKENS.punctuation),
