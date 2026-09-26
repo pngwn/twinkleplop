@@ -1,5 +1,15 @@
 # @twinkleplop/yaml
 
+## 0.1.6
+### Patch Changes
+
+
+
+- [#131](https://github.com/pngwn/twinkleplop/pull/131) [`0775727`](https://github.com/pngwn/twinkleplop/commit/0775727a0e545b726167417dae51b779171c9c71) Thanks [@pngwn](https://github.com/pngwn)! - Block scalars (`|` and `>`) now end at the first line indented less than their content, so a block under a sequence item or nested key no longer runs on until a line at column 0. This fixes the common GitHub Actions `steps: - run: |` shape.
+
+- Updated dependencies [[`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac), [`82aaf5f`](https://github.com/pngwn/twinkleplop/commit/82aaf5f9f477de4237beed4e2263b07ae5430e7a), [`8394d2b`](https://github.com/pngwn/twinkleplop/commit/8394d2b69e340af554496ff7760fa59792aee7a7), [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5), [`725f37d`](https://github.com/pngwn/twinkleplop/commit/725f37d87db16abcfe32dad4247d1938a858f6b8)]:
+  - @twinkleplop/core@0.2.3
+
 ## 0.1.5
 ### Patch Changes
 

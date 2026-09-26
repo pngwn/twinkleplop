@@ -1,5 +1,16 @@
 # @twinkleplop/twoslash
 
+## 0.2.2
+### Patch Changes
+
+
+
+- [#138](https://github.com/pngwn/twinkleplop/pull/138) [`f26235b`](https://github.com/pngwn/twinkleplop/commit/f26235b76a40ed15f3af7e3d175b7737a854de38) Thanks [@pngwn](https://github.com/pngwn)! - Builtin type names such as `any`, `string` and `number` are highlighted as types only where TypeScript reads them as types. A class field named `any`, an object key `number` or a variable called `symbol` highlights like any other name.
+
+- Updated dependencies [[`975c44f`](https://github.com/pngwn/twinkleplop/commit/975c44ff1ebc830f2963ea7b3c71ffa55e699966), [`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac), [`dbcd96d`](https://github.com/pngwn/twinkleplop/commit/dbcd96d923b692326bdff824eec941ace40be69f), [`82aaf5f`](https://github.com/pngwn/twinkleplop/commit/82aaf5f9f477de4237beed4e2263b07ae5430e7a), [`8394d2b`](https://github.com/pngwn/twinkleplop/commit/8394d2b69e340af554496ff7760fa59792aee7a7), [`4150afc`](https://github.com/pngwn/twinkleplop/commit/4150afc6ae389527818648e098594c6002824074), [`f26235b`](https://github.com/pngwn/twinkleplop/commit/f26235b76a40ed15f3af7e3d175b7737a854de38), [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5), [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5), [`725f37d`](https://github.com/pngwn/twinkleplop/commit/725f37d87db16abcfe32dad4247d1938a858f6b8)]:
+  - @twinkleplop/typescript@0.1.6
+  - @twinkleplop/core@0.2.3
+
 ## 0.2.1
 ### Patch Changes
 

@@ -1,5 +1,21 @@
 # @twinkleplop/html
 
+## 0.1.6
+### Patch Changes
+
+
+
+- [#137](https://github.com/pngwn/twinkleplop/pull/137) [`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac) Thanks [@pngwn](https://github.com/pngwn)! - A `<` that is not followed by a letter is highlighted as text, so `<p>a < b</p>` no longer shows `b` as an attribute. `` html`<${Tag}>` `` tagged templates still highlight the tag.
+
+
+
+- [#135](https://github.com/pngwn/twinkleplop/pull/135) [`f0ce6c5`](https://github.com/pngwn/twinkleplop/commit/f0ce6c52995fd94008d20652076c7bf2c2fe8448) Thanks [@pngwn](https://github.com/pngwn)! - `<script>` and `<style>` are recognised in any letter case, so `<SCRIPT>`, `</Style>` and similar open and close embedded JavaScript and CSS as they do in browsers.
+
+- Updated dependencies [[`975c44f`](https://github.com/pngwn/twinkleplop/commit/975c44ff1ebc830f2963ea7b3c71ffa55e699966), [`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac), [`dbcd96d`](https://github.com/pngwn/twinkleplop/commit/dbcd96d923b692326bdff824eec941ace40be69f), [`82aaf5f`](https://github.com/pngwn/twinkleplop/commit/82aaf5f9f477de4237beed4e2263b07ae5430e7a), [`8394d2b`](https://github.com/pngwn/twinkleplop/commit/8394d2b69e340af554496ff7760fa59792aee7a7), [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5), [`725f37d`](https://github.com/pngwn/twinkleplop/commit/725f37d87db16abcfe32dad4247d1938a858f6b8)]:
+  - @twinkleplop/javascript@0.1.6
+  - @twinkleplop/core@0.2.3
+  - @twinkleplop/css@0.1.6
+
 ## 0.1.5
 ### Patch Changes
 

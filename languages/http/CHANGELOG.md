@@ -1,5 +1,15 @@
 # @twinkleplop/http
 
+## 0.1.6
+### Patch Changes
+
+- Updated dependencies [[`975c44f`](https://github.com/pngwn/twinkleplop/commit/975c44ff1ebc830f2963ea7b3c71ffa55e699966), [`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac), [`f0ce6c5`](https://github.com/pngwn/twinkleplop/commit/f0ce6c52995fd94008d20652076c7bf2c2fe8448), [`dbcd96d`](https://github.com/pngwn/twinkleplop/commit/dbcd96d923b692326bdff824eec941ace40be69f), [`82aaf5f`](https://github.com/pngwn/twinkleplop/commit/82aaf5f9f477de4237beed4e2263b07ae5430e7a), [`8394d2b`](https://github.com/pngwn/twinkleplop/commit/8394d2b69e340af554496ff7760fa59792aee7a7), [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5), [`725f37d`](https://github.com/pngwn/twinkleplop/commit/725f37d87db16abcfe32dad4247d1938a858f6b8)]:
+  - @twinkleplop/javascript@0.1.6
+  - @twinkleplop/html@0.1.6
+  - @twinkleplop/core@0.2.3
+  - @twinkleplop/bash@0.1.6
+  - @twinkleplop/json@0.1.6
+
 ## 0.1.5
 ### Patch Changes
 
