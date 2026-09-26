@@ -29,13 +29,7 @@
 //     tokenized as jsx (since there is no disambiguator after the name).
 //     typescript marks this as an error at parse time; the highlighter
 //     does not. authors should use `value as T`.
-//   - `<` inside function call arguments (`foo(<div />)`) or grouped
-//     expressions inside `foo(...)` (since those enter function_body /
-//     paren_group, not regex_allow) is tokenized as the less-than
-//     operator rather than a jsx opener. assigning the jsx to a local
-//     variable (`const el = <div />; foo(el)`) is a reliable workaround.
-//     jsx in arrow function bodies (`map(x => <div />)`) works because
-//     `=>` transitions to regex_allow before the `<`.
+//   - jsx inside nested parens in call arguments, `foo((<div />))`, lexes as less-than
 //   - A tag literally named `<extends …>` is misclassified as a generic
 //     because the `extends` keyword rule in the disambiguation probe
 //     matches the tag name. vanishingly rare in real code.
@@ -79,6 +73,8 @@ import {
   SINGLE_LINE_COMMENT,
   SPECIAL_VALUES,
   js_common,
+  js_numbers_arg,
+  js_strings,
   js_tmpl_common,
 } from "@twinkleplop/javascript";
 
@@ -237,6 +233,34 @@ export default define_grammar({
 
         on(["_", "$", LETTER], goto("identifier_probe")),
       ],
+    },
+
+    // call arguments stay here only at argument start, so a bare `<` may open jsx
+    // numbers and strings detour through call_operand so `foo(1<n)` stays less-than
+    function_body: {
+      rules: [
+        on([DIGIT, '"', "'", "`"], goto("call_operand")),
+        tsx_compound_lt,
+        on("<", enter("jsx_or_lt_probe")),
+        ...ts_grammar.states.function_body.rules,
+      ],
+    },
+
+    function_body_tmpl: {
+      rules: [
+        on([DIGIT, '"', "'", "`"], goto("call_operand_tmpl")),
+        tsx_compound_lt,
+        on("<", enter("jsx_or_lt_probe")),
+        ...ts_grammar.states.function_body_tmpl.rules,
+      ],
+    },
+
+    call_operand: {
+      rules: [...js_strings, ...js_numbers_arg, fallback(goto("division"))],
+    },
+
+    call_operand_tmpl: {
+      rules: [...js_strings, ...js_numbers_arg, fallback(goto("tmpl_division"))],
     },
 
     // -------------------------------------------------------------------
