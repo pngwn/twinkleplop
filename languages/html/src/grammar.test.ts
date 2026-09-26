@@ -144,6 +144,20 @@ describe("HTML grammar — script element", () => {
     expect(raw).toHaveLength(1);
     expect(raw[0].value).toBe('var x = "');
   });
+
+  it("matches script open and close tags in any ASCII case independently", () => {
+    const src = "<SCRIPT>a</SCRIPT><script>b</Script><sCrIpT>c</script><p>";
+    const tokens = tokens_of(src);
+    const raw = tokens.filter((t) => t.type === "raw_script").map((t) => t.value);
+    expect(raw).toEqual(["a", "b", "c"]);
+    const names = tokens.filter((t) => t.type === "tag_name").map((t) => t.value);
+    expect(names).toEqual(["SCRIPT", "SCRIPT", "script", "Script", "sCrIpT", "script", "p"]);
+  });
+
+  it("does NOT enter script content for an uppercase tag that merely starts with 'SCRIPT'", () => {
+    const tokens = tokens_of("<SCRIPTING></SCRIPTING>");
+    expect(tokens.filter((t) => t.type === "raw_script")).toHaveLength(0);
+  });
 });
 
 describe("HTML grammar — style element", () => {
@@ -159,5 +173,14 @@ describe("HTML grammar — style element", () => {
     const raw = tokens.filter((t) => t.type === "raw_style");
     expect(raw).toHaveLength(1);
     expect(raw[0].value).toBe("p {}");
+  });
+
+  it("matches style tag names in any ASCII case", () => {
+    const src = "<STYLE>a {}</STYLE><style>b {}</Style><p>";
+    const tokens = tokens_of(src);
+    const raw = tokens.filter((t) => t.type === "raw_style").map((t) => t.value);
+    expect(raw).toEqual(["a {}", "b {}"]);
+    const names = tokens.filter((t) => t.type === "tag_name").map((t) => t.value);
+    expect(names).toEqual(["STYLE", "STYLE", "style", "Style", "p"]);
   });
 });
