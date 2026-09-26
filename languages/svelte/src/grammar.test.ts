@@ -48,6 +48,13 @@ describe("Svelte grammar — integrity", () => {
 });
 
 describe("Svelte grammar — HTML structure", () => {
+  it("keeps `<` followed by a non-letter as text", () => {
+    const tokens = tokens_of("<p>a < b {c}</p>");
+    expect(tokens.filter((t) => t.type === "attr_name")).toEqual([]);
+    expect(tokens.filter((t) => t.type === "tag_name").map((t) => t.value)).toEqual(["p", "p"]);
+    expect(tokens.some((t) => t.type === "expression" && t.value === "{")).toBe(true);
+  });
+
   it("tokenizes a basic element", () => {
     const tokens = tokens_of("<p>hello</p>");
     expect(tokens.filter((t) => t.type === "tag_name").map((t) => t.value)).toEqual(["p", "p"]);

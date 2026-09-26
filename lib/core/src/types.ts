@@ -1230,6 +1230,8 @@ export interface GroupDescriptor {
    * tagged templates in one pass).
    */
   language?: LanguageFn;
+  /** fills a hole instead of hole_char when the neutral char depends on context, must return len chars */
+  fill_hole?: (virtual_source: string, len: number) => string;
 }
 
 /**

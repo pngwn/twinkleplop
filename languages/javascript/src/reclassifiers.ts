@@ -591,6 +591,11 @@ function get_type_ids(token_types: string[]): TypeIds {
   return ids;
 }
 
+// html reads < followed by a space as text, so a hole right after < starts with a letter
+function fill_html_hole(virtual_source: string, len: number): string {
+  return virtual_source.endsWith("<") ? "x" + " ".repeat(len - 1) : " ".repeat(len);
+}
+
 /**
  * Scanner called at each host token position. Returns a GroupDescriptor if
  * a tagged template starts here, or null otherwise. Matches `GroupScanFn`.
@@ -684,6 +689,7 @@ export function scan_tagged_template(
             token_end: k,
             regions,
             language,
+            fill_hole: language === html_default ? fill_html_hole : undefined,
           };
         }
       } else if (tk === punctuation_id && te - ts === 2 && input.startsWith("${", ts)) {

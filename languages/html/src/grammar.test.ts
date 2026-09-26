@@ -184,3 +184,36 @@ describe("HTML grammar — style element", () => {
     expect(names).toEqual(["STYLE", "STYLE", "style", "Style", "p"]);
   });
 });
+
+describe("HTML grammar — `<` in text", () => {
+  const pairs = (src: string) => tokens_of(src).map((t) => [t.type, t.value]);
+
+  it("keeps `<` followed by a non-letter as text", () => {
+    expect(pairs("<p>a < b</p>")).toEqual([
+      ["punctuation", "<"],
+      ["tag_name", "p"],
+      ["punctuation", ">"],
+      ["punctuation", "</"],
+      ["tag_name", "p"],
+      ["punctuation", ">"],
+    ]);
+    expect(tokens_of("x < y > z")).toEqual([]);
+    expect(tokens_of("<3 <> a <= b")).toEqual([]);
+  });
+
+  it("still opens a tag after a text `<`", () => {
+    expect(pairs("a <\n<br/>")).toEqual([
+      ["punctuation", "<"],
+      ["tag_name", "br"],
+      ["punctuation", "/>"],
+    ]);
+  });
+
+  it("probes the second `<` of `<<` on its own", () => {
+    expect(pairs("<<p>")).toEqual([
+      ["punctuation", "<<"],
+      ["tag_name", "p"],
+      ["punctuation", ">"],
+    ]);
+  });
+});

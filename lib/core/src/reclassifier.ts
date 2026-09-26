@@ -4302,7 +4302,11 @@ function process_group(
       // use single-char placeholder repeated to match the byte length.
       // byte-aligned so positions map cleanly.
       virtual_source +=
-        hole_char.length === 1 ? hole_char.repeat(len) : hole_char.repeat(len).slice(0, len);
+        desc.fill_hole !== undefined
+          ? desc.fill_hole(virtual_source, len)
+          : hole_char.length === 1
+            ? hole_char.repeat(len)
+            : hole_char.repeat(len).slice(0, len);
       hole_virtual_ranges.push({ v_start, v_end: virtual_source.length });
     }
     // synthetic regions don't contribute to virtual source.
