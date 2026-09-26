@@ -11,7 +11,7 @@
 //   - Directives `%YAML ...`, `%TAG ...`
 //   - Document markers `---` and `...`
 //   - Block scalar headers `|` `>` with chomping/indent indicators
-//   - Block scalar bodies (heuristic termination on column-0 non-whitespace)
+//   - block scalar bodies
 //   - Reclassifier reassigns plain scalars to boolean / null / number when
 //     their text matches core-schema (or permissive 1.1) patterns.
 //
@@ -24,9 +24,8 @@
 //     whitespace they emit as punctuation, otherwise they start a plain
 //     scalar. `-1.5` highlights as a single `number` (negative signed int is
 //     recognised by the reclassifier).
-//   - Block-scalar body termination uses a column-0 heuristic: content ends
-//     when a line begins with a non-whitespace, non-newline character. Nested
-//     block scalars whose siblings are indented do not de-indent cleanly.
+//   - block scalar indent comes from the first non blank line, so an empty
+//     body followed by an indented sibling swallows the sibling
 //   - An anchor/alias/tag name immediately followed by a flow indicator
 //     (e.g. `&a]`) consumes the flow indicator into the anchor-body fallback.
 //     In practice YAML almost always puts whitespace between node properties
@@ -150,6 +149,51 @@ const shared_rules_head = [
   match("{", TOKENS.punctuation, enter("flow_map")),
 ];
 
+// the first non blank line fixes the body indent n and a less indented line
+// ends the body, there are no counters so each n gets its own states
+const MAX_BLOCK_INDENT = 32;
+
+function block_scalar_states() {
+  const states: Record<string, { mode?: "probe"; fallback?: string; rules: unknown[] }> = {
+    block_exit: { rules: [match("\n", TOKENS.string, leave())] },
+  };
+  for (let j = 0; j <= MAX_BLOCK_INDENT; j++) {
+    states[`block_indent_${j}`] = {
+      rules: [
+        match(" ", TOKENS.string, goto(`block_indent_${Math.min(j + 1, MAX_BLOCK_INDENT)}`)),
+        match("\r", TOKENS.string),
+        match("\n", TOKENS.string, goto("block_indent_0")),
+        fallback(j === 0 ? leave() : goto(`block_body_${j}`)),
+      ],
+    };
+  }
+  for (let n = 1; n <= MAX_BLOCK_INDENT; n++) {
+    states[`block_body_${n}`] = {
+      rules: [on("\n", enter(`block_nl_${n}`)), fallback({ token: TOKENS.string })],
+    };
+    // the probe rewinds to the newline so stay and exit consume it
+    states[`block_nl_${n}`] = {
+      mode: "probe",
+      fallback: `block_stay_${n}`,
+      rules: [
+        on(" ".repeat(n), goto(`block_stay_${n}`)),
+        on(eol_chars, goto(`block_stay_${n}`)),
+        on(ws_chars, enter(`block_ws_${n}`)),
+        fallback(goto("block_exit")),
+      ],
+    };
+    states[`block_ws_${n}`] = {
+      mode: "probe",
+      fallback: `block_stay_${n}`,
+      rules: [on(ws_chars), on(eol_chars, goto(`block_stay_${n}`)), fallback(goto("block_exit"))],
+    };
+    states[`block_stay_${n}`] = {
+      rules: [match("\n", TOKENS.string, goto(`block_body_${n}`))],
+    };
+  }
+  return states;
+}
+
 export default define_grammar({
   name: "yaml",
   states: {
@@ -161,8 +205,7 @@ export default define_grammar({
         ...shared_rules_head,
         // block scalar headers. only valid outside flow context; the
         // flow states drop these rules so `|` `>` become plain text.
-        match("|", TOKENS.operator, enter("literal_header")),
-        match(">", TOKENS.operator, enter("folded_header")),
+        match(["|", ">"], TOKENS.operator, enter("block_header")),
         // directive: the `%` at col 0 starts a directive line. we do
         // not enforce col 0; inside a scalar `%` would be consumed by
         // plain_scalar's fallback first, so this only fires when the
@@ -414,85 +457,18 @@ export default define_grammar({
     // the header's parent is preserved so leaving the body returns to
     // the right place.
     // ------------------------------------------------------------------
-    literal_header: {
+    block_header: {
       rules: [
         match(["-", "+"], TOKENS.operator),
         match(DIGIT, TOKENS.number),
         WS,
         COMMENT,
-        on("\n", goto("literal_body")),
+        on("\n", goto("block_indent_0")),
         fallback({ token: TOKENS.string }),
       ],
     },
 
-    folded_header: {
-      rules: [
-        match(["-", "+"], TOKENS.operator),
-        match(DIGIT, TOKENS.number),
-        WS,
-        COMMENT,
-        on("\n", goto("folded_body")),
-        fallback({ token: TOKENS.string }),
-      ],
-    },
-
-    // ------------------------------------------------------------------
-    // literal_body / folded_body — block scalar content. the termination
-    // heuristic is: after any `\n`, peek at the next character; if it is
-    // whitespace (or another `\n`) the body continues, otherwise the
-    // body ends. this gets the common case right (top-level keys at
-    // column 0 terminate an indented body) while accepting that nested
-    // block scalars with non-column-0 siblings will not de-indent.
-    //
-    // the probe needs careful construction. the probe rewinds to the
-    // position of the `\n` that triggered it, so the target states must
-    // consume the `\n` themselves — if the target simply gotoes back to
-    // the body, the body's `\n` rule fires and enters the probe again,
-    // creating an unbounded loop. _body uses `on("\n", ...)` (no emit),
-    // and the two target states `_nl_stay` / `_nl_exit` emit the `\n`
-    // as string and transition past it.
-    // ------------------------------------------------------------------
-    literal_body: {
-      rules: [on("\n", enter("literal_nl_probe")), fallback({ token: TOKENS.string })],
-    },
-
-    literal_nl_probe: {
-      mode: "probe",
-      fallback: "literal_nl_stay",
-      rules: [
-        on([...ws_chars, "\n", "\r"], goto("literal_nl_stay")),
-        fallback(goto("literal_nl_exit")),
-      ],
-    },
-
-    literal_nl_stay: {
-      rules: [match("\n", TOKENS.string, goto("literal_body"))],
-    },
-
-    literal_nl_exit: {
-      rules: [match("\n", TOKENS.string, leave())],
-    },
-
-    folded_body: {
-      rules: [on("\n", enter("folded_nl_probe")), fallback({ token: TOKENS.string })],
-    },
-
-    folded_nl_probe: {
-      mode: "probe",
-      fallback: "folded_nl_stay",
-      rules: [
-        on([...ws_chars, "\n", "\r"], goto("folded_nl_stay")),
-        fallback(goto("folded_nl_exit")),
-      ],
-    },
-
-    folded_nl_stay: {
-      rules: [match("\n", TOKENS.string, goto("folded_body"))],
-    },
-
-    folded_nl_exit: {
-      rules: [match("\n", TOKENS.string, leave())],
-    },
+    ...block_scalar_states(),
 
     // ------------------------------------------------------------------
     // double-quoted string body. yaml 1.2 short escapes (\0 \a \b \t \n
