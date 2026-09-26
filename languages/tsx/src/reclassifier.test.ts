@@ -104,3 +104,13 @@ describe("TSX tuple labels", () => {
     expect(type_of(src, "number")).toBe("type");
   });
 });
+
+describe("TSX casts in expression containers", () => {
+  it("a cast in a jsx expression container keeps its type", () => {
+    expect(type_of("const el = <p>Count: {count as Foo}</p>;", "Foo")).toBe("type");
+  });
+
+  it("an import rename is not a cast", () => {
+    expect(type_of('import { a as b } from "m";', "b")).toBe("identifier");
+  });
+});
