@@ -12,7 +12,7 @@ export const test = [
 		"match": "query"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 36,
 		"end": 43,
 		"match": "Strings"
@@ -30,7 +30,7 @@ export const test = [
 		"match": "\"A variable description\""
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 69,
 		"end": 74,
 		"match": "$text"

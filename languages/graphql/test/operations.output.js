@@ -12,7 +12,7 @@ export const test = [
 		"match": "query"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 63,
 		"end": 70,
 		"match": "GetUser"
@@ -24,7 +24,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 71,
 		"end": 74,
 		"match": "$id"
@@ -54,7 +54,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 81,
 		"end": 87,
 		"match": "$sizes"
@@ -132,7 +132,7 @@ export const test = [
 		"match": "],"
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 109,
 		"end": 121,
 		"match": "$withFriends"
@@ -510,7 +510,7 @@ export const test = [
 		"match": "mutation"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 422,
 		"end": 428,
 		"match": "Update"
@@ -522,7 +522,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 429,
 		"end": 435,
 		"match": "$input"
@@ -624,7 +624,7 @@ export const test = [
 		"match": "subscription"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 503,
 		"end": 511,
 		"match": "Messages"

@@ -6,7 +6,7 @@ export const test = [
 		"match": "query"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 6,
 		"end": 13,
 		"match": "Aliases"

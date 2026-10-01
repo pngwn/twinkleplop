@@ -65,6 +65,8 @@ describe("GraphQL grammar", () => {
     const input =
       "query query($type: type) { query(type: query, true: false) { type true null ...on type { on } } }";
     expect(of_type(input, "keyword")).toEqual(["query", "on"]);
+    expect(of_type(input, "function")).toEqual(["query"]);
+    expect(of_type(input, "parameter")).toEqual(["$type"]);
     expect(of_type(input, "type")).toEqual(["type", "type"]);
     expect(of_type(input, "constant")).toEqual(["query"]);
     expect(of_type(input, "boolean")).toEqual(["false"]);
@@ -108,8 +110,20 @@ describe("GraphQL grammar", () => {
     expect(of_type(input, "boolean")).toEqual(["true", "false"]);
     expect(of_type(input, "property")).toEqual(["type", "if", "f", "v"]);
     expect(of_type(input, "decorator")).toEqual(["@type"]);
-    expect(of_type(input, "variable")).toEqual(["$x", "$x"]);
+    expect(of_type(input, "parameter")).toEqual(["$x"]);
+    expect(of_type(input, "variable")).toEqual(["$x"]);
   });
+
+  it.each(["query", "mutation", "subscription"])(
+    "distinguishes %s parameters from references and fields",
+    (operation) => {
+      const input = `${operation} GetUser($ # parameter\n id: ID!, $show: Boolean = true) @include(if: $show) { user(id: $id) { name } }`;
+      expect(of_type(input, "function")).toEqual(["GetUser"]);
+      expect(of_type(input, "parameter")).toEqual(["$", "id", "$show"]);
+      expect(of_type(input, "variable")).toEqual(["$show", "$id"]);
+      expect(of_type(input, "property")).toEqual(["if", "user", "id", "name"]);
+    },
+  );
 
   it("allows ignored tokens between sigils and names", () => {
     const input = "{ f(x: $ , # variable\r\nquery) @\uFEFF# directive\rtype }";

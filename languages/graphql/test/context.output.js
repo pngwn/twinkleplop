@@ -6,7 +6,7 @@ export const test = [
 		"match": "query"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 6,
 		"end": 11,
 		"match": "query"
@@ -18,7 +18,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 12,
 		"end": 18,
 		"match": "$query"
@@ -42,7 +42,7 @@ export const test = [
 		"match": ","
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 26,
 		"end": 31,
 		"match": "$type"
@@ -690,7 +690,7 @@ export const test = [
 		"match": "query"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 526,
 		"end": 532,
 		"match": "Sigils"
@@ -702,7 +702,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 533,
 		"end": 534,
 		"match": "$"
@@ -714,7 +714,7 @@ export const test = [
 		"match": "# variable name can follow ignored tokens"
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 579,
 		"end": 584,
 		"match": "query"

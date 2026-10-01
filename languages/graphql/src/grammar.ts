@@ -35,12 +35,12 @@ const STRINGS = [
 const DIRECTIVE = match("@", TOKENS.decorator, enter("directive"));
 const PROPERTY = match(START, TOKENS.property, enter("property"));
 const IDENTIFIER = match(START, TOKENS.identifier, enter("identifier"));
-const VARIABLE = match("$", TOKENS.variable, enter("variable_start"));
+const PARAMETER = match("$", TOKENS.parameter, enter("parameter_start"));
 const TYPED_FIELDS = [
   ...IGNORED,
   ...STRINGS,
   DIRECTIVE,
-  VARIABLE,
+  PARAMETER,
   PROPERTY,
   match(":", TOKENS.punctuation, enter("type_reference")),
   match("=", TOKENS.operator, enter("value")),
@@ -137,7 +137,7 @@ export default define_grammar({
     operation_header: {
       rules: [
         ...IGNORED,
-        IDENTIFIER,
+        match(START, TOKENS.function, enter("operation_name")),
         DIRECTIVE,
         match("(", TOKENS.punctuation, enter("definitions")),
         match("{", TOKENS.punctuation, goto("selection")),
@@ -292,6 +292,11 @@ export default define_grammar({
     variable_start: {
       rules: [...IGNORED, match(START, TOKENS.variable, goto("variable")), fallback(leave())],
     },
+    parameter_start: {
+      rules: [...IGNORED, match(START, TOKENS.parameter, goto("parameter")), fallback(leave())],
+    },
+    operation_name: name_body(TOKENS.function),
+    parameter: name_body(TOKENS.parameter),
     identifier: name_body(TOKENS.identifier),
     property: name_body(TOKENS.property),
     constant: name_body(TOKENS.constant),

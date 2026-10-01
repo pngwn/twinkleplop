@@ -18,7 +18,7 @@ export const test = [
 		"match": "# between keyword and name"
 	},
 	{
-		"type": "identifier",
+		"type": "function",
 		"start": 70,
 		"end": 78,
 		"match": "Comments"
@@ -30,7 +30,7 @@ export const test = [
 		"match": "("
 	},
 	{
-		"type": "variable",
+		"type": "parameter",
 		"start": 79,
 		"end": 82,
 		"match": "$id"
