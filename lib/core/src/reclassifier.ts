@@ -26,6 +26,7 @@ import type {
   CompiledGrammar,
   EmbedEntry,
   EmbedInterleavedConfig,
+  EmbedLabelledConfig,
   EmbedMapping,
   FidelitySpec,
   FrameTable,
@@ -3855,6 +3856,16 @@ function normalize_embed_entry(value: LanguageFn | EmbedEntry): NormalizedEmbedE
   };
 }
 
+interface Embed {
+  host_idx: number;
+  host_end_idx: number; // exclusive
+  sub: TokenizeResult;
+  content_start: number; // input-global start of sub content
+  entry: NormalizedEmbedEntry;
+  host_start: number; // input-global start of the original host token
+  host_end: number; // input-global end of the original host token
+}
+
 export function embed_grammars(mapping: EmbedMapping): Reclassifier {
   // the mapping is fixed for the life of the reclassifier, so its keys and
   // normalized entries are built once instead of per highlight.
@@ -3894,15 +3905,6 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
 
     // first pass: scan for matches, sub-tokenize, and compute the final
     // token count so we can allocate the output Uint32Array once.
-    interface Embed {
-      host_idx: number;
-      host_end_idx: number; // exclusive
-      sub: TokenizeResult;
-      content_start: number; // input-global start of sub content
-      entry: NormalizedEmbedEntry;
-      host_start: number; // input-global start of the original host token
-      host_end: number; // input-global end of the original host token
-    }
     const embeds: Embed[] = [];
     let new_count = host_count;
     for (let i = 0; i < host_count; i++) {
@@ -3951,88 +3953,198 @@ export function embed_grammars(mapping: EmbedMapping): Reclassifier {
     }
 
     if (embeds.length === 0) return result;
+    return splice_embeds(result, embeds, new_count);
+  };
+}
 
-    // merge sub token_types into a cloned host token_types. dedup by name.
-    const token_types = host_types.slice();
-    const name_to_id = new Map<string, number>();
-    for (let i = 0; i < token_types.length; i++) name_to_id.set(token_types[i], i);
-    const ensure_id = (name: string): number => {
-      let id = name_to_id.get(name);
-      if (id === undefined) {
-        id = token_types.length;
-        token_types.push(name);
-        name_to_id.set(name, id);
+// new_count is the token count after every replacement
+function splice_embeds(result: TokenizeResult, embeds: Embed[], new_count: number): TokenizeResult {
+  const host_tokens = result.tokens;
+  const host_types = result.token_types;
+  const host_count = host_tokens.length / 3;
+
+  // merge sub token_types into a cloned host token_types. dedup by name.
+  const token_types = host_types.slice();
+  const name_to_id = new Map<string, number>();
+  for (let i = 0; i < token_types.length; i++) name_to_id.set(token_types[i], i);
+  const ensure_id = (name: string): number => {
+    let id = name_to_id.get(name);
+    if (id === undefined) {
+      id = token_types.length;
+      token_types.push(name);
+      name_to_id.set(name, id);
+    }
+    return id;
+  };
+
+  // keyed by content since every sub pipeline call returns a freshly sliced
+  // vocabulary whose names repeat embed to embed
+  const remap_keys: string[][] = [];
+  const remap_vals: Uint32Array[] = [];
+  const remap_for = (sub_types: string[]): Uint32Array => {
+    outer: for (let c = remap_keys.length - 1; c >= 0; c--) {
+      const key = remap_keys[c];
+      if (key.length !== sub_types.length) continue;
+      for (let k = 0; k < key.length; k++) {
+        if (key[k] !== sub_types[k]) continue outer;
       }
-      return id;
-    };
+      return remap_vals[c];
+    }
+    const remap = new Uint32Array(sub_types.length);
+    for (let i = 0; i < sub_types.length; i++) {
+      remap[i] = ensure_id(sub_types[i]);
+    }
+    remap_keys.push(sub_types);
+    remap_vals.push(remap);
+    return remap;
+  };
 
-    // keyed by content since every sub pipeline call returns a freshly sliced
-    // vocabulary whose names repeat embed to embed
-    const remap_keys: string[][] = [];
-    const remap_vals: Uint32Array[] = [];
-    const remap_for = (sub_types: string[]): Uint32Array => {
-      outer: for (let c = remap_keys.length - 1; c >= 0; c--) {
-        const key = remap_keys[c];
-        if (key.length !== sub_types.length) continue;
-        for (let k = 0; k < key.length; k++) {
-          if (key[k] !== sub_types[k]) continue outer;
-        }
-        return remap_vals[c];
-      }
-      const remap = new Uint32Array(sub_types.length);
-      for (let i = 0; i < sub_types.length; i++) {
-        remap[i] = ensure_id(sub_types[i]);
-      }
-      remap_keys.push(sub_types);
-      remap_vals.push(remap);
-      return remap;
-    };
+  // second pass: write the merged token stream.
+  const tokens = new Uint32Array(new_count * 3);
+  let write_idx = 0;
+  let embed_idx = 0;
+  for (let i = 0; i < host_count; i++) {
+    if (embed_idx < embeds.length && embeds[embed_idx].host_idx === i) {
+      const { sub, content_start, entry, host_start, host_end, host_end_idx } = embeds[embed_idx++];
+      i = host_end_idx - 1;
+      const remap = remap_for(sub.token_types);
+      const wrap_id = entry.wrap_token !== null ? ensure_id(entry.wrap_token) : -1;
 
-    // second pass: write the merged token stream.
-    const tokens = new Uint32Array(new_count * 3);
-    let write_idx = 0;
-    let embed_idx = 0;
-    for (let i = 0; i < host_count; i++) {
-      if (embed_idx < embeds.length && embeds[embed_idx].host_idx === i) {
-        const { sub, content_start, entry, host_start, host_end, host_end_idx } =
-          embeds[embed_idx++];
-        i = host_end_idx - 1;
-        const remap = remap_for(sub.token_types);
-        const wrap_id = entry.wrap_token !== null ? ensure_id(entry.wrap_token) : -1;
-
-        // leading delimiter wrapper (e.g. opening backtick).
-        if (wrap_id !== -1 && entry.trim_start > 0) {
-          tokens[write_idx * 3] = wrap_id;
-          tokens[write_idx * 3 + 1] = host_start;
-          tokens[write_idx * 3 + 2] = content_start;
-          write_idx++;
-        }
-        // sub tokens with positions offset to input-global coords.
-        const sub_count = sub.tokens.length / 3;
-        for (let j = 0; j < sub_count; j++) {
-          const base = j * 3;
-          tokens[write_idx * 3] = remap[sub.tokens[base]];
-          tokens[write_idx * 3 + 1] = sub.tokens[base + 1] + content_start;
-          tokens[write_idx * 3 + 2] = sub.tokens[base + 2] + content_start;
-          write_idx++;
-        }
-        // trailing delimiter wrapper (e.g. closing backtick).
-        if (wrap_id !== -1 && entry.trim_end > 0) {
-          tokens[write_idx * 3] = wrap_id;
-          tokens[write_idx * 3 + 1] = host_end - entry.trim_end;
-          tokens[write_idx * 3 + 2] = host_end;
-          write_idx++;
-        }
-      } else {
-        const base = i * 3;
-        tokens[write_idx * 3] = host_tokens[base];
-        tokens[write_idx * 3 + 1] = host_tokens[base + 1];
-        tokens[write_idx * 3 + 2] = host_tokens[base + 2];
+      // leading delimiter wrapper (e.g. opening backtick).
+      if (wrap_id !== -1 && entry.trim_start > 0) {
+        tokens[write_idx * 3] = wrap_id;
+        tokens[write_idx * 3 + 1] = host_start;
+        tokens[write_idx * 3 + 2] = content_start;
         write_idx++;
       }
+      // sub tokens with positions offset to input-global coords.
+      const sub_count = sub.tokens.length / 3;
+      for (let j = 0; j < sub_count; j++) {
+        const base = j * 3;
+        tokens[write_idx * 3] = remap[sub.tokens[base]];
+        tokens[write_idx * 3 + 1] = sub.tokens[base + 1] + content_start;
+        tokens[write_idx * 3 + 2] = sub.tokens[base + 2] + content_start;
+        write_idx++;
+      }
+      // trailing delimiter wrapper (e.g. closing backtick).
+      if (wrap_id !== -1 && entry.trim_end > 0) {
+        tokens[write_idx * 3] = wrap_id;
+        tokens[write_idx * 3 + 1] = host_end - entry.trim_end;
+        tokens[write_idx * 3 + 2] = host_end;
+        write_idx++;
+      }
+    } else {
+      const base = i * 3;
+      tokens[write_idx * 3] = host_tokens[base];
+      tokens[write_idx * 3 + 1] = host_tokens[base + 1];
+      tokens[write_idx * 3 + 2] = host_tokens[base + 2];
+      write_idx++;
+    }
+  }
+
+  return { tokens, token_types };
+}
+
+// ---------------------------------------------------------------------------
+// embed_labelled
+// ---------------------------------------------------------------------------
+//
+// a markdown fence names its language in the info string, so every fence body has one type
+// line breaks at the body edges stay host gaps so the language sees whole lines
+
+const CHAR_TAB = 9;
+const CHAR_LF = 10;
+const CHAR_CR = 13;
+const CHAR_SPACE = 32;
+
+function is_label_space(c: number): boolean {
+  return c === CHAR_SPACE || c === CHAR_TAB || c === CHAR_CR || c === CHAR_LF;
+}
+
+function first_word(input: string, start: number, end: number): string {
+  while (start < end && is_label_space(input.charCodeAt(start))) start++;
+  let stop = start;
+  while (stop < end && !is_label_space(input.charCodeAt(stop))) stop++;
+  return input.slice(start, stop);
+}
+
+function leading_break(input: string, start: number, end: number): number {
+  if (start >= end) return 0;
+  const c = input.charCodeAt(start);
+  if (c === CHAR_CR) return start + 1 < end && input.charCodeAt(start + 1) === CHAR_LF ? 2 : 1;
+  return c === CHAR_LF ? 1 : 0;
+}
+
+function trailing_break(input: string, start: number, end: number): number {
+  if (start >= end) return 0;
+  const c = input.charCodeAt(end - 1);
+  if (c === CHAR_LF) return end - 1 > start && input.charCodeAt(end - 2) === CHAR_CR ? 2 : 1;
+  return c === CHAR_CR ? 1 : 0;
+}
+
+export function embed_labelled(config: EmbedLabelledConfig): Reclassifier {
+  // a Map so a fence named constructor never reaches Object.prototype
+  const languages = new Map(Object.entries(config.languages));
+  const ids_cache = new WeakMap<string[], { label: number; body: number }>();
+
+  return (input: string, result: TokenizeResult): TokenizeResult => {
+    const host_tokens = result.tokens;
+    const host_types = result.token_types;
+    const host_count = host_tokens.length / 3;
+
+    let ids = ids_cache.get(host_types);
+    if (ids === undefined) {
+      ids = { label: host_types.indexOf(config.label), body: host_types.indexOf(config.body) };
+      ids_cache.set(host_types, ids);
+    }
+    const label_id = ids.label;
+    const body_id = ids.body;
+    if (label_id === -1 || body_id === -1) return result;
+
+    const embeds: Embed[] = [];
+    let new_count = host_count;
+    for (let i = 0; i < host_count; i++) {
+      if (host_tokens[i * 3] !== label_id) continue;
+      const label_start = host_tokens[i * 3 + 1];
+      let label_end = host_tokens[i * 3 + 2];
+      while (i + 1 < host_count && host_tokens[(i + 1) * 3] === label_id) {
+        i++;
+        label_end = host_tokens[i * 3 + 2];
+      }
+      if (i + 1 >= host_count || host_tokens[(i + 1) * 3] !== body_id) continue;
+      const language = languages.get(first_word(input, label_start, label_end));
+      if (language === undefined) continue;
+
+      const host_idx = ++i;
+      const host_start = host_tokens[i * 3 + 1];
+      let host_end = host_tokens[i * 3 + 2];
+      while (
+        i + 1 < host_count &&
+        host_tokens[(i + 1) * 3] === body_id &&
+        host_tokens[(i + 1) * 3 + 1] === host_end
+      ) {
+        i++;
+        host_end = host_tokens[i * 3 + 2];
+      }
+      const content_start = host_start + leading_break(input, host_start, host_end);
+      const content_end = host_end - trailing_break(input, content_start, host_end);
+      if (content_start === content_end) continue;
+
+      const sub = language(input.slice(content_start, content_end));
+      embeds.push({
+        host_idx,
+        host_end_idx: i + 1,
+        sub,
+        content_start,
+        entry: { language, trim_start: 0, trim_end: 0, wrap_token: null },
+        host_start,
+        host_end,
+      });
+      new_count = new_count - (i + 1 - host_idx) + sub.tokens.length / 3;
     }
 
-    return { tokens, token_types };
+    if (embeds.length === 0) return result;
+    return splice_embeds(result, embeds, new_count);
   };
 }
 
