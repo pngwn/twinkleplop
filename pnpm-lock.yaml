@@ -63,6 +63,12 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/dockerfile:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/dotenv:
     dependencies:
       '@twinkleplop/core':
@@ -256,6 +262,9 @@ importers:
       '@twinkleplop/diff-basic':
         specifier: workspace:*
         version: link:../../languages/diff-basic
+      '@twinkleplop/dockerfile':
+        specifier: workspace:*
+        version: link:../../languages/dockerfile
       '@twinkleplop/dotenv':
         specifier: workspace:*
         version: link:../../languages/dotenv
