@@ -69,7 +69,7 @@ match("@media", "at_rule"); // "at_rule" is a custom token type
 
 ## Rule factories
 
-A rule object has at most one matcher (`match` / `range` / `match_within` / `any`) plus optional actions (`token`, `state`, `exit`, `boundary`). The helpers below build valid rule objects for you.
+A rule object has at most one matcher (`match` / `range` / `match_within` / `match_delimited` / `any`) plus optional actions (`token`, `state`, `exit`, `boundary`). The helpers below build valid rule objects for you.
 
 ### `match(patterns, token, transition?)`
 
@@ -334,3 +334,32 @@ const keywords = (regexDest, divDest) => [
 ```
 
 Custom helpers can take arguments and return rules built from the standard helpers.
+
+### Captured delimiters
+
+Use `match_delimited` for opaque spans whose closing sentinel repeats text from
+an opener, such as C++ raw strings. The pattern is
+`start + delimiter + open + body + close + delimiter + end`:
+
+```js
+{
+  match_delimited: {
+    start: 'R"',
+    open: "(",
+    close: ")",
+    end: '"',
+    max_length: 16,
+    exclude: "()\\",
+  },
+  token: TOKENS.string,
+}
+```
+
+The delimiter may be empty, otherwise it contains printable ASCII excluding
+spaces and the characters in `exclude`. `max_length` bounds its length. An
+invalid opener does not match; a valid opener without a closing sentinel emits
+through EOF. The whole span is one match with normal token and state-transition
+behavior. Bodies do not interpret escapes or nested syntax. `start` must contain
+at least two characters and begin with ASCII; `open`, `close`, and `end` must be
+nonempty. This matcher cannot be combined with another matcher or used in a
+probe state.

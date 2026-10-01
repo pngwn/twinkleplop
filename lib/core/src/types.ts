@@ -18,6 +18,7 @@ export type CharacterClassSymbol = symbol;
 
 // Grammar types
 export interface GrammarRule {
+  match_delimited?: DelimitedMatch;
   match?: string | string[] | CharacterClassSymbol;
   range?: [string, string] | [number, number] | [string, string][] | [number, number][];
   match_within?: {
@@ -39,6 +40,16 @@ export interface GrammarRule {
   seal?: boolean;
 }
 
+export interface DelimitedMatch {
+  start: string;
+  open: string;
+  close: string;
+  end: string;
+  max_length: number;
+  // delimiters contain printable ascii excluding spaces and these characters
+  exclude: string;
+}
+
 export interface GrammarState {
   rules?: GrammarRule[];
   mode?: "probe" | "tokenise";
@@ -52,6 +63,7 @@ export interface Grammar {
 
 // Compiled grammar types
 export interface PatternInfo {
+  delimited?: DelimitedMatch;
   // Using typed array for faster indexed access in hot loop
   codes: Uint16Array;
   length: number;
