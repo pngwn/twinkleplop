@@ -151,6 +151,12 @@ importers:
         specifier: workspace:*
         version: link:../yaml
 
+  languages/powershell:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/python:
     dependencies:
       '@twinkleplop/core':
@@ -283,6 +289,9 @@ importers:
       '@twinkleplop/markdown':
         specifier: workspace:*
         version: link:../../languages/markdown
+      '@twinkleplop/powershell':
+        specifier: workspace:*
+        version: link:../../languages/powershell
       '@twinkleplop/python':
         specifier: workspace:*
         version: link:../../languages/python
