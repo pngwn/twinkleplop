@@ -4786,6 +4786,7 @@ export function create_language(
 ): LanguageFactory {
   return (options?: LanguageOptions): LanguageFn => {
     const run = reclassify(select_pipeline(pipeline, options?.fidelity));
+    const clear = build_clear(grammar.token_types, pipeline, options?.fidelity);
     const downgrade = build_downgrade(grammar.token_types, options?.fidelity);
     // annotation extraction is opt-in. when options.annotation is undefined
     // the extractor is null and the LanguageFn closure is identical to
@@ -4796,7 +4797,12 @@ export function create_language(
       ? build_annotation_extractor(options.annotation, grammar.token_types)
       : null;
     return (input: string) => {
-      const result = run(input, tokenize(input, grammar));
+      const base = tokenize(input, grammar);
+      if (clear !== null) {
+        apply_downgrade(base.tokens, clear.remap);
+        base.token_types = clear.token_types;
+      }
+      const result = run(input, base);
       if (downgrade !== null) apply_downgrade(result.tokens, downgrade);
       if (annotation_extractor !== null) {
         const overlays = annotation_extractor(input, result);
@@ -4850,6 +4856,33 @@ function build_downgrade(
     has_any = true;
   }
   return has_any ? remap : null;
+}
+
+// runs before the pipeline so a pass never composes a cleared marker into its output
+function build_clear(
+  token_types: string[],
+  pipeline: LanguagePipeline,
+  fidelity: FidelitySpec | undefined,
+): { remap: Int32Array; token_types: string[] } | null {
+  if (fidelity === undefined || fidelity === "high") return null;
+  const allow = fidelity === "low" ? null : new Set<string>(fidelity as readonly string[]);
+  const remap = new Int32Array(token_types.length);
+  remap.fill(-1);
+  const cleared_id = token_types.length;
+  let has_any = false;
+  for (const entry of pipeline) {
+    if (!is_tagged(entry) || entry.clears === undefined) continue;
+    for (const [tag, types] of Object.entries(entry.clears)) {
+      if (allow !== null && allow.has(tag)) continue;
+      for (const name of types) {
+        const id = token_types.indexOf(name);
+        if (id < 0) continue;
+        remap[id] = cleared_id;
+        has_any = true;
+      }
+    }
+  }
+  return has_any ? { remap, token_types: [...token_types, ""] } : null;
 }
 
 function apply_downgrade(tokens: Uint32Array, remap: Int32Array): void {

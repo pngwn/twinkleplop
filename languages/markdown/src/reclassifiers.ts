@@ -25,20 +25,31 @@
 import { compound_compose, tag } from "@twinkleplop/core";
 import type { LanguagePipeline, Reclassifier } from "@twinkleplop/core";
 
+const STYLES = [
+  { open_type: "bold_open", close_type: "bold_close", style_name: "bold" },
+  { open_type: "italic_open", close_type: "italic_close", style_name: "italic" },
+  { open_type: "strike_open", close_type: "strike_close", style_name: "strike" },
+  { open_type: "code_open", close_type: "code_close", style_name: "code" },
+  { open_type: "link_text_open", close_type: "link_text_close", style_name: "link_text" },
+  { open_type: "autolink_open", close_type: "autolink_close", style_name: "autolink" },
+];
+
 export const compound_styles: Reclassifier = compound_compose({
   auto_pop_on_newline: true,
   join_separator: " ",
   dedup_against_base: true,
-  styles: [
-    { open_type: "bold_open", close_type: "bold_close", style_name: "bold" },
-    { open_type: "italic_open", close_type: "italic_close", style_name: "italic" },
-    { open_type: "strike_open", close_type: "strike_close", style_name: "strike" },
-    { open_type: "code_open", close_type: "code_close", style_name: "code" },
-    { open_type: "link_text_open", close_type: "link_text_close", style_name: "link_text" },
-    { open_type: "autolink_open", close_type: "autolink_close", style_name: "autolink" },
-  ],
+  styles: STYLES,
 });
 
+// the grammar emits every style itself, so skipping the pass would not unstyle an excluded one
 export const reclassifiers: LanguagePipeline = [
-  tag(compound_styles, ["bold", "italic", "strike", "code", "link_text", "autolink"]),
+  {
+    ...tag(
+      compound_styles,
+      STYLES.map((s) => s.style_name),
+    ),
+    clears: Object.fromEntries(
+      STYLES.map((s) => [s.style_name, [s.open_type, s.style_name, s.close_type]]),
+    ),
+  },
 ];

@@ -62,6 +62,8 @@ export function compound_compose(config: CompoundComposeConfig): Reclassifier {
 
     const compose_with = (stack: string[], base: string): string => {
       if (stack.length === 0) return base;
+      // a base cleared by fidelity adds nothing to the styles around it
+      if (base === "") return stack.join(config.join_separator);
       if (config.dedup_against_base && stack.indexOf(base) !== -1) {
         return stack.join(config.join_separator);
       }
