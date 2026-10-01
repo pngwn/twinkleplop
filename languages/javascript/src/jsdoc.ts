@@ -62,8 +62,6 @@ const TYPE_PUNCTUATION = [
   "*",
   ":",
   ";",
-  "'",
-  '"',
 ];
 
 // a doc-comment line opens with indentation and an optional `*` gutter;
@@ -160,11 +158,38 @@ export default define_grammar({
         match("{", TOKENS.punctuation, enter("type_expr")),
         // `{@link Foo}` — an inline tag rather than a type.
         match("@", TOKENS.keyword, goto("inline_tag")),
+        // quoted literals are opaque so an @ or / inside is not type syntax
+        match("'", TOKENS.string, enter("type_string_single")),
+        match('"', TOKENS.string, enter("type_string_double")),
         match(["_", "$", ".", ALNUM], TOKENS.type),
         match(TYPE_PUNCTUATION, TOKENS.punctuation),
         GUTTER,
         fallback({ token: TOKENS.comment }),
       ],
+    },
+
+    // a newline ends the string so a stray quote cannot swallow the comment
+    type_string_single: {
+      rules: [
+        match("\\", TOKENS.string, enter("type_string_escape")),
+        match("'", TOKENS.string, leave()),
+        match("\n", TOKENS.comment, leave()),
+        fallback({ token: TOKENS.string }),
+      ],
+    },
+
+    type_string_double: {
+      rules: [
+        match("\\", TOKENS.string, enter("type_string_escape")),
+        match('"', TOKENS.string, leave()),
+        match("\n", TOKENS.comment, leave()),
+        fallback({ token: TOKENS.string }),
+      ],
+    },
+
+    // the escaped char is emitted alone so it coalesces with the string body
+    type_string_escape: {
+      rules: [on("\n", leave()), fallback({ token: TOKENS.string, exit: true })],
     },
 
     // the word of an inline `{@link …}` tag; the rest of the braces are
