@@ -2,6 +2,12 @@
   "name": "site",
   "version": "0.0.1",
   "private": true,
+  "homepage": "https://twinkleplop.pngwn.at",
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  },
   "type": "module",
   "scripts": {
     "build": "vite build && node scripts/emit_markdown.mjs",
@@ -24,6 +30,7 @@
     "@twinkleplop/diff-basic": "workspace:*",
     "@twinkleplop/dotenv": "workspace:*",
     "@twinkleplop/go": "workspace:*",
+    "@twinkleplop/graphql": "workspace:*",
     "@twinkleplop/html": "workspace:*",
     "@twinkleplop/http": "workspace:*",
     "@twinkleplop/ini": "workspace:*",
@@ -80,11 +87,5 @@
     "unified": "^11.0.5",
     "vite": "^8.0.10",
     "wrangler": "^4.13.2"
-  },
-  "author": {
-    "name": "pngwn",
-    "email": "hello@pngwn.io",
-    "url": "https://pngwn.at"
-  },
-  "homepage": "https://twinkleplop.pngwn.at"
+  }
 }

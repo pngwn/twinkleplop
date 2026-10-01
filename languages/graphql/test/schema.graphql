@@ -1,0 +1,30 @@
+"""The public API, including descriptions and extensions."""
+schema @service(name: "public") {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+scalar DateTime @specifiedBy(url: "https://example.com/date")
+interface Node { id: ID! }
+interface Resource implements Node { id: ID! url: String }
+type User implements & Node & Resource @key(fields: "id") {
+  "Stable identifier"
+  id: ID!
+  url: String
+  friends(first: Int = 10, filter: Filter = {roles: [ADMIN, user], enabled: true}): [User!]!
+  oldName: String @deprecated(reason: "Use name")
+}
+union SearchResult = | User | Query
+enum Role { ADMIN user type @deprecated }
+input Filter @oneOf { roles: [Role!] enabled: Boolean }
+type Query { user(id: ID!): User }
+type Mutation { updateUser(input: Filter!): User }
+type Subscription { messageAdded: String }
+directive @audit(level: Role = ADMIN) repeatable on FIELD | OBJECT | QUERY
+extend schema @service(name: "extra")
+extend scalar DateTime @specifiedBy(url: "https://example.com/new")
+extend type User implements Node @audit { age: Int }
+extend interface Node { createdAt: DateTime }
+extend union SearchResult = Mutation
+extend enum Role { GUEST }
+extend input Filter { limit: Int }

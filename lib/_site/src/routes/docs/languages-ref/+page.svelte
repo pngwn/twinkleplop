@@ -31,6 +31,7 @@ const md = language({
 		{ name: "diff-basic", notes: "Minimal line-level overlay: +/- prefixes, ! changed, @@ hunk headers. Built to compose with another grammar, so file and git headers are deliberately omitted." },
 		{ name: "dotenv", notes: ".env files as read by dotenv, godotenv and Docker Compose: export prefixes, quoted values, $VAR and ${VAR:-default} interpolation, $( ) commands. Whole-value numbers and booleans promoted." },
 		{ name: "go", notes: "Predeclared types and builtins at lex time; UPPER_SNAKE constants promoted after." },
+		{ name: "graphql", notes: "GraphQL executable documents and schemas (.graphql, .gql; fences graphql and gql): contextual keywords, fragments, directives, nested values and types, block strings and descriptions." },
 		{ name: "html", notes: "Embeds css and javascript in style and script elements." },
 		{ name: "http", notes: "Raw HTTP/1.x messages and REST Client / JetBrains request files: headers, {{variables}}, ### separators. Embeds json and html bodies, javascript scripts and bash curl requests." },
 		{ name: "ini", notes: "One reading across php.ini, configparser, git config, systemd, .desktop and .editorconfig: inline comments, quoted git subsections, glob headers, indented continuation lines." },

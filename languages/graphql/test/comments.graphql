@@ -1,0 +1,13 @@
+# """ $ignored @ignored ...ignored
+query # between keyword and name
+  Comments($id # before colon
+    : ID! # after type
+  ) {
+  node(id: $id) { # after selection opener
+    # Comment before the spread
+    ... # Comment before type condition
+    on # Comment before type name
+    User { id }
+  }
+}
+# Final comment with no semantic effect

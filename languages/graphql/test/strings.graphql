@@ -1,0 +1,17 @@
+"Description of an operation"
+query Strings("A variable description" $text: String = "") {
+  echo(input: {
+    plain: "Quotes: \" and slash: \/ and backslash: \\"
+    escapes: "\b\f\n\r\t\u0041\uD83D\uDE00\u{1F600}"
+    unicode: "café 日本語 😀"
+    syntax: "# comment $variable @directive { } ${noInterpolation}"
+    block: """
+      Quotes " and "" are literal.
+      Backslashes \n \u{41} remain raw.
+      Escaped delimiter: \""" and still inside.
+      Two backslashes before a delimiter: \\""" still inside.
+      # not a comment
+    """
+    emptyBlock: """"""
+  })
+}

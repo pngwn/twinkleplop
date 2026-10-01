@@ -75,6 +75,12 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/graphql:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/html:
     dependencies:
       '@twinkleplop/core':
@@ -262,6 +268,9 @@ importers:
       '@twinkleplop/go':
         specifier: workspace:*
         version: link:../../languages/go
+      '@twinkleplop/graphql':
+        specifier: workspace:*
+        version: link:../../languages/graphql
       '@twinkleplop/html':
         specifier: workspace:*
         version: link:../../languages/html

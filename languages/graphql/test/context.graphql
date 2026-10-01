@@ -1,0 +1,16 @@
+query query($query: type, $type: [[lower!]!]! = [[query]]) @type {
+  query: mutation(type: enum, input: {true: false, null: null, query: type}) {
+    type interface implements union enum input extend directive repeatable on
+    true false null queryName typeName trueValue
+    ...query
+    ...on type { on }
+  }
+}
+fragment query on type { type }
+type type { query: lower true: Boolean null: String }
+scalar lower
+enum query { query mutation subscription type on }
+directive @type(type: type = query) on FIELD_DEFINITION
+query Sigils($ # variable name can follow ignored tokens
+  query: ID) { field(value: $ , query) @ # directive name too
+  type }
