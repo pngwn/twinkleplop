@@ -45,6 +45,21 @@ importers:
         specifier: workspace:*
         version: link:../../lib/core
 
+  languages/c:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
+  languages/cpp:
+    dependencies:
+      '@twinkleplop/c':
+        specifier: workspace:*
+        version: link:../c
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+
   languages/css:
     dependencies:
       '@twinkleplop/core':
@@ -244,9 +259,15 @@ importers:
       '@twinkleplop/bash':
         specifier: workspace:*
         version: link:../../languages/bash
+      '@twinkleplop/c':
+        specifier: workspace:*
+        version: link:../../languages/c
       '@twinkleplop/core':
         specifier: workspace:*
         version: link:../core
+      '@twinkleplop/cpp':
+        specifier: workspace:*
+        version: link:../../languages/cpp
       '@twinkleplop/css':
         specifier: workspace:*
         version: link:../../languages/css

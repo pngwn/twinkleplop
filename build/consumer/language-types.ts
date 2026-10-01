@@ -4,6 +4,8 @@
 import { language as typescript } from "@twinkleplop/typescript";
 import { language as javascript } from "@twinkleplop/javascript";
 import { language as html } from "@twinkleplop/html";
+import { language as c } from "@twinkleplop/c";
+import { language as cpp } from "@twinkleplop/cpp";
 import { language as css } from "@twinkleplop/css";
 import { language as rust } from "@twinkleplop/rust";
 import { language as diff } from "@twinkleplop/diff";
@@ -18,6 +20,8 @@ export const factories: Array<() => (code: string) => string> = [
   javascript,
   html,
   css,
+  c,
+  cpp,
   rust,
   diff,
   tsx,
