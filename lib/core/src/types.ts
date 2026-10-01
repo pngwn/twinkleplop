@@ -577,6 +577,8 @@ export interface TaggedReclassifier {
   reclassifier: Reclassifier;
   produces: string[];
   layer: ReclassifierLayer;
+  // grammar types each produces tag owns, set to the empty type when fidelity excludes the tag
+  clears?: Record<string, readonly string[]>;
 }
 
 export type ReclassifierEntry = Reclassifier | TaggedReclassifier;

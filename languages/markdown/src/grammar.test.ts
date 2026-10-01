@@ -107,3 +107,58 @@ describe("stack balance", () => {
     ]);
   });
 });
+
+describe("fidelity", () => {
+  const input = "**a _b_ c** `d` [e](f)\n";
+  const types = (fidelity: "low" | string[]) => {
+    const result = make_language({ fidelity })(input);
+    const out: [string, string][] = [];
+    for (let i = 0; i < result.tokens.length; i += 3) {
+      const type = result.token_types[result.tokens[i]];
+      out.push([type, input.slice(result.tokens[i + 1], result.tokens[i + 2])]);
+    }
+    return out;
+  };
+
+  it("clears a style left out of the list and keeps the styles inside it", () => {
+    expect(types(["italic", "code", "link_text"])).toEqual([
+      ["", "**"],
+      ["", "a "],
+      ["italic", "_"],
+      ["italic", "b"],
+      ["italic", "_"],
+      ["", " c"],
+      ["", "**"],
+      ["code", "`"],
+      ["code", "d"],
+      ["code", "`"],
+      ["link_text", "["],
+      ["link_text", "e"],
+      ["link_text", "]"],
+      ["url_link", "("],
+      ["url", "f"],
+      ["url_link", ")"],
+    ]);
+  });
+
+  it("drops a cleared style from the composition around it", () => {
+    expect(types(["bold"]).slice(0, 7)).toEqual([
+      ["bold", "**"],
+      ["bold", "a "],
+      ["bold", "_"],
+      ["bold", "b"],
+      ["bold", "_"],
+      ["bold", " c"],
+      ["bold", "**"],
+    ]);
+  });
+
+  it("clears every style at low", () => {
+    const styled = types("low").filter(([type]) => type !== "");
+    expect(styled).toEqual([
+      ["url_link", "("],
+      ["url", "f"],
+      ["url_link", ")"],
+    ]);
+  });
+});
