@@ -16,6 +16,14 @@ tags: [demo, showcase]
 const greet = (name) => `hi, ${name}`;
 ```
 
+```css
+.plop:hover { color: hotpink; }
+```
+
+```bash
+pnpm add @twinkleplop/markdown
+```
+
     // indented code block
     const x = 1 + 2;
 

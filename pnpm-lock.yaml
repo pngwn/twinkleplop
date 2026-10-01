@@ -140,6 +140,16 @@ importers:
       '@twinkleplop/core':
         specifier: workspace:*
         version: link:../../lib/core
+    devDependencies:
+      '@twinkleplop/css':
+        specifier: workspace:*
+        version: link:../css
+      '@twinkleplop/javascript':
+        specifier: workspace:*
+        version: link:../javascript
+      '@twinkleplop/yaml':
+        specifier: workspace:*
+        version: link:../yaml
 
   languages/python:
     dependencies:

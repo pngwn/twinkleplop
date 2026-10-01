@@ -9,6 +9,7 @@ export {
   disassemble_rules,
   embed_grammars,
   embed_interleaved,
+  embed_labelled,
   precedence_for,
   reclassify,
   rewrite_types,

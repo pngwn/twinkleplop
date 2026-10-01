@@ -1138,6 +1138,13 @@ export interface EmbedMapping {
   [host_type_name: string]: LanguageFn | EmbedEntry;
 }
 
+// embeds the body run after a label run with the language its first word names, unknown words stay host tokens
+export interface EmbedLabelledConfig {
+  label: string;
+  body: string;
+  languages: Record<string, LanguageFn>;
+}
+
 // ---------------------------------------------------------------------------
 // embed_interleaved — generic discontinuous embedding
 // ---------------------------------------------------------------------------

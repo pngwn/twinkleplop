@@ -12,6 +12,16 @@
 
 const ts = language();`;
 
+	const markdown_usage = twoslash`import { language } from "@twinkleplop/markdown";
+import { tokenize as js } from "@twinkleplop/javascript";
+import { tokenize as yaml } from "@twinkleplop/yaml";
+
+const javascript = js();
+const md = language({
+  languages: { js: javascript, javascript },
+  front_matter: yaml(),
+});`;
+
 	type row = { name: string; notes: string };
 
 	const languages: row[] = [
@@ -27,7 +37,7 @@ const ts = language();`;
 		{ name: "javascript", notes: "Regex-vs-division disambiguation, template literals, tagged-template embedding of html and css." },
 		{ name: "json", notes: "RFC 8259. No JSON5 extensions: no comments, trailing commas or single quotes." },
 		{ name: "jsonc", notes: "JSON with Comments: json plus // and /* */ comments, as in tsconfig and VS Code settings. Object keys promoted to property." },
-		{ name: "markdown", notes: "CommonMark constructs, front matter, fenced code containers." },
+		{ name: "markdown", notes: "CommonMark constructs, front matter, fenced code containers. Embeds the languages you pass in fences and front matter." },
 		{ name: "python", notes: "F-strings, soft keywords, decorators." },
 		{ name: "rust", notes: "Lifetimes, attributes, generics disambiguation, macros." },
 		{ name: "shellsession", notes: "Terminal transcripts: prompts, prefixes and output. Embeds bash, joining continuation lines into one command." },
@@ -111,8 +121,18 @@ const ts = language();`;
 					{ kind: "type", value: "typescript" },
 					{ kind: "desc", value: `reuses the typescript pipeline verbatim` },
 				],
+				[
+					{ kind: "name", value: "markdown" },
+					{ kind: "type", value: "the languages you pass" },
+					{ kind: "desc", value: `fenced code blocks and front matter` },
+				],
 			]}
 		/>
+		<p>
+			Markdown depends on no language. Pass the tokenizers it should use, keyed by the fence's
+			language, and one for front matter:
+		</p>
+		<CodeBlock fname="markdown.ts" html={markdown_usage} />
 		<p>
 			Embedded languages are highlighted at every
 			<a href="/docs/fidelity">fidelity</a> setting.
