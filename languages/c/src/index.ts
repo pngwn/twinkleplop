@@ -14,5 +14,6 @@ export function language(options?: LanguageOptions) {
 }
 
 export { raw_grammar, reclassifiers };
+export { create_c_reclassifiers } from "./reclassifiers.js";
 
 export { shared_states, code_rules } from "./shared.js";
