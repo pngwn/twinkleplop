@@ -96,6 +96,47 @@ describe("jsdoc type expressions", () => {
   });
 });
 
+describe("jsdoc quoted literals", () => {
+  it("a scoped import path is one string", () => {
+    for (const q of ["'", '"']) {
+      const src = `/** @type {import(${q}@sveltejs/kit${q}).Adapter} */`;
+      expect(pick(src, `${q}@sveltejs/kit${q}`)).toBe("string");
+      expect(types_in(src)).toEqual(["import", ".Adapter"]);
+    }
+  });
+
+  it("an unscoped import path is one string", () => {
+    const src = "/** @type {import('svelte/kit').Adapter} */";
+    expect(pick(src, "'svelte/kit'")).toBe("string");
+  });
+
+  it("jsdoc-significant characters inside quotes are not type syntax", () => {
+    const src = `/** @param {"}" | '@link {' | "a*b"} x */`;
+    const tokens = tokens_of(src);
+    expect(tokens.filter((t) => t.type === "string").map((t) => t.value)).toEqual([
+      '"}"',
+      "'@link {'",
+      '"a*b"',
+    ]);
+    expect(tokens.some((t) => t.type === "keyword" && t.value !== "@param")).toBe(false);
+    expect(pick(src, "x")).toBe("parameter");
+  });
+
+  it("an escaped quote does not end the string", () => {
+    expect(pick(String.raw`/** @type {'it\'s'} */`, String.raw`'it\'s'`)).toBe("string");
+    expect(pick(String.raw`/** @type {"\\"} x */`, String.raw`"\\"`)).toBe("string");
+  });
+
+  it("an unterminated quote ends at the line", () => {
+    const src = "/**\n * @type {'oops}\n * more {T}\n */";
+    const strings = tokens_of(src).filter((t) => t.type === "string");
+    expect(strings.map((t) => t.value).join("")).toBe("'oops}");
+    // the closing brace is inside the string so the type expression stays open
+    expect(types_in(src)).toEqual(["more", "T"]);
+    assert_contiguous(src);
+  });
+});
+
 describe("jsdoc names", () => {
   it("`@param {T} name` tags the name as a parameter", () => {
     expect(pick("/** @param {Config} base */", "base")).toBe("parameter");
