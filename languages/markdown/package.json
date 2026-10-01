@@ -24,6 +24,11 @@
   "dependencies": {
     "@twinkleplop/core": "workspace:*"
   },
+  "devDependencies": {
+    "@twinkleplop/css": "workspace:*",
+    "@twinkleplop/javascript": "workspace:*",
+    "@twinkleplop/yaml": "workspace:*"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/pngwn/twinkleplop",
