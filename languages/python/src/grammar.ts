@@ -274,7 +274,7 @@ const NON_ASCII = range([[0x80, 0xffff]]);
 // ---------------------------------------------------------------------------
 
 const WS = on([" ", "\t", "\n", "\r", "\f"]);
-const LINE_COMMENT = within("#", "\n", TOKENS.comment);
+const LINE_COMMENT = { ...within("#", "\n", TOKENS.comment), seal: true };
 const BACKSLASH_CONTINUATION = match("\\", TOKENS.operator);
 
 // entry rules for all string / f-string / t-string prefix combinations.

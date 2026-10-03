@@ -22,6 +22,11 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 33,
+		"end": 53
+	},
+	{
+		"type": "comment",
+		"start": 53,
 		"end": 80
 	},
 	{

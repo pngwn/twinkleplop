@@ -26,8 +26,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 32,
+		"end": 51,
+		"match": "# trailing comment\n"
+	},
+	{
+		"type": "comment",
+		"start": 51,
 		"end": 69,
-		"match": "# trailing comment\n# another comment\n"
+		"match": "# another comment\n"
 	},
 	{
 		"type": "property",

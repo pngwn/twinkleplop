@@ -104,7 +104,7 @@ const tag_chars = [
 ];
 
 // shared comment rule; comments run from `#` to end of line
-const COMMENT = within("#", "\n", TOKENS.comment, { multiline: false });
+const COMMENT = { ...within("#", "\n", TOKENS.comment, { multiline: false }), seal: true };
 
 // shared quoted strings. yaml `"..."` supports a rich set of \-escapes
 // (short forms, `\xNN`, `\uNNNN`, `\UNNNNNNNN`, `\<LF>` line-continuation);

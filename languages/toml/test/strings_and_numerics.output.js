@@ -2,8 +2,26 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 63,
+		"match": "# ============================================================\n"
+	},
+	{
+		"type": "comment",
+		"start": 63,
+		"end": 104,
+		"match": "# EDGE CASE FILE 1: Strings and Numerics\n"
+	},
+	{
+		"type": "comment",
+		"start": 104,
+		"end": 167,
+		"match": "# Sources: toml-test spec-1.0.0 generated tests + manual tests\n"
+	},
+	{
+		"type": "comment",
+		"start": 167,
 		"end": 230,
-		"match": "# ============================================================\n# EDGE CASE FILE 1: Strings and Numerics\n# Sources: toml-test spec-1.0.0 generated tests + manual tests\n# ============================================================\n"
+		"match": "# ============================================================\n"
 	},
 	{
 		"type": "comment",
@@ -128,8 +146,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 542,
+		"end": 609,
+		"match": "# From spec-1.0.0/string-3: line-ending backslash trims whitespace\n"
+	},
+	{
+		"type": "comment",
+		"start": 609,
 		"end": 653,
-		"match": "# From spec-1.0.0/string-3: line-ending backslash trims whitespace\n# These three are byte-for-byte equivalent:\n"
+		"match": "# These three are byte-for-byte equivalent:\n"
 	},
 	{
 		"type": "property",
@@ -332,8 +356,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 973,
+		"end": 1043,
+		"match": "# From tests/valid/string/multiline.toml: backslash escape edge cases\n"
+	},
+	{
+		"type": "comment",
+		"start": 1043,
 		"end": 1099,
-		"match": "# From tests/valid/string/multiline.toml: backslash escape edge cases\n# a followed by escaped backslash, then newline, then b\n"
+		"match": "# a followed by escaped backslash, then newline, then b\n"
 	},
 	{
 		"type": "property",
@@ -1304,8 +1334,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 3237,
+		"end": 3283,
+		"match": "# From spec-1.0.0/integer-2: hex, oct, binary\n"
+	},
+	{
+		"type": "comment",
+		"start": 3283,
 		"end": 3312,
-		"match": "# From spec-1.0.0/integer-2: hex, oct, binary\n# hexadecimal with prefix 0x\n"
+		"match": "# hexadecimal with prefix 0x\n"
 	},
 	{
 		"type": "property",
@@ -1610,8 +1646,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 3727,
+		"end": 3771,
+		"match": "# From spec-1.0.0/float-2: infinity and NaN\n"
+	},
+	{
+		"type": "comment",
+		"start": 3771,
 		"end": 3782,
-		"match": "# From spec-1.0.0/float-2: infinity and NaN\n# infinity\n"
+		"match": "# infinity\n"
 	},
 	{
 		"type": "property",

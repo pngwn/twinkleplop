@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 12,
+		"match": "#!/bin/bash\n"
+	},
+	{
+		"type": "comment",
+		"start": 12,
 		"end": 71,
-		"match": "#!/bin/bash\n# expansion forms: command, process, arithmetic, parameter\n"
+		"match": "# expansion forms: command, process, arithmetic, parameter\n"
 	},
 	{
 		"type": "comment",

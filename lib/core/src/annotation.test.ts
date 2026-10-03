@@ -258,6 +258,63 @@ describe("annotation extractor", () => {
     expect(overlays!.skip_ranges[1]).toBe(marker_start + "[!em]".length);
   });
 
+  test("marker-only block comment hides its closing delimiter too", () => {
+    const input = `b = 1; /* [!em] */\nc\n`;
+    const overlays = extract(input, [em_plugin()]);
+    expect(Array.from(overlays!.skip_ranges)).toEqual([input.indexOf("/*"), input.indexOf("\n")]);
+  });
+
+  test("inline marker-only block comment is hidden whole", () => {
+    const input = `f(a /* [!em] */, 2)\n`;
+    const overlays = extract(input, [em_plugin()]);
+    expect(Array.from(overlays!.skip_ranges)).toEqual([
+      input.indexOf("/*"),
+      input.indexOf("*/") + 2,
+    ]);
+    expect(overlays!.elided_lines[0]).toBe(0);
+  });
+
+  test("block comment alone on its line elides the line", () => {
+    const input = `a\n  /* [!em] */\nb\n`;
+    const overlays = extract(input, [em_plugin()]);
+    expect(overlays!.elided_lines[1]).toBe(1);
+  });
+
+  test("block comment with text keeps its delimiters", () => {
+    const input = `f(a /* [!em] note */, 2)\n`;
+    const overlays = extract(input, [em_plugin()]);
+    const marker_start = input.indexOf("[!em]");
+    expect(Array.from(overlays!.skip_ranges)).toEqual([marker_start, marker_start + 5]);
+  });
+
+  test("consecutive line comments stay separate comments", () => {
+    const input = `a\n// [!em]\n// note\nb\n`;
+    const overlays = extract(input, [em_plugin()]);
+    expect(overlays!.elided_lines[1]).toBe(1);
+    expect(overlays!.elided_lines[2]).toBe(0);
+  });
+
+  test("a hidden multi-line comment never covers a line break", () => {
+    const input = `a\n/*\n[!em]*/\nb\n`;
+    const overlays = extract(input, [em_plugin()]);
+    const skips = Array.from(overlays!.skip_ranges);
+    expect(skips).toEqual([2, 4, 5, 12]);
+    expect(overlays!.elided_lines[1]).toBe(1);
+    expect(overlays!.elided_lines[2]).toBe(1);
+  });
+
+  test("closing delimiter on a later line is hidden with its comment", () => {
+    const input = `a\n/*\n[!em]\n*/\nb\n`;
+    const overlays = extract(input, [em_plugin()]);
+    expect(Array.from(overlays!.elided_lines)).toEqual([0, 1, 1, 1, 0, 0]);
+  });
+
+  test("an empty line comment after a marker comment stays visible", () => {
+    const input = `a\n// [!em]\n//\nb\n`;
+    const overlays = extract(input, [em_plugin()]);
+    expect(Array.from(overlays!.elided_lines)).toEqual([0, 1, 0, 0, 0]);
+  });
+
   test("malformed args (bare separator) is reported as malformed", () => {
     let issue: any = null;
     // `..` with no anchors on either side is meaningless; parser rejects.

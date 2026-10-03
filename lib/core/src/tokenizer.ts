@@ -453,9 +453,9 @@ export function tokenize(
           // without any sealing rules.
           if (
             matched_length === 0 &&
-            (!has_seals || !seal_flags![current_state * 256 + char_class]) &&
             token_type === last_token_type &&
-            pos === last_token_end
+            pos === last_token_end &&
+            (!has_seals || !seal_flags![current_state * 256 + char_class])
           ) {
             // extend previous token
             tokens[(token_count - 1) * 3 + 2] = new_end;

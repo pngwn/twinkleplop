@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 12,
+		"match": "#!/bin/bash\n"
+	},
+	{
+		"type": "comment",
+		"start": 12,
 		"end": 57,
-		"match": "#!/bin/bash\n# variable references and special parameters\n"
+		"match": "# variable references and special parameters\n"
 	},
 	{
 		"type": "comment",

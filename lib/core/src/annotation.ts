@@ -463,7 +463,15 @@ function run_extraction(
   for (let i = 0; i < n; i++) {
     if (tokens[i * 3] !== comment_id) continue;
     const start = tokens[i * 3 + 1];
-    const end = tokens[i * 3 + 2];
+    let end = tokens[i * 3 + 2];
+    // grammars split one block comment into several tokens, so group contiguous ones
+    // a token ending in a newline may end a line comment, so only a bare closer joins it
+    while (i + 1 < n && tokens[(i + 1) * 3] === comment_id && tokens[(i + 1) * 3 + 1] === end) {
+      const next_end = tokens[(i + 1) * 3 + 2];
+      if (input.charCodeAt(end - 1) === 10 && !is_bare_delimiter(input, end, next_end)) break;
+      i++;
+      end = next_end;
+    }
 
     // dispatch waits until the whole comment is scanned because `standalone`
     // depends on whether the comment holds anything besides markers.
@@ -544,20 +552,7 @@ function run_extraction(
     // the marker bytes and the surrounding text renders as-is.
     if (comment_skips.length > 0) {
       if (is_marker_only_comment(input, start, end, comment_skips)) {
-        // never extend the skip range to cover line terminators — the
-        // renderer relies on \n bytes as line boundaries, and substituting
-        // them would break line tracking. trim trailing \n / \r.
-        let trimmed_end = end;
-        while (trimmed_end > start) {
-          const c = input.charCodeAt(trimmed_end - 1);
-          if (c !== 10 && c !== 13) break;
-          trimmed_end--;
-        }
-        skip_ranges.push({
-          start,
-          end: trimmed_end,
-          line: line_of(ensure_line_index(), start),
-        });
+        push_line_skips(skip_ranges, input, start, end, ensure_line_index());
       } else {
         for (const s of comment_skips) skip_ranges.push(s);
       }
@@ -605,6 +600,28 @@ function run_extraction(
 function overlaps_skip(skip_ranges: SkipRange[], start: number, end: number): boolean {
   for (const s of skip_ranges) if (s.start < end && s.end > start) return true;
   return false;
+}
+
+// one skip range per line, the renderer and elide step need line breaks left intact
+function push_line_skips(
+  out: SkipRange[],
+  input: string,
+  start: number,
+  end: number,
+  line_starts: Int32Array,
+): void {
+  let line = line_of(line_starts, start);
+  let seg_start = start;
+  while (true) {
+    const nl = input.indexOf("\n", seg_start);
+    const seg_limit = nl < 0 || nl >= end ? end : nl;
+    let seg_end = seg_limit;
+    while (seg_end > seg_start && input.charCodeAt(seg_end - 1) === 13) seg_end--;
+    if (seg_end > seg_start) out.push({ start: seg_start, end: seg_end, line });
+    if (seg_limit === end) return;
+    seg_start = seg_limit + 1;
+    line++;
+  }
 }
 
 function push_overlay(
@@ -1490,6 +1507,12 @@ function is_marker_only_comment(
   }
   if (has_alnum(input, pos, comment_end)) return false;
   return true;
+}
+
+// a line comment always carries its newline, a closer like `*/` never does
+function is_bare_delimiter(input: string, from: number, to: number): boolean {
+  for (let i = from; i < to; i++) if (input.charCodeAt(i) === 10) return false;
+  return !has_alnum(input, from, to);
 }
 
 function has_alnum(input: string, from: number, to: number): boolean {

@@ -2,8 +2,26 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 63,
+		"match": "# ============================================================\n"
+	},
+	{
+		"type": "comment",
+		"start": 63,
+		"end": 99,
+		"match": "# EDGE CASE FILE 2: Tables and Keys\n"
+	},
+	{
+		"type": "comment",
+		"start": 99,
+		"end": 162,
+		"match": "# Sources: toml-test spec-1.0.0 generated tests + manual tests\n"
+	},
+	{
+		"type": "comment",
+		"start": 162,
 		"end": 225,
-		"match": "# ============================================================\n# EDGE CASE FILE 2: Tables and Keys\n# Sources: toml-test spec-1.0.0 generated tests + manual tests\n# ============================================================\n"
+		"match": "# ============================================================\n"
 	},
 	{
 		"type": "comment",
@@ -1004,8 +1022,26 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 1354,
+		"end": 1419,
+		"match": "# From spec-1.0.0/table-4: super-tables defined after sub-tables\n"
+	},
+	{
+		"type": "comment",
+		"start": 1419,
+		"end": 1429,
+		"match": "# [x] you\n"
+	},
+	{
+		"type": "comment",
+		"start": 1429,
+		"end": 1443,
+		"match": "# [x.y] don't\n"
+	},
+	{
+		"type": "comment",
+		"start": 1443,
 		"end": 1464,
-		"match": "# From spec-1.0.0/table-4: super-tables defined after sub-tables\n# [x] you\n# [x.y] don't\n# [x.y.z] need these\n"
+		"match": "# [x.y.z] need these\n"
 	},
 	{
 		"type": "punctuation",
@@ -1142,8 +1178,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 1634,
+		"end": 1664,
+		"match": "# Defines a table named fruit\n"
+	},
+	{
+		"type": "comment",
+		"start": 1664,
 		"end": 1700,
-		"match": "# Defines a table named fruit\n# Defines a table named fruit.apple\n"
+		"match": "# Defines a table named fruit.apple\n"
 	},
 	{
 		"type": "property",
@@ -1202,8 +1244,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 1732,
+		"end": 1774,
+		"match": "# Defines a table named fruit.apple.taste\n"
+	},
+	{
+		"type": "comment",
+		"start": 1774,
 		"end": 1819,
-		"match": "# Defines a table named fruit.apple.taste\n# fruit and fruit.apple were already created\n"
+		"match": "# fruit and fruit.apple were already created\n"
 	},
 	{
 		"type": "comment",

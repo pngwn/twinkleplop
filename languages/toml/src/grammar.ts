@@ -100,7 +100,7 @@ import { define_grammar } from "@twinkleplop/core/compile";
 // ---------------------------------------------------------------------------
 const WS = on([" ", "\t"]);
 const EOL = on(["\n", "\r"]);
-const COMMENT = within("#", "\n", TOKENS.comment, { multiline: false });
+const COMMENT = { ...within("#", "\n", TOKENS.comment, { multiline: false }), seal: true };
 
 // Strings: value-position rules emit `string`; key-position rules emit
 // `property`. Quoted keys (`"name"` / `'name'`) are semantically keys, not
