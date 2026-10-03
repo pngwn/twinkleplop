@@ -1,5 +1,23 @@
 # @twinkleplop/rehype
 
+## 0.2.0
+### Minor Changes
+
+
+
+- [#157](https://github.com/pngwn/twinkleplop/pull/157) [`6d1ed65`](https://github.com/pngwn/twinkleplop/commit/6d1ed65e6008c303c13dc00bd4054116b7047a20) Thanks [@pngwn](https://github.com/pngwn)! - A new `escape` render option encodes extra characters everywhere the output is already escaped, so highlighted HTML can go straight into a Svelte, Vue or Angular template without a second pass.
+  
+  ```ts
+  ts(code, { escape: { "{": "&[#123](https://github.com/pngwn/twinkleplop/issues/123);", "}": "&[#125](https://github.com/pngwn/twinkleplop/issues/125);" } });
+  ```
+  
+  Each key is one UTF-16 code unit and its value is written as is. It covers token text, the text between tokens, `attributes` and hook output. The twoslash highlighters take the same option for the code and the popover types, docs and tags, and also read it from the render options a markdown registry passes. Markdown-core applies `render.escape` to fence titles, captions and language names. The rehype plugin needs `output: "raw"` to use it, since parsing into hast would decode the entities, and throws otherwise. Core exports `escape_html(text, escape?)`.
+
+### Patch Changes
+
+- Updated dependencies [[`6d1ed65`](https://github.com/pngwn/twinkleplop/commit/6d1ed65e6008c303c13dc00bd4054116b7047a20)]:
+  - @twinkleplop/markdown-core@0.2.0
+
 ## 0.1.5
 ### Patch Changes
 

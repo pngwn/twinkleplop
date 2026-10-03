@@ -1,5 +1,76 @@
 # @twinkleplop/core
 
+## 0.3.0
+### Minor Changes
+
+
+
+- [#155](https://github.com/pngwn/twinkleplop/pull/155) [`2ae6c60`](https://github.com/pngwn/twinkleplop/commit/2ae6c6060dfd6378e60bebe4a8dc21d2fb39160d) Thanks [@pngwn](https://github.com/pngwn)! - `to_parts` returns a block's `<pre>` attributes and its `<code>` element separately, for hosts that hand the block to a component instead of splitting the html string.
+
+
+
+- [#150](https://github.com/pngwn/twinkleplop/pull/150) [`1d4b72b`](https://github.com/pngwn/twinkleplop/commit/1d4b72b3a011927693d28f5c4f677fde8ba06903) Thanks [@pngwn](https://github.com/pngwn)! - Custom grammars can highlight raw text enclosed by a delimiter chosen in the source, including C++ raw strings.
+
+
+
+- [#142](https://github.com/pngwn/twinkleplop/pull/142) [`a1799a7`](https://github.com/pngwn/twinkleplop/commit/a1799a77787b361a6cd7eefb3faab1573b7fcf32) Thanks [@pngwn](https://github.com/pngwn)! - Markdown highlights fenced code blocks with the languages you pass, keyed by the language named on the fence. The markdown package still depends on no language, so you only ship the ones you use. Core exports `embed_labelled` for hosts that name an embedded language in their text.
+  
+  ```ts
+  import { language } from "@twinkleplop/markdown";
+  import { tokenize as js } from "@twinkleplop/javascript";
+  
+  const javascript = js();
+  const md = language({ languages: { js: javascript, javascript } });
+  ```
+
+
+- [#157](https://github.com/pngwn/twinkleplop/pull/157) [`6d1ed65`](https://github.com/pngwn/twinkleplop/commit/6d1ed65e6008c303c13dc00bd4054116b7047a20) Thanks [@pngwn](https://github.com/pngwn)! - A new `escape` render option encodes extra characters everywhere the output is already escaped, so highlighted HTML can go straight into a Svelte, Vue or Angular template without a second pass.
+  
+  ```ts
+  ts(code, { escape: { "{": "&[#123](https://github.com/pngwn/twinkleplop/issues/123);", "}": "&[#125](https://github.com/pngwn/twinkleplop/issues/125);" } });
+  ```
+  
+  Each key is one UTF-16 code unit and its value is written as is. It covers token text, the text between tokens, `attributes` and hook output. The twoslash highlighters take the same option for the code and the popover types, docs and tags, and also read it from the render options a markdown registry passes. Markdown-core applies `render.escape` to fence titles, captions and language names. The rehype plugin needs `output: "raw"` to use it, since parsing into hast would decode the entities, and throws otherwise. Core exports `escape_html(text, escape?)`.
+
+
+- [#158](https://github.com/pngwn/twinkleplop/pull/158) [`52b9c91`](https://github.com/pngwn/twinkleplop/commit/52b9c91132e89d063fe33025ea6f78b467c4deaa) Thanks [@pngwn](https://github.com/pngwn)! - Overlays can mark a range as verbatim with `{ start, end, verbatim: true, type? }`, from an annotation plugin or the `overlays` render option. The range is written exactly as it is in the source, with no escaping, as one `span.tok`, so a template language can keep an expression such as `{some_val}` live inside highlighted code. Verbatim ranges are flagged with `OVERLAY_VERBATIM` in `TokenizeResult.overlays` for custom renderers.
+
+
+
+- [#156](https://github.com/pngwn/twinkleplop/pull/156) [`129df53`](https://github.com/pngwn/twinkleplop/commit/129df5366ee54aec29842a5effe9d2602c1380c7) Thanks [@pngwn](https://github.com/pngwn)! - Add `visible_text(input, result, options?)`, which returns the text a render shows, so a copy button can copy that instead of the raw input with its `// [!hl]` markers. Marker bytes are removed with the whitespace before them, lines left empty by markers or `hide` ranges are dropped, and hidden bytes inside a line become spaces, all as the renderer does. `visible_text_map` also returns `segments`, `[source_start, source_end, text_start]` triples for each run copied from the source, so a host can find where a source range lands in the visible text.
+
+
+### Patch Changes
+
+
+
+- [#157](https://github.com/pngwn/twinkleplop/pull/157) [`e5f3f1e`](https://github.com/pngwn/twinkleplop/commit/e5f3f1e8aec1922dee8824f1c8fb9297e7e4b6f1) Thanks [@pngwn](https://github.com/pngwn)! - `class_name` is escaped like any attribute value, so a class name can no longer break out of the `class` attribute.
+
+
+
+- [#137](https://github.com/pngwn/twinkleplop/pull/137) [`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac) Thanks [@pngwn](https://github.com/pngwn)! - A `<` that is not followed by a letter is highlighted as text, so `<p>a < b</p>` no longer shows `b` as an attribute. `` html`<${Tag}>` `` tagged templates still highlight the tag.
+
+
+
+- [#146](https://github.com/pngwn/twinkleplop/pull/146) [`0ffe445`](https://github.com/pngwn/twinkleplop/commit/0ffe44566526db2afd2db4ce2b3c8aec95c3628a) Thanks [@pngwn](https://github.com/pngwn)! - Markdown fidelity now applies per style. Leaving `bold`, `italic`, `strike`, `code`, `link_text` or `autolink` out of the fidelity list renders that style as plain text, while the styles nested inside it keep theirs, and `fidelity: "low"` clears all six. Before, any one of them turned all six on, and none of them could be turned off.
+  
+  A tagged reclassifier can list the grammar types each of its tags owns in `clears`, and those tokens are cleared before the pipeline runs when the tag is left out.
+
+
+- [#132](https://github.com/pngwn/twinkleplop/pull/132) [`82aaf5f`](https://github.com/pngwn/twinkleplop/commit/82aaf5f9f477de4237beed4e2263b07ae5430e7a) Thanks [@pngwn](https://github.com/pngwn)! - A block comment inside a Svelte expression, such as `{count /* note */}`, is highlighted as a comment. The closing `*/` used to show up as an operator followed by a regex.
+
+
+
+- [#134](https://github.com/pngwn/twinkleplop/pull/134) [`8394d2b`](https://github.com/pngwn/twinkleplop/commit/8394d2b69e340af554496ff7760fa59792aee7a7) Thanks [@pngwn](https://github.com/pngwn)! - A nested generic closed with `>>` or `>>>` right before a body brace, as in `class Q implements Iterable<Job<T>> {`, now ends the type there. The class body used to be highlighted as types.
+
+
+
+- [#138](https://github.com/pngwn/twinkleplop/pull/138) [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5) Thanks [@pngwn](https://github.com/pngwn)! - Type annotations are highlighted as types in more places: variables declared inside functions and callbacks, `namespace`, `declare module` and `declare global` bodies, index signature keys, members of an interface that extends several others, optional method return types, generic arrow type parameters, and function bodies after an inline object return type.
+
+
+
+- [#132](https://github.com/pngwn/twinkleplop/pull/132) [`725f37d`](https://github.com/pngwn/twinkleplop/commit/725f37d87db16abcfe32dad4247d1938a858f6b8) Thanks [@pngwn](https://github.com/pngwn)! - Comments and strings that contain accented letters, dashes, symbols or emoji are highlighted as one token instead of leaving those characters unhighlighted. This affects HTML and Svelte comments as well as comments and strings in Bash, JavaScript, TypeScript, TOML and CSS.
+
 ## 0.2.2
 ### Patch Changes
 
