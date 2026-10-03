@@ -1,5 +1,15 @@
 # @twinkleplop/bash
 
+## 0.1.7
+### Patch Changes
+
+
+
+- [#162](https://github.com/pngwn/twinkleplop/pull/162) [`2fab5c9`](https://github.com/pngwn/twinkleplop/commit/2fab5c91d9f4c8602254869d299d9f03d23029d2) Thanks [@pngwn](https://github.com/pngwn)! - Consecutive `#` comments are separate comment tokens, so a marker comment such as `# [!hl]` directly above another comment is hidden whole instead of leaving a stray `#` behind.
+
+- Updated dependencies [[`dafdec0`](https://github.com/pngwn/twinkleplop/commit/dafdec03261143aa4b581d7520bd8d7e417bc2e1), [`2aed5c1`](https://github.com/pngwn/twinkleplop/commit/2aed5c167f34b8314494c65cb0c4ac2cbe62bbbd), [`f7c8b46`](https://github.com/pngwn/twinkleplop/commit/f7c8b4604f97e479d0d0648c883845ac7eaa7019), [`2fab5c9`](https://github.com/pngwn/twinkleplop/commit/2fab5c91d9f4c8602254869d299d9f03d23029d2)]:
+  - @twinkleplop/core@0.3.1
+
 ## 0.1.6
 ### Patch Changes
 
