@@ -175,6 +175,25 @@ describe("Dockerfile grammar", () => {
     }
   });
 
+  it("ends a directive value at its line break", () => {
+    const cases: [string, string[]][] = [
+      [
+        "# syntax=docker/dockerfile:1.7\n# second comment\nFROM x\n",
+        ["docker/dockerfile:1.7", "# second comment"],
+      ],
+      ["# escape=`\n# second comment\nFROM x\n", ["`", "# second comment"]],
+      ["# check=error=true\n# second comment\nFROM x\n", ["error=true", "# second comment"]],
+      ["# syntax=a\n\n# escape=`\nFROM x\n", ["a", "# escape=`"]],
+      ["# syntax=a\n  \n# escape=`\nFROM x\n", ["a", "# escape=`"]],
+      ["# syntax=a\r\n# check=b\r\n\r\n# escape=`\r\nFROM x\r\n", ["a", "b", "# escape=`"]],
+      ["# syntax=a\nFROM x\n", ["a"]],
+      ["# syntax=a\n", ["a"]],
+    ];
+    for (const [input, values] of cases) {
+      expect(of_type(input, "comment").filter((t) => t !== "# ")).toEqual(values);
+    }
+  });
+
   it("recovers unfinished nested constructs at the next physical instruction", () => {
     for (const line of [
       'RUN "unfinished',

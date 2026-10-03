@@ -20,8 +20,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 9,
+		"end": 28,
+		"match": "docker/dockerfile:1"
+	},
+	{
+		"type": "comment",
+		"start": 29,
 		"end": 31,
-		"match": "docker/dockerfile:1\n# "
+		"match": "# "
 	},
 	{
 		"type": "directive",
@@ -38,8 +44,8 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 37,
-		"end": 73,
-		"match": "skip=JSONArgsRecommended;error=true\n"
+		"end": 72,
+		"match": "skip=JSONArgsRecommended;error=true"
 	},
 	{
 		"type": "keyword",
