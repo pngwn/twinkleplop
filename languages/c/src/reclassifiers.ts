@@ -123,24 +123,46 @@ for (const [text, code] of [
 ] as const) {
   PUNCT[text.charCodeAt(0)] = code;
 }
-const WORDS = new Map<string, number>([
-  ["namespace", NAMESPACE],
-  ["enum", ENUM],
-  ["class", CLASS],
-  ["struct", STRUCT],
-  ["union", UNION],
-  ["typedef", TYPEDEF],
-  ["using", USING],
-  ["define", DEFINE],
-  ["return", RETURN],
-  ["mutable", MUTABLE],
-  ["noexcept", NOEXCEPT],
-  ["constexpr", CONSTEXPR],
-  ["consteval", CONSTEVAL],
-  ["public", PUBLIC],
-  ["private", PRIVATE],
-  ["protected", PROTECTED],
-]);
+
+// a switch on the first char skips hashing every word token
+function word_code(text: string): number {
+  switch (text.charCodeAt(0)) {
+    case 99: // c
+      return text === "class"
+        ? CLASS
+        : text === "constexpr"
+          ? CONSTEXPR
+          : text === "consteval"
+            ? CONSTEVAL
+            : 0;
+    case 100: // d
+      return text === "define" ? DEFINE : 0;
+    case 101: // e
+      return text === "enum" ? ENUM : 0;
+    case 109: // m
+      return text === "mutable" ? MUTABLE : 0;
+    case 110: // n
+      return text === "namespace" ? NAMESPACE : text === "noexcept" ? NOEXCEPT : 0;
+    case 112: // p
+      return text === "public"
+        ? PUBLIC
+        : text === "private"
+          ? PRIVATE
+          : text === "protected"
+            ? PROTECTED
+            : 0;
+    case 114: // r
+      return text === "return" ? RETURN : 0;
+    case 115: // s
+      return text === "struct" ? STRUCT : 0;
+    case 116: // t
+      return text === "typedef" ? TYPEDEF : 0;
+    case 117: // u
+      return text === "union" ? UNION : text === "using" ? USING : 0;
+    default:
+      return 0;
+  }
+}
 
 const OTHER = 0;
 const IDENT = 1;
@@ -216,7 +238,7 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
     const word = end > start && word_start(input.charCodeAt(start));
     const text = word || kind !== OTHER ? input.slice(start, end) : "";
     texts.push(text);
-    codes[n] = word ? (WORDS.get(text) ?? 0) : punct_code(input, start, end);
+    codes[n] = word ? word_code(text) : punct_code(input, start, end);
     n++;
   }
   const code = (i: number) => (i >= 0 && i < n ? codes[i] : 0);
