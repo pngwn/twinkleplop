@@ -216,6 +216,16 @@ describe("rendering", () => {
     expect(html).toContain('<span class="tok identifier">foo</span></span>\n');
   });
 
+  test("the escape option leaves the range alone", () => {
+    const html = render("f({x}) {y}", {
+      escape: { "{": "&#123;", "}": "&#125;" },
+      token: () => ({ attrs: { "data-x": "{" } }),
+      overlays: [{ start: 7, end: 10, verbatim: true }],
+    });
+    expect(html).toContain('data-x="&#123;">(&#123;</span>');
+    expect(html).toContain('<span class="tok" data-x="&#123;">{y}</span>');
+  });
+
   test("the token hook sees the span's type and range", () => {
     const seen: [string, number, number][] = [];
     const html = render('"{b}" {c}', {

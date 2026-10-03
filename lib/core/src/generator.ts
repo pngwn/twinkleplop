@@ -1180,7 +1180,7 @@ function to_html_overlay(
     }
     let attrs = "";
     if (token_hook !== undefined) {
-      const deco = hook_output(token_hook(v.type, v.start, end), "token");
+      const deco = hook_output(token_hook(v.type, v.start, end), "token", esc);
       if (deco !== null) {
         cls += deco.cls;
         attrs = deco.attrs;

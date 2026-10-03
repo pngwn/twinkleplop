@@ -258,6 +258,10 @@ ts(code, { escape: { "{": "&#123;", "}": "&#125;" } });`;
 			and so does <code>"&lt;": "&lt;"</code>, which turns that escaping off. Line breaks, spaces and
 			tabs can't be replaced.
 		</p>
+		<p>
+			<a href="#overlays">Verbatim ranges</a> are left out, so an expression you mark live stays live
+			while every other brace is encoded.
+		</p>
 	</Section>
 
 	<Section id="output" title="HTML output" num="§ 07">
