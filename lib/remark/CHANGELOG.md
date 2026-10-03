@@ -1,5 +1,11 @@
 # @twinkleplop/remark
 
+## 0.1.6
+### Patch Changes
+
+- Updated dependencies [[`6d1ed65`](https://github.com/pngwn/twinkleplop/commit/6d1ed65e6008c303c13dc00bd4054116b7047a20)]:
+  - @twinkleplop/markdown-core@0.2.0
+
 ## 0.1.5
 ### Patch Changes
 

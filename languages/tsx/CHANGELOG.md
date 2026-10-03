@@ -1,5 +1,37 @@
 # @twinkleplop/tsx
 
+## 0.1.6
+### Patch Changes
+
+
+
+- [#136](https://github.com/pngwn/twinkleplop/pull/136) [`975c44f`](https://github.com/pngwn/twinkleplop/commit/975c44ff1ebc830f2963ea7b3c71ffa55e699966) Thanks [@pngwn](https://github.com/pngwn)! - A `/` after a parenthesised group, number or string at the start of call arguments is read as division, so `f((a) / 2)`, `Math.sin((hue * Math.PI) / 180)` and `f(1 / 2)` no longer open a regex that swallows the closing `)`. In TSX this also lets JSX in an arrow body inside call arguments, such as `items.map((x) => (<li />))`, read as JSX.
+
+
+
+- [#140](https://github.com/pngwn/twinkleplop/pull/140) [`dbcd96d`](https://github.com/pngwn/twinkleplop/commit/dbcd96d923b692326bdff824eec941ace40be69f) Thanks [@pngwn](https://github.com/pngwn)! - Numbers with a leading dot, such as `.5` or `.25e3`, are read as a single number. A spread in call arguments, as in `f(...args)`, now reads `...` as an operator.
+
+
+
+- [#139](https://github.com/pngwn/twinkleplop/pull/139) [`4150afc`](https://github.com/pngwn/twinkleplop/commit/4150afc6ae389527818648e098594c6002824074) Thanks [@pngwn](https://github.com/pngwn)! - A `/` after a non-null assertion is read as division, so `x! / y` and `f()! / 2` no longer open a regex that swallows the rest of the line.
+
+
+
+- [#138](https://github.com/pngwn/twinkleplop/pull/138) [`bb9c15b`](https://github.com/pngwn/twinkleplop/commit/bb9c15b8ed9cb5c75a09ca95d074ef1e2d2ef74d) Thanks [@pngwn](https://github.com/pngwn)! - A type parameter with a default after a bare `<`, such as `new <T = any>()` or `<T = unknown,>(x: T) => x`, highlights as a type parameter list instead of a JSX tag.
+
+
+
+- [#130](https://github.com/pngwn/twinkleplop/pull/130) [`ad68277`](https://github.com/pngwn/twinkleplop/commit/ad68277c0f7abb0a6388c76667097d3d599999d3) Thanks [@pngwn](https://github.com/pngwn)! - JSX passed directly as a call argument, such as `render(<App />)`, now highlights as JSX instead of a less-than operator and a regex.
+
+
+
+- [#138](https://github.com/pngwn/twinkleplop/pull/138) [`f26235b`](https://github.com/pngwn/twinkleplop/commit/f26235b76a40ed15f3af7e3d175b7737a854de38) Thanks [@pngwn](https://github.com/pngwn)! - Builtin type names such as `any`, `string` and `number` are highlighted as types only where TypeScript reads them as types. A class field named `any`, an object key `number` or a variable called `symbol` highlights like any other name.
+
+- Updated dependencies [[`2ae6c60`](https://github.com/pngwn/twinkleplop/commit/2ae6c6060dfd6378e60bebe4a8dc21d2fb39160d), [`975c44f`](https://github.com/pngwn/twinkleplop/commit/975c44ff1ebc830f2963ea7b3c71ffa55e699966), [`1d4b72b`](https://github.com/pngwn/twinkleplop/commit/1d4b72b3a011927693d28f5c4f677fde8ba06903), [`e5f3f1e`](https://github.com/pngwn/twinkleplop/commit/e5f3f1e8aec1922dee8824f1c8fb9297e7e4b6f1), [`3beddcd`](https://github.com/pngwn/twinkleplop/commit/3beddcdf745ee82bed8da5dcab75c7f7446d26ac), [`7a1585e`](https://github.com/pngwn/twinkleplop/commit/7a1585e3c8a83ea85d1ce071feb2297c3d743f3f), [`dbcd96d`](https://github.com/pngwn/twinkleplop/commit/dbcd96d923b692326bdff824eec941ace40be69f), [`a1799a7`](https://github.com/pngwn/twinkleplop/commit/a1799a77787b361a6cd7eefb3faab1573b7fcf32), [`0ffe445`](https://github.com/pngwn/twinkleplop/commit/0ffe44566526db2afd2db4ce2b3c8aec95c3628a), [`6d1ed65`](https://github.com/pngwn/twinkleplop/commit/6d1ed65e6008c303c13dc00bd4054116b7047a20), [`82aaf5f`](https://github.com/pngwn/twinkleplop/commit/82aaf5f9f477de4237beed4e2263b07ae5430e7a), [`8394d2b`](https://github.com/pngwn/twinkleplop/commit/8394d2b69e340af554496ff7760fa59792aee7a7), [`4150afc`](https://github.com/pngwn/twinkleplop/commit/4150afc6ae389527818648e098594c6002824074), [`f26235b`](https://github.com/pngwn/twinkleplop/commit/f26235b76a40ed15f3af7e3d175b7737a854de38), [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5), [`504e57a`](https://github.com/pngwn/twinkleplop/commit/504e57a82e09cf0a2b554813b1dcb125aec7d5c5), [`52b9c91`](https://github.com/pngwn/twinkleplop/commit/52b9c91132e89d063fe33025ea6f78b467c4deaa), [`129df53`](https://github.com/pngwn/twinkleplop/commit/129df5366ee54aec29842a5effe9d2602c1380c7), [`725f37d`](https://github.com/pngwn/twinkleplop/commit/725f37d87db16abcfe32dad4247d1938a858f6b8)]:
+  - @twinkleplop/core@0.3.0
+  - @twinkleplop/javascript@0.1.6
+  - @twinkleplop/typescript@0.1.6
+
 ## 0.1.5
 ### Patch Changes
 
