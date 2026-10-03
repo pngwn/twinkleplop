@@ -1,19 +1,21 @@
+import { OVERLAY_LINE_MODE, OVERLAY_VERBATIM } from "./types";
 import type { OverlayItem, OverlayResult } from "./types";
-import { build_line_starts, compute_elided_lines, line_of } from "./annotation";
+import { build_line_starts, compute_elided_lines, is_class_list, line_of } from "./annotation";
 
-const LINE_MODE = 1;
-
+// index is -1 for a range carried over from an existing result
 interface Collected {
   start: number;
   end: number;
   cls: string;
   flags: number;
+  index: number;
 }
 
 interface Hidden {
   start: number;
   end: number;
   line: number;
+  index: number;
 }
 
 // the union is validated at runtime, so fields are read through this loose
@@ -25,6 +27,8 @@ interface Loose {
   line?: unknown;
   lines?: unknown;
   hide?: unknown;
+  verbatim?: unknown;
+  type?: unknown;
 }
 
 export function overlays(
@@ -45,10 +49,11 @@ export function overlays(
         end: ranges[r + 1],
         cls: classifications[ranges[r + 2]],
         flags: ranges[r + 3],
+        index: -1,
       });
     }
     for (let s = 0; s < skip_ranges.length; s += 2) {
-      push_hidden(hidden, source, line_starts, skip_ranges[s], skip_ranges[s + 1]);
+      push_hidden(hidden, source, line_starts, skip_ranges[s], skip_ranges[s + 1], -1);
     }
   }
 
@@ -58,7 +63,7 @@ export function overlays(
       case "range": {
         const { start, end } = resolve_bounds(item, i, source, line_starts);
         const cls = valid_class(item.class, i);
-        if (start < end) collected.push({ start, end, cls, flags: 0 });
+        if (start < end) collected.push({ start, end, cls, flags: 0, index: i });
         break;
       }
       case "line": {
@@ -67,7 +72,8 @@ export function overlays(
           start: line_starts[line - 1],
           end: line_end(line_starts, line, source.length),
           cls: valid_class(item.class, i),
-          flags: LINE_MODE,
+          flags: OVERLAY_LINE_MODE,
+          index: i,
         });
         break;
       }
@@ -78,25 +84,37 @@ export function overlays(
             start: line_starts[line - 1],
             end: line_end(line_starts, line, source.length),
             cls,
-            flags: LINE_MODE,
+            flags: OVERLAY_LINE_MODE,
+            index: i,
           });
         }
         break;
       }
       case "hide": {
         const { start, end } = resolve_bounds(item, i, source, line_starts);
-        push_hidden(hidden, source, line_starts, start, end);
+        push_hidden(hidden, source, line_starts, start, end, i);
+        break;
+      }
+      case "verbatim": {
+        const { start, end } = resolve_bounds(item, i, source, line_starts);
+        const cls = item.type === undefined ? "" : valid_class(item.type, i, "type");
+        const newline = source.indexOf("\n", start);
+        if (newline !== -1 && newline < end) {
+          throw new RangeError(`overlays[${i}] is a verbatim range that spans a line break`);
+        }
+        if (start < end) collected.push({ start, end, cls, flags: OVERLAY_VERBATIM, index: i });
         break;
       }
     }
   }
 
+  check_verbatim(collected, hidden);
   return finalize(source, line_starts, collected, hidden, existing);
 }
 
-type Shape = "range" | "line" | "lines" | "hide";
+type Shape = "range" | "line" | "lines" | "hide" | "verbatim";
 
-const KNOWN_KEYS = new Set(["start", "end", "class", "line", "lines", "hide"]);
+const KNOWN_KEYS = new Set(["start", "end", "class", "line", "lines", "hide", "verbatim", "type"]);
 
 function item_shape(item: unknown, index: number): Shape {
   if (typeof item !== "object" || item === null || Array.isArray(item)) {
@@ -119,9 +137,54 @@ function item_shape(item: unknown, index: number): Shape {
     }
     return "hide";
   }
+  if (
+    matches(present, "start", "end", "verbatim") ||
+    matches(present, "start", "end", "verbatim", "type")
+  ) {
+    if ((item as { verbatim: unknown }).verbatim !== true) {
+      throw new TypeError(`overlays[${index}].verbatim must be true`);
+    }
+    return "verbatim";
+  }
   throw new TypeError(
-    `overlays[${index}] must be { start, end, class }, { line, class }, { lines, class } or { start, end, hide: true }`,
+    `overlays[${index}] must be { start, end, class }, { line, class }, { lines, class }, { start, end, hide: true } or { start, end, verbatim: true, type? }`,
   );
+}
+
+// an existing result was checked when it was built, so only conflicts with an option item throw
+function check_verbatim(collected: Collected[], hidden: Hidden[]): void {
+  const verbatim: Collected[] = [];
+  for (const o of collected) if ((o.flags & OVERLAY_VERBATIM) !== 0) verbatim.push(o);
+  if (verbatim.length === 0) return;
+  verbatim.sort((a, b) => a.start - b.start || a.end - b.end);
+  let reach = verbatim[0];
+  for (let i = 1; i < verbatim.length; i++) {
+    const v = verbatim[i];
+    if (v.start < reach.end) {
+      const at = v.index >= 0 ? v.index : reach.index;
+      if (at >= 0) {
+        throw new RangeError(
+          `overlays[${at}] is a verbatim range that overlaps another verbatim range`,
+        );
+      }
+    }
+    if (v.end > reach.end) reach = v;
+  }
+  for (const v of verbatim) {
+    for (const h of hidden) {
+      if (h.start >= v.end || h.end <= v.start) continue;
+      if (v.index >= 0) {
+        throw new RangeError(
+          `overlays[${v.index}] is a verbatim range that overlaps a hidden range`,
+        );
+      }
+      if (h.index >= 0) {
+        throw new RangeError(
+          `overlays[${h.index}] is a hidden range that overlaps a verbatim range`,
+        );
+      }
+    }
+  }
 }
 
 function matches(present: Set<string>, ...keys: string[]): boolean {
@@ -222,35 +285,13 @@ function expand_lines(lines: unknown, index: number, count: number): number[] {
 
 // the value is emitted into a class attribute verbatim, so the check has to
 // exclude every byte that could close the attribute or start a tag.
-function valid_class(value: unknown, index: number): string {
+function valid_class(value: unknown, index: number, field = "class"): string {
   if (typeof value !== "string" || !is_class_list(value)) {
     throw new TypeError(
-      `overlays[${index}].class must be one or more css class tokens separated by single spaces`,
+      `overlays[${index}].${field} must be one or more css class tokens separated by single spaces`,
     );
   }
   return value;
-}
-
-function is_class_list(value: string): boolean {
-  const len = value.length;
-  if (len === 0) return false;
-  let token_start = 0;
-  for (let i = 0; i <= len; i++) {
-    const c = i < len ? value.charCodeAt(i) : 32;
-    if (c === 32) {
-      if (i === token_start) return false;
-      if (value.charCodeAt(token_start) >= 48 && value.charCodeAt(token_start) <= 57) {
-        return false;
-      }
-      token_start = i + 1;
-      continue;
-    }
-    if (c >= 128) continue;
-    if ((c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122)) continue;
-    if (c === 45 || c === 95) continue;
-    return false;
-  }
-  return true;
 }
 
 function line_end(line_starts: Int32Array, line: number, source_length: number): number {
@@ -265,6 +306,7 @@ function push_hidden(
   line_starts: Int32Array,
   start: number,
   end: number,
+  index: number,
 ): void {
   if (start >= end) return;
   const first = line_of(line_starts, start);
@@ -274,7 +316,7 @@ function push_hidden(
     const le = line < line_starts.length ? line_starts[line] - 1 : source.length;
     const s = start > ls ? start : ls;
     const e = end < le ? end : le;
-    if (s < e) out.push({ start: s, end: e, line });
+    if (s < e) out.push({ start: s, end: e, line, index });
   }
 }
 
@@ -323,7 +365,7 @@ function finalize(
       if (h.end > last.end) last.end = h.end;
       continue;
     }
-    merged.push({ start: h.start, end: h.end, line: h.line });
+    merged.push({ start: h.start, end: h.end, line: h.line, index: h.index });
   }
   const skip_ranges = new Uint32Array(merged.length * 2);
   for (let i = 0; i < merged.length; i++) {

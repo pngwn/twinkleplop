@@ -668,7 +668,9 @@ export interface PluginIssue {
   position?: SourcePosition;
 }
 
-export interface OverlayContribution {
+export type OverlayContribution = ClassContribution | VerbatimContribution;
+
+export interface ClassContribution {
   start: number;
   end: number;
   // CSS class name (e.g. "emphasis", "highlight", "diff-add").
@@ -677,6 +679,15 @@ export interface OverlayContribution {
   // the range; token-mode overlays attach to each <span class="tok"> whose
   // bytes intersect the range. defaults to false (token-mode).
   line_mode?: boolean;
+}
+
+// written unescaped as one token, without type it takes the type of the token it sits in
+// it must stay on one line clear of hidden and other verbatim ranges or it is dropped
+export interface VerbatimContribution {
+  start: number;
+  end: number;
+  verbatim: true;
+  type?: string;
 }
 
 // argument forms the framework parses for plugins with parse: 'shared'.
@@ -758,6 +769,7 @@ export interface AnnotationIssue {
 export interface OverlayResult {
   // sorted by start. Uint32Array of 4-tuples [start, end, class_id, flags].
   // flags bit 0 = line-mode. other bits reserved (focus-sibling etc.).
+  // bit 1 verbatim, whose class_id names its token type, empty for none
   ranges: Uint32Array;
   // class_id -> CSS class name.
   classifications: string[];
@@ -769,6 +781,9 @@ export interface OverlayResult {
   // dense Uint8Array indexed by line number; bit 0 of byte n marks line n.
   elided_lines: Uint8Array;
 }
+
+export const OVERLAY_LINE_MODE = 1;
+export const OVERLAY_VERBATIM = 2;
 
 // a compiled language: call the factory with options to get the tokenize
 // function for that configuration. `language()` (no args) is the default,
@@ -824,11 +839,13 @@ export type OverlayPosition = number | { line: number; character: number };
 
 // a hidden range renders as spaces of equal width and takes any line it
 // empties with it.
+// verbatim items follow the VerbatimContribution rules and throw when broken
 export type OverlayItem =
   | { start: OverlayPosition; end: OverlayPosition; class: string }
   | { line: number; class: string }
   | { lines: (number | [number, number])[]; class: string }
-  | { start: OverlayPosition; end: OverlayPosition; hide: true };
+  | { start: OverlayPosition; end: OverlayPosition; hide: true }
+  | { start: OverlayPosition; end: OverlayPosition; verbatim: true; type?: string };
 
 // Pattern language for `rewrite_types` — tag-discriminated union so authors
 // build patterns with the exported combinator helpers (`type`, `seq`,

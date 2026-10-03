@@ -26,6 +26,7 @@
 // `parse: "raw"` plugins get the argument text as a string and resolve
 // fragments of this grammar themselves through `resolve` on their input.
 
+import { OVERLAY_VERBATIM } from "./types";
 import type {
   Anchor,
   AnnotationConfig,
@@ -33,13 +34,14 @@ import type {
   AnnotationIssueKind,
   AnnotationOutput,
   AnnotationPlugin,
-  OverlayContribution,
+  ClassContribution,
   OverlayResult,
   ParsedArgs,
   SetScope,
   SourcePosition,
   SourceRange,
   TokenizeResult,
+  VerbatimContribution,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -99,7 +101,16 @@ interface CollectedOverlay {
   end: number;
   class_id: number;
   // bit 0 = line-mode.
+  // bit 1 verbatim
   flags: number;
+}
+
+// checked after the walk, once every hidden range is known
+interface PendingVerbatim {
+  start: number;
+  end: number;
+  type: string;
+  marker: SourcePosition;
 }
 
 export interface SkipRange {
@@ -148,6 +159,7 @@ function run_extraction(
   const n = tokens.length / 3;
 
   const overlays: CollectedOverlay[] = [];
+  const verbatim: PendingVerbatim[] = [];
   const skip_ranges: SkipRange[] = [];
   const class_to_id = new Map<string, number>();
   const classifications: string[] = [];
@@ -188,6 +200,24 @@ function run_extraction(
     if (typeof console !== "undefined" && typeof console.warn === "function") {
       console.warn(`twinkleplop annotation [${kind}] at line ${position.line}: ${message}`);
     }
+  };
+
+  const push_verbatim = (overlay: VerbatimContribution, marker: SourcePosition) => {
+    const { start, end, type } = overlay;
+    if (overlay.verbatim !== true) {
+      report("malformed", `overlay verbatim must be true`, marker);
+      return;
+    }
+    if (type !== undefined && (typeof type !== "string" || !is_class_list(type))) {
+      report("malformed", `verbatim type must be one or more css class tokens`, marker);
+      return;
+    }
+    const newline = input.indexOf("\n", start);
+    if (newline !== -1 && newline < end) {
+      report("malformed", `verbatim range spans a line break`, marker);
+      return;
+    }
+    if (start < end) verbatim.push({ start, end, type: type ?? "", marker });
   };
 
   // pair stack scoped by `(verb, id)`. half-open starts push, half-open
@@ -310,7 +340,8 @@ function run_extraction(
             `annotation: plugin "${verb}" emitted an overlay outside the source (${overlay.start}..${overlay.end}, source length ${input.length})`,
           );
         }
-        push_overlay(overlays, class_id_for, overlay);
+        if ("verbatim" in overlay) push_verbatim(overlay, marker);
+        else push_overlay(overlays, class_id_for, overlay);
       }
     }
     if (output.issues) {
@@ -544,15 +575,42 @@ function run_extraction(
     }
   }
 
+  if (verbatim.length !== 0) {
+    verbatim.sort((a, b) => a.start - b.start || a.end - b.end);
+    let reach = 0;
+    for (const v of verbatim) {
+      if (v.start < reach) {
+        report("malformed", `verbatim range overlaps another verbatim range`, v.marker);
+        continue;
+      }
+      if (overlaps_skip(skip_ranges, v.start, v.end)) {
+        report("malformed", `verbatim range overlaps a hidden marker`, v.marker);
+        continue;
+      }
+      reach = v.end;
+      overlays.push({
+        start: v.start,
+        end: v.end,
+        class_id: class_id_for(v.type),
+        flags: OVERLAY_VERBATIM,
+      });
+    }
+  }
+
   if (overlays.length === 0 && skip_ranges.length === 0) return undefined;
 
   return finalize(overlays, classifications, skip_ranges, input, ensure_line_index);
 }
 
+function overlaps_skip(skip_ranges: SkipRange[], start: number, end: number): boolean {
+  for (const s of skip_ranges) if (s.start < end && s.end > start) return true;
+  return false;
+}
+
 function push_overlay(
   out: CollectedOverlay[],
   class_id_for: (name: string) => number,
-  overlay: OverlayContribution,
+  overlay: ClassContribution,
 ): void {
   if (overlay.start >= overlay.end) return;
   out.push({
@@ -970,6 +1028,29 @@ function is_alpha(code: number): boolean {
 
 function is_verb_cont(code: number): boolean {
   return is_alpha(code) || (code >= 48 && code <= 57) || code === 95 || code === 45;
+}
+
+// a passing value is safe to write into a class attribute
+export function is_class_list(value: string): boolean {
+  const len = value.length;
+  if (len === 0) return false;
+  let token_start = 0;
+  for (let i = 0; i <= len; i++) {
+    const c = i < len ? value.charCodeAt(i) : 32;
+    if (c === 32) {
+      if (i === token_start) return false;
+      if (value.charCodeAt(token_start) >= 48 && value.charCodeAt(token_start) <= 57) {
+        return false;
+      }
+      token_start = i + 1;
+      continue;
+    }
+    if (c >= 128) continue;
+    if ((c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122)) continue;
+    if (c === 45 || c === 95) continue;
+    return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------
