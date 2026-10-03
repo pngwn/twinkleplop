@@ -845,6 +845,13 @@ export interface RenderOptions {
   escape?: Record<string, string>;
 }
 
+// attributes holds class first, then the attributes option in order without false values, unescaped
+// true is a bare attribute, a framework may render it as the string true
+export interface BlockParts {
+  attributes: { class: string } & Record<string, string | number | boolean>;
+  body: string;
+}
+
 // class goes after the element's own classes; attrs follow the `attributes`
 // rules.
 export interface HookResult {
