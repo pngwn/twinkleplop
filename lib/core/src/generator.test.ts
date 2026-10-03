@@ -1499,6 +1499,9 @@ describe("escape", () => {
       { "\t": "x" },
       { "{": 1 },
       { "{": undefined },
+      new Map([["{", "x"]]),
+      ["x"],
+      { [String.fromCharCode(0xd83d)]: "x" },
     ];
     for (const escape of bad) {
       expect(() => render_escaped("a", { escape: escape as Record<string, string> })).toThrow(

@@ -84,18 +84,22 @@ const ESCAPE_CACHE_CAP = 16;
 
 function escape_tables(escape: RenderOptions["escape"]): EscapeTables {
   if (escape === undefined) return DEFAULT_ESCAPE;
-  if (typeof escape !== "object" || escape === null) {
-    throw new TypeError("escape must map characters to their replacement text");
+  const proto = typeof escape === "object" && escape !== null && Object.getPrototypeOf(escape);
+  if (proto !== Object.prototype && proto !== null) {
+    throw new TypeError("escape must be a plain object mapping characters to replacement text");
   }
   const keys = Object.keys(escape);
   if (keys.length === 0) return DEFAULT_ESCAPE;
   let id = "";
   let max = 62;
   for (const key of keys) {
-    if (key.length !== 1) {
-      throw new TypeError(`escape keys must be one UTF-16 code unit, got ${JSON.stringify(key)}`);
-    }
     const code = key.charCodeAt(0);
+    // a lone surrogate key would split the characters that use it
+    if (key.length !== 1 || (code >= 0xd800 && code <= 0xdfff)) {
+      throw new TypeError(
+        `escape keys must be one UTF-16 code unit that is not a surrogate, got ${JSON.stringify(key)}`,
+      );
+    }
     // the renderer writes these outside the text paths
     if (code === 10 || code === 32 || code === 9) {
       throw new TypeError(`escape cannot replace line breaks, spaces or tabs`);
