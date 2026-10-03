@@ -1,7 +1,7 @@
 // shared by both twoslash packages, so they differ only in how they reach
 // twoslash and in the grammar they tokenize with.
 
-import type { TokenizeResult } from "@twinkleplop/core";
+import type { RenderOptions, TokenizeResult } from "@twinkleplop/core";
 import type { TwoslashOptions, TwoslashReturn } from "twoslash";
 import { render } from "./render.js";
 import type { HighlightOptions } from "./types.js";
@@ -24,13 +24,15 @@ export function resolve_twoslash_options(options: HighlightOptions): TwoslashOpt
  * the highlight function both packages return. `on_error` covers the twoslash
  * call alone: a rejected snippet is the caller's to fall back from, a failure
  * in tokenizing or rendering is a bug here and should surface as one.
+ *
+ * only escape is read from render_options, and it wins over options
  */
 export function create_pipeline(
   run_twoslash: (code: string) => TwoslashReturn,
   tokenize: (code: string) => TokenizeResult,
   options: HighlightOptions,
 ) {
-  return (code: string) => {
+  return (code: string, render_options?: Pick<RenderOptions, "escape">) => {
     let result: TwoslashReturn;
     try {
       result = run_twoslash(code);
@@ -39,6 +41,8 @@ export function create_pipeline(
       if (typeof fallback === "string") return fallback;
       throw error;
     }
-    return render(result.code, tokenize(result.code), result, options);
+    const escape = render_options?.escape;
+    const resolved = escape === undefined ? options : { ...options, escape };
+    return render(result.code, tokenize(result.code), result, resolved);
   };
 }

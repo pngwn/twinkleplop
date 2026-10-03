@@ -38,6 +38,8 @@ export interface HighlightOptions {
    * keeps the docs as one escaped block, with no tag elements at all.
    */
   docs_tags?: "split" | "raw";
+  /** extra characters to encode, as in core RenderOptions, render_docs output is left as is */
+  escape?: Record<string, string>;
 }
 
 interface BaseWrapper {

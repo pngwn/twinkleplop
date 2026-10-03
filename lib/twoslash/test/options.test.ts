@@ -227,3 +227,37 @@ describe("defaults", () => {
     expect(build()(documented)).toMatchSnapshot();
   });
 });
+
+describe("escape", () => {
+  const BRACES = { "{": "&#123;", "}": "&#125;" };
+  const code = `/**
+ * Makes an {a} object.
+ * @param x the {x} input
+ */
+function make(x: { a: number }) {
+	return { a: x.a }
+}
+// @log: {done}
+const v = make({ a: 1 })
+//    ^?
+`;
+
+  it("encodes the code, popover types, docs, tags and queries", () => {
+    expect(build()(code)).toMatch(/[{}]/);
+    const html = build({ escape: BRACES })(code);
+    expect(html).not.toMatch(/[{}]/);
+    expect(html).toContain("&#123;");
+    expect(html).toContain(`data-tag-name="log">&#123;done&#125;</span>`);
+  });
+
+  it("takes the map from the render options a markdown registry passes", () => {
+    const html = build()(code, { escape: BRACES });
+    expect(html).toBe(build({ escape: BRACES })(code));
+    expect(build({ escape: { "{": "x" } })(code, { escape: BRACES })).toBe(html);
+  });
+
+  it("leaves render_docs output as it is", () => {
+    const html = build({ escape: BRACES, render_docs: (md) => `<em>${md}</em>` })(code);
+    expect(html).toContain("<em>Makes an {a} object.</em>");
+  });
+});

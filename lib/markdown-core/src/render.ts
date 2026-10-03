@@ -1,4 +1,4 @@
-import { to_html } from "@twinkleplop/core";
+import { escape_html, to_html } from "@twinkleplop/core";
 import type { HookResult, OverlayItem, RenderOptions, TokenizeResult } from "@twinkleplop/core";
 import { parse_meta, split_info } from "./meta";
 import type { Fail, ParsedMeta } from "./meta";
@@ -37,6 +37,7 @@ export function create_renderer(options: MarkdownOptions): Renderer {
   const site_line_numbers = options.line_numbers;
   const parse_meta_hook = options.parse_meta;
   const base = options.render ?? {};
+  const escape = base.escape;
 
   function fence(
     lang: string | undefined,
@@ -61,7 +62,7 @@ export function create_renderer(options: MarkdownOptions): Renderer {
     if (parse_meta_hook !== undefined) render = parse_meta_hook(raw_meta, render) ?? render;
 
     const highlight = pick_highlight(name, entry, parsed, fail);
-    return wrap(name, parsed, run(highlight, source, render, name, location));
+    return wrap(name, parsed, run(highlight, source, render, name, location), render.escape);
   }
 
   function pick_highlight(
@@ -92,12 +93,9 @@ export function create_renderer(options: MarkdownOptions): Renderer {
     collect_lines(parsed, source, items, line_ids, fail);
     collect_words(parsed, source, items, word_ids);
 
-    // the fence name comes from the document and the renderer emits
-    // class_name verbatim, so it is escaped here. `data-language` rides
-    // `attributes`, which the renderer escapes itself.
     const render: RenderOptions = {
       ...base,
-      class_name: join(base.class_name ?? "twinkleplop", "language-" + escape_html(name)),
+      class_name: join(base.class_name ?? "twinkleplop", "language-" + name),
       attributes: { ...base.attributes, "data-language": name },
       line_numbers: resolve_line_numbers(parsed, site_line_numbers, base.line_numbers),
     };
@@ -119,7 +117,7 @@ export function create_renderer(options: MarkdownOptions): Renderer {
     }
     const highlight = entry === undefined ? plain_highlight : entry.highlight;
     const html = run(highlight, code, { ...base, structure: "inline" }, name, location);
-    return `<code class="twinkleplop-inline language-${escape_html(name)}">${html}</code>`;
+    return `<code class="twinkleplop-inline language-${escape_html(name, escape)}">${html}</code>`;
   }
 
   return { inline: inline_mode !== false, fence, inline_code };
@@ -153,16 +151,21 @@ function run(
 
 // the wrapper only appears when there is something to caption; a plain fence
 // stays a bare <pre>.
-function wrap(name: string, parsed: ParsedMeta, block: string): string {
+function wrap(
+  name: string,
+  parsed: ParsedMeta,
+  block: string,
+  escape: Record<string, string> | undefined,
+): string {
   const { title, caption } = parsed;
   if (title === undefined && caption === undefined) return block;
-  let out = `<figure class="twinkleplop-block" data-language="${escape_html(name)}">\n`;
+  let out = `<figure class="twinkleplop-block" data-language="${escape_html(name, escape)}">\n`;
   if (title !== undefined) {
-    out += `<figcaption class="twinkleplop-title">${escape_html(title)}</figcaption>\n`;
+    out += `<figcaption class="twinkleplop-title">${escape_html(title, escape)}</figcaption>\n`;
   }
   out += block;
   if (caption !== undefined) {
-    out += `\n<figcaption class="twinkleplop-caption">${escape_html(caption)}</figcaption>`;
+    out += `\n<figcaption class="twinkleplop-caption">${escape_html(caption, escape)}</figcaption>`;
   }
   return out + "\n</figure>";
 }
@@ -335,26 +338,6 @@ function join(left: string, right: string): string {
   if (left.length === 0) return right;
   if (right.length === 0) return left;
   return left + " " + right;
-}
-
-function escape_html(text: string): string {
-  let out = "";
-  let flushed = 0;
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    let entity: string | null = null;
-    if (code === 38) entity = "&amp;";
-    else if (code === 60) entity = "&lt;";
-    else if (code === 62) entity = "&gt;";
-    else if (code === 34) entity = "&quot;";
-    else if (code === 39) entity = "&#39;";
-    if (entity !== null) {
-      if (i > flushed) out += text.slice(flushed, i);
-      out += entity;
-      flushed = i + 1;
-    }
-  }
-  return flushed === 0 ? text : out + text.slice(flushed);
 }
 
 export { escape_html, split_info };
