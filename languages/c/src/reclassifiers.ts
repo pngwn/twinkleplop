@@ -249,23 +249,24 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
   const angles = new Int32Array(cpp ? n : 0).fill(-1);
   const angle_starts = new Int32Array(cpp ? n : 0).fill(-1);
   if (cpp) {
-    const pending: number[] = [];
+    const pending = new Int32Array(n);
+    let top = 0;
     for (let i = 0; i < n; i++) {
       const c = codes[i];
-      if (c === LT) pending.push(i);
+      if (c === LT) pending[top++] = i;
       else if (c === GT || c === SHR) {
         const count = c === GT ? 1 : 2;
-        if (pending.length < count) {
-          pending.length = 0;
+        if (top < count) {
+          top = 0;
           continue;
         }
         for (let k = 0; k < count; k++) {
-          const start = pending.pop()!;
+          const start = pending[--top];
           angles[start] = i;
           angle_starts[i] = start;
         }
       } else if (c === SEMI || c === LBRACE || c === RBRACE || c === EQ || c === AND || c === OR)
-        pending.length = 0;
+        top = 0;
     }
   }
   const template_end = (start: number) => (start < n ? angles[start] : -1);
