@@ -294,3 +294,26 @@ describe("diagnostics from the highlighter", () => {
     expect(() => md.fence("ts", "", "a\n")).toThrow("anchor `foo` not found");
   });
 });
+
+describe("escape", () => {
+  const render = { escape: { "{": "&#123;", "}": "&#125;" } };
+
+  test("the block, its figure and its captions all take the map", () => {
+    const html = renderer({ render }).fence("ts", 'title="{t}" caption="{c}"', "f({ a });\n")!;
+    expect(html).not.toMatch(/[{}]/);
+    expect(html).toContain('<figcaption class="twinkleplop-title">&#123;t&#125;</figcaption>');
+    expect(html).toContain('<figcaption class="twinkleplop-caption">&#123;c&#125;</figcaption>');
+  });
+
+  test("a fence name is encoded in the class and data-language", () => {
+    const md = renderer({ render, on_unknown_language: "plain" });
+    const html = md.fence("{r}", 'title="t"', "x <- {1}\n")!;
+    expect(html).not.toMatch(/[{}]/);
+    expect(html).toContain('class="twinkleplop language-&#123;r&#125;"');
+  });
+
+  test("inline code takes the map", () => {
+    const html = renderer({ render, inline: "tailing-curly-colon" }).inline_code("f({}){:ts}")!;
+    expect(html).not.toMatch(/[{}]/);
+  });
+});

@@ -24,3 +24,13 @@ describe("a registry entry with a twoslash highlighter", () => {
     expect(html).toContain('data-language="ts"');
   });
 });
+
+test("render.escape reaches the twoslash highlighter", () => {
+  const escaped = create_renderer({
+    languages: { ts: { highlight: typescript(), twoslash: create_highlighter({ lang: "ts" }) } },
+    render: { escape: { "{": "&#123;", "}": "&#125;" } },
+  });
+  const html = escaped.fence("ts", "twoslash", "const a = { b: 1 };\n//    ^?\n")!;
+  expect(html).toContain("twoslash-popover");
+  expect(html).not.toMatch(/[{}]/);
+});
