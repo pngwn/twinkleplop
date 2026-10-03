@@ -228,7 +228,10 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
   const emit = (i: number, kind: Category, priority = PRIORITY[kind]) => {
     if (ident(i)) claims[kind].push(index[i], priority);
   };
-  const pairs = new Map<number, number>();
+  // matching bracket of an opener, -1 when unmatched
+  const pairs = new Int32Array(n).fill(-1);
+  // square openers in the order they close
+  const squares: number[] = [];
   const stack: number[] = [];
   for (let i = 0; i < n; i++) {
     const c = codes[i];
@@ -237,13 +240,14 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
       const open = stack[stack.length - 1];
       if (open !== undefined && codes[open] + 1 === c) {
         stack.pop();
-        pairs.set(open, i);
+        pairs[open] = i;
+        if (c === RBRACKET) squares.push(open);
       }
     }
   }
   // template angles and comparisons are ambiguous without parsing
-  const angles = new Map<number, number>();
-  const angle_starts = new Map<number, number>();
+  const angles = new Int32Array(cpp ? n : 0).fill(-1);
+  const angle_starts = new Int32Array(cpp ? n : 0).fill(-1);
   if (cpp) {
     const pending: number[] = [];
     for (let i = 0; i < n; i++) {
@@ -257,19 +261,19 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
         }
         for (let k = 0; k < count; k++) {
           const start = pending.pop()!;
-          angles.set(start, i);
-          angle_starts.set(i, start);
+          angles[start] = i;
+          angle_starts[i] = start;
         }
       } else if (c === SEMI || c === LBRACE || c === RBRACE || c === EQ || c === AND || c === OR)
         pending.length = 0;
     }
   }
-  const template_end = (start: number) => angles.get(start) ?? -1;
+  const template_end = (start: number) => (start < n ? angles[start] : -1);
   const call_open = (i: number): number => {
     if (code(i + 1) === LPAREN) return i + 1;
     if (cpp && code(i + 1) === LT) {
       const close = template_end(i + 1);
-      if (close >= 0 && angle_starts.get(close) === i + 1 && code(close + 1) === LPAREN)
+      if (close >= 0 && angle_starts[close] === i + 1 && code(close + 1) === LPAREN)
         return close + 1;
     }
     return -1;
@@ -296,15 +300,15 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
         let open = body;
         while (open < n && codes[open] !== LBRACE && codes[open] !== SEMI && codes[open] !== RBRACE)
           open++;
-        const close = pairs.get(open);
-        if (code(open) === LBRACE && close !== undefined) {
+        const close = open < n ? pairs[open] : -1;
+        if (code(open) === LBRACE && close >= 0) {
           let entry = true;
           for (let j = open + 1; j < close; j++) {
             if (entry && ident(j)) {
               emit(j, "constant", 75);
               entry = false;
             }
-            if (pairs.has(j)) j = pairs.get(j)!;
+            if (pairs[j] >= 0) j = pairs[j];
             else if (codes[j] === COMMA) entry = true;
           }
         }
@@ -323,8 +327,8 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
           if (cj === SEMI) break;
         } else if (cj === LPAREN && code(j + 1) === STAR && ident(j + 2)) {
           last = j + 2;
-          j = pairs.get(j) ?? j;
-        } else if (pairs.has(j)) j = pairs.get(j)!;
+          if (pairs[j] >= 0) j = pairs[j];
+        } else if (pairs[j] >= 0) j = pairs[j];
         else if (kinds[j] === IDENT) last = j;
       }
     }
@@ -347,8 +351,8 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
         if (has_type) emit(j + 2, "parameter");
         return;
       }
-      if (pairs.has(j)) {
-        j = pairs.get(j)!;
+      if (pairs[j] >= 0) {
+        j = pairs[j];
         continue;
       }
       if (cpp && c === LT) {
@@ -392,7 +396,7 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
       if (j === close || codes[j] === COMMA) {
         parameter(start, j);
         start = j + 1;
-      } else if (pairs.has(j)) j = pairs.get(j)!;
+      } else if (pairs[j] >= 0) j = pairs[j];
       else if (cpp && codes[j] === LT) {
         const end = template_end(j);
         if (end >= 0) j = end;
@@ -400,11 +404,11 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
     }
   };
   if (cpp) {
-    for (const [capture, end] of pairs) {
-      if (codes[capture] !== LBRACKET || code(capture - 1) === LBRACKET || code(end + 1) !== LPAREN)
-        continue;
-      const close = pairs.get(end + 1);
-      if (close === undefined) continue;
+    for (const capture of squares) {
+      const end = pairs[capture];
+      if (code(capture - 1) === LBRACKET || code(end + 1) !== LPAREN) continue;
+      const close = pairs[end + 1];
+      if (close < 0) continue;
       const after = code(close + 1);
       if (
         after === LBRACE ||
@@ -436,8 +440,8 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
     if (cpp && next === LT && open < 0 && template_end(i + 1) >= 0) emit(i, "class_name");
     if (open < 0) continue;
     emit(i, "function");
-    const close = pairs.get(open);
-    if (close === undefined || member) continue;
+    const close = pairs[open];
+    if (close < 0 || member) continue;
     let before = i - 1;
     while (cpp && code(before) === SCOPE && ident(before - 1)) before -= 2;
     for (;;) {
@@ -451,7 +455,7 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
         before--;
       else break;
     }
-    if (cpp && angle_starts.has(before)) before = angle_starts.get(before)! - 1;
+    if (cpp && before >= 0 && angle_starts[before] >= 0) before = angle_starts[before] - 1;
     // typed prefixes distinguish declarations from calls and control expressions
     const declaration =
       is_type(before) ||
