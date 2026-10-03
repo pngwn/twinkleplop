@@ -2,8 +2,26 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 63,
+		"match": "# ============================================================\n"
+	},
+	{
+		"type": "comment",
+		"start": 63,
+		"end": 125,
+		"match": "# EDGE CASE FILE 3: Datetimes and Complex Multi-type Document\n"
+	},
+	{
+		"type": "comment",
+		"start": 125,
+		"end": 177,
+		"match": "# Sources: toml-test spec-1.0.0 + manual test cases\n"
+	},
+	{
+		"type": "comment",
+		"start": 177,
 		"end": 240,
-		"match": "# ============================================================\n# EDGE CASE FILE 3: Datetimes and Complex Multi-type Document\n# Sources: toml-test spec-1.0.0 + manual test cases\n# ============================================================\n"
+		"match": "# ============================================================\n"
 	},
 	{
 		"type": "comment",
@@ -2120,8 +2138,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 1785,
+		"end": 1843,
+		"match": "# --- Complex multi-type document (real-world config) ---\n"
+	},
+	{
+		"type": "comment",
+		"start": 1843,
 		"end": 1906,
-		"match": "# --- Complex multi-type document (real-world config) ---\n# Based on toml-test spec-example-1 + array.toml + tricky.toml\n"
+		"match": "# Based on toml-test spec-example-1 + array.toml + tricky.toml\n"
 	},
 	{
 		"type": "comment",

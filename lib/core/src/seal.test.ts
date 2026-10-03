@@ -336,3 +336,26 @@ describe("seal predicate — probe mode is unaffected", () => {
     expect(got).toEqual([{ type: "t", value: "ab", start: 0, end: 2 }]);
   });
 });
+
+describe("seal predicate — match_within openers", () => {
+  const line_comments = (seal: boolean): Grammar => ({
+    name: "hash_comments",
+    states: {
+      root: {
+        rules: [{ match_within: { start: "#", end: "\n" }, token: "comment", seal }],
+      },
+    },
+  });
+
+  it("a sealed opener keeps consecutive line comments apart", () => {
+    const input = "# a\n# b\n";
+    const got = tokens_of(tokenize(input, compile(line_comments(true))), input);
+    expect(got.map((t) => t.value)).toEqual(["# a\n", "# b\n"]);
+  });
+
+  it("an unsealed opener coalesces into the previous comment", () => {
+    const input = "# a\n# b\n";
+    const got = tokens_of(tokenize(input, compile(line_comments(false))), input);
+    expect(got.map((t) => t.value)).toEqual(["# a\n# b\n"]);
+  });
+});

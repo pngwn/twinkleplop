@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 12,
+		"match": "#!/bin/bash\n"
+	},
+	{
+		"type": "comment",
+		"start": 12,
 		"end": 38,
-		"match": "#!/bin/bash\n# [[ ]] conditional tests\n"
+		"match": "# [[ ]] conditional tests\n"
 	},
 	{
 		"type": "keyword",

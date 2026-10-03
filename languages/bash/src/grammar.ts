@@ -300,7 +300,7 @@ export const BOOLEAN_SET = new Set(BOOLEAN_LITERALS);
 
 const WS = on([" ", "\t", "\n", "\r"]);
 const LINE_CONTINUATION = match("\\\n", TOKENS.operator);
-const COMMENT = within("#", "\n", TOKENS.comment);
+const COMMENT = { ...within("#", "\n", TOKENS.comment), seal: true };
 const SINGLE_STRING = within("'", "'", TOKENS.string);
 const ANSI_STRING = within("$'", "'", TOKENS.string, { escape: "\\" });
 const BACKTICK_STRING = within("`", "`", TOKENS.string, { escape: "\\" });

@@ -137,7 +137,7 @@ const OPERATORS = [
 
 const WS = on([" ", "\t", "\n", "\r"]);
 const LINE_COMMENT_DASH = within("--", "\n", TOKENS.comment);
-const LINE_COMMENT_HASH = within("#", "\n", TOKENS.comment);
+const LINE_COMMENT_HASH = { ...within("#", "\n", TOKENS.comment), seal: true };
 
 // identifier continuation chars (ascii). postgres allows diacritical /
 // non-latin letters in identifiers; we accept ascii plus `$` for pg / mysql

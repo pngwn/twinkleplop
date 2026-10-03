@@ -2,8 +2,20 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 23,
+		"match": "#!/usr/bin/env python3\n"
+	},
+	{
+		"type": "comment",
+		"start": 23,
+		"end": 47,
+		"match": "# -*- coding: utf-8 -*-\n"
+	},
+	{
+		"type": "comment",
+		"start": 47,
 		"end": 67,
-		"match": "#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\n# A regular comment\n"
+		"match": "# A regular comment\n"
 	},
 	{
 		"type": "identifier",
@@ -26,8 +38,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 74,
+		"end": 91,
+		"match": "# inline comment\n"
+	},
+	{
+		"type": "comment",
+		"start": 91,
 		"end": 106,
-		"match": "# inline comment\n# another line\n"
+		"match": "# another line\n"
 	},
 	{
 		"type": "keyword",
@@ -80,7 +98,13 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 196,
+		"end": 212,
+		"match": "# with trailing\n"
+	},
+	{
+		"type": "comment",
+		"start": 212,
 		"end": 228,
-		"match": "# with trailing\n# final comment\n"
+		"match": "# final comment\n"
 	}
 ];

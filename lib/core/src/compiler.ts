@@ -117,6 +117,7 @@ function preprocess_grammar(grammar: Grammar): Grammar {
           match: rule.match_within.start,
           token: rule.token,
           state: content_state_name,
+          seal: rule.seal,
         });
 
         // create the content state

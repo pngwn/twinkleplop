@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 12,
+		"match": "#!/bin/bash\n"
+	},
+	{
+		"type": "comment",
+		"start": 12,
 		"end": 34,
-		"match": "#!/bin/bash\n# pipelines and lists\n"
+		"match": "# pipelines and lists\n"
 	},
 	{
 		"type": "identifier",

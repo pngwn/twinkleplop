@@ -2,8 +2,14 @@ export const test = [
 	{
 		"type": "comment",
 		"start": 0,
+		"end": 20,
+		"match": "#!/usr/bin/env bash\n"
+	},
+	{
+		"type": "comment",
+		"start": 20,
 		"end": 45,
-		"match": "#!/usr/bin/env bash\n# simple greeting script\n"
+		"match": "# simple greeting script\n"
 	},
 	{
 		"type": "builtin",
