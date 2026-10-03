@@ -136,8 +136,8 @@
 			{/if}
 			<div class="provenance">
 				<span
-					><span class="hw">AMD EPYC</span> · <span class="hw">8C16T</span> ·
-					<span class="hw">64GM RAM</span></span
+					><span class="hw">AMD EPYC</span> · <span class="hw">{bench.meta.cpu_count} threads</span> ·
+					<span class="hw">64GB RAM</span></span
 				>
 				<span>node {bench.meta.node}</span>
 				{#if bench.meta.commit}
@@ -162,8 +162,9 @@
 		<Section id="versions" title="version history" num="§ 02">
 			<p>
 				How twinkleplop's own speed changed between published runs on the same CPU and inputs.
-				Speed is throughput in MB/s, the geometric mean across every chart above, with the change
-				from the previous version beside it.
+				Speed is throughput in MB/s, the geometric mean across the charts every version measured,
+				with the change from the previous version beside it. A language added since an earlier
+				version has its own bar below but no change.
 			</p>
 			<p>
 				The other libraries keep the same versions between runs, so how far they moved shows how

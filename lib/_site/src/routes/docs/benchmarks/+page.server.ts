@@ -35,6 +35,7 @@ interface RawComparison {
 		node: string;
 		platform: string;
 		cpu: string;
+		cpu_count: number;
 		runner: string;
 		anchor: { drift: number; stable: boolean };
 		libraries: Array<{ id: string; label: string; version: string; note: string }>;
