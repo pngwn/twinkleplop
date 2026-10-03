@@ -483,9 +483,11 @@ function open_pre(class_attr: string, attributes: RenderOptions["attributes"]): 
   return `<pre class="${class_attr}"${render_attributes(attributes)}>`;
 }
 
-// values stay unescaped since a component escapes its own props
+// values stay unescaped since a component escapes its own props, no prototype
+// so an attribute named __proto__ is kept as to_html keeps it
 function pre_attributes(class_attr: string, attributes: RenderOptions["attributes"]) {
-  const out: BlockParts["attributes"] = { class: class_attr };
+  const out: BlockParts["attributes"] = Object.create(null);
+  out.class = class_attr;
   if (attributes === undefined) return out;
   for (const name of Object.keys(attributes)) {
     const value = attributes[name];

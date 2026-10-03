@@ -1429,6 +1429,14 @@ describe("to_parts", () => {
     expect(Object.keys(attributes)).toEqual(["class", "data-title", "tabindex", "hidden"]);
   });
 
+  test("an attribute named __proto__ is kept", () => {
+    const attributes = JSON.parse('{"__proto__":"x"}');
+    const parts = to_parts("a", tokenized("a"), { attributes });
+    expect(Object.keys(parts.attributes)).toEqual(["class", "__proto__"]);
+    expect(Object.getOwnPropertyDescriptor(parts.attributes, "__proto__")?.value).toBe("x");
+    expect(to_html("a", tokenized("a"), { attributes })).toContain('__proto__="x"');
+  });
+
   test("body is the code element", () => {
     const { body } = to_parts("a\nb", tokenized("a\nb"));
     expect(body.startsWith('<code><span class="l">')).toBe(true);

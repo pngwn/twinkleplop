@@ -263,7 +263,8 @@ const result = overlays(source, [
 				<code>&lt;pre&gt;</code> attributes as props and the <code>&lt;code&gt;</code> element as
 				children. <code>attributes</code> holds <code>class</code> first, then the
 				<code>attributes</code> option in order with <code>false</code> values dropped. Values are
-				not escaped. <code>structure: "inline"</code> has no <code>&lt;pre&gt;</code> and throws a
+				not escaped. <code>true</code> stands for a bare attribute, which some frameworks render as
+				<code>="true"</code> on attributes that are not boolean. <code>structure: "inline"</code> has no <code>&lt;pre&gt;</code> and throws a
 				<code>TypeError</code>.
 			</p>
 			<Signature html={to_parts_sig} />
