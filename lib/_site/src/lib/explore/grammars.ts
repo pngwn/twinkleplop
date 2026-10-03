@@ -27,6 +27,7 @@ export const GRAMMAR_LOADERS: Record<string, () => Promise<unknown>> = {
   diff: () => import("@twinkleplop/diff"),
   "diff-basic": () => import("@twinkleplop/diff-basic"),
   dotenv: () => import("@twinkleplop/dotenv"),
+  dockerfile: () => import("@twinkleplop/dockerfile"),
 };
 
 export const LANGUAGES = Object.keys(GRAMMAR_LOADERS).sort();
@@ -59,6 +60,8 @@ const FENCE_LANGUAGES: Record<string, string> = {
   gql: "graphql",
   sql: "sql",
   diff: "diff",
+  dockerfile: "dockerfile",
+  docker: "dockerfile",
 };
 
 type language_module = { tokenize: (options?: object) => LanguageFn };

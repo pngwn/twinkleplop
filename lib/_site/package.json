@@ -28,6 +28,7 @@
     "@twinkleplop/css": "workspace:*",
     "@twinkleplop/diff": "workspace:*",
     "@twinkleplop/diff-basic": "workspace:*",
+    "@twinkleplop/dockerfile": "workspace:*",
     "@twinkleplop/dotenv": "workspace:*",
     "@twinkleplop/go": "workspace:*",
     "@twinkleplop/graphql": "workspace:*",

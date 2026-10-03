@@ -30,6 +30,7 @@ export const SHIKI_LANG_MAP: Record<string, string | null> = {
   diff: "diff",
   "diff-basic": null,
   dotenv: "dotenv",
+  dockerfile: "dockerfile",
 };
 
 let highlighter_promise: Promise<Highlighter> | null = null;
