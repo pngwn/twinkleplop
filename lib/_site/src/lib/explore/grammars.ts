@@ -20,6 +20,7 @@ export const GRAMMAR_LOADERS: Record<string, () => Promise<unknown>> = {
   python: () => import("@twinkleplop/python"),
   bash: () => import("@twinkleplop/bash"),
   shellsession: () => import("@twinkleplop/shellsession"),
+  graphql: () => import("@twinkleplop/graphql"),
   go: () => import("@twinkleplop/go"),
   http: () => import("@twinkleplop/http"),
   diff: () => import("@twinkleplop/diff"),
@@ -50,6 +51,8 @@ const FENCE_LANGUAGES: Record<string, string> = {
   py: "python",
   rust: "rust",
   go: "go",
+  graphql: "graphql",
+  gql: "graphql",
   sql: "sql",
   diff: "diff",
 };
