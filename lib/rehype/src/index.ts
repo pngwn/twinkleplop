@@ -20,7 +20,13 @@ interface File {
 
 export default function rehype_twinkleplop(options: RehypeOptions) {
   const renderer = create_renderer(options);
-  const to_nodes = options.output === "raw" ? as_raw : as_hast;
+  const raw = options.output === "raw";
+  // parsing into hast decodes the entities the map writes
+  const escape = options.render?.escape;
+  if (!raw && escape !== undefined && Object.keys(escape).length !== 0) {
+    throw new TypeError('render.escape needs output: "raw", hast output decodes what it writes');
+  }
+  const to_nodes = raw ? as_raw : as_hast;
   return (tree: Nodes, file?: File): void => {
     if ("children" in tree) visit(tree as Parents, renderer, to_nodes, file?.path);
   };
