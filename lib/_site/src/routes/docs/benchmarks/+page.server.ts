@@ -222,9 +222,7 @@ function geomean(ratios: number[]): number | null {
 const same_input = (a: HistoryEntry, b: HistoryEntry, key: string) =>
 	a.inputs?.[key] !== undefined && a.inputs[key] === b.inputs?.[key];
 
-// a step only compares with the latest earlier entry on the same cpu, over the
-// charts both measured on the same input. the corpus grows when a language is
-// added, and the new charts have nothing to compare with.
+// a step compares with the latest earlier entry on the same cpu, over charts with the same input
 function version_steps(entries: HistoryEntry[]): VersionStep[] {
 	// the bars put every version side by side, so they share one set of charts
 	const latest = entries[entries.length - 1];
