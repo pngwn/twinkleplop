@@ -61,8 +61,123 @@ function type_name(text: string): boolean {
   return text.endsWith("_t") || (text[0] >= "A" && text[0] <= "Z" && !upper_constant(text));
 }
 
-// flat (token index, priority) pairs per category, in walk order
+// token index and priority pairs per category in walk order
 type Claims = Record<Category, number[]>;
+
+// codes for compared punctuation and words, each closer is its opener plus one
+const LPAREN = 1;
+const RPAREN = 2;
+const LBRACKET = 3;
+const RBRACKET = 4;
+const LBRACE = 5;
+const RBRACE = 6;
+const LT = 7;
+const GT = 8;
+const SHR = 9;
+const SEMI = 10;
+const EQ = 11;
+const AND = 12;
+const OR = 13;
+const COMMA = 14;
+const STAR = 15;
+const AMP = 16;
+const ELLIPSIS = 17;
+const SCOPE = 18;
+const DOT = 19;
+const ARROW = 20;
+const COLON = 21;
+const NAMESPACE = 22;
+const ENUM = 23;
+const CLASS = 24;
+const STRUCT = 25;
+const UNION = 26;
+const TYPEDEF = 27;
+const USING = 28;
+const DEFINE = 29;
+const RETURN = 30;
+const MUTABLE = 31;
+const NOEXCEPT = 32;
+const CONSTEXPR = 33;
+const CONSTEVAL = 34;
+const PUBLIC = 35;
+const PRIVATE = 36;
+const PROTECTED = 37;
+
+// punctuation is at most three ascii chars, keyed by length and char codes
+const PUNCT = new Map<number, number>();
+for (const [text, code] of [
+  ["(", LPAREN],
+  [")", RPAREN],
+  ["[", LBRACKET],
+  ["]", RBRACKET],
+  ["{", LBRACE],
+  ["}", RBRACE],
+  ["<", LT],
+  [">", GT],
+  [">>", SHR],
+  [";", SEMI],
+  ["=", EQ],
+  ["&&", AND],
+  ["||", OR],
+  [",", COMMA],
+  ["*", STAR],
+  ["&", AMP],
+  ["...", ELLIPSIS],
+  ["::", SCOPE],
+  [".", DOT],
+  ["->", ARROW],
+  [":", COLON],
+] as const) {
+  let key = text.length;
+  for (let i = 0; i < text.length; i++) key |= text.charCodeAt(i) << (2 + 7 * i);
+  PUNCT.set(key, code);
+}
+const WORDS = new Map<string, number>([
+  ["namespace", NAMESPACE],
+  ["enum", ENUM],
+  ["class", CLASS],
+  ["struct", STRUCT],
+  ["union", UNION],
+  ["typedef", TYPEDEF],
+  ["using", USING],
+  ["define", DEFINE],
+  ["return", RETURN],
+  ["mutable", MUTABLE],
+  ["noexcept", NOEXCEPT],
+  ["constexpr", CONSTEXPR],
+  ["consteval", CONSTEVAL],
+  ["public", PUBLIC],
+  ["private", PRIVATE],
+  ["protected", PROTECTED],
+]);
+
+const OTHER = 0;
+const IDENT = 1;
+const KEYWORD = 2;
+const COMMENT = 3;
+
+// only tokens starting like an identifier can share text with one
+function word_start(c: number): boolean {
+  return (
+    (c >= 97 && c <= 122) || (c >= 65 && c <= 90) || c === 95 || c === 36 || c === 92 || c >= 128
+  );
+}
+
+function punct_code(input: string, start: number, end: number): number {
+  const length = end - start;
+  if (length < 1 || length > 3) return 0;
+  let key = length;
+  for (let i = 0; i < length; i++) {
+    const c = input.charCodeAt(start + i);
+    if (c >= 128) return 0;
+    key |= c << (2 + 7 * i);
+  }
+  return PUNCT.get(key) ?? 0;
+}
+
+function tag_word(code: number): boolean {
+  return code === STRUCT || code === UNION || code === ENUM || code === CLASS;
+}
 
 // declarations are lexical heuristics, dependent types and shadowed names need a parser
 function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp: boolean): Claims {
@@ -74,29 +189,53 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
     property: [],
     namespace: [],
   };
-  const items: { text: string; kind: string; index: number }[] = [];
-  for (let i = 0; i < tokens.length; i += 3) {
-    const kind = token_types[tokens[i]];
-    if (kind === "comment") continue;
-    items.push({
-      text: input.slice(tokens[i + 1], tokens[i + 2]),
-      kind,
-      index: i / 3,
-    });
+  const kind_of = new Uint8Array(token_types.length);
+  for (let t = 0; t < token_types.length; t++) {
+    const name = token_types[t];
+    kind_of[t] =
+      name === "identifier"
+        ? IDENT
+        : name === "keyword"
+          ? KEYWORD
+          : name === "comment"
+            ? COMMENT
+            : OTHER;
   }
-  const text = (i: number) => items[i]?.text ?? "";
-  const ident = (i: number) => items[i]?.kind === "identifier";
-  const keyword = (i: number) => items[i]?.kind === "keyword";
+  // non-comment tokens as parallel arrays, text only where a name lookup can match
+  const max = tokens.length / 3;
+  const index = new Int32Array(max);
+  const kinds = new Uint8Array(max);
+  const codes = new Uint8Array(max);
+  const texts: string[] = [];
+  let n = 0;
+  for (let t = 0; t < max; t++) {
+    const kind = kind_of[tokens[t * 3]];
+    if (kind === COMMENT) continue;
+    const start = tokens[t * 3 + 1];
+    const end = tokens[t * 3 + 2];
+    index[n] = t;
+    kinds[n] = kind;
+    const word = end > start && word_start(input.charCodeAt(start));
+    const text = word || kind !== OTHER ? input.slice(start, end) : "";
+    texts.push(text);
+    codes[n] = word ? (WORDS.get(text) ?? 0) : punct_code(input, start, end);
+    n++;
+  }
+  const code = (i: number) => (i >= 0 && i < n ? codes[i] : 0);
+  const text = (i: number) => (i >= 0 && i < n ? texts[i] : "");
+  const ident = (i: number) => i >= 0 && i < n && kinds[i] === IDENT;
+  const keyword = (i: number) => i >= 0 && i < n && kinds[i] === KEYWORD;
   const emit = (i: number, kind: Category, priority = PRIORITY[kind]) => {
-    if (ident(i)) claims[kind].push(items[i].index, priority);
+    if (ident(i)) claims[kind].push(index[i], priority);
   };
   const pairs = new Map<number, number>();
   const stack: number[] = [];
-  for (let i = 0; i < items.length; i++) {
-    if (["(", "[", "{"].includes(text(i))) stack.push(i);
-    else if ([")", "]", "}"].includes(text(i))) {
+  for (let i = 0; i < n; i++) {
+    const c = codes[i];
+    if (c === LPAREN || c === LBRACKET || c === LBRACE) stack.push(i);
+    else if (c === RPAREN || c === RBRACKET || c === RBRACE) {
       const open = stack[stack.length - 1];
-      if (open !== undefined && "([{".indexOf(text(open)) === ")]}".indexOf(text(i))) {
+      if (open !== undefined && codes[open] + 1 === c) {
         stack.pop();
         pairs.set(open, i);
       }
@@ -107,54 +246,58 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
   const angle_starts = new Map<number, number>();
   if (cpp) {
     const pending: number[] = [];
-    for (let i = 0; i < items.length; i++) {
-      const t = text(i);
-      if (t === "<") pending.push(i);
-      else if (t === ">" || t === ">>") {
-        if (pending.length < t.length) {
+    for (let i = 0; i < n; i++) {
+      const c = codes[i];
+      if (c === LT) pending.push(i);
+      else if (c === GT || c === SHR) {
+        const count = c === GT ? 1 : 2;
+        if (pending.length < count) {
           pending.length = 0;
           continue;
         }
-        for (let count = 0; count < t.length; count++) {
+        for (let k = 0; k < count; k++) {
           const start = pending.pop()!;
           angles.set(start, i);
           angle_starts.set(i, start);
         }
-      } else if ([";", "{", "}", "=", "&&", "||"].includes(t)) pending.length = 0;
+      } else if (c === SEMI || c === LBRACE || c === RBRACE || c === EQ || c === AND || c === OR)
+        pending.length = 0;
     }
   }
   const template_end = (start: number) => angles.get(start) ?? -1;
   const call_open = (i: number): number => {
-    if (text(i + 1) === "(") return i + 1;
-    if (cpp && text(i + 1) === "<") {
+    if (code(i + 1) === LPAREN) return i + 1;
+    if (cpp && code(i + 1) === LT) {
       const close = template_end(i + 1);
-      if (close >= 0 && angle_starts.get(close) === i + 1 && text(close + 1) === "(")
+      if (close >= 0 && angle_starts.get(close) === i + 1 && code(close + 1) === LPAREN)
         return close + 1;
     }
     return -1;
   };
   const known_types = new Set<string>();
   const namespaces = new Set<string>();
-  for (let i = 0; i < items.length; i++) {
-    if (cpp && text(i) === "namespace") {
+  for (let i = 0; i < n; i++) {
+    const c = codes[i];
+    if (cpp && c === NAMESPACE) {
       for (let j = i + 1; ident(j); j += 2) {
-        namespaces.add(text(j));
-        if (text(j + 1) !== "::") break;
+        namespaces.add(texts[j]);
+        if (code(j + 1) !== SCOPE) break;
       }
     }
-    if (TAG_WORDS.has(text(i)) && items[i].kind === "keyword") {
+    if (tag_word(c) && kinds[i] === KEYWORD) {
       let name = i + 1;
-      if (text(i) === "enum" && ["class", "struct"].includes(text(name))) name++;
+      if (c === ENUM && (code(name) === CLASS || code(name) === STRUCT)) name++;
       if (ident(name)) {
-        if (cpp) known_types.add(text(name));
+        if (cpp) known_types.add(texts[name]);
         emit(name, "class_name", 75);
       }
       const body = ident(name) ? name + 1 : name;
-      if (text(i) === "enum") {
+      if (c === ENUM) {
         let open = body;
-        while (open < items.length && !["{", ";", "}"].includes(text(open))) open++;
+        while (open < n && codes[open] !== LBRACE && codes[open] !== SEMI && codes[open] !== RBRACE)
+          open++;
         const close = pairs.get(open);
-        if (text(open) === "{" && close !== undefined) {
+        if (code(open) === LBRACE && close !== undefined) {
           let entry = true;
           for (let j = open + 1; j < close; j++) {
             if (entry && ident(j)) {
@@ -162,44 +305,45 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
               entry = false;
             }
             if (pairs.has(j)) j = pairs.get(j)!;
-            else if (text(j) === ",") entry = true;
+            else if (codes[j] === COMMA) entry = true;
           }
         }
       }
     }
-    if (text(i) === "typedef") {
+    if (c === TYPEDEF) {
       let last = -1;
-      for (let j = i + 1; j < items.length; j++) {
-        if (text(j) === ";" || text(j) === ",") {
+      for (let j = i + 1; j < n; j++) {
+        const cj = codes[j];
+        if (cj === SEMI || cj === COMMA) {
           if (last >= 0) {
-            known_types.add(text(last));
+            known_types.add(texts[last]);
             emit(last, "class_name", 75);
           }
           last = -1;
-          if (text(j) === ";") break;
-        } else if (text(j) === "(" && text(j + 1) === "*" && ident(j + 2)) {
+          if (cj === SEMI) break;
+        } else if (cj === LPAREN && code(j + 1) === STAR && ident(j + 2)) {
           last = j + 2;
           j = pairs.get(j) ?? j;
         } else if (pairs.has(j)) j = pairs.get(j)!;
-        else if (ident(j)) last = j;
+        else if (kinds[j] === IDENT) last = j;
       }
     }
-    if (cpp && text(i) === "using" && ident(i + 1) && text(i + 2) === "=") {
-      known_types.add(text(i + 1));
+    if (cpp && c === USING && ident(i + 1) && code(i + 2) === EQ) {
+      known_types.add(texts[i + 1]);
       emit(i + 1, "class_name", 75);
     }
   }
   const is_type = (i: number) =>
-    (keyword(i) && TYPE_WORDS.has(text(i))) ||
+    (keyword(i) && TYPE_WORDS.has(texts[i])) ||
     known_types.has(text(i)) ||
-    (ident(i) && type_name(text(i)));
+    (ident(i) && type_name(texts[i]));
   const parameter = (start: number, end: number) => {
     let has_type = false;
     let candidate = -1;
     for (let j = start; j < end; j++) {
-      const t = text(j);
-      if (t === "=") break;
-      if (t === "(" && text(j + 1) === "*" && ident(j + 2)) {
+      const c = codes[j];
+      if (c === EQ) break;
+      if (c === LPAREN && code(j + 1) === STAR && ident(j + 2)) {
         if (has_type) emit(j + 2, "parameter");
         return;
       }
@@ -207,20 +351,28 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
         j = pairs.get(j)!;
         continue;
       }
-      if (cpp && t === "<") {
+      if (cpp && c === LT) {
         const close = template_end(j);
         if (close < 0) return;
         j = close;
         continue;
       }
-      if ((keyword(j) && QUALIFIERS.has(t)) || ["*", "&", "&&", "..."].includes(t)) continue;
-      if (keyword(j) && (TAG_WORDS.has(t) || TYPE_WORDS.has(t))) {
+      const kind = kinds[j];
+      if (
+        (kind === KEYWORD && QUALIFIERS.has(texts[j])) ||
+        c === STAR ||
+        c === AMP ||
+        c === AND ||
+        c === ELLIPSIS
+      )
+        continue;
+      if (kind === KEYWORD && (tag_word(c) || TYPE_WORDS.has(texts[j]))) {
         has_type = true;
         continue;
       }
-      if (ident(j)) {
-        if (text(j + 1) === "::") continue;
-        if (keyword(j - 1) && TAG_WORDS.has(text(j - 1))) {
+      if (kind === IDENT) {
+        if (code(j + 1) === SCOPE) continue;
+        if (keyword(j - 1) && tag_word(codes[j - 1])) {
           has_type = true;
           continue;
         }
@@ -230,18 +382,18 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
           continue;
         }
         candidate = j;
-      } else if (t !== "::") return;
+      } else if (c !== SCOPE) return;
     }
     if (candidate >= 0) emit(candidate, "parameter");
   };
   const parameters = (open: number, close: number) => {
     let start = open + 1;
     for (let j = start; j <= close; j++) {
-      if (j === close || text(j) === ",") {
+      if (j === close || codes[j] === COMMA) {
         parameter(start, j);
         start = j + 1;
       } else if (pairs.has(j)) j = pairs.get(j)!;
-      else if (cpp && text(j) === "<") {
+      else if (cpp && codes[j] === LT) {
         const end = template_end(j);
         if (end >= 0) j = end;
       }
@@ -249,51 +401,70 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
   };
   if (cpp) {
     for (const [capture, end] of pairs) {
-      if (text(capture) !== "[" || text(capture - 1) === "[" || text(end + 1) !== "(") continue;
+      if (codes[capture] !== LBRACKET || code(capture - 1) === LBRACKET || code(end + 1) !== LPAREN)
+        continue;
       const close = pairs.get(end + 1);
+      if (close === undefined) continue;
+      const after = code(close + 1);
       if (
-        close !== undefined &&
-        ["{", "mutable", "noexcept", "->", "constexpr", "consteval"].includes(text(close + 1))
+        after === LBRACE ||
+        after === MUTABLE ||
+        after === NOEXCEPT ||
+        after === ARROW ||
+        after === CONSTEXPR ||
+        after === CONSTEVAL
       )
         parameters(end + 1, close);
     }
   }
-  for (let i = 0; i < items.length; i++) {
-    if (!ident(i)) continue;
-    const prev = text(i - 1);
-    const next = text(i + 1);
+  for (let i = 0; i < n; i++) {
+    if (kinds[i] !== IDENT) continue;
+    const name = texts[i];
+    const prev = code(i - 1);
+    const next = code(i + 1);
     const open = call_open(i);
-    const member = prev === "." || prev === "->";
-    if (upper_constant(text(i))) emit(i, "constant");
-    if (prev === "define" && items[i - 1].kind === "keyword") emit(i, "constant", 80);
-    if (!member && (known_types.has(text(i)) || type_name(text(i)))) emit(i, "class_name");
+    const member = prev === DOT || prev === ARROW;
+    if (upper_constant(name)) emit(i, "constant");
+    if (prev === DEFINE && kinds[i - 1] === KEYWORD) emit(i, "constant", 80);
+    if (!member && (known_types.has(name) || type_name(name))) emit(i, "class_name");
     if (member && open < 0) emit(i, "property");
     if (
       cpp &&
-      (namespaces.has(text(i)) ||
-        (next === "::" && !known_types.has(text(i)) && !type_name(text(i))))
+      (namespaces.has(name) || (next === SCOPE && !known_types.has(name) && !type_name(name)))
     )
       emit(i, "namespace");
-    if (cpp && next === "<" && open < 0 && template_end(i + 1) >= 0) emit(i, "class_name");
+    if (cpp && next === LT && open < 0 && template_end(i + 1) >= 0) emit(i, "class_name");
     if (open < 0) continue;
     emit(i, "function");
     const close = pairs.get(open);
     if (close === undefined || member) continue;
     let before = i - 1;
-    while (cpp && text(before) === "::" && ident(before - 1)) before -= 2;
-    while (
-      ["*", "&", "&&"].includes(text(before)) ||
-      (keyword(before) && QUALIFIERS.has(text(before)))
-    )
-      before--;
+    while (cpp && code(before) === SCOPE && ident(before - 1)) before -= 2;
+    for (;;) {
+      const c = code(before);
+      if (
+        c === STAR ||
+        c === AMP ||
+        c === AND ||
+        (keyword(before) && QUALIFIERS.has(texts[before]))
+      )
+        before--;
+      else break;
+    }
     if (cpp && angle_starts.has(before)) before = angle_starts.get(before)! - 1;
     // typed prefixes distinguish declarations from calls and control expressions
     const declaration =
       is_type(before) ||
-      (ident(before) && text(before - 1) !== "return") ||
+      (ident(before) && code(before - 1) !== RETURN) ||
       (cpp &&
-        known_types.has(text(i)) &&
-        ["{", ";", ":", "}", "public", "private", "protected"].includes(prev));
+        known_types.has(name) &&
+        (prev === LBRACE ||
+          prev === SEMI ||
+          prev === COLON ||
+          prev === RBRACE ||
+          prev === PUBLIC ||
+          prev === PRIVATE ||
+          prev === PROTECTED));
     if (!declaration) continue;
     emit(before, "class_name");
     parameters(open, close);
