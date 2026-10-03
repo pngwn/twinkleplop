@@ -32,6 +32,20 @@
 		return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
 	}
 
+	function format_list(items: string[]): string {
+		return items.length < 2
+			? items.join("")
+			: `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+	}
+
+	function format_drivers(step: VersionStep): string {
+		const drivers = step.drivers[mode];
+		if (!drivers) return "";
+		const rest =
+			drivers.rest === null ? "" : `, the other languages moved ${format_change(drivers.rest)}`;
+		return `. Mostly ${format_list(drivers.languages)}${rest}`;
+	}
+
 	// moves this small repeat run to run on the same box
 	function tone(ratio: number | null): string {
 		if (ratio === null || Math.abs(ratio - 1) < 0.02) return "flat";
@@ -43,7 +57,7 @@
 	<div class="head">
 		<span class="dot"></span>
 		<span class="lbl">{title}</span>
-		<span class="meta">throughput across the charts every version measured</span>
+		<span class="meta">throughput, earlier versions scaled by each change</span>
 	</div>
 
 	<ul class="bars">
@@ -64,7 +78,10 @@
 				{#if step.previous}
 					<span
 						class="ratio {tone(change)}"
-						title="{format_delta(step)} from {step.previous.version ?? step.previous.commit.slice(0, 7)}, other libraries moved {format_change(step.reference)} between the same two runs"
+						title="{format_delta(step)} from {step.previous.version ??
+							step.previous.commit.slice(0, 7)}{format_drivers(step)}. Other libraries moved {format_change(
+							step.reference,
+						)} between the same two runs"
 						>{format_change(change)}</span
 					>
 				{:else}

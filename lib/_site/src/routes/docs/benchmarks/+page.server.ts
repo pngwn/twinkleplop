@@ -117,7 +117,14 @@ export interface VersionStep {
 	html: number | null;
 	/** the same ratio for libraries whose version did not change, the part of a move that is the machine */
 	reference: number | null;
+	/** languages that account for most of the change, with the ratio over every other language */
+	drivers: Record<Mode, Drivers | null>;
 	languages: VersionChange[];
+}
+
+export interface Drivers {
+	languages: string[];
+	rest: number | null;
 }
 
 export interface ModeOption {
@@ -222,19 +229,20 @@ function geomean(ratios: number[]): number | null {
 const same_input = (a: HistoryEntry, b: HistoryEntry, key: string) =>
 	a.inputs?.[key] !== undefined && a.inputs[key] === b.inputs?.[key];
 
+// a language pulling at least this share of a change is named as driving it
+const DRIVER_SHARE = 0.25;
+// changes smaller than this read as flat on the chart, so they need no drivers
+const DRIVER_MIN_CHANGE = 0.02;
+
 // a step compares with the latest earlier entry on the same cpu, over charts with the same input
 function version_steps(entries: HistoryEntry[]): VersionStep[] {
-	// the bars put every version side by side, so they share one set of charts
-	const latest = entries[entries.length - 1];
-	const common = latest
-		? Object.keys(latest.cells).filter((key) => entries.every((e) => same_input(e, latest, key)))
-		: [];
+	const previous_index = entries.map((entry, i) => {
+		for (let j = i - 1; j >= 0; j--) if (entries[j].cpu === entry.cpu) return j;
+		return -1;
+	});
 
 	const steps = entries.map((entry, i) => {
-		const previous = entries
-			.slice(0, i)
-			.reverse()
-			.find((e) => e.cpu === entry.cpu);
+		const previous = previous_index[i] >= 0 ? entries[previous_index[i]] : undefined;
 
 		const keys = (mode: Mode, lang: string | null) =>
 			Object.keys(entry.cells).filter((key) => {
@@ -283,6 +291,34 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 			reference = geomean(out);
 		}
 
+		const drivers = (mode: Mode): Drivers | null => {
+			if (!previous) return null;
+			const log_ratio = (key: string) =>
+				Math.log(previous.cells[key].twinkleplop / entry.cells[key].twinkleplop);
+			const cells = shared(mode, null);
+			const total = cells.reduce((sum, key) => sum + log_ratio(key), 0);
+			if (cells.length === 0 || Math.abs(Math.expm1(total / cells.length)) < DRIVER_MIN_CHANGE)
+				return null;
+			const by_lang = new Map<string, number>();
+			for (const key of cells) {
+				const lang = key.split(":")[0];
+				by_lang.set(lang, (by_lang.get(lang) ?? 0) + log_ratio(key));
+			}
+			const languages = [...by_lang]
+				.filter(([, pull]) => pull / total >= DRIVER_SHARE)
+				.sort((a, b) => b[1] / total - a[1] / total)
+				.slice(0, 3)
+				.map(([lang]) => lang);
+			if (languages.length === 0) return null;
+			const rest = cells.filter((key) => !languages.includes(key.split(":")[0]));
+			return {
+				languages,
+				rest: geomean(
+					rest.map((key) => previous.cells[key].twinkleplop / entry.cells[key].twinkleplop)
+				)
+			};
+		};
+
 		// a language new in this run has no shared charts, so it shows on its own
 		const after_cells = (mode: Mode, lang: string) => {
 			const both = shared(mode, lang);
@@ -313,15 +349,28 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 			node: entry.node,
 			previous: previous ? { version: previous.version, commit: previous.commit } : null,
 			mb_per_sec: {
-				tokenize: mb_per_sec(entry, keys("tokenize", null).filter((key) => common.includes(key))),
-				html: mb_per_sec(entry, keys("html", null).filter((key) => common.includes(key)))
+				tokenize: mb_per_sec(entry, keys("tokenize", null)),
+				html: mb_per_sec(entry, keys("html", null))
 			},
 			tokenize: ratio("tokenize", null),
 			html: ratio("html", null),
 			reference,
+			drivers: { tokenize: drivers("tokenize"), html: drivers("html") },
 			languages
 		};
 	});
+
+	// the newest run of a cpu keeps its measured throughput, each earlier run is scaled back
+	// from the one after it by that step's change, so bars and changes always agree
+	for (let i = steps.length - 1; i >= 0; i--) {
+		const next = previous_index.indexOf(i);
+		if (next < 0) continue;
+		for (const mode of MODES.map((m) => m.id)) {
+			const after = steps[next].mb_per_sec[mode];
+			const change = steps[next][mode];
+			if (after !== null && change !== null) steps[i].mb_per_sec[mode] = after / change;
+		}
+	}
 	return steps.reverse();
 }
 

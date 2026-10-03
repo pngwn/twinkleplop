@@ -162,14 +162,15 @@
 		<Section id="versions" title="version history" num="§ 02">
 			<p>
 				How twinkleplop's own speed changed between published runs on the same CPU and inputs.
-				Speed is throughput in MB/s, the geometric mean across the charts every version measured,
-				with the change from the previous version beside it. A language added since an earlier
-				version has its own bar below but no change.
+				Speed is throughput in MB/s, the geometric mean across every chart in the latest run. Each
+				change compares a version with the one before it over the charts both measured, and earlier
+				bars are scaled back from the latest by those changes, so a language added later counts from
+				the version that added it.
 			</p>
 			<p>
 				The other libraries keep the same versions between runs, so how far they moved shows how
-				much the machine itself changed. Hover a change to see it, and treat a twinkleplop change
-				close to it as noise.
+				much the machine itself changed. Hover a change to see it and which languages drove the change,
+				and treat a twinkleplop change close to it as noise.
 			</p>
 			{#if history.length === 0}
 				<Callout variant="warn" mark="!">
