@@ -120,6 +120,23 @@ describe("visible_text", () => {
     expect(visible_text(input, run(input, true))).toBe("aa\nbb cc\ndd");
   });
 
+  test("invalid whitespace options throw with or without overlays", () => {
+    for (const markers of [false, true]) {
+      const input = "aa // [!hl]\nbb";
+      const result = run(input, markers);
+      const whitespace = "none" as RenderOptions["whitespace"];
+      expect(() => visible_text(input, result, { whitespace })).toThrow(TypeError);
+      expect(() => visible_text(input, result, { indent_guides: { size: 0 } })).toThrow(RangeError);
+    }
+  });
+
+  test("crlf line endings become lf once a snippet has overlays", () => {
+    const input = "a = 1;\r\nb = 2; // [!hl]\r\n";
+    expect(visible_text(input, run(input))).toBe(input);
+    expect(visible_text(input, run(input, true))).toBe("a = 1;\nb = 2;\n");
+    expect(visible_text(input, run(input, true), { whitespace: "all" })).toBe("a = 1;\r\nb = 2;\n");
+  });
+
   test("the result is never the tokenize result's own overlays mutated", () => {
     const input = "aa bb\ncc";
     const result = run(input);

@@ -29,6 +29,8 @@ function walk(
   options: RenderOptions,
   with_segments: boolean,
 ): VisibleText {
+  const ws_active =
+    whitespace_mode(options.whitespace) !== 0 || indent_guide_size(options.indent_guides) !== 0;
   const overlays = resolve_overlays(input, result, options.overlays);
   if (overlays === undefined) {
     const segments =
@@ -37,8 +39,6 @@ function walk(
   }
 
   // mirrors last_emit_byte_in_line and push_substituted in to_html_overlay
-  const ws_active =
-    whitespace_mode(options.whitespace) !== 0 || indent_guide_size(options.indent_guides) !== 0;
   const { skip_ranges, elided_lines } = overlays;
   const line_starts = build_line_starts(input);
   const line_count = line_starts.length;

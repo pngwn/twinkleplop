@@ -18,6 +18,18 @@
   <span class="param">options</span><span class="punct">?:</span> <span class="type">RenderOptions</span>
 <span class="punct">)</span><span class="punct">:</span> <span class="type">string</span>`;
 
+	const visible_text_sig = `<span class="kw">function</span> <span class="name">visible_text</span><span class="punct">(</span>
+  <span class="param">input</span><span class="punct">:</span> <span class="type">string</span><span class="punct">,</span>
+  <span class="param">result</span><span class="punct">:</span> <span class="type">TokenizeResult</span><span class="punct">,</span>
+  <span class="param">options</span><span class="punct">?:</span> <span class="type">RenderOptions</span>
+<span class="punct">)</span><span class="punct">:</span> <span class="type">string</span>`;
+
+	const visible_text_map_sig = `<span class="kw">function</span> <span class="name">visible_text_map</span><span class="punct">(</span>
+  <span class="param">input</span><span class="punct">:</span> <span class="type">string</span><span class="punct">,</span>
+  <span class="param">result</span><span class="punct">:</span> <span class="type">TokenizeResult</span><span class="punct">,</span>
+  <span class="param">options</span><span class="punct">?:</span> <span class="type">RenderOptions</span>
+<span class="punct">)</span><span class="punct">:</span> <span class="punct">{</span> <span class="param">text</span><span class="punct">:</span> <span class="type">string</span><span class="punct">;</span> <span class="param">segments</span><span class="punct">:</span> <span class="type">Uint32Array</span> <span class="punct">}</span>`;
+
 	const create_language_sig = `<span class="kw">function</span> <span class="name">create_language</span><span class="punct">(</span>
   <span class="param">grammar</span><span class="punct">:</span> <span class="type">CompiledGrammar</span><span class="punct">,</span>
   <span class="param">pipeline</span><span class="punct">?:</span> <span class="type">LanguagePipeline</span>
@@ -301,11 +313,19 @@ const copy = visible_text(code, result, options);`;
 		<SubSection id="visible_text" title="visible_text()">
 			<p>
 				Returns the text a render shows, without line numbers. Marker bytes are removed with the
-				whitespace before them, lines left empty by markers are dropped, and hidden ranges inside
-				a line become spaces. Pass the same render options you pass to <code>to_html</code>,
-				because option overlays and the whitespace options change the result.
+				whitespace before them, lines left empty by markers or <code>hide</code> ranges are dropped,
+				and hidden ranges inside a line become spaces. Pass the same render options you pass to
+				<code>to_html</code>, because option overlays and the whitespace options change the result.
 			</p>
+			<Signature html={visible_text_sig} />
 			<CodeBlock fname="copy.ts" html={visible_text_example} />
+			<Callout mark="▸" variant="warn">
+				Once a snippet has any overlay, every line loses its trailing whitespace, including a
+				<code>\r</code> before the newline, just as the render does. The same code copies with CRLF
+				line endings without annotations and LF with them. Set <code>whitespace</code> to keep
+				trailing whitespace on lines with nothing hidden at the end.
+			</Callout>
+			<Signature html={visible_text_map_sig} />
 			<p>
 				<code>visible_text_map()</code> also returns <code>segments</code>, a
 				<code>Uint32Array</code> of <code>[source_start, source_end, text_start]</code> triples, one
