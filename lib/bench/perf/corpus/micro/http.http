@@ -1,0 +1,25 @@
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>

@@ -1,0 +1,42 @@
+# ---- unit 1 ----
+query GetUser($id: ID!, $sizes: [Int!]! = [32, 64], $withFriends: Boolean = true) {
+  viewer: user(id: $id) {
+    __typename
+    id
+    name
+    profilePic(size: 50)
+    friends @include(if: $withFriends) {
+      ...FriendFields
+      ... on Admin { permissions }
+      ... @skip(if: false) { active }
+    }
+  }
+}
+fragment FriendFields on User { id name }
+mutation Update($input: UpdateInput!) {
+  updateUser(input: $input) { id }
+}
+subscription Messages { messageAdded { body } }
+{ nearestThing(location: { lon: 12.43, lat: -53.211 }) }
+
+
+# ---- unit 2 ----
+query GetUser($id: ID!, $sizes: [Int!]! = [32, 64], $withFriends: Boolean = true) {
+  viewer: user(id: $id) {
+    __typename
+    id
+    name
+    profilePic(size: 50)
+    friends @include(if: $withFriends) {
+      ...FriendFields
+      ... on Admin { permissions }
+      ... @skip(if: false) { active }
+    }
+  }
+}
+fragment FriendFields on User { id name }
+mutation Update($input: UpdateInput!) {
+  updateUser(input: $input) { id }
+}
+subscription Messages { messageAdded { body } }
+{ nearestThing(location: { lon: 12.43, lat: -53.211 }) }

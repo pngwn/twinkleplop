@@ -56,6 +56,8 @@ interface HistoryEntry {
 	libraries: Record<string, string>;
 	cells: Record<string, Record<string, number>>;
 	bytes: Record<string, number>;
+	/** hash of the input each cell measured */
+	inputs: Record<string, string>;
 }
 
 export type Mode = "tokenize" | "html";
@@ -216,13 +218,24 @@ function geomean(ratios: number[]): number | null {
 	return Math.exp(ratios.reduce((sum, r) => sum + Math.log(r), 0) / ratios.length);
 }
 
-// a step only compares with the latest earlier entry on the same cpu and corpus
+const same_input = (a: HistoryEntry, b: HistoryEntry, key: string) =>
+	a.inputs?.[key] !== undefined && a.inputs[key] === b.inputs?.[key];
+
+// a step only compares with the latest earlier entry on the same cpu, over the
+// charts both measured on the same input. the corpus grows when a language is
+// added, and the new charts have nothing to compare with.
 function version_steps(entries: HistoryEntry[]): VersionStep[] {
+	// the bars put every version side by side, so they share one set of charts
+	const latest = entries[entries.length - 1];
+	const common = latest
+		? Object.keys(latest.cells).filter((key) => entries.every((e) => same_input(e, latest, key)))
+		: [];
+
 	const steps = entries.map((entry, i) => {
 		const previous = entries
 			.slice(0, i)
 			.reverse()
-			.find((e) => e.cpu === entry.cpu && e.corpus_hash === entry.corpus_hash);
+			.find((e) => e.cpu === entry.cpu);
 
 		const keys = (mode: Mode, lang: string | null) =>
 			Object.keys(entry.cells).filter((key) => {
@@ -240,7 +253,10 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 		// both sides are measured over the charts present in both runs
 		const shared = (mode: Mode, lang: string | null) =>
 			keys(mode, lang).filter(
-				(key) => previous?.cells[key]?.twinkleplop && entry.cells[key]?.twinkleplop
+				(key) =>
+					previous?.cells[key]?.twinkleplop &&
+					entry.cells[key]?.twinkleplop &&
+					same_input(previous, entry, key)
 			);
 
 		const ratio = (mode: Mode, lang: string | null) =>
@@ -259,6 +275,7 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 			);
 			const out: number[] = [];
 			for (const [key, row] of Object.entries(entry.cells)) {
+				if (!same_input(previous, entry, key)) continue;
 				for (const id of unchanged) {
 					const before = previous.cells[key]?.[id];
 					if (before && row[id]) out.push(before / row[id]);
@@ -266,6 +283,12 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 			}
 			reference = geomean(out);
 		}
+
+		// a language new in this run has no shared charts, so it shows on its own
+		const after_cells = (mode: Mode, lang: string) => {
+			const both = shared(mode, lang);
+			return both.length > 0 ? both : keys(mode, lang);
+		};
 
 		const languages = [...new Set(Object.keys(entry.cells).map((k) => k.split(":")[0]))]
 			.sort()
@@ -276,8 +299,8 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 					html: previous ? mb_per_sec(previous, shared("html", lang)) : null
 				},
 				after: {
-					tokenize: mb_per_sec(entry, previous ? shared("tokenize", lang) : keys("tokenize", lang)),
-					html: mb_per_sec(entry, previous ? shared("html", lang) : keys("html", lang))
+					tokenize: mb_per_sec(entry, after_cells("tokenize", lang)),
+					html: mb_per_sec(entry, after_cells("html", lang))
 				},
 				tokenize: ratio("tokenize", lang),
 				html: ratio("html", lang)
@@ -291,8 +314,8 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 			node: entry.node,
 			previous: previous ? { version: previous.version, commit: previous.commit } : null,
 			mb_per_sec: {
-				tokenize: mb_per_sec(entry, keys("tokenize", null)),
-				html: mb_per_sec(entry, keys("html", null))
+				tokenize: mb_per_sec(entry, keys("tokenize", null).filter((key) => common.includes(key))),
+				html: mb_per_sec(entry, keys("html", null).filter((key) => common.includes(key)))
 			},
 			tokenize: ratio("tokenize", null),
 			html: ratio("html", null),

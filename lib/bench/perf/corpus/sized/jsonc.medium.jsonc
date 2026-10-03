@@ -1,0 +1,396 @@
+// ---- unit 1 ----
+// VS Code user settings
+{
+  "editor.fontSize": 14,
+  "editor.lineHeight": 1.5,
+  "editor.rulers": [80, 120],
+  "window.zoomLevel": -0.5,
+  // "editor.minimap.enabled": false,
+  "files.exclude": {
+    "**/.git": true, /* hide git metadata */
+    "**/*.js": { "when": "$(basename).ts" }
+  },
+  "terminal.integrated.env.osx": { "GREETING": "caf\u00e9 \"hi\"" },
+  "http.proxy": null,
+  "launch": {
+    "program": "${workspaceFolder}\\bin\\www",
+    "args": ["--port", "8080"],
+  },
+}
+
+
+// ---- unit 2 ----
+// ---- comments.jsonc ----
+// -*- mode: jsonc -*-
+/** Header doc comment with a URL: https://example.com/a//b */
+/*
+ * Multi-line block comment.
+ * "quotes", 'apostrophes', {braces}, [brackets], a // line marker
+ * and a /* nested opener that does not nest.
+ */
+{
+  /**/ "empty": 1,
+  /***/ "stars": 2,
+  /* one **/ "double_star": 3,
+  /*/ not closed yet */ "slash_star_slash": 4,
+  "between" /* key and colon */ : 5,
+  "after_colon":/* no space */6,
+  "line_before_colon" // comment
+    : 7,
+  "trailing": [1, 2 /* end */], // after the value
+  // don't "quote" or {open} anything here /* either
+  "glued": 8/*c*/,
+  "true_then_comment": true//c
+}
+// trailing comment at EOF without a newline
+
+// ---- invalid.jsonc ----
+{"a":/* c */1,"b":"//not a comment","c":"/* nor this */",
+"d": [007, -, 1., .5, 1e, -0, 0x1F, NaN, trueish, true1],
+"e": [+1, -Infinity, 1e5.5, True, NULL, undefined, xtrue, nulltrue, true.],
+"f": /* a /* b */ */ 1,
+"g": 'single', unquoted: 1, # hash
+"h": "unterminated
+}
+/* unterminated block comment runs to EOF
+"i": 2
+
+
+// ---- keys.jsonc ----
+"editor.fontSize": 14, // a bare member from docs, no braces
+"editor.tabSize": 2,
+
+{
+  "nested": { "inner": { "deepest": "value" } },
+  "array_of_objects": [{ "k": "v" }, { "k": "w" }],
+  "array_of_strings": ["not", "keys"],
+  "escaped\"key": 1,
+  "\u0041": 2,
+  "missing_comma": 1 "next": 2,
+  "value_then_colon": "string",
+  "minified":{"a":{"b":[1,{"c":null}]}},
+  "trailing": {},
+  "empty": [],
+}
+
+
+// ---- launch.jsonc ----
+{
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "skipFiles": ["<node_internals>/**"],
+            "program": "${workspaceFolder}\\bin\\www",
+            "env": { "GREETING": "caf\u00e9 \"hi\"" }
+        }
+    ]
+}
+
+
+// ---- numbers.jsonc ----
+{
+  "integers": [0, 7, 42, -0, -1, 1234567890],
+  "fractions": [0.5, -0.5, 3.14159, 10.0],
+  "exponents": [1e10, 1E10, 2e+5, 2e-5, -1.5e+3, 0.25E-2, 1E400],
+  "long": 3.141592653589793238462643383279,
+  "adjacent": [1,2,3],
+  "before_comment": 12/* c */,
+  "before_line_comment": 13// c
+}
+
+
+// ---- settings.jsonc ----
+/** @see https://code.visualstudio.com */
+{
+  "editor.rulers": [80, -1.5e+3, 0.25E-2],
+  "files.exclude": { "**/.git": true, "**/*.js": { "when": "$(basename).ts" } },
+  "x": null, /**/ "y": false //
+}
+
+
+// ---- strings.jsonc ----
+{
+  "simple": "hello",
+  "empty": "",
+  "": "empty key",
+  "escapes": "\" \\ \/ \b \f \n \r \t",
+  "unicode": "caf\u00e9 \u00E9 \uD834\uDD1E",
+  "short_unicode": "\u12G",
+  "invalid_escapes": "\x41 \' \0 \a",
+  "backslash_run": "\\\"",
+  "windows": "C:\\Program Files\\app",
+  "url": "https://example.com/path?q=1#frag",
+  "glob": "src/**/*.ts",
+  "comment_like": "/* not a comment */ // nor this",
+  "variables": "${workspaceFolder}/${env:HOME}",
+  "looks_like_literals": ["true", "null", "0.2.0", "-1"],
+  "non_ascii": "日本語 — ünïcödé 🎉",
+  "raw_tab": "a	b",
+  "continued": "line one\
+line two",
+  "unterminated": "no closing quote
+  "next": "back to normal"
+}
+
+
+// ---- tsconfig.jsonc ----
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    /* Visit https://aka.ms/tsconfig to read more about this file */
+
+    /* Language and Environment */
+    "target": "es2016",                                  /* Set the JavaScript language version for emitted JavaScript. */
+    // "lib": [],                                        /* Specify a set of bundled library declaration files. */
+    // "jsx": "preserve",                                /* Specify what JSX code is generated. */
+
+    /* Modules */
+    "module": "commonjs",                                /* Specify what module code is generated. */
+    "rootDir": "./src",                                  /* Specify the root folder within your source files. */
+    "paths": { "@/*": ["./src/*"], "~lib/*": ["./lib/*"] },
+    "maxNodeModuleJsDepth": 1,
+
+    /* Type Checking */
+    "strict": true,                                      /* Enable all strict type-checking options. */
+    "noImplicitAny": false,
+  },
+  "include": ["src/**/*", "types/**/*.d.ts"],
+  "exclude": ["node_modules", "**/*.spec.ts"],
+}
+
+
+// ---- unit 3 ----
+// Workspace settings for the acme edge-stack monorepo.
+//
+// Shared by everyone who opens the repo in an editor. Personal tweaks go in
+// your user settings, not here. Anything that changes formatting output must
+// also be reflected in .oxfmtrc.json or CI will disagree with your editor.
+{
+  /* ---------------------------------------------------------------------
+   * Editor
+   * ------------------------------------------------------------------- */
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.rulers": [80, 100],
+  "editor.wordWrap": "off",
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": false,
+  "editor.defaultFormatter": "acme.oxfmt-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "never" // the formatter sorts imports itself
+  },
+  "editor.quickSuggestions": {
+    "other": "on",
+    "comments": "off",
+    "strings": "inline"
+  },
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.stickyScroll.enabled": true,
+  "editor.stickyScroll.maxLineCount": 4,
+  "editor.minimap.enabled": false,
+  "editor.renderWhitespace": "trailing",
+  "editor.unicodeHighlight.ambiguousCharacters": true,
+  "editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>/?",
+
+  /* ---------------------------------------------------------------------
+   * Files and search
+   * ------------------------------------------------------------------- */
+  "files.eol": "\n",
+  "files.encoding": "utf8",
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "files.autoSave": "onFocusChange",
+  "files.associations": {
+    "*.svx": "markdown",
+    "*.jsonc": "jsonc",
+    ".oxfmtrc.json": "jsonc",
+    "Justfile": "makefile",
+    "**/fixtures/**/*.txt": "plaintext",
+    "**/corpus/seed/**/*.sh-session": "shellsession"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.svelte-kit": true,
+    "**/dist": false, // keep dist visible, people debug the built output
+    "**/coverage": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/target/**": true,
+    "**/.turbo/**": true,
+    "lib/bench/perf/results/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/pnpm-lock.yaml": true,
+    "**/*.snap": true,
+    "**/fixtures/large/**": true,
+    "lib/bench/perf/corpus/generated/**": true
+  },
+  "search.useIgnoreFiles": true,
+  "search.followSymlinks": false,
+  "search.smartCase": true,
+
+  /* ---------------------------------------------------------------------
+   * Language overrides
+   * ------------------------------------------------------------------- */
+  "[typescript]": {
+    "editor.defaultFormatter": "acme.oxfmt-vscode",
+    "editor.suggest.insertMode": "replace"
+  },
+  "[svelte]": {
+    "editor.defaultFormatter": "svelte.svelte-vscode",
+    "editor.tabSize": 2
+  },
+  "[markdown]": {
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 100,
+    "editor.quickSuggestions": {
+      "other": "off",
+      "comments": "off",
+      "strings": "off"
+    },
+    "files.trimTrailingWhitespace": false // two trailing spaces are a line break
+  },
+  "[go]": {
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4,
+    "editor.defaultFormatter": "golang.go"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.rulers": [100]
+  },
+
+  /* ---------------------------------------------------------------------
+   * TypeScript
+   *
+   * Use the workspace TypeScript, never the bundled one. The repo pins a
+   * nightly in package.json and the bundled version lags by a few weeks.
+   * ------------------------------------------------------------------- */
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "typescript.preferences.importModuleSpecifierEnding": "js",
+  "typescript.preferences.quoteStyle": "double",
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "typescript.tsserver.maxTsServerMemory": 8192,
+  "typescript.inlayHints.parameterNames.enabled": "literals",
+  "typescript.inlayHints.variableTypes.enabled": false,
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+  "js/ts.implicitProjectConfig.checkJs": true,
+
+  /* ---------------------------------------------------------------------
+   * Linting and tests
+   * ------------------------------------------------------------------- */
+  "eslint.enable": true,
+  "eslint.useFlatConfig": true,
+  "eslint.workingDirectories": [
+    { "mode": "auto" },
+    { "directory": "site", "changeProcessCWD": true }
+  ],
+  "eslint.validate": ["javascript", "typescript", "svelte"],
+  "eslint.rules.customizations": [
+    { "rule": "no-console", "severity": "info" },
+    { "rule": "@typescript-eslint/no-unused-vars", "severity": "warn" },
+    { "rule": "*", "severity": "default" }
+  ],
+  "vitest.enable": true,
+  "vitest.commandLine": "pnpm vitest --exclude \"**/.claude/**\"",
+  "vitest.maximumConfigs": 12,
+  "vitest.nodeEnv": {
+    "NODE_OPTIONS": "--conditions=source --max-old-space-size=6144",
+    "TZ": "UTC",
+    "FORCE_COLOR": "0"
+  },
+
+  /* ---------------------------------------------------------------------
+   * Terminal and tasks
+   * ------------------------------------------------------------------- */
+  "terminal.integrated.env.osx": {
+    "ACME_BENCH_ROUNDS": "20",
+    "ACME_BENCH_CORPUS": "${workspaceFolder}/lib/bench/perf/corpus",
+    "PATH": "${workspaceFolder}/node_modules/.bin:${env:PATH}"
+  },
+  "terminal.integrated.env.linux": {
+    "ACME_BENCH_ROUNDS": "40",
+    "ACME_BENCH_CORPUS": "${workspaceFolder}/lib/bench/perf/corpus",
+    "PATH": "${workspaceFolder}/node_modules/.bin:${env:PATH}"
+  },
+  "terminal.integrated.scrollback": 20000,
+  "terminal.integrated.enablePersistentSessions": false,
+  "task.allowAutomaticTasks": "off",
+  "task.autoDetect": "off",
+  "npm.packageManager": "pnpm",
+  "npm.scriptExplorerExclude": ["^pre", "^post", "\\bclean\\b"],
+
+  /* ---------------------------------------------------------------------
+   * Git
+   * ------------------------------------------------------------------- */
+  "git.autofetch": false,
+  "git.confirmSync": true,
+  "git.branchPrefix": "p/",
+  "git.branchProtection": ["main", "release/*"],
+  "git.inputValidation": true,
+  "git.inputValidationSubjectLength": 72,
+  "git.inputValidationLength": 100,
+  "git.ignoreLimitWarning": true,
+  "git.openRepositoryInParentFolders": "never",
+  "scm.defaultViewMode": "tree",
+
+  /* ---------------------------------------------------------------------
+   * Extensions
+   *
+   * Values below are read by the in-house extension. Leave the schema URL
+   * alone, the extension refuses to load settings with an unknown version.
+   * ------------------------------------------------------------------- */
+  "acme.schema": "https://schemas.acme.dev/vscode/settings-v3.json",
+  "acme.bench": {
+    "baseline": null, // null means "build one from origin/main"
+    "rounds": 20,
+    "warmup": 5,
+    "noiseFloor": 0.034,
+    "forceGc": true,
+    "languages": ["tsx", "rust", "go", "python", "sql", "toml", "bash"],
+    "modes": ["tokenize", "html"],
+    "report": {
+      "format": "markdown",
+      "path": "lib/bench/perf/results/latest.md",
+      "includeCalibration": true,
+      "thresholds": { "regress": 0.05, "improve": -0.03 }
+    }
+  },
+  "acme.grammarExplorer": {
+    "enabled": true,
+    "maxStackDepth": 64,
+    "highlightUnclaimed": "#ff00ff",
+    "tooltipTemplate": "${scope}\t${token} @ ${start}..${end}"
+  },
+  "acme.telemetry.endpoint": "https://telemetry.acme.dev/v1/ingest",
+  "acme.telemetry.enabled": false,
+
+  "cSpell.language": "en-GB",
+  "cSpell.words": [
+    "acme",
+    "oniguruma",
+    "reclassifier",
+    "reclassifiers",
+    "shiki",
+    "tokenize",
+    "twoslash",
+    "unclaimed"
+  ],
+  "cSpell.ignorePaths": [
+    "**/pnpm-lock.yaml",
+    "**/fixtures/**",
+    "**/*.snap"
+  ],
+  "cSpell.ignoreRegExpList": ["/0x[0-9a-fA-F]+/g", "/\\\\u[0-9a-fA-F]{4}/g"]
+}

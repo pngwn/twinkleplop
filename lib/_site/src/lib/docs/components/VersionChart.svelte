@@ -43,7 +43,7 @@
 	<div class="head">
 		<span class="dot"></span>
 		<span class="lbl">{title}</span>
-		<span class="meta">throughput across every chart</span>
+		<span class="meta">throughput across the charts every version measured</span>
 	</div>
 
 	<ul class="bars">
