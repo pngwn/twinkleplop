@@ -199,6 +199,11 @@ function tag_word(code: number): boolean {
   return code === STRUCT || code === UNION || code === ENUM || code === CLASS;
 }
 
+// typed arrays over 64 bytes allocate off heap, so calls share these unless the input is over the cap
+const MAX_RETAINED_TOKENS = 1 << 16;
+let scratch_ints = new Int32Array(0);
+let scratch_bytes = new Uint8Array(0);
+
 // declarations are lexical heuristics, dependent types and shadowed names need a parser
 function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp: boolean): Claims {
   const claims: Claims = {
@@ -221,11 +226,22 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
             ? COMMENT
             : OTHER;
   }
-  // non-comment tokens as parallel arrays, text only where a name lookup can match
+  // tokens other than comments as parallel arrays, text only where a name lookup can match
   const max = tokens.length / 3;
-  const index = new Int32Array(max);
-  const kinds = new Uint8Array(max);
-  const codes = new Uint8Array(max);
+  let ints = scratch_ints;
+  let bytes = scratch_bytes;
+  if (ints.length < max * 5) {
+    const size = max > MAX_RETAINED_TOKENS ? max : Math.max(max, ints.length / 5) * 2;
+    ints = new Int32Array(size * 5);
+    bytes = new Uint8Array(size * 2);
+    if (max <= MAX_RETAINED_TOKENS) {
+      scratch_ints = ints;
+      scratch_bytes = bytes;
+    }
+  }
+  const index = ints.subarray(0, max);
+  const kinds = bytes.subarray(0, max);
+  const codes = bytes.subarray(max, max * 2);
   const texts: string[] = [];
   let n = 0;
   for (let t = 0; t < max; t++) {
@@ -248,8 +264,8 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
   const emit = (i: number, kind: Category, priority = PRIORITY[kind]) => {
     if (ident(i)) claims[kind].push(index[i], priority);
   };
-  // matching bracket of an opener, -1 when unmatched
-  const pairs = new Int32Array(n).fill(-1);
+  // closer index per opener, negative when unmatched
+  const pairs = ints.subarray(max, max + n).fill(-1);
   // square openers in the order they close
   const squares: number[] = [];
   const stack: number[] = [];
@@ -266,10 +282,10 @@ function analyse(input: string, tokens: Uint32Array, token_types: string[], cpp:
     }
   }
   // template angles and comparisons are ambiguous without parsing
-  const angles = new Int32Array(cpp ? n : 0).fill(-1);
-  const angle_starts = new Int32Array(cpp ? n : 0).fill(-1);
+  const angles = ints.subarray(max * 2, max * 2 + (cpp ? n : 0)).fill(-1);
+  const angle_starts = ints.subarray(max * 3, max * 3 + (cpp ? n : 0)).fill(-1);
   if (cpp) {
-    const pending = new Int32Array(n);
+    const pending = ints.subarray(max * 4, max * 4 + n);
     let top = 0;
     for (let i = 0; i < n; i++) {
       const c = codes[i];
