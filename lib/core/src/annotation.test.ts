@@ -303,6 +303,18 @@ describe("annotation extractor", () => {
     expect(overlays!.elided_lines[2]).toBe(1);
   });
 
+  test("closing delimiter on a later line is hidden with its comment", () => {
+    const input = `a\n/*\n[!em]\n*/\nb\n`;
+    const overlays = extract(input, [em_plugin()]);
+    expect(Array.from(overlays!.elided_lines)).toEqual([0, 1, 1, 1, 0, 0]);
+  });
+
+  test("an empty line comment after a marker comment stays visible", () => {
+    const input = `a\n// [!em]\n//\nb\n`;
+    const overlays = extract(input, [em_plugin()]);
+    expect(Array.from(overlays!.elided_lines)).toEqual([0, 1, 0, 0, 0]);
+  });
+
   test("malformed args (bare separator) is reported as malformed", () => {
     let issue: any = null;
     // `..` with no anchors on either side is meaningless; parser rejects.

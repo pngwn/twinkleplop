@@ -465,15 +465,12 @@ function run_extraction(
     const start = tokens[i * 3 + 1];
     let end = tokens[i * 3 + 2];
     // grammars split one block comment into several tokens, so group contiguous ones
-    // a token ending in a newline may end a line comment, so stop grouping there
-    while (
-      i + 1 < n &&
-      tokens[(i + 1) * 3] === comment_id &&
-      tokens[(i + 1) * 3 + 1] === end &&
-      input.charCodeAt(end - 1) !== 10
-    ) {
+    // a token ending in a newline may end a line comment, so only a bare closer joins it
+    while (i + 1 < n && tokens[(i + 1) * 3] === comment_id && tokens[(i + 1) * 3 + 1] === end) {
+      const next_end = tokens[(i + 1) * 3 + 2];
+      if (input.charCodeAt(end - 1) === 10 && !is_bare_delimiter(input, end, next_end)) break;
       i++;
-      end = tokens[i * 3 + 2];
+      end = next_end;
     }
 
     // dispatch waits until the whole comment is scanned because `standalone`
@@ -1510,6 +1507,12 @@ function is_marker_only_comment(
   }
   if (has_alnum(input, pos, comment_end)) return false;
   return true;
+}
+
+// a line comment always carries its newline, a closer like `*/` never does
+function is_bare_delimiter(input: string, from: number, to: number): boolean {
+  for (let i = from; i < to; i++) if (input.charCodeAt(i) === 10) return false;
+  return !has_alnum(input, from, to);
 }
 
 function has_alnum(input: string, from: number, to: number): boolean {
