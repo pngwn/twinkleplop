@@ -1,6 +1,6 @@
 import { OVERLAY_LINE_MODE, OVERLAY_VERBATIM } from "./types";
 import type { BlockParts, HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
-import { overlays as build_overlays } from "./overlays";
+import { resolve_overlays } from "./overlays";
 import { line_of } from "./annotation";
 
 const ESCAPE_TABLE = new Array(128);
@@ -166,21 +166,6 @@ export function to_parts(
   const attributes = pre_attributes(block_class(class_name, options, overlays), options.attributes);
   const body = render(input, token_result, overlays, options, esc, "<code>", "</code>");
   return { attributes, body };
-}
-
-// option items merge into a fresh result so the caller's tokenize result
-// is left untouched. items that resolve to nothing fall through so they
-// stay invisible instead of adding a has- class.
-function resolve_overlays(
-  input: string,
-  token_result: TokenizeResult,
-  items: RenderOptions["overlays"],
-): OverlayResult | undefined {
-  if (items !== undefined && items.length !== 0) {
-    const merged = build_overlays(input, items, token_result.overlays);
-    if (merged.ranges.length !== 0 || merged.skip_ranges.length !== 0) return merged;
-  }
-  return token_result.overlays;
 }
 
 function block_class(
@@ -491,7 +476,7 @@ const WS_LEADING = 1;
 const WS_TRAILING = 2;
 const WS_INNER = 4;
 
-function whitespace_mode(whitespace: RenderOptions["whitespace"]): number {
+export function whitespace_mode(whitespace: RenderOptions["whitespace"]): number {
   switch (whitespace) {
     case undefined:
       return 0;
@@ -509,7 +494,7 @@ function whitespace_mode(whitespace: RenderOptions["whitespace"]): number {
   );
 }
 
-function indent_guide_size(indent_guides: RenderOptions["indent_guides"]): number {
+export function indent_guide_size(indent_guides: RenderOptions["indent_guides"]): number {
   if (indent_guides === undefined || indent_guides === false) return 0;
   if (indent_guides === true) return 2;
   const size = indent_guides.size;
