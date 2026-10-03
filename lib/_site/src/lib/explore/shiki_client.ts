@@ -20,6 +20,7 @@ export const SHIKI_LANG_MAP: Record<string, string | null> = {
   markdown: "markdown",
   toml: "toml",
   ini: "ini",
+  powershell: "powershell",
   python: "python",
   bash: "bash",
   shellsession: "shellsession",

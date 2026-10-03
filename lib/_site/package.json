@@ -38,6 +38,7 @@
     "@twinkleplop/json": "workspace:*",
     "@twinkleplop/jsonc": "workspace:*",
     "@twinkleplop/markdown": "workspace:*",
+    "@twinkleplop/powershell": "workspace:*",
     "@twinkleplop/python": "workspace:*",
     "@twinkleplop/rust": "workspace:*",
     "@twinkleplop/shellsession": "workspace:*",

@@ -39,6 +39,7 @@ const md = language({
 		{ name: "json", notes: "RFC 8259. No JSON5 extensions: no comments, trailing commas or single quotes." },
 		{ name: "jsonc", notes: "JSON with Comments: json plus // and /* */ comments, as in tsconfig and VS Code settings. Object keys promoted to property." },
 		{ name: "markdown", notes: "CommonMark constructs, front matter, fenced code containers. Embeds the languages you pass in fences and front matter." },
+		{ name: "powershell", notes: "Scripts, modules and data files: variables, nested interpolation, here-strings, types, attributes and PowerShell 7 operators." },
 		{ name: "python", notes: "F-strings, soft keywords, decorators." },
 		{ name: "rust", notes: "Lifetimes, attributes, generics disambiguation, macros." },
 		{ name: "shellsession", notes: "Terminal transcripts: prompts, prefixes and output. Embeds bash, joining continuation lines into one command." },

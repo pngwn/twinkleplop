@@ -1,0 +1,39 @@
+{
+  "name": "@twinkleplop/powershell",
+  "version": "0.1.0",
+  "homepage": "https://twinkleplop.pngwn.at",
+  "bugs": "https://github.com/pngwn/twinkleplop/issues",
+  "license": "MIT",
+  "author": {
+    "name": "pngwn",
+    "email": "hello@pngwn.io",
+    "url": "https://pngwn.at"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pngwn/twinkleplop",
+    "directory": "languages/powershell"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/types.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/types.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "test": "vitest",
+    "gen_test": "node generate-snapshots.js",
+    "types": "node ../../build/dts.mjs"
+  },
+  "dependencies": {
+    "@twinkleplop/core": "workspace:*"
+  }
+}
