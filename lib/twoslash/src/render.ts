@@ -38,30 +38,8 @@ import type {
 } from "./types.js";
 
 import { TwoslashOptions, type TwoslashReturn, type NodeError } from "twoslash";
+import { escape_html } from "@twinkleplop/core";
 import type { TokenizeResult } from "@twinkleplop/core";
-
-// Inlined HTML escape — avoids a rebuild of @twinkleplop/core just to
-// re-export the identical helper from packages/core/src/generator.ts.
-function escape_html(text: string): string {
-  let result = "";
-  let last_flush = 0;
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    let entity: string | null = null;
-    if (code === 38) entity = "&amp;";
-    else if (code === 60) entity = "&lt;";
-    else if (code === 62) entity = "&gt;";
-    else if (code === 34) entity = "&quot;";
-    else if (code === 39) entity = "&#39;";
-    if (entity !== null) {
-      if (i > last_flush) result += text.substring(last_flush, i);
-      result += entity;
-      last_flush = i + 1;
-    }
-  }
-  if (last_flush < text.length) result += text.substring(last_flush);
-  return result;
-}
 
 /**
  * Tokenize a short TypeScript fragment (a hover's type string, a query's
@@ -73,10 +51,10 @@ function escape_html(text: string): string {
  * `const x: { a: number; b: string }`), so running them through the same
  * `language` function gives consistent colors across code and tooltips.
  */
-function highlight_fragment(text: string): string {
+function highlight_fragment(text: string, ctx: RenderContext): string {
   if (!text) return "";
   const kind = QUICKINFO_KIND.exec(text);
-  if (!kind) return highlight_tokens(text, "");
+  if (!kind) return highlight_tokens(text, "", ctx);
   // quickinfo after the kind label is not typescript alone, a throwaway
   // declaration keyword gives its annotation a type position
   const rest = text.substring(kind[0].length);
@@ -85,7 +63,7 @@ function highlight_fragment(text: string): string {
     : CALLABLE_KINDS.has(kind[1])
       ? "function "
       : "let ";
-  return highlight_tokens(kind[0], "") + highlight_tokens(rest, context);
+  return highlight_tokens(kind[0], "", ctx) + highlight_tokens(rest, context, ctx);
 }
 
 const QUICKINFO_KIND = /^\(([a-z][a-z ]*)\) /;
@@ -97,7 +75,7 @@ const DECLARATION_START =
  * Highlight `text` as if `context` preceded it, emitting spans for `text`
  * only.
  */
-function highlight_tokens(text: string, context: string): string {
+function highlight_tokens(text: string, context: string, ctx: RenderContext): string {
   const { tokens, token_types } = language(context + text);
   const offset = context.length;
   let out = "";
@@ -108,15 +86,15 @@ function highlight_tokens(text: string, context: string): string {
     const end = tokens[i + 2] - offset;
     if (end <= 0) continue;
     if (start > last_end) {
-      out += escape_html(text.substring(last_end, start));
+      out += ctx.escape(text.substring(last_end, start));
     }
-    out += `<span class="${token_types[type_id]}">${escape_html(
+    out += `<span class="${token_types[type_id]}">${ctx.escape(
       text.substring(Math.max(start, 0), end),
     )}</span>`;
     last_end = end;
   }
   if (last_end < text.length) {
-    out += escape_html(text.substring(last_end));
+    out += ctx.escape(text.substring(last_end));
   }
   return out;
 }
@@ -126,14 +104,18 @@ function highlight_tokens(text: string, context: string): string {
  * them unconditionally; an absent one resolves to what was hard coded before.
  */
 interface RenderContext {
+  escape: (text: string) => string;
   render_docs: (markdown: string) => string;
   process_type: (type: string) => string;
   split_tags: boolean;
 }
 
 function resolve_render_context(options: HighlightOptions): RenderContext {
+  const map = options.escape;
+  const escape = (text: string) => escape_html(text, map);
   return {
-    render_docs: options.render_docs ?? escape_html,
+    escape,
+    render_docs: options.render_docs ?? escape,
     process_type: options.process_type ?? ((type) => type),
     split_tags: (options.docs_tags ?? "split") === "split",
   };
@@ -162,7 +144,7 @@ function render_doc_tags(tags: DocTag[] | undefined, prefix: string, ctx: Render
   let out = `<span class="${prefix}-tags">`;
   for (const [name, text] of tags) {
     out +=
-      `<span class="${prefix}-tag" data-tag="${escape_html(name)}">` +
+      `<span class="${prefix}-tag" data-tag="${ctx.escape(name)}">` +
       render_doc_tag_value(name, text, prefix, ctx) +
       `</span>`;
   }
@@ -184,7 +166,7 @@ function render_doc_tag_value(
   let rest_start = name_end;
   while (rest_start < text.length && is_tag_space(text.charCodeAt(rest_start))) rest_start++;
 
-  const named = `<span class="${prefix}-tag-name">${escape_html(
+  const named = `<span class="${prefix}-tag-name">${ctx.escape(
     text.substring(0, name_end),
   )}</span>`;
   if (rest_start >= text.length) return named;
@@ -239,6 +221,7 @@ function wrapper_tags(w: Wrapper, ctx: RenderContext): { open: string; close: st
       const open = `<span class="twoslash-hover"><span class="twoslash-target">`;
       let popover = `<span class="twoslash-popover-type">${highlight_fragment(
         ctx.process_type(w.text ?? ""),
+        ctx,
       )}</span>`;
       if (w.docs) {
         popover += `<span class="twoslash-popover-docs">${ctx.render_docs(w.docs)}</span>`;
@@ -249,15 +232,15 @@ function wrapper_tags(w: Wrapper, ctx: RenderContext): { open: string; close: st
     }
     case "error": {
       let attrs = "";
-      if (w.code != null) attrs += ` data-error-code="${escape_html(String(w.code))}"`;
-      if (w.level) attrs += ` data-error-level="${escape_html(w.level)}"`;
+      if (w.code != null) attrs += ` data-error-code="${ctx.escape(String(w.code))}"`;
+      if (w.level) attrs += ` data-error-level="${ctx.escape(w.level)}"`;
       return {
         open: `<span class="twoslash-error"${attrs}>`,
         close: `</span>`,
       };
     }
     case "highlight": {
-      const attr = w.text ? ` data-highlight-text="${escape_html(w.text)}"` : "";
+      const attr = w.text ? ` data-highlight-text="${ctx.escape(w.text)}"` : "";
       return {
         open: `<span class="twoslash-highlight"${attr}>`,
         close: `</span>`,
@@ -277,12 +260,12 @@ function wrapper_tags(w: Wrapper, ctx: RenderContext): { open: string; close: st
 function render_completion(point: CompletionPoint, ctx: RenderContext): string {
   const entries = point.completions;
   if (!Array.isArray(entries) || entries.length === 0) return "";
-  const prefix_attr = point.prefix ? ` data-prefix="${escape_html(point.prefix)}"` : "";
+  const prefix_attr = point.prefix ? ` data-prefix="${ctx.escape(point.prefix)}"` : "";
   let inner = "";
   for (const c of entries) {
     inner += `<span class="twoslash-completion-entry"${
-      c.kind ? ` data-kind="${escape_html(c.kind)}"` : ""
-    }>${escape_html(c.name)}${
+      c.kind ? ` data-kind="${ctx.escape(c.kind)}"` : ""
+    }>${ctx.escape(c.name)}${
       c.docs ? `<span class="twoslash-completion-docs">${ctx.render_docs(c.docs)}</span>` : ""
     }</span>`;
   }
@@ -298,6 +281,7 @@ function render_line_annotation(ann: LineAnnotation, ctx: RenderContext) {
     case "query": {
       let out = `<span class="twoslash-query"><span class="twoslash-query-type">${highlight_fragment(
         ctx.process_type(ann.text ?? ""),
+        ctx,
       )}</span>`;
       if (ann.docs) {
         out += `<span class="twoslash-query-docs">${ctx.render_docs(ann.docs)}</span>`;
@@ -308,14 +292,14 @@ function render_line_annotation(ann: LineAnnotation, ctx: RenderContext) {
     }
     case "error-line": {
       let attrs = "";
-      if (ann.code != null) attrs += ` data-error-code="${escape_html(String(ann.code))}"`;
-      if (ann.level) attrs += ` data-error-level="${escape_html(ann.level)}"`;
-      return `<span class="twoslash-error-line"${attrs}>${escape_html(ann.text ?? "")}</span>`;
+      if (ann.code != null) attrs += ` data-error-code="${ctx.escape(String(ann.code))}"`;
+      if (ann.level) attrs += ` data-error-level="${ctx.escape(ann.level)}"`;
+      return `<span class="twoslash-error-line"${attrs}>${ctx.escape(ann.text ?? "")}</span>`;
     }
     case "tag": {
-      return `<span class="twoslash-tag" data-tag-name="${escape_html(
+      return `<span class="twoslash-tag" data-tag-name="${ctx.escape(
         ann.name,
-      )}">${escape_html(ann.text ?? "")}</span>`;
+      )}">${ctx.escape(ann.text ?? "")}</span>`;
     }
   }
   return "";
@@ -432,7 +416,7 @@ export function render(
 
   // -- Walk segments ----------------------------------------------------
   const out: string[] = [];
-  out.push(`<pre class="${escape_html(class_name)}"><code>`);
+  out.push(`<pre class="${ctx.escape(class_name)}"><code>`);
 
   let stack: { ref: Wrapper; close: string }[] = [];
   let current_token_type: string | null = null;
@@ -514,7 +498,7 @@ export function render(
     }
 
     // Emit the escaped segment text.
-    out.push(escape_html(input.substring(seg_start, seg_end)));
+    out.push(ctx.escape(input.substring(seg_start, seg_end)));
 
     // After a newline, flush line annotations for the line we just ended.
     if (input.charCodeAt(seg_end - 1) === 10) {

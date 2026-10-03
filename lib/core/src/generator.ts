@@ -1,5 +1,7 @@
-import { HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
+import { OVERLAY_LINE_MODE, OVERLAY_VERBATIM } from "./types";
+import type { HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
 import { resolve_overlays } from "./overlays";
+import { line_of } from "./annotation";
 
 const ESCAPE_TABLE = new Array(128);
 for (let i = 0; i < 128; i++) {
@@ -14,6 +16,8 @@ ESCAPE_TABLE[39] = "&#39;";
 // every byte the renderer has to react to is below 63, so `code > 62` rejects
 // every letter and every non-ascii code unit in one compare and the table
 // load below never needs a bounds check. 1 = line break, 2 = needs escaping.
+// an escape map gets its own copy sized to its highest key, so only its calls
+// lose the early exit
 const SCAN_NEWLINE = 1;
 const SCAN_ESCAPE = 2;
 const SCAN_TABLE = new Uint8Array(63);
@@ -58,6 +62,82 @@ const CHAR_CLS: (string | null)[] = new Array(CHAR_TYPES << 7).fill(null);
 const CHAR_OPEN: string[] = new Array(CHAR_TYPES << 7).fill("");
 const CHAR_SWAP: string[] = new Array(CHAR_TYPES << 7).fill("");
 
+interface EscapeTables {
+  scan: Uint8Array;
+  max: number;
+  table: string[];
+  char_cls: (string | null)[];
+  char_open: string[];
+  char_swap: string[];
+}
+
+const DEFAULT_ESCAPE: EscapeTables = {
+  scan: SCAN_TABLE,
+  max: 62,
+  table: ESCAPE_TABLE,
+  char_cls: CHAR_CLS,
+  char_open: CHAR_OPEN,
+  char_swap: CHAR_SWAP,
+};
+
+// keyed by content so a map rebuilt for every call still hits
+const ESCAPE_CACHE = new Map<string, EscapeTables>();
+const ESCAPE_CACHE_CAP = 16;
+
+function escape_tables(escape: RenderOptions["escape"]): EscapeTables {
+  if (escape === undefined) return DEFAULT_ESCAPE;
+  const proto = typeof escape === "object" && escape !== null && Object.getPrototypeOf(escape);
+  if (proto !== Object.prototype && proto !== null) {
+    throw new TypeError("escape must be a plain object mapping characters to replacement text");
+  }
+  const keys = Object.keys(escape);
+  if (keys.length === 0) return DEFAULT_ESCAPE;
+  let id = "";
+  let max = 62;
+  for (const key of keys) {
+    const code = key.charCodeAt(0);
+    // a lone surrogate key would split the characters that use it
+    if (key.length !== 1 || (code >= 0xd800 && code <= 0xdfff)) {
+      throw new TypeError(
+        `escape keys must be one UTF-16 code unit that is not a surrogate, got ${JSON.stringify(key)}`,
+      );
+    }
+    // the renderer writes these outside the text paths
+    if (code === 10 || code === 32 || code === 9) {
+      throw new TypeError(`escape cannot replace line breaks, spaces or tabs`);
+    }
+    const value = escape[key];
+    if (typeof value !== "string") {
+      throw new TypeError(`escape[${JSON.stringify(key)}] must be a string`);
+    }
+    if (code > max) max = code;
+    id += key + value.length + ":" + value;
+  }
+  const cached = ESCAPE_CACHE.get(id);
+  if (cached !== undefined) return cached;
+
+  const scan = new Uint8Array(max + 1);
+  scan.set(SCAN_TABLE);
+  const table = ESCAPE_TABLE.slice();
+  for (let i = table.length; i <= max; i++) table.push("");
+  for (const key of keys) {
+    const code = key.charCodeAt(0);
+    scan[code] = SCAN_ESCAPE;
+    table[code] = escape[key];
+  }
+  const tables: EscapeTables = {
+    scan,
+    max,
+    table,
+    char_cls: new Array(CHAR_TYPES << 7).fill(null),
+    char_open: new Array(CHAR_TYPES << 7).fill(""),
+    char_swap: new Array(CHAR_TYPES << 7).fill(""),
+  };
+  if (ESCAPE_CACHE.size >= ESCAPE_CACHE_CAP) ESCAPE_CACHE.clear();
+  ESCAPE_CACHE.set(id, tables);
+  return tables;
+}
+
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
   // option items merge into a fresh result so the caller's tokenize result
   // is left untouched. items that resolve to nothing fall through so they
@@ -78,8 +158,17 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   const ws_mode = whitespace_mode(options.whitespace);
   const indent_size = indent_guide_size(options.indent_guides);
   const ws_active = ws_mode !== 0 || indent_size !== 0;
+  const esc = escape_tables(options.escape);
+  const scan_table = esc.scan;
+  const scan_max = esc.max;
+  const escape_table = esc.table;
+  const char_cls = esc.char_cls;
+  const char_open = esc.char_open;
+  const char_swap = esc.char_swap;
 
-  let out = inline ? "" : open_pre(class_name, options.attributes);
+  let out = inline
+    ? ""
+    : open_pre(escape_range(class_name, 0, class_name.length, esc), options.attributes, esc);
 
   // seeded with the start value so the per-line path pays nothing for it.
   const first_line = inline ? 1 : first_line_number(options.line_numbers);
@@ -100,7 +189,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
       return;
     }
     const n = line_no - first_line + 1;
-    const deco = hook_output(line_hook(n, n), "line");
+    const deco = hook_output(line_hook(n, n), "line", esc);
     if (deco === null) out += open_line(line_no, line_numbers);
     else out += open_line_with_extra(line_no, line_numbers, "l" + deco.cls, deco.attrs);
   }
@@ -131,7 +220,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     let first = start;
     while (first < end) {
       const code = input.charCodeAt(first);
-      if (code <= 62 && SCAN_TABLE[code] !== 0) break;
+      if (code <= scan_max && scan_table[code] !== 0) break;
       first++;
     }
     if (first === end) {
@@ -147,13 +236,13 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     let chunk_start = start;
     for (let i = first; i < end; i++) {
       const code = input.charCodeAt(i);
-      if (code > 62) continue;
-      const kind = SCAN_TABLE[code];
+      if (code > scan_max) continue;
+      const kind = scan_table[code];
       if (kind === 0) continue;
       if (kind === SCAN_ESCAPE) {
         ensure_span(cls);
         if (i > chunk_start) out += input.substring(chunk_start, i);
-        out += ESCAPE_TABLE[code];
+        out += escape_table[code];
         chunk_start = i + 1;
         continue;
       }
@@ -270,7 +359,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
       } else emit_range(last_end, start, null);
     }
     if (token_hook !== undefined) {
-      const deco = hook_output(token_hook(cls, start, end), "token");
+      const deco = hook_output(token_hook(cls, start, end), "token", esc);
       if (deco !== null) {
         close_span();
         open_tag = token_tag(cls, deco);
@@ -283,15 +372,15 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     if (end - start === 1 && type < CHAR_TYPES) {
       const c = input.charCodeAt(start);
       if (c < 128 && c !== 10) {
-        if (cls === open_class) out += ESCAPE_TABLE[c];
+        if (cls === open_class) out += escape_table[c];
         else {
           const k = (type << 7) | c;
-          if (CHAR_CLS[k] !== cls) {
-            CHAR_CLS[k] = cls;
-            CHAR_OPEN[k] = `<span class="tok ${cls}">` + ESCAPE_TABLE[c];
-            CHAR_SWAP[k] = "</span>" + CHAR_OPEN[k];
+          if (char_cls[k] !== cls) {
+            char_cls[k] = cls;
+            char_open[k] = `<span class="tok ${cls}">` + escape_table[c];
+            char_swap[k] = "</span>" + char_open[k];
           }
-          out += open_class === null ? CHAR_OPEN[k] : CHAR_SWAP[k];
+          out += open_class === null ? char_open[k] : char_swap[k];
           open_class = cls;
         }
         last_end = end;
@@ -302,7 +391,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
     let first = start;
     while (first < end) {
       const code = input.charCodeAt(first);
-      if (code <= 62 && SCAN_TABLE[code] !== 0) break;
+      if (code <= scan_max && scan_table[code] !== 0) break;
       first++;
     }
     if (first !== end) emit_chunks(start, first, end, cls);
@@ -430,9 +519,13 @@ function whitespace_run(input: string, start: number, end: number, wrap: boolean
   return html;
 }
 
-function open_pre(class_attr: string, attributes: RenderOptions["attributes"]): string {
+function open_pre(
+  class_attr: string,
+  attributes: RenderOptions["attributes"],
+  esc: EscapeTables,
+): string {
   if (attributes === undefined) return `<pre class="${class_attr}"><code>`;
-  return `<pre class="${class_attr}"${render_attributes(attributes)}><code>`;
+  return `<pre class="${class_attr}"${render_attributes(attributes, esc)}><code>`;
 }
 
 function join_classes(class_name: string, extra: string): string {
@@ -445,6 +538,7 @@ function join_classes(class_name: string, extra: string): string {
 // here would let one call silently override the other mechanism.
 function render_attributes(
   attributes: Record<string, string | number | boolean>,
+  esc: EscapeTables,
   owner = "attributes",
 ): string {
   let out = "";
@@ -460,7 +554,7 @@ function render_attributes(
     if (value === true) {
       out += " " + name;
     } else if (typeof value === "string") {
-      out += ` ${name}="${escape_html(value)}"`;
+      out += ` ${name}="${escape_range(value, 0, value.length, esc)}"`;
     } else if (typeof value === "number") {
       out += ` ${name}="${value}"`;
     } else {
@@ -495,7 +589,7 @@ interface HookDecoration {
 
 // the class is escaped rather than validated so a hook can never break out
 // of the attribute.
-function hook_output(value: unknown, hook: string): HookDecoration | null {
+function hook_output(value: unknown, hook: string, esc: EscapeTables): HookDecoration | null {
   if (value === undefined || value === null) return null;
   if (typeof value !== "object") {
     throw new TypeError(`the ${hook} hook must return an object or nothing, got ${typeof value}`);
@@ -504,9 +598,9 @@ function hook_output(value: unknown, hook: string): HookDecoration | null {
   let cls_out = "";
   if (cls !== undefined && cls !== null) {
     if (typeof cls !== "string") throw new TypeError(`${hook} hook class must be a string`);
-    if (cls.length !== 0) cls_out = " " + escape_html(cls);
+    if (cls.length !== 0) cls_out = " " + escape_range(cls, 0, cls.length, esc);
   }
-  const attrs_out = attrs === undefined ? "" : render_attributes(attrs, `${hook} hook attrs`);
+  const attrs_out = attrs === undefined ? "" : render_attributes(attrs, esc, `${hook} hook attrs`);
   return { cls: cls_out, attrs: attrs_out };
 }
 
@@ -525,7 +619,7 @@ function has_class_list(ranges: Uint32Array, classifications: string[]): string 
   const first_index = new Array<number>(count).fill(0);
   for (let r = 0; r < ranges.length; r += 4) {
     const id = ranges[r + 2];
-    if (id >= count) continue;
+    if (id >= count || (ranges[r + 3] & OVERLAY_VERBATIM) !== 0) continue;
     const start = ranges[r];
     if (first_start[id] === -1 || start < first_start[id]) {
       first_start[id] = start;
@@ -548,27 +642,27 @@ function has_class_list(ranges: Uint32Array, classifications: string[]): string 
   return out;
 }
 
-function escape_substring_optimized(input: string, start: number, end: number) {
-  let needs_escape = false;
-  for (let i = start; i < end; i++) {
-    const code = input.charCodeAt(i);
-    if (code === 38 || code === 60 || code === 62 || code === 34 || code === 39) {
-      needs_escape = true;
-      break;
-    }
+// line breaks are never escaped, the scan table marks them for layout only
+function escape_range(input: string, start: number, end: number, esc: EscapeTables): string {
+  const scan = esc.scan;
+  const max = esc.max;
+  let first = start;
+  while (first < end) {
+    const code = input.charCodeAt(first);
+    if (code <= max && scan[code] === SCAN_ESCAPE) break;
+    first++;
   }
+  if (first === end) return input.substring(start, end);
 
-  if (!needs_escape) return input.substring(start, end);
-
-  let result = "";
-  let chunk_start = start;
-  for (let i = start; i < end; i++) {
+  const table = esc.table;
+  let result = input.substring(start, first) + table[input.charCodeAt(first)];
+  let chunk_start = first + 1;
+  for (let i = chunk_start; i < end; i++) {
     const code = input.charCodeAt(i);
-    if (code === 38 || code === 60 || code === 62 || code === 34 || code === 39) {
-      if (i > chunk_start) result += input.substring(chunk_start, i);
-      result += ESCAPE_TABLE[code];
-      chunk_start = i + 1;
-    }
+    if (code > max || scan[code] !== SCAN_ESCAPE) continue;
+    if (i > chunk_start) result += input.substring(chunk_start, i);
+    result += table[code];
+    chunk_start = i + 1;
   }
   if (end > chunk_start) result += input.substring(chunk_start, end);
   return result;
@@ -604,6 +698,7 @@ function to_html_overlay(
   const ws_mode = whitespace_mode(options.whitespace);
   const indent_size = indent_guide_size(options.indent_guides);
   const ws_active = ws_mode !== 0 || indent_size !== 0;
+  const esc = escape_tables(options.escape);
   const { ranges, classifications, skip_ranges, elided_lines } = overlays;
 
   // split overlays by mode once, up front. line-mode overlays bin onto the
@@ -622,12 +717,17 @@ function to_html_overlay(
     number,
     { start: number; end: number; class_id: number }[]
   >();
+  const verbatim_ranges: number[] = [];
   if (ranges.length > 0) {
     for (let r = 0; r < ranges.length; r += 4) {
       const ostart = ranges[r];
       const oend = ranges[r + 1];
       const class_id = ranges[r + 2];
       const flags = ranges[r + 3];
+      if ((flags & OVERLAY_VERBATIM) !== 0) {
+        verbatim_ranges.push(r);
+        continue;
+      }
       // both line numbers come from the input itself, so they are already
       // bounded by its line count. `elided_lines` is NOT a bound here: a
       // hand-built OverlayResult may pass an empty array, and reads of it
@@ -641,7 +741,7 @@ function to_html_overlay(
       // that on the previous line.
       const start_line = line_of_offset(input, ostart);
       const end_line = oend > ostart ? line_of_offset(input, oend - 1) : start_line;
-      if ((flags & 1) === 1) {
+      if ((flags & OVERLAY_LINE_MODE) !== 0) {
         for (let l = start_line; l <= end_line; l++) {
           const ids = line_class_map.get(l);
           if (ids === undefined) line_class_map.set(l, [class_id]);
@@ -693,6 +793,31 @@ function to_html_overlay(
     }
     if (skip_ranges[lo * 2] <= pos && pos < skip_ranges[lo * 2 + 1]) return lo;
     return -1;
+  }
+
+  // a hand built result may break the verbatim rules, those ranges render as plain text
+  const verbatim: Verbatim[] = [];
+  const verbatim_by_line = new Map<number, Verbatim[]>();
+  if (verbatim_ranges.length !== 0) {
+    verbatim_ranges.sort((a, b) => ranges[a] - ranges[b] || ranges[a + 1] - ranges[b + 1]);
+    let reach = 0;
+    for (const r of verbatim_ranges) {
+      const vstart = ranges[r];
+      const vend = ranges[r + 1];
+      if (vstart < reach || vstart >= vend || vend > input.length) continue;
+      const newline = input.indexOf("\n", vstart);
+      if (newline !== -1 && newline < vend) continue;
+      if (crosses_skip(skip_ranges, vstart, vend)) continue;
+      reach = vend;
+      let type = classifications[ranges[r + 2]] ?? "";
+      if (type.length === 0) type = enclosing_type(token_result, vstart, vend);
+      const v: Verbatim = { start: vstart, end: vend, type };
+      verbatim.push(v);
+      const line = line_of(get_line_starts(), vstart);
+      const on_line = verbatim_by_line.get(line);
+      if (on_line === undefined) verbatim_by_line.set(line, [v]);
+      else on_line.push(v);
+    }
   }
 
   // per-line: byte position past the last byte that should be emitted —
@@ -754,6 +879,7 @@ function to_html_overlay(
       line_start,
       line_end,
       skip_ranges,
+      verbatim_by_line.get(line),
     );
     wrappers_cache.set(line, result);
     return result;
@@ -763,7 +889,8 @@ function to_html_overlay(
   if (!inline) {
     const has_classes =
       options.has_classes === false ? "" : has_class_list(ranges, classifications);
-    out.push(open_pre(join_classes(class_name, has_classes), options.attributes));
+    const cls = join_classes(escape_range(class_name, 0, class_name.length, esc), has_classes);
+    out.push(open_pre(cls, options.attributes, esc));
   }
 
   let line_no = 1;
@@ -798,7 +925,7 @@ function to_html_overlay(
       }
       let attrs = "";
       if (line_hook !== undefined) {
-        const deco = hook_output(line_hook(visible_line_no - first_line + 1, line_no), "line");
+        const deco = hook_output(line_hook(visible_line_no - first_line + 1, line_no), "line", esc);
         if (deco !== null) {
           cls += deco.cls;
           attrs = deco.attrs;
@@ -858,11 +985,11 @@ function to_html_overlay(
     }
     if (chunk_renders_whitespace(seg_start, seg_end)) {
       close_span();
-      push_substituted(out, input, seg_start, seg_end, skip_ranges, skip_idx_after);
+      push_substituted(out, input, seg_start, seg_end, skip_ranges, skip_idx_after, esc);
       return;
     }
     ensure_span(base_cls);
-    push_substituted(out, input, seg_start, seg_end, skip_ranges, skip_idx_after);
+    push_substituted(out, input, seg_start, seg_end, skip_ranges, skip_idx_after, esc);
   }
 
   // walk a per-token chunk through the line's wrapper events. opens a
@@ -953,7 +1080,7 @@ function to_html_overlay(
         i++;
         continue;
       }
-      if (i > chunk_start) out.push(escape_substring_optimized(input, chunk_start, i));
+      if (i > chunk_start) out.push(escape_range(input, chunk_start, i, esc));
       let r = i + 1;
       while (r < end) {
         const c = input.charCodeAt(r);
@@ -964,7 +1091,7 @@ function to_html_overlay(
       i = r;
       chunk_start = r;
     }
-    if (end > chunk_start) out.push(escape_substring_optimized(input, chunk_start, end));
+    if (end > chunk_start) out.push(escape_range(input, chunk_start, end, esc));
   }
 
   function skip_idx_after(_chunk_start: number, _chunk_end: number): number {
@@ -1000,28 +1127,83 @@ function to_html_overlay(
     }
   }
 
+  // a verbatim range is written whole at its first byte and the bytes it covers are skipped
+  let verbatim_idx = 0;
+  function emit_piece(start: number, end: number, base_cls: string | null) {
+    while (start < end) {
+      while (verbatim_idx < verbatim.length && verbatim[verbatim_idx].end <= start) verbatim_idx++;
+      if (verbatim_idx === verbatim.length || verbatim[verbatim_idx].start >= end) {
+        emit_range_overlay(start, end, base_cls);
+        return;
+      }
+      const v = verbatim[verbatim_idx];
+      if (v.start >= start) {
+        emit_range_overlay(start, v.start, base_cls);
+        emit_verbatim(v);
+      }
+      start = v.end < end ? v.end : end;
+    }
+  }
+
+  // no wrapper starts or ends inside the range, one matching it exactly folds into the span
+  function emit_verbatim(v: Verbatim) {
+    if (line_no <= elided_lines.length && elided_lines[line_no - 1] === 1) return;
+    const max_end = last_emit_byte_in_line(line_no);
+    const end = v.end < max_end ? v.end : max_end;
+    if (end <= v.start) return;
+    close_span();
+    if (wrapper_open !== null && v.start >= wrapper_open.end) close_wrapper();
+    let cls = v.type.length === 0 ? "tok" : "tok " + v.type;
+    if (wrapper_open === null) {
+      while (wrapper_idx < line_wrappers.length && line_wrappers[wrapper_idx].end <= v.start) {
+        wrapper_idx++;
+      }
+      if (wrapper_idx < line_wrappers.length) {
+        const w = line_wrappers[wrapper_idx];
+        if (w.start === v.start && w.end === v.end) {
+          cls += " " + w.cls;
+          wrapper_idx++;
+        } else if (w.start <= v.start) {
+          out.push(`<span class="tok ${w.cls}">`);
+          wrapper_open = w;
+          wrapper_idx++;
+        }
+      }
+    }
+    let attrs = "";
+    if (token_hook !== undefined) {
+      const deco = hook_output(token_hook(v.type, v.start, end), "token", esc);
+      if (deco !== null) {
+        cls += deco.cls;
+        attrs = deco.attrs;
+      }
+    }
+    out.push(`<span class="${cls}"${attrs}>`, input.substring(v.start, end), "</span>");
+  }
+
+  const emit = verbatim.length === 0 ? emit_range_overlay : emit_piece;
   let last_end = 0;
   for (let i = 0; i < tokens.length; i += 3) {
     const cls = token_types[tokens[i]];
     const start = tokens[i + 1];
     const end = tokens[i + 2];
-    if (start > last_end) emit_range_overlay(last_end, start, null);
+    if (start > last_end) emit(last_end, start, null);
     if (token_hook !== undefined) {
-      const deco = hook_output(token_hook(cls, start, end), "token");
+      const deco = hook_output(token_hook(cls, start, end), "token", esc);
       if (deco !== null) {
         close_span();
         open_tag = token_tag(cls, deco);
-        emit_range_overlay(start, end, cls);
+        emit(start, end, cls);
         close_span();
         open_tag = null;
         last_end = end;
         continue;
       }
     }
-    emit_range_overlay(start, end, cls);
+    emit(start, end, cls);
     last_end = end;
   }
-  if (last_end < input.length) emit_range_overlay(last_end, input.length, null);
+  if (last_end < input.length) emit(last_end, input.length, null);
 
   close_wrapper();
   if (!inline) {
@@ -1032,6 +1214,45 @@ function to_html_overlay(
 }
 
 const EMPTY_WRAPPERS: { start: number; end: number; cls: string }[] = [];
+
+// an empty type means no type class
+interface Verbatim {
+  start: number;
+  end: number;
+  type: string;
+}
+
+function crosses_skip(skip_ranges: Uint32Array, start: number, end: number): boolean {
+  for (let i = 0; i < skip_ranges.length; i += 2) {
+    if (skip_ranges[i] < end && skip_ranges[i + 1] > start) return true;
+  }
+  return false;
+}
+
+// adjacent tokens of one type render as one span, so they count as one token
+function enclosing_type(token_result: TokenizeResult, start: number, end: number): string {
+  const { tokens, token_types } = token_result;
+  let lo = 0;
+  let hi = tokens.length / 3 - 1;
+  let k = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    if (tokens[mid * 3 + 1] <= start) {
+      k = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  if (k === -1) return "";
+  const type = tokens[k * 3];
+  let reach = tokens[k * 3 + 2];
+  if (reach <= start) return "";
+  while (reach < end) {
+    k++;
+    if (k * 3 >= tokens.length || tokens[k * 3] !== type || tokens[k * 3 + 1] !== reach) return "";
+    reach = tokens[k * 3 + 2];
+  }
+  return token_types[type] ?? "";
+}
 
 // Build the per-line wrapper list from the overlays touching this line.
 // Algorithm: sweep over (open, close) events in source order, maintain an
@@ -1048,6 +1269,7 @@ function compute_line_wrappers(
   line_start: number,
   line_end: number,
   skip_ranges: Uint32Array,
+  verbatim: Verbatim[] | undefined,
 ): { start: number; end: number; cls: string }[] {
   type Event = { pos: number; delta: number; class_id: number };
   const events: Event[] = [];
@@ -1091,7 +1313,53 @@ function compute_line_wrappers(
     }
     cursor = evt.pos;
   }
-  return result;
+  if (verbatim === undefined) return result;
+  return fit_wrappers(result, verbatim, input, skip_ranges);
+}
+
+// a verbatim range is one span, so the wrapper parts inside it merge into one wrapper over the range
+function fit_wrappers(
+  wrappers: { start: number; end: number; cls: string }[],
+  verbatim: Verbatim[],
+  input: string,
+  skip_ranges: Uint32Array,
+): { start: number; end: number; cls: string }[] {
+  let current = wrappers;
+  for (const v of verbatim) {
+    const next: { start: number; end: number; cls: string }[] = [];
+    let inside: string[] | null = null;
+    let inside_at = -1;
+    for (const w of current) {
+      if (w.end <= v.start || w.start >= v.end || (w.start <= v.start && w.end >= v.end)) {
+        next.push(w);
+        continue;
+      }
+      if (w.start < v.start) push_trimmed(next, w.start, v.start, w.cls, input, skip_ranges);
+      if (inside === null) {
+        inside = [];
+        inside_at = next.length;
+        next.push(w);
+      }
+      for (const c of w.cls.split(" ")) if (!inside.includes(c)) inside.push(c);
+      if (w.end > v.end) push_trimmed(next, v.end, w.end, w.cls, input, skip_ranges);
+    }
+    if (inside !== null) next[inside_at] = { start: v.start, end: v.end, cls: inside.join(" ") };
+    current = next;
+  }
+  return current;
+}
+
+function push_trimmed(
+  out: { start: number; end: number; cls: string }[],
+  start: number,
+  end: number,
+  cls: string,
+  input: string,
+  skip_ranges: Uint32Array,
+): void {
+  while (start < end && renders_blank(input, start, skip_ranges)) start++;
+  while (end > start && renders_blank(input, end - 1, skip_ranges)) end--;
+  if (start < end) out.push({ start, end, cls });
 }
 
 function renders_blank(input: string, pos: number, skip_ranges: Uint32Array): boolean {
@@ -1115,12 +1383,13 @@ function push_substituted(
   end: number,
   skip_ranges: Uint32Array,
   skip_lookup: (chunk_start: number, chunk_end: number) => number,
+  esc: EscapeTables,
 ): void {
   const skip_count = skip_ranges.length / 2;
   let idx = skip_lookup(start, end);
   // fast path: no overlapping skip ranges in this chunk.
   if (idx >= skip_count || skip_ranges[idx * 2] >= end) {
-    out.push(escape_substring_optimized(input, start, end));
+    out.push(escape_range(input, start, end, esc));
     return;
   }
   let chunk_start = start;
@@ -1129,7 +1398,7 @@ function push_substituted(
     const send = skip_ranges[idx * 2 + 1];
     if (sstart >= end) break;
     if (sstart > chunk_start) {
-      out.push(escape_substring_optimized(input, chunk_start, sstart));
+      out.push(escape_range(input, chunk_start, sstart, esc));
     }
     const sub_end = Math.min(send, end);
     // emit a run of single spaces of equal byte length.
@@ -1140,7 +1409,7 @@ function push_substituted(
     idx++;
   }
   if (chunk_start < end) {
-    out.push(escape_substring_optimized(input, chunk_start, end));
+    out.push(escape_range(input, chunk_start, end, esc));
   }
 }
 
@@ -1173,30 +1442,6 @@ function open_line_with_extra(n: number, line_numbers: boolean, cls: string, att
   return `<span class="${cls}"${attrs}>`;
 }
 
-export function escape_html(text: string) {
-  const len = text.length;
-
-  let needs_escape = false;
-  for (let i = 0; i < len; i++) {
-    const code = text.charCodeAt(i);
-    if (code === 38 || code === 60 || code === 62 || code === 34 || code === 39) {
-      needs_escape = true;
-      break;
-    }
-  }
-
-  if (!needs_escape) return text;
-
-  let result = "";
-  let chunk_start = 0;
-  for (let i = 0; i < len; i++) {
-    const code = text.charCodeAt(i);
-    if (code === 38 || code === 60 || code === 62 || code === 34 || code === 39) {
-      if (i > chunk_start) result += text.substring(chunk_start, i);
-      result += ESCAPE_TABLE[code];
-      chunk_start = i + 1;
-    }
-  }
-  if (len > chunk_start) result += text.substring(chunk_start, len);
-  return result;
+export function escape_html(text: string, escape?: Record<string, string>): string {
+  return escape_range(text, 0, text.length, escape_tables(escape));
 }

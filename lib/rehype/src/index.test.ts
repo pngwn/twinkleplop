@@ -153,6 +153,20 @@ describe("output modes", () => {
   });
 });
 
+describe("escape", () => {
+  const escape = { "{": "&#123;", "}": "&#125;" };
+
+  test("needs raw output", () => {
+    expect(() => render(fence("ts", "{}"), { render: { escape } })).toThrow(TypeError);
+    expect(render(fence("ts", "{}"), { render: { escape: {} } })).toContain("{}");
+  });
+
+  test("raw output keeps the encoded characters", () => {
+    const html = render(fence("ts", "f({})"), { output: "raw", render: { escape } });
+    expect(html).not.toMatch(/[{}]/);
+  });
+});
+
 describe("cost", () => {
   test("a 200 fence document reuses one highlighter", () => {
     let calls = 0;

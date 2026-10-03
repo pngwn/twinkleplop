@@ -46,6 +46,8 @@ ts(code, {
     { start: { line: 2, character: 4 }, end: { line: 2, character: 9 }, class: "error" },
     // hide a range: it renders as spaces of equal width
     { start: 40, end: 60, hide: true },
+    // write a range exactly as it is in the source, unescaped, as one token
+    { start: 72, end: 80, verbatim: true },
   ],
 });`;
 
@@ -111,6 +113,13 @@ ts(code, {
   box-shadow: inset 1px 0 0 var(--twp-comment);
 }`;
 
+	const escape = twoslash`import { language } from "@twinkleplop/typescript";
+const ts = language();
+declare const code: string;
+// ---cut---
+// safe to drop into a Svelte, Vue or Angular template
+ts(code, { escape: { "{": "&#123;", "}": "&#125;" } });`;
+
 	const output = html`<pre class="twinkleplop"><code>
 <span class="l"><span class="ln">1</span><span class="tok keyword">const</span> <span class="tok identifier">x</span></span>
 <span class="l diff-add">...</span>
@@ -171,6 +180,13 @@ ts(code, {
 			line that becomes whitespace-only is dropped. Visible line numbering continues without a gap.
 		</p>
 		<p>
+			A verbatim range is written exactly as it is in the source, with no escaping, as one
+			<code>span.tok</code>. Template languages use it to keep an expression live inside escaped
+			code. <code>type</code> sets its token class. Without it, the span takes the type of the token
+			it sits inside, or none when it crosses tokens. It must stay on one line and must not overlap a
+			hidden range or another verbatim range.
+		</p>
+		<p>
 			Every classification present also adds a <code>has-</code> class to the
 			<code>&lt;pre&gt;</code>, so a theme can style the block as a whole. Turn that off with
 			<code>has_classes: false</code>.
@@ -225,7 +241,30 @@ ts(code, {
 		<CodeBlock fname="whitespace.css" html={whitespace_css} />
 	</Section>
 
-	<Section id="output" title="HTML output" num="§ 06">
+	<Section id="escape" title="template escaping" num="§ 06">
+		<p>
+			The output escapes <code>&amp; &lt; &gt; " '</code>. Template languages read more than that:
+			Svelte and Angular treat <code>&#123;</code> as an expression, Vue and Jinja treat
+			<code>&#123;&#123;</code> as one. <code>escape</code> encodes extra characters everywhere text
+			is escaped, including <code>class_name</code>, so the HTML can go straight into a template.
+		</p>
+		<CodeBlock fname="escape.ts" html={escape} />
+		<p>
+			Angular 17 control flow also reads <code>@</code>, so add <code>"@": "&amp;#64;"</code> there.
+		</p>
+		<p>
+			Each key is one UTF-16 code unit and its value is written verbatim, so it must be valid HTML.
+			A key can replace one of the five built-in entities too, so <code>"'": "&amp;apos;"</code> works,
+			and so does <code>"&lt;": "&lt;"</code>, which turns that escaping off. Line breaks, spaces and
+			tabs can't be replaced.
+		</p>
+		<p>
+			<a href="#overlays">Verbatim ranges</a> are left out, so an expression you mark live stays live
+			while every other brace is encoded.
+		</p>
+	</Section>
+
+	<Section id="output" title="HTML output" num="§ 07">
 		<p>Block output uses this HTML structure:</p>
 		<CodeBlock fname="output.html" html={output} />
 		<ul>

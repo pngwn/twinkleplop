@@ -199,6 +199,15 @@ const copy = visible_text(code, result, options);`;
 				value: `Splits leading indentation into <code>&lt;span class="indent"&gt;</code> levels. Default size 2.`,
 			},
 		],
+		[
+			{ kind: "name" as const, value: "escape" },
+			{ kind: "type" as const, value: "Record&lt;string, string&gt;" },
+			{ kind: "def" as const, value: "—" },
+			{
+				kind: "desc" as const,
+				value: `Extra characters to encode wherever text is escaped, each mapped to the text written in its place.`,
+			},
+		],
 	];
 </script>
 
@@ -287,7 +296,9 @@ const copy = visible_text(code, result, options);`;
 			A non-integer <code>line_numbers.start</code> or a non-positive
 			<code>indent_guides.size</code>
 			throws a
-			<code>RangeError</code>.
+			<code>RangeError</code>. <code>escape</code> throws a <code>TypeError</code> unless it is a
+			plain object whose keys are each one UTF-16 code unit (not a lone surrogate, line break, space
+			or tab) and whose values are strings.
 		</Callout>
 	</Section>
 
