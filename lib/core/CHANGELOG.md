@@ -1,5 +1,24 @@
 # @twinkleplop/core
 
+## 0.3.1
+### Patch Changes
+
+
+
+- [#162](https://github.com/pngwn/twinkleplop/pull/162) [`dafdec0`](https://github.com/pngwn/twinkleplop/commit/dafdec03261143aa4b581d7520bd8d7e417bc2e1) Thanks [@pngwn](https://github.com/pngwn)! - A block comment that holds only annotation markers, such as `/* [!hl] */` or `<!-- [!hl] -->`, is now hidden whole, closing delimiter included, the same way a `// [!hl]` comment already was.
+
+
+
+- [#162](https://github.com/pngwn/twinkleplop/pull/162) [`2aed5c1`](https://github.com/pngwn/twinkleplop/commit/2aed5c167f34b8314494c65cb0c4ac2cbe62bbbd) Thanks [@pngwn](https://github.com/pngwn)! - A block comment that holds only annotation markers is hidden whole even when its closing delimiter sits on a later line, so `/*`, `[!hl]` and `*/` on three lines all disappear.
+
+
+
+- [#161](https://github.com/pngwn/twinkleplop/pull/161) [`f7c8b46`](https://github.com/pngwn/twinkleplop/commit/f7c8b4604f97e479d0d0648c883845ac7eaa7019) Thanks [@pngwn](https://github.com/pngwn)! - Rendering with overlays no longer slows down with each overlay added. Overlay positions are mapped to lines with a binary search instead of a scan from the start of the input, so large files with hundreds of overlays render in about the time they take without any.
+
+
+
+- [#162](https://github.com/pngwn/twinkleplop/pull/162) [`2fab5c9`](https://github.com/pngwn/twinkleplop/commit/2fab5c91d9f4c8602254869d299d9f03d23029d2) Thanks [@pngwn](https://github.com/pngwn)! - `seal: true` on a `within` rule now takes effect, so a delimited span that starts right after another span of the same token type stays a separate token.
+
 ## 0.3.0
 ### Minor Changes
 

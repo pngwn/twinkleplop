@@ -1,5 +1,15 @@
 # @twinkleplop/c
 
+## 0.2.1
+### Patch Changes
+
+
+
+- [#165](https://github.com/pngwn/twinkleplop/pull/165) [`afdb769`](https://github.com/pngwn/twinkleplop/commit/afdb76973e674d75c550536b3bb4b47082920ea0) Thanks [@pngwn](https://github.com/pngwn)! - C and C++ highlight about six to seven times faster at full fidelity, with identical output. Each identifier detail you enable no longer reanalyses the whole file, so turning on every category costs about the same as turning on one.
+
+- Updated dependencies [[`dafdec0`](https://github.com/pngwn/twinkleplop/commit/dafdec03261143aa4b581d7520bd8d7e417bc2e1), [`2aed5c1`](https://github.com/pngwn/twinkleplop/commit/2aed5c167f34b8314494c65cb0c4ac2cbe62bbbd), [`f7c8b46`](https://github.com/pngwn/twinkleplop/commit/f7c8b4604f97e479d0d0648c883845ac7eaa7019), [`2fab5c9`](https://github.com/pngwn/twinkleplop/commit/2fab5c91d9f4c8602254869d299d9f03d23029d2)]:
+  - @twinkleplop/core@0.3.1
+
 ## 0.2.0
 ### Minor Changes
 
