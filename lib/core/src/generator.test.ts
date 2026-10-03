@@ -6,7 +6,7 @@
 
 import { describe, expect, test } from "vitest";
 import { compile } from "./compiler";
-import { to_html } from "./generator";
+import { escape_html, to_html } from "./generator";
 import { build_annotation_extractor } from "./annotation";
 import { tokenize } from "./tokenizer";
 import type {
@@ -1374,5 +1374,153 @@ describe("whitespace and indent guides", () => {
         ).toBe(plain);
       }
     }
+  });
+});
+
+describe("escape", () => {
+  const BRACES = { "{": "&#123;", "}": "&#125;" };
+
+  function render_escaped(
+    input: string,
+    options: RenderOptions,
+    plugins: AnnotationPlugin[] = [],
+  ): string {
+    const result = tokenize(input, grammar);
+    if (plugins.length > 0) {
+      const extractor = build_annotation_extractor({ plugins }, result.token_types);
+      const overlays = extractor(input, result);
+      if (overlays !== undefined) result.overlays = overlays;
+    }
+    return to_html(input, result, options);
+  }
+
+  function second_pass(html: string): string {
+    return html.replaceAll("{", "&#123;").replaceAll("}", "&#125;");
+  }
+
+  // the toy grammar emits no braces in markup
+  test("every text path matches escaping the default output afterwards", () => {
+    const inputs = [
+      "{a}",
+      "f({ a: {b} }) {}\n  {\n\t}{",
+      "{{ x }}\n\n{ // {c} }\n",
+      "a {} // [!hl] {\n  { b } // [!em]\n",
+      "  {a} // [!hl a...}]\n",
+    ];
+    const variants: RenderOptions[] = [
+      {},
+      { line_numbers: true },
+      { structure: "inline" },
+      { whitespace: "all", indent_guides: true },
+      { whitespace: "leading" },
+      { overlays: [{ start: 1, end: 3, class: "mark" }] },
+      { overlays: [{ start: 0, end: 2, hide: true }] },
+      { line: () => ({ class: "x" }), token: () => ({ class: "y" }) },
+    ];
+    for (const input of inputs) {
+      for (const plugins of [[], [hl, em]]) {
+        for (const options of variants) {
+          const plain = render_escaped(input, options, plugins);
+          const escaped = render_escaped(input, { ...options, escape: BRACES }, plugins);
+          expect(escaped).toBe(second_pass(plain));
+        }
+      }
+    }
+  });
+
+  test("one char tokens and longer tokens holding the character", () => {
+    const input = "{a{b}}";
+    const tokens = new Uint32Array([0, 0, 1, 1, 1, 5, 0, 5, 6]);
+    const html = to_html(input, { tokens, token_types: ["p", "s"] }, { escape: BRACES });
+    expect(html).toBe(
+      '<pre class="twinkleplop"><code><span class="l"><span class="tok p">&#123;</span>' +
+        '<span class="tok s">a&#123;b&#125;</span><span class="tok p">&#125;</span></span></code></pre>',
+    );
+  });
+
+  test("an escaped call leaves no cached tag behind for other calls", () => {
+    const input = "{}{";
+    const tokens = new Uint32Array([0, 0, 1, 1, 1, 2, 0, 2, 3]);
+    const result = { tokens, token_types: ["p", "q"] };
+    const plain = to_html(input, result);
+    const braces = to_html(input, result, { escape: BRACES });
+    expect(braces).toBe(second_pass(plain));
+    expect(to_html(input, result, { escape: { "{": "[" } })).toBe(plain.replaceAll("{", "["));
+    expect(to_html(input, result)).toBe(plain);
+    expect(to_html(input, result, { escape: { ...BRACES } })).toBe(braces);
+  });
+
+  test("an empty map changes nothing", () => {
+    const input = "a {b} // [!hl]\n";
+    for (const plugins of [[], [hl]]) {
+      expect(render_escaped(input, { escape: {} }, plugins)).toBe(
+        render_escaped(input, {}, plugins),
+      );
+    }
+  });
+
+  test("attribute values and hook output are encoded", () => {
+    const html = render_escaped("a", {
+      escape: BRACES,
+      attributes: { "data-x": "{x}" },
+      line: () => ({ class: "{l}", attrs: { "data-l": "{1}" } }),
+      token: () => ({ class: "{t}", attrs: { "data-t": "<{t}>" } }),
+    });
+    expect(html).toBe(
+      '<pre class="twinkleplop" data-x="&#123;x&#125;"><code>' +
+        '<span class="l &#123;l&#125;" data-l="&#123;1&#125;">' +
+        '<span class="tok identifier &#123;t&#125;" data-t="&lt;&#123;t&#125;&gt;">a</span>' +
+        "</span></code></pre>",
+    );
+  });
+
+  test("keys past ascii and keys the renderer already escapes", () => {
+    const nbsp = String.fromCharCode(0xa0);
+    const input = `x${nbsp}'y'`;
+    const result = { tokens: new Uint32Array([0, 0, input.length]), token_types: ["s"] };
+    expect(to_html(input, result, { escape: { [nbsp]: "&nbsp;", "'": "&apos;" } })).toBe(
+      '<pre class="twinkleplop"><code><span class="l"><span class="tok s">x&nbsp;&apos;y&apos;</span></span></code></pre>',
+    );
+  });
+
+  test("values are written verbatim", () => {
+    const html = render_escaped("{", { escape: { "{": "<b>&" }, structure: "inline" });
+    expect(html).toBe('<span class="tok punctuation"><b>&</span>');
+  });
+
+  test("a bad map throws", () => {
+    const bad: unknown[] = [
+      null,
+      "{",
+      { "{{": "x" },
+      { "": "x" },
+      { "\n": "x" },
+      { " ": "x" },
+      { "\t": "x" },
+      { "{": 1 },
+      { "{": undefined },
+      new Map([["{", "x"]]),
+      ["x"],
+      { [String.fromCharCode(0xd83d)]: "x" },
+    ];
+    for (const escape of bad) {
+      expect(() => render_escaped("a", { escape: escape as Record<string, string> })).toThrow(
+        TypeError,
+      );
+    }
+  });
+
+  test("class_name is escaped with the map", () => {
+    for (const plugins of [[], [hl]]) {
+      const html = render_escaped("a // [!hl]", { class_name: 'x"{y}', escape: BRACES }, plugins);
+      expect(html.startsWith('<pre class="x&quot;&#123;y&#125;')).toBe(true);
+    }
+    expect(render_escaped("a", { class_name: "a<b" })).toContain('<pre class="a&lt;b">');
+  });
+
+  test("escape_html takes the same map", () => {
+    expect(escape_html("<{a}>")).toBe("&lt;{a}&gt;");
+    expect(escape_html("<{a}>", BRACES)).toBe("&lt;&#123;a&#125;&gt;");
+    expect(escape_html("a\nb", BRACES)).toBe("a\nb");
   });
 });

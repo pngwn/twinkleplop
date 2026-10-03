@@ -130,6 +130,10 @@ languages: {
 				preserves Twinkleplop's HTML string, as the markdown-it and remark plugins do.
 			</p>
 			<p>
+				Parsing decodes the entities written by <code>render.escape</code>, so setting it throws
+				unless <code>output</code> is <code>"raw"</code>.
+			</p>
+			<p>
 				The language comes from the <code>code</code> element's
 				<code>language-&lt;name&gt;</code> class, and the meta string from
 				<code>data.meta</code> (which <code>remark-rehype</code> sets) or a
@@ -220,7 +224,10 @@ languages: {
 				[
 					{ kind: "name", value: "render" },
 					{ kind: "def", value: "{}" },
-					{ kind: "desc", value: `Default render options. Individual fences can override them.` },
+					{
+						kind: "desc",
+						value: `Default render options. Individual fences can override them. <code>escape</code> also covers titles, captions and the language name.`,
+					},
 				],
 			]}
 		/>

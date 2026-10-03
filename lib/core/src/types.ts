@@ -806,6 +806,9 @@ export interface RenderOptions {
   // one level, `size` spaces are one level (default 2). the level spans are
   // adjacent siblings, not nested, so each one is exactly one level wide.
   indent_guides?: boolean | { size?: number };
+  // extra characters to encode wherever text is escaped, values are written
+  // verbatim, keys are one utf-16 code unit and never a line break, space or tab
+  escape?: Record<string, string>;
 }
 
 // class goes after the element's own classes; attrs follow the `attributes`
