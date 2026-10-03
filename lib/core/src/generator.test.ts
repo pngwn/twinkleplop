@@ -1554,6 +1554,7 @@ describe("to_parts", () => {
       { has_classes: false },
       { attributes: { "data-title": 'x"<y>', tabindex: 0, hidden: true, draggable: false } },
       { overlays: [{ line: 2, class: "focus" }] },
+      { overlays: [{ start: 2, end: 5, verbatim: true }] },
       { whitespace: "all", indent_guides: true, line: (n) => ({ attrs: { "data-n": n } }) },
     ];
     for (const plugins of [[], [em, hl]]) {
