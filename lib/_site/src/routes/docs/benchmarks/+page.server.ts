@@ -361,7 +361,7 @@ function version_steps(entries: HistoryEntry[]): VersionStep[] {
 	});
 
 	// the newest run of a cpu keeps its measured throughput, each earlier run is scaled back
-	// from the one after it by that step's change, so bars and changes always agree
+	// from the one after it by the change between them, so bars and changes always agree
 	for (let i = steps.length - 1; i >= 0; i--) {
 		const next = previous_index.indexOf(i);
 		if (next < 0) continue;
