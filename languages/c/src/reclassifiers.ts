@@ -47,12 +47,14 @@ const QUALIFIERS = new Set([
 const TAG_WORDS = new Set(["struct", "union", "enum", "class"]);
 
 function upper_constant(text: string): boolean {
-  return (
-    text.length > 1 &&
-    text[0] >= "A" &&
-    text[0] <= "Z" &&
-    [...text].every((c) => (c >= "A" && c <= "Z") || (c >= "0" && c <= "9") || c === "_")
-  );
+  if (text.length < 2) return false;
+  let c = text.charCodeAt(0);
+  if (c < 65 || c > 90) return false;
+  for (let i = 1; i < text.length; i++) {
+    c = text.charCodeAt(i);
+    if (!((c >= 65 && c <= 90) || (c >= 48 && c <= 57) || c === 95)) return false;
+  }
+  return true;
 }
 
 function type_name(text: string): boolean {
