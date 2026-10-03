@@ -237,12 +237,17 @@ ts(code, { escape: { "{": "&#123;", "}": "&#125;" } });`;
 			The output escapes <code>&amp; &lt; &gt; " '</code>. Template languages read more than that:
 			Svelte and Angular treat <code>&#123;</code> as an expression, Vue and Jinja treat
 			<code>&#123;&#123;</code> as one. <code>escape</code> encodes extra characters everywhere text
-			is escaped, so the HTML can go straight into a template.
+			is escaped, including <code>class_name</code>, so the HTML can go straight into a template.
 		</p>
 		<CodeBlock fname="escape.ts" html={escape} />
 		<p>
+			Angular 17 control flow also reads <code>@</code>, so add <code>"@": "&amp;#64;"</code> there.
+		</p>
+		<p>
 			Each key is one UTF-16 code unit and its value is written verbatim, so it must be valid HTML.
-			Line breaks, spaces and tabs can't be replaced.
+			A key can replace one of the five built-in entities too, so <code>"'": "&amp;apos;"</code> works,
+			and so does <code>"&lt;": "&lt;"</code>, which turns that escaping off. Line breaks, spaces and
+			tabs can't be replaced.
 		</p>
 	</Section>
 

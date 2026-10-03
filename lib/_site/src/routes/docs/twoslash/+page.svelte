@@ -204,7 +204,8 @@ unified()
 		/>
 		<Callout mark="▸" variant="warn">
 			<code>render_docs</code> output is inserted as trusted HTML. Sanitise it yourself if the jsdoc is
-			untrusted. Without the option, docs are escaped text.
+			untrusted. Without the option, docs are escaped text. <code>escape</code> does not reach that
+			HTML, so encode the same characters in what <code>render_docs</code> returns.
 		</Callout>
 		<p>
 			<code>on_error</code> handles errors from Twoslash. Tokenization and rendering errors are thrown

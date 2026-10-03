@@ -272,8 +272,9 @@ const result = overlays(source, [
 			A non-integer <code>line_numbers.start</code> or a non-positive
 			<code>indent_guides.size</code>
 			throws a
-			<code>RangeError</code>. An <code>escape</code> key longer than one UTF-16 code unit, or one
-			for a line break, space or tab, throws a <code>TypeError</code>.
+			<code>RangeError</code>. <code>escape</code> throws a <code>TypeError</code> unless it is a
+			plain object whose keys are each one UTF-16 code unit (not a lone surrogate, line break, space
+			or tab) and whose values are strings.
 		</Callout>
 	</Section>
 
