@@ -1,4 +1,4 @@
-import type { CompiledGrammar, PatternInfo, TokenizeResult } from "./types";
+import type { CompiledGrammar, DelimitedMatch, PatternInfo, TokenizeResult } from "./types";
 import type { TokenizerIntrospector } from "./introspector";
 import { RUN_NONE, RUN_TOKENLESS } from "./types";
 
@@ -28,6 +28,22 @@ let scratch_tokens = new Uint32Array(4096);
 
 // stands in for the fallback rule index in probe keys, a range rule never matches where the fallback does
 const FALLBACK_RULE = 255;
+
+function delimited_length(input: string, pos: number, span: DelimitedMatch): number {
+  const start = pos + span.start.length;
+  let cursor = start;
+  while (cursor <= start + span.max_length && cursor < input.length) {
+    if (input.startsWith(span.open, cursor)) {
+      const closing = span.close + input.slice(start, cursor) + span.end;
+      const end = input.indexOf(closing, cursor + span.open.length);
+      return (end < 0 ? input.length : end + closing.length) - pos;
+    }
+    const code = input.charCodeAt(cursor);
+    if (code < 33 || code > 126 || span.exclude.includes(input[cursor])) return 0;
+    cursor++;
+  }
+  return 0;
+}
 
 // helper function to check if a character is an identifier continuation character
 function is_identifier_char(char_code: number): boolean {
@@ -250,7 +266,11 @@ export function tokenize(
                   continue; // skip this pattern and try next one
                 }
               }
-              matched_length = p_len;
+              const span_length = pat.delimited
+                ? delimited_length(input, pos, pat.delimited)
+                : p_len;
+              if (span_length === 0) continue;
+              matched_length = span_length;
               matched_rule_idx = pat.rule_idx;
               break; // buckets sorted by length desc → first fit is longest
             }

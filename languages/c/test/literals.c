@@ -1,0 +1,9 @@
+const char *message = u8"hello\n" "world";
+const int chars[] = {'a', '\'', '\123', '\x41', u'λ', U'𐐀', L'Z', u8'x'};
+const void *strings[] = {"ordinary", L"wide", u"utf16", U"utf32", u8"utf8"};
+unsigned long long mask = 0xff'ffULL | 0B1010u | 0755UL;
+double scale = -0x1.fp+2 + .5e-3 + 1.;
+_BitInt(17) bits = 65535wb;
+_Decimal64 decimal = 1.25dd;
+bool ready = true;
+void *empty = nullptr;

@@ -72,7 +72,10 @@ export class GrammarMapper {
   }
 
   private _get_pattern(rule: GrammarRule): string {
-    if (rule.match) {
+    if (rule.match_delimited) {
+      const { start, open, close, end } = rule.match_delimited;
+      return `${JSON.stringify(start)} + delimiter + ${JSON.stringify(open)} … ${JSON.stringify(close)} + delimiter + ${JSON.stringify(end)}`;
+    } else if (rule.match) {
       if (rule.match instanceof RegExp) {
         return rule.match.toString();
       } else if (Array.isArray(rule.match)) {
@@ -105,7 +108,9 @@ export class GrammarMapper {
   private _describe_rule(rule: GrammarRule): string {
     const parts: string[] = [];
 
-    if (rule.match) {
+    if (rule.match_delimited) {
+      parts.push(this._get_pattern(rule));
+    } else if (rule.match) {
       if (rule.match instanceof RegExp) {
         parts.push(rule.match.toString());
       } else if (typeof rule.match === "string") {

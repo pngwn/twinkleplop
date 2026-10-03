@@ -5,6 +5,8 @@ import { SHIKI_THEME_IDS } from "./themes";
 // (or null when shiki has no equivalent grammar). any lang not in this map
 // is treated as unsupported and the shiki pane shows a hint.
 export const SHIKI_LANG_MAP: Record<string, string | null> = {
+  c: "c",
+  cpp: "cpp",
   css: "css",
   whitespace: null,
   javascript: "javascript",

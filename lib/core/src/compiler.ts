@@ -82,7 +82,26 @@ function preprocess_grammar(grammar: Grammar): Grammar {
     const processed_rules: GrammarRule[] = [];
 
     for (const rule of state.rules ?? []) {
-      if (rule.match_within) {
+      if (rule.match_delimited) {
+        const span = rule.match_delimited;
+        if (
+          span.start.length < 2 ||
+          span.start.charCodeAt(0) >= 128 ||
+          !span.open ||
+          !span.close ||
+          !span.end ||
+          !Number.isSafeInteger(span.max_length) ||
+          span.max_length < 0 ||
+          rule.match ||
+          rule.range ||
+          rule.any ||
+          rule.match_within ||
+          state.mode === "probe"
+        ) {
+          throw new Error(`Invalid match_delimited rule in state "${state_name}"`);
+        }
+        processed_rules.push({ ...rule, match: span.start });
+      } else if (rule.match_within) {
         if ((rule.match_within as any).begin !== undefined) {
           throw new Error(
             `Grammar error in state "${state_name}" rule ${processed_rules.length}: ` +
@@ -472,6 +491,7 @@ export function compile(grammar: Grammar): CompiledGrammar {
                 }
 
                 const info: PatternInfo = {
+                  delimited: rule.match_delimited,
                   codes,
                   length: match.length,
                   rule_idx,

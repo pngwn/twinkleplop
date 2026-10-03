@@ -2,6 +2,8 @@ import type { LanguageFn } from "@twinkleplop/core";
 
 // the modules ship no .d.ts, so ExploreLab narrows what it reads from them
 export const GRAMMAR_LOADERS: Record<string, () => Promise<unknown>> = {
+  c: () => import("@twinkleplop/c"),
+  cpp: () => import("@twinkleplop/cpp"),
   css: () => import("@twinkleplop/css"),
   whitespace: () => import("@twinkleplop/whitespace"),
   javascript: () => import("@twinkleplop/javascript"),
@@ -34,6 +36,14 @@ export const LANGUAGES = Object.keys(GRAMMAR_LOADERS).sort();
 
 // values are GRAMMAR_LOADERS keys
 const FENCE_LANGUAGES: Record<string, string> = {
+  c: "c",
+  h: "c",
+  cpp: "cpp",
+  "c++": "cpp",
+  cc: "cpp",
+  cxx: "cpp",
+  hpp: "cpp",
+  hxx: "cpp",
   js: "javascript",
   javascript: "javascript",
   ts: "typescript",

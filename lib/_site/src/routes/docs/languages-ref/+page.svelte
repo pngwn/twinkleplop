@@ -26,6 +26,8 @@ const md = language({
 
 	const languages: row[] = [
 		{ name: "bash", notes: "Variables, expansions, here-docs, builtins." },
+		{ name: "c", notes: "C23 syntax with selectable type, constant, function, parameter and member highlighting. The explore lab maps c and h fences to C." },
+		{ name: "cpp", notes: "C++23 syntax including raw strings, with selectable types, constants, functions, parameters, members and namespaces. Use cpp, c++ or cc fences for C++ headers." },
 		{ name: "css", notes: "Selectors, at-rules, custom properties, units. Probe-based selector disambiguation." },
 		{ name: "diff", notes: "Unified, context and normal diff, plus git metadata. Combined diff at a basic level." },
 		{ name: "diff-basic", notes: "Minimal line-level overlay: +/- prefixes, ! changed, @@ hunk headers. Built to compose with another grammar, so file and git headers are deliberately omitted." },
