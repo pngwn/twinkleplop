@@ -782,6 +782,13 @@ export interface OverlayResult {
   elided_lines: Uint8Array;
 }
 
+// segments hold source_start, source_end, text_start triples for runs copied
+// unchanged, spaces standing in for hidden bytes belong to none
+export interface VisibleText {
+  text: string;
+  segments: Uint32Array;
+}
+
 export const OVERLAY_LINE_MODE = 1;
 export const OVERLAY_VERBATIM = 2;
 

@@ -1,5 +1,5 @@
 import { OVERLAY_LINE_MODE, OVERLAY_VERBATIM } from "./types";
-import type { OverlayItem, OverlayResult } from "./types";
+import type { OverlayItem, OverlayResult, TokenizeResult } from "./types";
 import { build_line_starts, compute_elided_lines, is_class_list, line_of } from "./annotation";
 
 // index is -1 for a range carried over from an existing result
@@ -110,6 +110,19 @@ export function overlays(
 
   check_verbatim(collected, hidden);
   return finalize(source, line_starts, collected, hidden, existing);
+}
+
+// visible_text resolves through this too so both take the same render path
+export function resolve_overlays(
+  source: string,
+  result: TokenizeResult,
+  items: OverlayItem[] | undefined,
+): OverlayResult | undefined {
+  if (items !== undefined && items.length !== 0) {
+    const merged = overlays(source, items, result.overlays);
+    if (merged.ranges.length !== 0 || merged.skip_ranges.length !== 0) return merged;
+  }
+  return result.overlays;
 }
 
 type Shape = "range" | "line" | "lines" | "hide" | "verbatim";

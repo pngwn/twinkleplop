@@ -18,6 +18,18 @@
   <span class="param">options</span><span class="punct">?:</span> <span class="type">RenderOptions</span>
 <span class="punct">)</span><span class="punct">:</span> <span class="type">string</span>`;
 
+	const visible_text_sig = `<span class="kw">function</span> <span class="name">visible_text</span><span class="punct">(</span>
+  <span class="param">input</span><span class="punct">:</span> <span class="type">string</span><span class="punct">,</span>
+  <span class="param">result</span><span class="punct">:</span> <span class="type">TokenizeResult</span><span class="punct">,</span>
+  <span class="param">options</span><span class="punct">?:</span> <span class="type">RenderOptions</span>
+<span class="punct">)</span><span class="punct">:</span> <span class="type">string</span>`;
+
+	const visible_text_map_sig = `<span class="kw">function</span> <span class="name">visible_text_map</span><span class="punct">(</span>
+  <span class="param">input</span><span class="punct">:</span> <span class="type">string</span><span class="punct">,</span>
+  <span class="param">result</span><span class="punct">:</span> <span class="type">TokenizeResult</span><span class="punct">,</span>
+  <span class="param">options</span><span class="punct">?:</span> <span class="type">RenderOptions</span>
+<span class="punct">)</span><span class="punct">:</span> <span class="punct">{</span> <span class="param">text</span><span class="punct">:</span> <span class="type">string</span><span class="punct">;</span> <span class="param">segments</span><span class="punct">:</span> <span class="type">Uint32Array</span> <span class="punct">}</span>`;
+
 	const create_language_sig = `<span class="kw">function</span> <span class="name">create_language</span><span class="punct">(</span>
   <span class="param">grammar</span><span class="punct">:</span> <span class="type">CompiledGrammar</span><span class="punct">,</span>
   <span class="param">pipeline</span><span class="punct">?:</span> <span class="type">LanguagePipeline</span>
@@ -71,6 +83,18 @@ const result = overlays(source, [
   { start: 0, end: 12, class: "highlight" },
   { line: 3, class: "diff-add" },
 ]);`;
+
+	const visible_text_example = twoslash`declare const code: string;
+// ---cut---
+import { to_html, visible_text } from "@twinkleplop/core";
+import { hl } from "@twinkleplop/annotation";
+import { tokenize } from "@twinkleplop/typescript";
+
+const result = tokenize({ annotation: { plugins: [hl] } })(code);
+const options = { line_numbers: true };
+const html = to_html(code, result, options);
+// what the reader sees, ready for a copy button
+const copy = visible_text(code, result, options);`;
 
 	const language_options_rows = [
 		[
@@ -297,6 +321,31 @@ const result = overlays(source, [
 			<CodeBlock fname="overlays.ts" html={overlays_example} />
 		</SubSection>
 
+		<SubSection id="visible_text" title="visible_text()">
+			<p>
+				Returns the text a render shows, without line numbers. Marker bytes are removed with the
+				whitespace before them, lines left empty by markers or <code>hide</code> ranges are dropped,
+				and hidden ranges inside a line become spaces. Pass the same render options you pass to
+				<code>to_html</code>, because option overlays and the whitespace options change the result.
+			</p>
+			<Signature html={visible_text_sig} />
+			<CodeBlock fname="copy.ts" html={visible_text_example} />
+			<Callout mark="▸" variant="warn">
+				Once a snippet has any overlay, every line loses its trailing whitespace, including a
+				<code>\r</code> before the newline, just as the render does. The same code copies with CRLF
+				line endings without annotations and LF with them. Set <code>whitespace</code> to keep
+				trailing whitespace on lines with nothing hidden at the end.
+			</Callout>
+			<Signature html={visible_text_map_sig} />
+			<p>
+				<code>visible_text_map()</code> also returns <code>segments</code>, a
+				<code>Uint32Array</code> of <code>[source_start, source_end, text_start]</code> triples, one
+				for each run copied unchanged from the source. Use it to find where a source range lands in
+				the visible text. A verbatim range always falls inside one segment, and spaces that replace
+				hidden bytes are not part of any segment.
+			</p>
+		</SubSection>
+
 		<SubSection id="subpaths" title="subpath exports">
 			<ParamTable
 				headers={["subpath", "exports"]}
@@ -305,7 +354,7 @@ const result = overlays(source, [
 						{ kind: "name", value: "@twinkleplop/core" },
 						{
 							kind: "desc",
-							value: `<code>tokenize</code>, <code>to_html</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, the DSL, the reclassifier helpers, and all types.`,
+							value: `<code>tokenize</code>, <code>to_html</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, <code>visible_text</code>, the DSL, the reclassifier helpers, and all types.`,
 						},
 					],
 					[
