@@ -2,7 +2,7 @@
   "repo": "https://github.com/shikijs/textmate-grammars-themes",
   "commit": "45e292ef67d3a55911dfd02a5039dc238a07040c",
   "license": "MIT",
-  "fetched_at": "2026-09-15T21:41:07.641Z",
+  "fetched_at": "2026-10-03T15:20:12.130Z",
   "note": "vendored verbatim. these are the sample files shiki's own benchmark uses, included so our numbers can be checked against inputs we did not choose.",
   "uncovered": [
     "diff-basic",
@@ -16,6 +16,22 @@
       "bytes": 661,
       "lines": 29,
       "hash": "24865be6c138ea36"
+    },
+    {
+      "lang": "c",
+      "upstream": "samples/c.sample",
+      "file": "c.c",
+      "bytes": 933,
+      "lines": 52,
+      "hash": "3063f0f000851b06"
+    },
+    {
+      "lang": "cpp",
+      "upstream": "samples/cpp.sample",
+      "file": "cpp.cpp",
+      "bytes": 420,
+      "lines": 21,
+      "hash": "2406b4a290ac9be0"
     },
     {
       "lang": "css",
@@ -34,6 +50,22 @@
       "hash": "cd67c5a41524fc52"
     },
     {
+      "lang": "dockerfile",
+      "upstream": "samples/docker.sample",
+      "file": "dockerfile.dockerfile",
+      "bytes": 473,
+      "lines": 19,
+      "hash": "ec58c34a0411e6f8"
+    },
+    {
+      "lang": "dotenv",
+      "upstream": "samples/dotenv.sample",
+      "file": "dotenv.env",
+      "bytes": 248,
+      "lines": 14,
+      "hash": "0574e4883a88a4a1"
+    },
+    {
       "lang": "go",
       "upstream": "samples/go.sample",
       "file": "go.go",
@@ -42,12 +74,36 @@
       "hash": "af40f5738486ffa3"
     },
     {
+      "lang": "graphql",
+      "upstream": "samples/graphql.sample",
+      "file": "graphql.graphql",
+      "bytes": 262,
+      "lines": 16,
+      "hash": "d3f2d5c82b7a1bd9"
+    },
+    {
       "lang": "html",
       "upstream": "samples/html.sample",
       "file": "html.html",
       "bytes": 1596,
       "lines": 53,
       "hash": "fefd5f7bd5f952da"
+    },
+    {
+      "lang": "http",
+      "upstream": "samples/http.sample",
+      "file": "http.http",
+      "bytes": 466,
+      "lines": 19,
+      "hash": "6feccf898fc0ecd5"
+    },
+    {
+      "lang": "ini",
+      "upstream": "samples/ini.sample",
+      "file": "ini.ini",
+      "bytes": 274,
+      "lines": 13,
+      "hash": "77f07d7422b9bffd"
     },
     {
       "lang": "javascript",
@@ -66,12 +122,28 @@
       "hash": "636ba5c511a313a9"
     },
     {
+      "lang": "jsonc",
+      "upstream": "samples/jsonc.sample",
+      "file": "jsonc.jsonc",
+      "bytes": 490,
+      "lines": 35,
+      "hash": "edc44e124726a7f4"
+    },
+    {
       "lang": "markdown",
       "upstream": "samples/markdown.sample",
       "file": "markdown.md",
       "bytes": 3725,
       "lines": 171,
       "hash": "094283aa12ccb4df"
+    },
+    {
+      "lang": "powershell",
+      "upstream": "samples/powershell.sample",
+      "file": "powershell.ps1",
+      "bytes": 843,
+      "lines": 23,
+      "hash": "d8931a8a4948a213"
     },
     {
       "lang": "python",
@@ -88,6 +160,14 @@
       "bytes": 1011,
       "lines": 40,
       "hash": "1a4505ab4bee9995"
+    },
+    {
+      "lang": "shellsession",
+      "upstream": "samples/shellsession.sample",
+      "file": "shellsession.sh-session",
+      "bytes": 306,
+      "lines": 14,
+      "hash": "784f4df8fde4889d"
     },
     {
       "lang": "sql",

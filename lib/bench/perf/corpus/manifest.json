@@ -1,5 +1,5 @@
 {
-  "corpus_hash": "1bd8ef683ecb5fea",
+  "corpus_hash": "3fe43ab8623e1e90",
   "generated_from": "bin/build-corpus.mjs",
   "entries": [
     {
@@ -21,6 +21,32 @@
         "redirections.sh",
         "strings.sh",
         "variables.sh"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "c",
+      "file": "c.c",
+      "bytes": 1367,
+      "lines": 48,
+      "hash": "bed4d0e7334f4389",
+      "sources": [
+        "literals.c",
+        "preprocessor.c",
+        "structures.c"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "cpp",
+      "file": "cpp.cpp",
+      "bytes": 1744,
+      "lines": 66,
+      "hash": "254c5eb83a11c7a0",
+      "sources": [
+        "literals.cpp",
+        "preprocessor.cpp",
+        "structures.cpp"
       ]
     },
     {
@@ -86,6 +112,39 @@
     },
     {
       "family": "fixtures",
+      "lang": "dockerfile",
+      "file": "dockerfile.dockerfile",
+      "bytes": 3226,
+      "lines": 126,
+      "hash": "29794acaa99261a7",
+      "sources": [
+        "boundaries.dockerfile",
+        "continuations.dockerfile",
+        "heredoc-limitations.dockerfile",
+        "instructions.dockerfile",
+        "strings.dockerfile",
+        "windows.dockerfile"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "dotenv",
+      "file": "dotenv.env",
+      "bytes": 4452,
+      "lines": 212,
+      "hash": "e721255cc77d3a18",
+      "sources": [
+        "basics.env",
+        "crlf.env",
+        "interpolation.env",
+        "real_world.env",
+        "strings.env",
+        "unicode.env",
+        "values.env"
+      ]
+    },
+    {
+      "family": "fixtures",
       "lang": "go",
       "file": "go.go",
       "bytes": 5100,
@@ -105,6 +164,23 @@
     },
     {
       "family": "fixtures",
+      "lang": "graphql",
+      "file": "graphql.graphql",
+      "bytes": 3811,
+      "lines": 121,
+      "hash": "68d782b09e506026",
+      "sources": [
+        "aliases.gql",
+        "comments.graphql",
+        "context.graphql",
+        "numbers.graphql",
+        "operations.graphql",
+        "schema.graphql",
+        "strings.graphql"
+      ]
+    },
+    {
+      "family": "fixtures",
       "lang": "html",
       "file": "html.html",
       "bytes": 2092,
@@ -115,6 +191,48 @@
         "embedded.html",
         "script_only.html",
         "style_only.html"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "http",
+      "file": "http.http",
+      "bytes": 4563,
+      "lines": 243,
+      "hash": "3d415159690a8e10",
+      "sources": [
+        "bodies.http",
+        "crlf.http",
+        "dialect.http",
+        "exchange.http",
+        "headers_only.http",
+        "jetbrains.http",
+        "pseudo_headers.http",
+        "request.http",
+        "request_lines.http",
+        "response.http",
+        "rest_client.http"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "ini",
+      "file": "ini.ini",
+      "bytes": 6270,
+      "lines": 300,
+      "hash": "44bdc8a685d08844",
+      "sources": [
+        "comments.ini",
+        "continuations.ini",
+        "dialect_desktop.ini",
+        "dialect_editorconfig.ini",
+        "dialect_git.ini",
+        "dialect_php.ini",
+        "dialect_python.ini",
+        "dialect_systemd.ini",
+        "keys_values.ini",
+        "sections.ini",
+        "strings.ini"
       ]
     },
     {
@@ -164,6 +282,24 @@
     },
     {
       "family": "fixtures",
+      "lang": "jsonc",
+      "file": "jsonc.jsonc",
+      "bytes": 4208,
+      "lines": 139,
+      "hash": "ea2dfca3fb5f9a93",
+      "sources": [
+        "comments.jsonc",
+        "invalid.jsonc",
+        "keys.jsonc",
+        "launch.jsonc",
+        "numbers.jsonc",
+        "settings.jsonc",
+        "strings.jsonc",
+        "tsconfig.jsonc"
+      ]
+    },
+    {
+      "family": "fixtures",
       "lang": "markdown",
       "file": "markdown.md",
       "bytes": 2423,
@@ -183,6 +319,21 @@
         "lists.md",
         "mixed.md",
         "thematic_break.md"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "powershell",
+      "file": "powershell.ps1",
+      "bytes": 3516,
+      "lines": 99,
+      "hash": "721c8bbc9babbc07",
+      "sources": [
+        "comments.ps1",
+        "numbers.ps1",
+        "operators.ps1",
+        "strings.ps1",
+        "structure.ps1"
       ]
     },
     {
@@ -224,6 +375,24 @@
         "numbers.rs",
         "operators.rs",
         "strings.rs"
+      ]
+    },
+    {
+      "family": "fixtures",
+      "lang": "shellsession",
+      "file": "shellsession.sh-session",
+      "bytes": 2688,
+      "lines": 132,
+      "hash": "124f069075d545c8",
+      "sources": [
+        "continuation.sh-session",
+        "debian.sh-session",
+        "fedora.sh-session",
+        "git_session.sh-session",
+        "macos_zsh.sh-session",
+        "output.sh-session",
+        "prompts.sh-session",
+        "unicode.sh-session"
       ]
     },
     {
@@ -384,6 +553,28 @@
     },
     {
       "family": "micro",
+      "lang": "c",
+      "file": "c.c",
+      "bytes": 489,
+      "lines": 17,
+      "hash": "2288f34f446ed37a",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/c.c"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "cpp",
+      "file": "cpp.cpp",
+      "bytes": 731,
+      "lines": 29,
+      "hash": "efade555ff9395d6",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/cpp.cpp"
+      ]
+    },
+    {
+      "family": "micro",
       "lang": "css",
       "file": "css.css",
       "bytes": 391,
@@ -417,6 +608,28 @@
     },
     {
       "family": "micro",
+      "lang": "dockerfile",
+      "file": "dockerfile.dockerfile",
+      "bytes": 962,
+      "lines": 27,
+      "hash": "cd7871c9e3eb7369",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/dockerfile.dockerfile"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "dotenv",
+      "file": "dotenv.env",
+      "bytes": 546,
+      "lines": 22,
+      "hash": "c809120119cb2a3d",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/dotenv.env"
+      ]
+    },
+    {
+      "family": "micro",
       "lang": "go",
       "file": "go.go",
       "bytes": 519,
@@ -428,6 +641,17 @@
     },
     {
       "family": "micro",
+      "lang": "graphql",
+      "file": "graphql.graphql",
+      "bytes": 538,
+      "lines": 20,
+      "hash": "a2798e5d1c3166f3",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/graphql.graphql"
+      ]
+    },
+    {
+      "family": "micro",
       "lang": "html",
       "file": "html.html",
       "bytes": 670,
@@ -435,6 +659,28 @@
       "hash": "2b23c6a45a65f5bf",
       "sources": [
         "lib/_site/src/lib/explore/demos/html.html"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "http",
+      "file": "http.http",
+      "bytes": 570,
+      "lines": 26,
+      "hash": "a8a18b96390ce1be",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/http.http"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "ini",
+      "file": "ini.ini",
+      "bytes": 524,
+      "lines": 24,
+      "hash": "5d7d234646c8a1f4",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/ini.ini"
       ]
     },
     {
@@ -461,6 +707,17 @@
     },
     {
       "family": "micro",
+      "lang": "jsonc",
+      "file": "jsonc.jsonc",
+      "bytes": 482,
+      "lines": 19,
+      "hash": "cdafc007f4e853e2",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/jsonc.jsonc"
+      ]
+    },
+    {
+      "family": "micro",
       "lang": "markdown",
       "file": "markdown.md",
       "bytes": 564,
@@ -468,6 +725,17 @@
       "hash": "8946ec06ca317434",
       "sources": [
         "lib/_site/src/lib/explore/demos/markdown.md"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "powershell",
+      "file": "powershell.ps1",
+      "bytes": 776,
+      "lines": 30,
+      "hash": "e9d8f032c38c2157",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/powershell.ps1"
       ]
     },
     {
@@ -490,6 +758,17 @@
       "hash": "bb2d2253b3dbc3ad",
       "sources": [
         "lib/_site/src/lib/explore/demos/rust.rs"
+      ]
+    },
+    {
+      "family": "micro",
+      "lang": "shellsession",
+      "file": "shellsession.sh-session",
+      "bytes": 649,
+      "lines": 21,
+      "hash": "dfcaed1f0c49d57d",
+      "sources": [
+        "lib/_site/src/lib/explore/demos/shellsession.sh-session"
       ]
     },
     {
@@ -582,6 +861,28 @@
     },
     {
       "family": "real",
+      "lang": "c",
+      "file": "arena.c",
+      "bytes": 8883,
+      "lines": 348,
+      "hash": "e4af81071f93d7e6",
+      "sources": [
+        "corpus/seed/c/arena.c"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "cpp",
+      "file": "scheduler.cpp",
+      "bytes": 8056,
+      "lines": 274,
+      "hash": "8b2f3bb00ede72d1",
+      "sources": [
+        "corpus/seed/cpp/scheduler.cpp"
+      ]
+    },
+    {
+      "family": "real",
       "lang": "css",
       "file": "site.css",
       "bytes": 40864,
@@ -606,6 +907,28 @@
     },
     {
       "family": "real",
+      "lang": "dockerfile",
+      "file": "service.dockerfile",
+      "bytes": 5354,
+      "lines": 169,
+      "hash": "c9bab00c7f110199",
+      "sources": [
+        "corpus/seed/dockerfile/service.dockerfile"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "dotenv",
+      "file": "service.env",
+      "bytes": 3186,
+      "lines": 86,
+      "hash": "d42455dd2b9002c8",
+      "sources": [
+        "corpus/seed/dotenv/service.env"
+      ]
+    },
+    {
+      "family": "real",
       "lang": "go",
       "file": "server.go",
       "bytes": 8990,
@@ -617,6 +940,17 @@
     },
     {
       "family": "real",
+      "lang": "graphql",
+      "file": "schema.graphql",
+      "bytes": 8438,
+      "lines": 449,
+      "hash": "e9b9b22ca3a0cf41",
+      "sources": [
+        "corpus/seed/graphql/schema.graphql"
+      ]
+    },
+    {
+      "family": "real",
       "lang": "html",
       "file": "app.html",
       "bytes": 656,
@@ -624,6 +958,28 @@
       "hash": "0bd53d14b90684a9",
       "sources": [
         "lib/_site/src/app.html"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "http",
+      "file": "api.http",
+      "bytes": 6872,
+      "lines": 246,
+      "hash": "b4c7be86c7b68ca1",
+      "sources": [
+        "corpus/seed/http/api.http"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "ini",
+      "file": "services.ini",
+      "bytes": 6588,
+      "lines": 265,
+      "hash": "6c7e90ebb851fb22",
+      "sources": [
+        "corpus/seed/ini/services.ini"
       ]
     },
     {
@@ -652,6 +1008,17 @@
     },
     {
       "family": "real",
+      "lang": "jsonc",
+      "file": "settings.jsonc",
+      "bytes": 8199,
+      "lines": 234,
+      "hash": "e2a0c743ea5748a0",
+      "sources": [
+        "corpus/seed/jsonc/settings.jsonc"
+      ]
+    },
+    {
+      "family": "real",
       "lang": "markdown",
       "file": "architecture.md",
       "bytes": 25141,
@@ -675,6 +1042,17 @@
     },
     {
       "family": "real",
+      "lang": "powershell",
+      "file": "provision.ps1",
+      "bytes": 8084,
+      "lines": 279,
+      "hash": "8e0338866f875027",
+      "sources": [
+        "corpus/seed/powershell/provision.ps1"
+      ]
+    },
+    {
+      "family": "real",
       "lang": "python",
       "file": "analysis.py",
       "bytes": 7975,
@@ -693,6 +1071,17 @@
       "hash": "ca30b92dd1b52c56",
       "sources": [
         "corpus/seed/rust/pipeline.rs"
+      ]
+    },
+    {
+      "family": "real",
+      "lang": "shellsession",
+      "file": "release.sh-session",
+      "bytes": 7642,
+      "lines": 165,
+      "hash": "aacf8c57bf41d85b",
+      "sources": [
+        "corpus/seed/shellsession/release.sh-session"
       ]
     },
     {
@@ -813,6 +1202,28 @@
     },
     {
       "family": "scale",
+      "lang": "c",
+      "file": "c.c",
+      "bytes": 205078,
+      "lines": 7959,
+      "hash": "69e923638c0ef13b",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "cpp",
+      "file": "cpp.cpp",
+      "bytes": 205882,
+      "lines": 7181,
+      "hash": "56dd458222d6f320",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
       "lang": "css",
       "file": "css.css",
       "bytes": 228543,
@@ -846,6 +1257,28 @@
     },
     {
       "family": "scale",
+      "lang": "dockerfile",
+      "file": "dockerfile.dockerfile",
+      "bytes": 200658,
+      "lines": 6957,
+      "hash": "db3d023b925c87da",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "dotenv",
+      "file": "dotenv.env",
+      "bytes": 203144,
+      "lines": 8012,
+      "hash": "987c28570e49a743",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
       "lang": "go",
       "file": "go.go",
       "bytes": 202416,
@@ -857,11 +1290,44 @@
     },
     {
       "family": "scale",
+      "lang": "graphql",
+      "file": "graphql.graphql",
+      "bytes": 208299,
+      "lines": 9723,
+      "hash": "a5059b11b9468aa5",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
       "lang": "html",
       "file": "html.html",
       "bytes": 200236,
       "lines": 8739,
       "hash": "4af1b840295d69be",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "http",
+      "file": "http.http",
+      "bytes": 205900,
+      "lines": 8837,
+      "hash": "52a7cedd3dc4fb40",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "ini",
+      "file": "ini.ini",
+      "bytes": 205790,
+      "lines": 9071,
+      "hash": "e4a43d26a7873977",
       "sources": [
         "2 distinct sources cycled to ~200k"
       ]
@@ -890,6 +1356,17 @@
     },
     {
       "family": "scale",
+      "lang": "jsonc",
+      "file": "jsonc.jsonc",
+      "bytes": 202784,
+      "lines": 6139,
+      "hash": "f93253dc0c81a9e9",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
       "lang": "markdown",
       "file": "markdown.md",
       "bytes": 221214,
@@ -897,6 +1374,17 @@
       "hash": "42cfbdd0a0c2782e",
       "sources": [
         "3 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "powershell",
+      "file": "powershell.ps1",
+      "bytes": 200784,
+      "lines": 6559,
+      "hash": "04ff62bf729f0162",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
       ]
     },
     {
@@ -917,6 +1405,17 @@
       "bytes": 204695,
       "lines": 9672,
       "hash": "8cd5f4b04ff68607",
+      "sources": [
+        "2 distinct sources cycled to ~200k"
+      ]
+    },
+    {
+      "family": "scale",
+      "lang": "shellsession",
+      "file": "shellsession.sh-session",
+      "bytes": 206678,
+      "lines": 5979,
+      "hash": "f9da5f79c6b24102",
       "sources": [
         "2 distinct sources cycled to ~200k"
       ]
@@ -1033,6 +1532,72 @@
     },
     {
       "family": "sized",
+      "lang": "c",
+      "file": "c.large.c",
+      "bytes": 99163,
+      "lines": 3839,
+      "hash": "df86a46b6fe90078",
+      "sources": [
+        "large tier, target ~100KB, 29 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "c",
+      "file": "c.medium.c",
+      "bytes": 10803,
+      "lines": 418,
+      "hash": "144ac0a36f628d1f",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "c",
+      "file": "c.small.c",
+      "bytes": 1020,
+      "lines": 37,
+      "hash": "f782b301dd0a40bb",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "cpp",
+      "file": "cpp.large.cpp",
+      "bytes": 97910,
+      "lines": 3473,
+      "hash": "0eed185b6bcd5b89",
+      "sources": [
+        "large tier, target ~100KB, 29 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "cpp",
+      "file": "cpp.medium.cpp",
+      "bytes": 10595,
+      "lines": 374,
+      "hash": "0c85f733f80ed34d",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "cpp",
+      "file": "cpp.small.cpp",
+      "bytes": 751,
+      "lines": 30,
+      "hash": "61d31334cc6cf26a",
+      "sources": [
+        "small tier, target ~1KB, 1 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
       "lang": "css",
       "file": "css.large.css",
       "bytes": 97622,
@@ -1132,6 +1697,72 @@
     },
     {
       "family": "sized",
+      "lang": "dockerfile",
+      "file": "dockerfile.large.dockerfile",
+      "bytes": 100301,
+      "lines": 3436,
+      "hash": "0bf8d4b59402adc3",
+      "sources": [
+        "large tier, target ~100KB, 32 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "dockerfile",
+      "file": "dockerfile.medium.dockerfile",
+      "bytes": 9603,
+      "lines": 327,
+      "hash": "a17b077226c3426a",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "dockerfile",
+      "file": "dockerfile.small.dockerfile",
+      "bytes": 981,
+      "lines": 28,
+      "hash": "4372477a2bace908",
+      "sources": [
+        "small tier, target ~1KB, 1 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "dotenv",
+      "file": "dotenv.large.env",
+      "bytes": 99557,
+      "lines": 3935,
+      "hash": "6e60da8fa25d300b",
+      "sources": [
+        "large tier, target ~100KB, 37 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "dotenv",
+      "file": "dotenv.medium.env",
+      "bytes": 8812,
+      "lines": 349,
+      "hash": "feb45122eae9a93a",
+      "sources": [
+        "medium tier, target ~10KB, 4 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "dotenv",
+      "file": "dotenv.small.env",
+      "bytes": 1132,
+      "lines": 47,
+      "hash": "824ce8f296b3c9cd",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
       "lang": "go",
       "file": "go.large.go",
       "bytes": 102735,
@@ -1165,6 +1796,39 @@
     },
     {
       "family": "sized",
+      "lang": "graphql",
+      "file": "graphql.large.graphql",
+      "bytes": 102813,
+      "lines": 4767,
+      "hash": "825512d0024a0a55",
+      "sources": [
+        "large tier, target ~100KB, 24 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "graphql",
+      "file": "graphql.medium.graphql",
+      "bytes": 12848,
+      "lines": 595,
+      "hash": "e10b2e230bb4214a",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "graphql",
+      "file": "graphql.small.graphql",
+      "bytes": 1116,
+      "lines": 43,
+      "hash": "63c813e1a143396d",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
       "lang": "html",
       "file": "html.large.html",
       "bytes": 99865,
@@ -1192,6 +1856,72 @@
       "bytes": 1327,
       "lines": 53,
       "hash": "bda9e908f029dcb9",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "http",
+      "file": "http.large.http",
+      "bytes": 101734,
+      "lines": 4440,
+      "hash": "c9dd61ddfebf1885",
+      "sources": [
+        "large tier, target ~100KB, 26 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "http",
+      "file": "http.medium.http",
+      "bytes": 12066,
+      "lines": 520,
+      "hash": "e15a4cd3243e87dd",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "http",
+      "file": "http.small.http",
+      "bytes": 1180,
+      "lines": 55,
+      "hash": "af09f8e1751c853c",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "ini",
+      "file": "ini.large.ini",
+      "bytes": 100963,
+      "lines": 4492,
+      "hash": "0914176c54308a7b",
+      "sources": [
+        "large tier, target ~100KB, 23 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "ini",
+      "file": "ini.medium.ini",
+      "bytes": 6834,
+      "lines": 327,
+      "hash": "964a9a7433793cdf",
+      "sources": [
+        "medium tier, target ~10KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "ini",
+      "file": "ini.small.ini",
+      "bytes": 1088,
+      "lines": 51,
+      "hash": "c3c41e858475e93f",
       "sources": [
         "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
       ]
@@ -1264,6 +1994,39 @@
     },
     {
       "family": "sized",
+      "lang": "jsonc",
+      "file": "jsonc.large.jsonc",
+      "bytes": 103653,
+      "lines": 3183,
+      "hash": "b6d47e3ef41a8b25",
+      "sources": [
+        "large tier, target ~100KB, 24 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "jsonc",
+      "file": "jsonc.medium.jsonc",
+      "bytes": 12953,
+      "lines": 397,
+      "hash": "c314177e9f24b368",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "jsonc",
+      "file": "jsonc.small.jsonc",
+      "bytes": 1006,
+      "lines": 41,
+      "hash": "e691fa0a342b49cd",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
       "lang": "markdown",
       "file": "markdown.large.md",
       "bytes": 101226,
@@ -1293,6 +2056,39 @@
       "hash": "9dab8a0c8b7a938d",
       "sources": [
         "small tier, target ~1KB, 2 unit(s) cycled from 4 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "powershell",
+      "file": "powershell.large.ps1",
+      "bytes": 100323,
+      "lines": 3343,
+      "hash": "31e00aca2ad7d226",
+      "sources": [
+        "large tier, target ~100KB, 25 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "powershell",
+      "file": "powershell.medium.ps1",
+      "bytes": 12437,
+      "lines": 413,
+      "hash": "281d867370b16b49",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "powershell",
+      "file": "powershell.small.ps1",
+      "bytes": 795,
+      "lines": 31,
+      "hash": "8ea4095c97ac2447",
+      "sources": [
+        "small tier, target ~1KB, 1 unit(s) cycled from 3 distinct source(s)"
       ]
     },
     {
@@ -1357,6 +2153,39 @@
       "bytes": 1260,
       "lines": 65,
       "hash": "abb3a7da4565328f",
+      "sources": [
+        "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "shellsession",
+      "file": "shellsession.large.sh-session",
+      "bytes": 99487,
+      "lines": 2883,
+      "hash": "cf6d2bb3b3e30990",
+      "sources": [
+        "large tier, target ~100KB, 28 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "shellsession",
+      "file": "shellsession.medium.sh-session",
+      "bytes": 10981,
+      "lines": 318,
+      "hash": "a3f9c4f5a471b6f4",
+      "sources": [
+        "medium tier, target ~10KB, 3 unit(s) cycled from 3 distinct source(s)"
+      ]
+    },
+    {
+      "family": "sized",
+      "lang": "shellsession",
+      "file": "shellsession.small.sh-session",
+      "bytes": 1299,
+      "lines": 42,
+      "hash": "f2669ec128c47590",
       "sources": [
         "small tier, target ~1KB, 2 unit(s) cycled from 3 distinct source(s)"
       ]
@@ -1605,6 +2434,28 @@
     },
     {
       "family": "upstream",
+      "lang": "c",
+      "file": "c.c",
+      "bytes": 933,
+      "lines": 52,
+      "hash": "3063f0f000851b06",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/c.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "cpp",
+      "file": "cpp.cpp",
+      "bytes": 420,
+      "lines": 21,
+      "hash": "2406b4a290ac9be0",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/cpp.sample"
+      ]
+    },
+    {
+      "family": "upstream",
       "lang": "css",
       "file": "css.css",
       "bytes": 578,
@@ -1627,6 +2478,28 @@
     },
     {
       "family": "upstream",
+      "lang": "dockerfile",
+      "file": "dockerfile.dockerfile",
+      "bytes": 473,
+      "lines": 19,
+      "hash": "ec58c34a0411e6f8",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/docker.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "dotenv",
+      "file": "dotenv.env",
+      "bytes": 248,
+      "lines": 14,
+      "hash": "0574e4883a88a4a1",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/dotenv.sample"
+      ]
+    },
+    {
+      "family": "upstream",
       "lang": "go",
       "file": "go.go",
       "bytes": 329,
@@ -1638,6 +2511,17 @@
     },
     {
       "family": "upstream",
+      "lang": "graphql",
+      "file": "graphql.graphql",
+      "bytes": 262,
+      "lines": 16,
+      "hash": "d3f2d5c82b7a1bd9",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/graphql.sample"
+      ]
+    },
+    {
+      "family": "upstream",
       "lang": "html",
       "file": "html.html",
       "bytes": 1596,
@@ -1645,6 +2529,28 @@
       "hash": "fefd5f7bd5f952da",
       "sources": [
         "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/html.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "http",
+      "file": "http.http",
+      "bytes": 466,
+      "lines": 19,
+      "hash": "6feccf898fc0ecd5",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/http.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "ini",
+      "file": "ini.ini",
+      "bytes": 274,
+      "lines": 13,
+      "hash": "77f07d7422b9bffd",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/ini.sample"
       ]
     },
     {
@@ -1671,6 +2577,17 @@
     },
     {
       "family": "upstream",
+      "lang": "jsonc",
+      "file": "jsonc.jsonc",
+      "bytes": 490,
+      "lines": 35,
+      "hash": "edc44e124726a7f4",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/jsonc.sample"
+      ]
+    },
+    {
+      "family": "upstream",
       "lang": "markdown",
       "file": "markdown.md",
       "bytes": 3725,
@@ -1678,6 +2595,17 @@
       "hash": "094283aa12ccb4df",
       "sources": [
         "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/markdown.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "powershell",
+      "file": "powershell.ps1",
+      "bytes": 843,
+      "lines": 23,
+      "hash": "d8931a8a4948a213",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/powershell.sample"
       ]
     },
     {
@@ -1700,6 +2628,17 @@
       "hash": "1a4505ab4bee9995",
       "sources": [
         "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/rust.sample"
+      ]
+    },
+    {
+      "family": "upstream",
+      "lang": "shellsession",
+      "file": "shellsession.sh-session",
+      "bytes": 306,
+      "lines": 14,
+      "hash": "784f4df8fde4889d",
+      "sources": [
+        "https://github.com/shikijs/textmate-grammars-themes@45e292ef67d3 samples/shellsession.sample"
       ]
     },
     {

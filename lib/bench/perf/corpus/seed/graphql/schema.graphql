@@ -1,0 +1,448 @@
+"""
+Public API for the acme storefront. Served from https://api.acme.dev/graphql.
+Breaking changes go through the @deprecated cycle for at least two releases.
+"""
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+"An ISO-8601 timestamp in UTC, e.g. 2026-03-14T09:26:53Z."
+scalar DateTime
+
+"A decimal amount serialized as a string to avoid float rounding."
+scalar Decimal @specifiedBy(url: "https://docs.acme.dev/scalars/decimal")
+
+"Opaque pagination cursor."
+scalar Cursor
+
+scalar URL
+
+"""
+Restricts a field to callers holding at least one of the given scopes.
+Evaluated before the resolver runs.
+"""
+directive @auth(requires: [Scope!]! = [READ]) on OBJECT | FIELD_DEFINITION
+
+"Caches the field result at the edge for the given number of seconds."
+directive @cacheControl(maxAge: Int = 0, scope: CacheScope = PUBLIC) on FIELD_DEFINITION | OBJECT | INTERFACE
+
+directive @lowercase on FIELD_DEFINITION
+
+directive @tag(name: String!) repeatable on FIELD_DEFINITION | OBJECT | INPUT_FIELD_DEFINITION
+
+enum Scope {
+  READ
+  WRITE
+  ADMIN
+}
+
+enum CacheScope {
+  PUBLIC
+  PRIVATE
+}
+
+"Lifecycle of an order from checkout to delivery."
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED @deprecated(reason: "Use `Order.refunds` and check the total instead.")
+}
+
+enum Currency {
+  USD
+  EUR
+  GBP
+  JPY
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+"Anything with a globally unique, refetchable id."
+interface Node {
+  id: ID!
+}
+
+interface Timestamped {
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+type Money {
+  amount: Decimal!
+  currency: Currency!
+  "Pre-formatted for display in the caller's locale."
+  formatted(locale: String = "en-US"): String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: Cursor
+  endCursor: Cursor
+}
+
+"""
+A purchasable item. Variants carry their own price and stock level;
+the product price is the lowest variant price.
+"""
+type Product implements Node & Timestamped @cacheControl(maxAge: 300) {
+  id: ID!
+  handle: String! @lowercase
+  title: String!
+  description(format: TextFormat = MARKDOWN): String
+  price: Money!
+  compareAtPrice: Money
+  images(first: Int = 4): [Image!]!
+  variants(first: Int = 20, after: Cursor): VariantConnection!
+  tags: [String!]! @tag(name: "search")
+  rating: Float
+  inStock: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+enum TextFormat {
+  PLAIN
+  MARKDOWN
+  HTML
+}
+
+type Image {
+  url(width: Int, height: Int, format: ImageFormat = WEBP): URL!
+  altText: String
+}
+
+enum ImageFormat {
+  JPEG
+  PNG
+  WEBP
+  AVIF
+}
+
+type Variant implements Node {
+  id: ID!
+  sku: String!
+  title: String!
+  price: Money!
+  quantityAvailable: Int! @auth(requires: [ADMIN])
+  options: [VariantOption!]!
+}
+
+type VariantOption {
+  name: String!
+  value: String!
+}
+
+type VariantEdge {
+  cursor: Cursor!
+  node: Variant!
+}
+
+type VariantConnection {
+  edges: [VariantEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type Customer implements Node & Timestamped @auth(requires: [READ]) {
+  id: ID!
+  email: String!
+  displayName: String
+  orders(first: Int = 10, after: Cursor, status: [OrderStatus!]): OrderConnection!
+  defaultAddress: Address
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+type Address {
+  line1: String!
+  line2: String
+  city: String!
+  region: String
+  postalCode: String!
+  countryCode: String!
+}
+
+type Order implements Node & Timestamped {
+  id: ID!
+  number: Int!
+  status: OrderStatus!
+  customer: Customer!
+  lines: [OrderLine!]!
+  subtotal: Money!
+  shipping: Money!
+  tax: Money!
+  total: Money!
+  shippingAddress: Address
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+type OrderLine {
+  variant: Variant!
+  quantity: Int!
+  unitPrice: Money!
+}
+
+type OrderEdge {
+  cursor: Cursor!
+  node: Order!
+}
+
+type OrderConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
+}
+
+"Results for the storefront search box."
+union SearchResult = Product | Collection | Article
+
+type Collection implements Node {
+  id: ID!
+  title: String!
+  products(first: Int = 24, sort: ProductSort): [Product!]!
+}
+
+type Article implements Node {
+  id: ID!
+  title: String!
+  excerpt: String
+  publishedAt: DateTime
+}
+
+input ProductSort {
+  field: ProductSortField! = RELEVANCE
+  direction: SortDirection = DESC
+}
+
+enum ProductSortField {
+  RELEVANCE
+  PRICE
+  CREATED_AT
+  BEST_SELLING
+}
+
+input AddressInput {
+  line1: String!
+  line2: String
+  city: String!
+  region: String
+  postalCode: String!
+  countryCode: String! = "US"
+}
+
+input CartLineInput {
+  variantId: ID!
+  quantity: Int! = 1
+}
+
+input CheckoutInput {
+  cartId: ID!
+  email: String!
+  shippingAddress: AddressInput!
+  "Optional promotional code, case-insensitive."
+  discountCode: String @tag(name: "marketing")
+}
+
+type UserError {
+  field: [String!]
+  message: String!
+  code: String
+}
+
+type CheckoutPayload {
+  order: Order
+  errors: [UserError!]!
+}
+
+type Query {
+  node(id: ID!): Node
+  product(handle: String!): Product @cacheControl(maxAge: 60)
+  products(first: Int = 24, after: Cursor, query: String, sort: ProductSort): [Product!]!
+  search(term: String!, limit: Int = 10): [SearchResult!]!
+  me: Customer @auth(requires: [READ]) @cacheControl(scope: PRIVATE)
+}
+
+type Mutation {
+  addToCart(cartId: ID, lines: [CartLineInput!]!): Cart!
+  removeFromCart(cartId: ID!, variantIds: [ID!]!): Cart!
+  checkout(input: CheckoutInput!): CheckoutPayload! @auth(requires: [WRITE])
+  cancelOrder(id: ID!, reason: String): Order @auth(requires: [WRITE, ADMIN])
+}
+
+type Subscription {
+  orderStatusChanged(orderId: ID!): Order!
+  inventoryLow(threshold: Int = 5): Variant! @auth(requires: [ADMIN])
+}
+
+type Cart implements Node {
+  id: ID!
+  lines: [OrderLine!]!
+  subtotal: Money!
+}
+
+extend type Product {
+  related(first: Int = 4): [Product!]! @cacheControl(maxAge: 900)
+}
+
+extend type Customer {
+  wishlist: [Product!]!
+}
+
+# ---------------------------------------------------------------
+# Operations used by the storefront client
+# ---------------------------------------------------------------
+
+fragment MoneyFields on Money {
+  amount
+  currency
+  formatted(locale: $locale)
+}
+
+fragment ProductCard on Product {
+  id
+  handle
+  title
+  inStock
+  price {
+    ...MoneyFields
+  }
+  compareAtPrice {
+    ...MoneyFields
+  }
+  thumbnail: images(first: 1) {
+    url(width: 480, height: 480, format: AVIF)
+    altText
+  }
+}
+
+query ProductPage($handle: String!, $locale: String = "en-US", $variants: Int = 20) {
+  product(handle: $handle) {
+    ...ProductCard
+    description(format: HTML)
+    rating
+    tags
+    gallery: images(first: 8) {
+      url(width: 1600)
+      altText
+    }
+    variants(first: $variants) {
+      totalCount
+      edges {
+        cursor
+        node {
+          id
+          sku
+          title
+          options {
+            name
+            value
+          }
+          price {
+            ...MoneyFields
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+    related(first: 4) {
+      ...ProductCard
+    }
+  }
+}
+
+query Search($term: String!, $locale: String = "en-US") {
+  results: search(term: $term, limit: 12) {
+    __typename
+    ... on Product {
+      ...ProductCard
+    }
+    ... on Collection {
+      id
+      title
+    }
+    ... on Article {
+      id
+      title
+      excerpt
+    }
+  }
+}
+
+query AccountOrders($after: Cursor, $statuses: [OrderStatus!] = [PAID, SHIPPED], $locale: String = "en-US") {
+  me {
+    displayName
+    email
+    orders(first: 10, after: $after, status: $statuses) {
+      edges {
+        node {
+          id
+          number
+          status
+          createdAt
+          total {
+            ...MoneyFields
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+
+mutation AddToCart($cartId: ID, $variantId: ID!, $qty: Int = 1, $locale: String = "en-US") {
+  cart: addToCart(cartId: $cartId, lines: [{ variantId: $variantId, quantity: $qty }]) {
+    id
+    subtotal {
+      ...MoneyFields
+    }
+    lines {
+      quantity
+      variant {
+        id
+        title
+      }
+    }
+  }
+}
+
+mutation Checkout($input: CheckoutInput!, $locale: String = "en-US") {
+  checkout(input: $input) {
+    order {
+      id
+      number
+      status
+      total {
+        ...MoneyFields
+      }
+    }
+    errors {
+      field
+      message
+      code
+    }
+  }
+}
+
+subscription WatchOrder($orderId: ID!) {
+  orderStatusChanged(orderId: $orderId) {
+    id
+    status
+    updatedAt
+  }
+}

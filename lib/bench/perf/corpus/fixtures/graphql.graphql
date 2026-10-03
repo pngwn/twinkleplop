@@ -1,0 +1,120 @@
+# ---- aliases.gql ----
+query Aliases { short: field(argument: null) }
+
+
+# ---- comments.graphql ----
+# """ $ignored @ignored ...ignored
+query # between keyword and name
+  Comments($id # before colon
+    : ID! # after type
+  ) {
+  node(id: $id) { # after selection opener
+    # Comment before the spread
+    ... # Comment before type condition
+    on # Comment before type name
+    User { id }
+  }
+}
+# Final comment with no semantic effect
+
+
+# ---- context.graphql ----
+query query($query: type, $type: [[lower!]!]! = [[query]]) @type {
+  query: mutation(type: enum, input: {true: false, null: null, query: type}) {
+    type interface implements union enum input extend directive repeatable on
+    true false null queryName typeName trueValue
+    ...query
+    ...on type { on }
+  }
+}
+fragment query on type { type }
+type type { query: lower true: Boolean null: String }
+scalar lower
+enum query { query mutation subscription type on }
+directive @type(type: type = query) on FIELD_DEFINITION
+query Sigils($ # variable name can follow ignored tokens
+  query: ID) { field(value: $ , query) @ # directive name too
+  type }
+
+
+# ---- numbers.graphql ----
+{
+  measure(values: [0 -0 1 -42 1234567890 0.5 -0.5 1.0 1e3 1E3 1e+3 1e-3 -1.25E+10 6.0221413e23])
+  filter(input: { active: true, archived: false, missing: null, role: ADMIN, lower: user })
+}
+
+
+# ---- operations.graphql ----
+# Named, anonymous, mutation and subscription operations
+query GetUser($id: ID!, $sizes: [Int!]! = [32, 64], $withFriends: Boolean = true) {
+  viewer: user(id: $id) {
+    __typename
+    id
+    name
+    profilePic(size: 50)
+    friends @include(if: $withFriends) {
+      ...FriendFields
+      ... on Admin { permissions }
+      ... @skip(if: false) { active }
+    }
+  }
+}
+fragment FriendFields on User { id name }
+mutation Update($input: UpdateInput!) {
+  updateUser(input: $input) { id }
+}
+subscription Messages { messageAdded { body } }
+{ nearestThing(location: { lon: 12.43, lat: -53.211 }) }
+
+
+# ---- schema.graphql ----
+"""The public API, including descriptions and extensions."""
+schema @service(name: "public") {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+scalar DateTime @specifiedBy(url: "https://example.com/date")
+interface Node { id: ID! }
+interface Resource implements Node { id: ID! url: String }
+type User implements & Node & Resource @key(fields: "id") {
+  "Stable identifier"
+  id: ID!
+  url: String
+  friends(first: Int = 10, filter: Filter = {roles: [ADMIN, user], enabled: true}): [User!]!
+  oldName: String @deprecated(reason: "Use name")
+}
+union SearchResult = | User | Query
+enum Role { ADMIN user type @deprecated }
+input Filter @oneOf { roles: [Role!] enabled: Boolean }
+type Query { user(id: ID!): User }
+type Mutation { updateUser(input: Filter!): User }
+type Subscription { messageAdded: String }
+directive @audit(level: Role = ADMIN) repeatable on FIELD | OBJECT | QUERY
+extend schema @service(name: "extra")
+extend scalar DateTime @specifiedBy(url: "https://example.com/new")
+extend type User implements Node @audit { age: Int }
+extend interface Node { createdAt: DateTime }
+extend union SearchResult = Mutation
+extend enum Role { GUEST }
+extend input Filter { limit: Int }
+
+
+# ---- strings.graphql ----
+"Description of an operation"
+query Strings("A variable description" $text: String = "") {
+  echo(input: {
+    plain: "Quotes: \" and slash: \/ and backslash: \\"
+    escapes: "\b\f\n\r\t\u0041\uD83D\uDE00\u{1F600}"
+    unicode: "café 日本語 😀"
+    syntax: "# comment $variable @directive { } ${noInterpolation}"
+    block: """
+      Quotes " and "" are literal.
+      Backslashes \n \u{41} remain raw.
+      Escaped delimiter: \""" and still inside.
+      Two backslashes before a delimiter: \\""" still inside.
+      # not a comment
+    """
+    emptyBlock: """"""
+  })
+}

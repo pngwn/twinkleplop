@@ -1,0 +1,245 @@
+# Acme Orders API - manual smoke tests
+# Run against a local stack with `make dev`, or switch @host for staging.
+
+@host = https://api.acme.dev
+@apiVersion = v2
+@baseUrl = {{host}}/{{apiVersion}}
+@contentType = application/json
+@tenant = acme-labs
+@clientId = acme-cli-local
+@clientSecret = test-secret-not-real-0000
+
+### Fetch an access token (client credentials)
+# @name login
+POST {{host}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+grant_type=client_credentials
+&client_id={{clientId}}
+&client_secret={{clientSecret}}
+&scope=orders:read%20orders:write%20customers:read
+
+> {%
+  client.test("token issued", function () {
+    client.assert(response.status === 200, "expected 200, got " + response.status);
+    client.assert(response.body.token_type === "Bearer", "unexpected token type");
+  });
+  client.global.set("accessToken", response.body.access_token);
+  client.global.set("tokenExpiresAt", Date.now() + response.body.expires_in * 1000);
+%}
+
+### Health check (no auth)
+GET {{host}}/healthz
+Accept: text/plain
+
+### List customers, newest first
+# @name listCustomers
+GET {{baseUrl}}/customers?limit=25&sort=-created_at&status=active&include=addresses
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customers page", function () {
+    client.assert(response.status === 200, "status " + response.status);
+    client.assert(Array.isArray(response.body.data), "data should be an array");
+  });
+  if (response.body.data.length > 0) {
+    client.global.set("customerId", response.body.data[0].id);
+  }
+  client.global.set("nextCursor", response.body.meta.next_cursor || "");
+%}
+
+### Next page of customers
+GET {{baseUrl}}/customers
+    ?limit=25
+    &cursor={{nextCursor}}
+    &fields=id,email,display_name,created_at
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Create a customer
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: {{$uuid}}
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan Rivers",
+  "locale": "en-GB",
+  "marketing_opt_in": false,
+  "addresses": [
+    {
+      "kind": "shipping",
+      "line1": "42 Harbour Lane",
+      "line2": null,
+      "city": "Portsmouth",
+      "postcode": "PO1 3AX",
+      "country": "GB",
+      "default": true
+    }
+  ],
+  "metadata": {
+    "source": "rest-client",
+    "created_by": "{{clientId}}",
+    "created_at": "{{$timestamp}}"
+  }
+}
+
+> {%
+  client.test("customer created", function () {
+    client.assert(response.status === 201, "expected 201");
+    client.assert(response.headers.valueOf("Location") !== null, "missing Location header");
+  });
+  client.global.set("customerId", response.body.id);
+%}
+
+### Read the customer back
+GET {{baseUrl}}/customers/{{customerId}}?include=addresses,orders
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+If-None-Match: W/"c-1f0a9"
+
+### Replace the customer profile
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+If-Match: W/"c-1f0a9"
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan R.",
+  "locale": "en-GB",
+  "marketing_opt_in": true,
+  "tags": ["wholesale", "priority"]
+}
+
+### Patch a single field (JSON merge patch)
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "display_name": "Jordan Rivers",
+  "tags": null
+}
+
+### Create an order for the customer
+# @name createOrder
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: order-{{$randomInt}}
+
+{
+  "customer_id": "{{customerId}}",
+  "currency": "GBP",
+  "lines": [
+    { "sku": "WIDGET-RED-S", "quantity": 3, "unit_price": 1299 },
+    { "sku": "WIDGET-BLU-L", "quantity": 1, "unit_price": 1599 },
+    { "sku": "GIFT-WRAP", "quantity": 1, "unit_price": 250 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address_ref": "default"
+  },
+  "discounts": [{ "code": "AUTUMN10", "kind": "percent", "value": 10 }],
+  "notes": "Leave with the neighbour at number 40 if nobody is home."
+}
+
+> {%
+  client.test("order accepted", function () {
+    client.assert(response.status === 201 || response.status === 202, "status " + response.status);
+    client.assert(response.body.total > 0, "order total should be positive");
+  });
+  client.global.set("orderId", response.body.id);
+  client.log("order " + response.body.id + " total " + response.body.total);
+%}
+
+### Search orders by status and date range
+GET {{baseUrl}}/orders?customer_id={{customerId}}&status=pending,paid&created_after=2026-09-01T00:00:00Z&created_before=2026-10-01T00:00:00Z&page_size=50
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+
+### Advance order status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "fulfilled",
+  "tracking": {
+    "carrier": "acme-post",
+    "number": "AP123456789GB"
+  },
+  "notify_customer": true
+}
+
+### Upload an invoice attachment
+POST {{baseUrl}}/orders/{{orderId}}/attachments
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=AcmeBoundary7MA4YWxk
+
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="kind"
+
+invoice
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="invoice.txt"
+Content-Type: text/plain
+
+Invoice 2026-0412 for order {{orderId}}
+--AcmeBoundary7MA4YWxk--
+
+### Register a webhook endpoint
+POST {{baseUrl}}/webhooks
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "url": "https://hooks.example.com/acme/orders",
+  "events": ["order.created", "order.fulfilled", "order.refunded"],
+  "secret": "whsec_test_00000000000000000000",
+  "active": true
+}
+
+### Refund part of the order
+POST {{baseUrl}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Request-Id: {{$uuid}}
+
+{
+  "amount": 1299,
+  "reason": "damaged_in_transit",
+  "lines": [{ "sku": "WIDGET-RED-S", "quantity": 1 }]
+}
+
+### Cancel the order
+DELETE {{baseUrl}}/orders/{{orderId}}?reason=customer_request
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Delete the test customer (cleanup)
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customer removed", function () {
+    client.assert(response.status === 204, "expected 204, got " + response.status);
+  });
+  client.global.clear("customerId");
+  client.global.clear("orderId");
+%}
+
+### Old token should be rejected after revoke
+POST {{host}}/oauth/revoke
+Content-Type: application/x-www-form-urlencoded
+
+token={{accessToken}}&token_type_hint=access_token

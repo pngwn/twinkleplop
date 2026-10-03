@@ -1,0 +1,4439 @@
+# ---- unit 1 ----
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>
+
+
+# ---- unit 2 ----
+# ---- bodies.http ----
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated
+
+
+# ---- crlf.http ----
+POST /x HTTP/1.1
+Host: a
+X-Folded: one
+ two
+
+{"a": 1}
+
+
+# ---- dialect.http ----
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
+
+
+# ---- exchange.http ----
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
+
+
+# ---- headers_only.http ----
+Content-Type: application/json
+Cache-Control: no-cache, no-store
+X-Request-Id:{{$guid}}
+X-Empty:
+
+
+# ---- jetbrains.http ----
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json
+
+
+# ---- pseudo_headers.http ----
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9
+
+
+# ---- request.http ----
+POST /api/v2/users?filter=active&sort=-created_at HTTP/1.1
+Host: api.example.com:8443
+User-Agent: curl/8.4.0 (x86_64; (nested \) paren))
+Accept: application/json;q=0.9, */*;q=0.1
+Content-Type: application/json; charset="utf-8"
+If-None-Match: W/"67ab43", "54ed21"
+X-Folded: first part
+  continued "part"
+Content-Length: 32
+
+{"name": "Ada", "tags": ["ops"]}
+
+
+# ---- request_lines.http ----
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5
+
+
+# ---- response.http ----
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
+
+
+# ---- rest_client.http ----
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+
+# ---- unit 3 ----
+# Acme Orders API - manual smoke tests
+# Run against a local stack with `make dev`, or switch @host for staging.
+
+@host = https://api.acme.dev
+@apiVersion = v2
+@baseUrl = {{host}}/{{apiVersion}}
+@contentType = application/json
+@tenant = acme-labs
+@clientId = acme-cli-local
+@clientSecret = test-secret-not-real-0000
+
+### Fetch an access token (client credentials)
+# @name login
+POST {{host}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+grant_type=client_credentials
+&client_id={{clientId}}
+&client_secret={{clientSecret}}
+&scope=orders:read%20orders:write%20customers:read
+
+> {%
+  client.test("token issued", function () {
+    client.assert(response.status === 200, "expected 200, got " + response.status);
+    client.assert(response.body.token_type === "Bearer", "unexpected token type");
+  });
+  client.global.set("accessToken", response.body.access_token);
+  client.global.set("tokenExpiresAt", Date.now() + response.body.expires_in * 1000);
+%}
+
+### Health check (no auth)
+GET {{host}}/healthz
+Accept: text/plain
+
+### List customers, newest first
+# @name listCustomers
+GET {{baseUrl}}/customers?limit=25&sort=-created_at&status=active&include=addresses
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customers page", function () {
+    client.assert(response.status === 200, "status " + response.status);
+    client.assert(Array.isArray(response.body.data), "data should be an array");
+  });
+  if (response.body.data.length > 0) {
+    client.global.set("customerId", response.body.data[0].id);
+  }
+  client.global.set("nextCursor", response.body.meta.next_cursor || "");
+%}
+
+### Next page of customers
+GET {{baseUrl}}/customers
+    ?limit=25
+    &cursor={{nextCursor}}
+    &fields=id,email,display_name,created_at
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Create a customer
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: {{$uuid}}
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan Rivers",
+  "locale": "en-GB",
+  "marketing_opt_in": false,
+  "addresses": [
+    {
+      "kind": "shipping",
+      "line1": "42 Harbour Lane",
+      "line2": null,
+      "city": "Portsmouth",
+      "postcode": "PO1 3AX",
+      "country": "GB",
+      "default": true
+    }
+  ],
+  "metadata": {
+    "source": "rest-client",
+    "created_by": "{{clientId}}",
+    "created_at": "{{$timestamp}}"
+  }
+}
+
+> {%
+  client.test("customer created", function () {
+    client.assert(response.status === 201, "expected 201");
+    client.assert(response.headers.valueOf("Location") !== null, "missing Location header");
+  });
+  client.global.set("customerId", response.body.id);
+%}
+
+### Read the customer back
+GET {{baseUrl}}/customers/{{customerId}}?include=addresses,orders
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+If-None-Match: W/"c-1f0a9"
+
+### Replace the customer profile
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+If-Match: W/"c-1f0a9"
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan R.",
+  "locale": "en-GB",
+  "marketing_opt_in": true,
+  "tags": ["wholesale", "priority"]
+}
+
+### Patch a single field (JSON merge patch)
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "display_name": "Jordan Rivers",
+  "tags": null
+}
+
+### Create an order for the customer
+# @name createOrder
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: order-{{$randomInt}}
+
+{
+  "customer_id": "{{customerId}}",
+  "currency": "GBP",
+  "lines": [
+    { "sku": "WIDGET-RED-S", "quantity": 3, "unit_price": 1299 },
+    { "sku": "WIDGET-BLU-L", "quantity": 1, "unit_price": 1599 },
+    { "sku": "GIFT-WRAP", "quantity": 1, "unit_price": 250 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address_ref": "default"
+  },
+  "discounts": [{ "code": "AUTUMN10", "kind": "percent", "value": 10 }],
+  "notes": "Leave with the neighbour at number 40 if nobody is home."
+}
+
+> {%
+  client.test("order accepted", function () {
+    client.assert(response.status === 201 || response.status === 202, "status " + response.status);
+    client.assert(response.body.total > 0, "order total should be positive");
+  });
+  client.global.set("orderId", response.body.id);
+  client.log("order " + response.body.id + " total " + response.body.total);
+%}
+
+### Search orders by status and date range
+GET {{baseUrl}}/orders?customer_id={{customerId}}&status=pending,paid&created_after=2026-09-01T00:00:00Z&created_before=2026-10-01T00:00:00Z&page_size=50
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+
+### Advance order status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "fulfilled",
+  "tracking": {
+    "carrier": "acme-post",
+    "number": "AP123456789GB"
+  },
+  "notify_customer": true
+}
+
+### Upload an invoice attachment
+POST {{baseUrl}}/orders/{{orderId}}/attachments
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=AcmeBoundary7MA4YWxk
+
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="kind"
+
+invoice
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="invoice.txt"
+Content-Type: text/plain
+
+Invoice 2026-0412 for order {{orderId}}
+--AcmeBoundary7MA4YWxk--
+
+### Register a webhook endpoint
+POST {{baseUrl}}/webhooks
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "url": "https://hooks.example.com/acme/orders",
+  "events": ["order.created", "order.fulfilled", "order.refunded"],
+  "secret": "whsec_test_00000000000000000000",
+  "active": true
+}
+
+### Refund part of the order
+POST {{baseUrl}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Request-Id: {{$uuid}}
+
+{
+  "amount": 1299,
+  "reason": "damaged_in_transit",
+  "lines": [{ "sku": "WIDGET-RED-S", "quantity": 1 }]
+}
+
+### Cancel the order
+DELETE {{baseUrl}}/orders/{{orderId}}?reason=customer_request
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Delete the test customer (cleanup)
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customer removed", function () {
+    client.assert(response.status === 204, "expected 204, got " + response.status);
+  });
+  client.global.clear("customerId");
+  client.global.clear("orderId");
+%}
+
+### Old token should be rejected after revoke
+POST {{host}}/oauth/revoke
+Content-Type: application/x-www-form-urlencoded
+
+token={{accessToken}}&token_type_hint=access_token
+
+
+# ---- unit 4 ----
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>
+
+
+# ---- unit 5 ----
+# ---- bodies.http ----
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated
+
+
+# ---- crlf.http ----
+POST /x HTTP/1.1
+Host: a
+X-Folded: one
+ two
+
+{"a": 1}
+
+
+# ---- dialect.http ----
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
+
+
+# ---- exchange.http ----
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
+
+
+# ---- headers_only.http ----
+Content-Type: application/json
+Cache-Control: no-cache, no-store
+X-Request-Id:{{$guid}}
+X-Empty:
+
+
+# ---- jetbrains.http ----
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json
+
+
+# ---- pseudo_headers.http ----
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9
+
+
+# ---- request.http ----
+POST /api/v2/users?filter=active&sort=-created_at HTTP/1.1
+Host: api.example.com:8443
+User-Agent: curl/8.4.0 (x86_64; (nested \) paren))
+Accept: application/json;q=0.9, */*;q=0.1
+Content-Type: application/json; charset="utf-8"
+If-None-Match: W/"67ab43", "54ed21"
+X-Folded: first part
+  continued "part"
+Content-Length: 32
+
+{"name": "Ada", "tags": ["ops"]}
+
+
+# ---- request_lines.http ----
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5
+
+
+# ---- response.http ----
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
+
+
+# ---- rest_client.http ----
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+
+# ---- unit 6 ----
+# Acme Orders API - manual smoke tests
+# Run against a local stack with `make dev`, or switch @host for staging.
+
+@host = https://api.acme.dev
+@apiVersion = v2
+@baseUrl = {{host}}/{{apiVersion}}
+@contentType = application/json
+@tenant = acme-labs
+@clientId = acme-cli-local
+@clientSecret = test-secret-not-real-0000
+
+### Fetch an access token (client credentials)
+# @name login
+POST {{host}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+grant_type=client_credentials
+&client_id={{clientId}}
+&client_secret={{clientSecret}}
+&scope=orders:read%20orders:write%20customers:read
+
+> {%
+  client.test("token issued", function () {
+    client.assert(response.status === 200, "expected 200, got " + response.status);
+    client.assert(response.body.token_type === "Bearer", "unexpected token type");
+  });
+  client.global.set("accessToken", response.body.access_token);
+  client.global.set("tokenExpiresAt", Date.now() + response.body.expires_in * 1000);
+%}
+
+### Health check (no auth)
+GET {{host}}/healthz
+Accept: text/plain
+
+### List customers, newest first
+# @name listCustomers
+GET {{baseUrl}}/customers?limit=25&sort=-created_at&status=active&include=addresses
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customers page", function () {
+    client.assert(response.status === 200, "status " + response.status);
+    client.assert(Array.isArray(response.body.data), "data should be an array");
+  });
+  if (response.body.data.length > 0) {
+    client.global.set("customerId", response.body.data[0].id);
+  }
+  client.global.set("nextCursor", response.body.meta.next_cursor || "");
+%}
+
+### Next page of customers
+GET {{baseUrl}}/customers
+    ?limit=25
+    &cursor={{nextCursor}}
+    &fields=id,email,display_name,created_at
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Create a customer
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: {{$uuid}}
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan Rivers",
+  "locale": "en-GB",
+  "marketing_opt_in": false,
+  "addresses": [
+    {
+      "kind": "shipping",
+      "line1": "42 Harbour Lane",
+      "line2": null,
+      "city": "Portsmouth",
+      "postcode": "PO1 3AX",
+      "country": "GB",
+      "default": true
+    }
+  ],
+  "metadata": {
+    "source": "rest-client",
+    "created_by": "{{clientId}}",
+    "created_at": "{{$timestamp}}"
+  }
+}
+
+> {%
+  client.test("customer created", function () {
+    client.assert(response.status === 201, "expected 201");
+    client.assert(response.headers.valueOf("Location") !== null, "missing Location header");
+  });
+  client.global.set("customerId", response.body.id);
+%}
+
+### Read the customer back
+GET {{baseUrl}}/customers/{{customerId}}?include=addresses,orders
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+If-None-Match: W/"c-1f0a9"
+
+### Replace the customer profile
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+If-Match: W/"c-1f0a9"
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan R.",
+  "locale": "en-GB",
+  "marketing_opt_in": true,
+  "tags": ["wholesale", "priority"]
+}
+
+### Patch a single field (JSON merge patch)
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "display_name": "Jordan Rivers",
+  "tags": null
+}
+
+### Create an order for the customer
+# @name createOrder
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: order-{{$randomInt}}
+
+{
+  "customer_id": "{{customerId}}",
+  "currency": "GBP",
+  "lines": [
+    { "sku": "WIDGET-RED-S", "quantity": 3, "unit_price": 1299 },
+    { "sku": "WIDGET-BLU-L", "quantity": 1, "unit_price": 1599 },
+    { "sku": "GIFT-WRAP", "quantity": 1, "unit_price": 250 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address_ref": "default"
+  },
+  "discounts": [{ "code": "AUTUMN10", "kind": "percent", "value": 10 }],
+  "notes": "Leave with the neighbour at number 40 if nobody is home."
+}
+
+> {%
+  client.test("order accepted", function () {
+    client.assert(response.status === 201 || response.status === 202, "status " + response.status);
+    client.assert(response.body.total > 0, "order total should be positive");
+  });
+  client.global.set("orderId", response.body.id);
+  client.log("order " + response.body.id + " total " + response.body.total);
+%}
+
+### Search orders by status and date range
+GET {{baseUrl}}/orders?customer_id={{customerId}}&status=pending,paid&created_after=2026-09-01T00:00:00Z&created_before=2026-10-01T00:00:00Z&page_size=50
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+
+### Advance order status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "fulfilled",
+  "tracking": {
+    "carrier": "acme-post",
+    "number": "AP123456789GB"
+  },
+  "notify_customer": true
+}
+
+### Upload an invoice attachment
+POST {{baseUrl}}/orders/{{orderId}}/attachments
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=AcmeBoundary7MA4YWxk
+
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="kind"
+
+invoice
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="invoice.txt"
+Content-Type: text/plain
+
+Invoice 2026-0412 for order {{orderId}}
+--AcmeBoundary7MA4YWxk--
+
+### Register a webhook endpoint
+POST {{baseUrl}}/webhooks
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "url": "https://hooks.example.com/acme/orders",
+  "events": ["order.created", "order.fulfilled", "order.refunded"],
+  "secret": "whsec_test_00000000000000000000",
+  "active": true
+}
+
+### Refund part of the order
+POST {{baseUrl}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Request-Id: {{$uuid}}
+
+{
+  "amount": 1299,
+  "reason": "damaged_in_transit",
+  "lines": [{ "sku": "WIDGET-RED-S", "quantity": 1 }]
+}
+
+### Cancel the order
+DELETE {{baseUrl}}/orders/{{orderId}}?reason=customer_request
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Delete the test customer (cleanup)
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customer removed", function () {
+    client.assert(response.status === 204, "expected 204, got " + response.status);
+  });
+  client.global.clear("customerId");
+  client.global.clear("orderId");
+%}
+
+### Old token should be rejected after revoke
+POST {{host}}/oauth/revoke
+Content-Type: application/x-www-form-urlencoded
+
+token={{accessToken}}&token_type_hint=access_token
+
+
+# ---- unit 7 ----
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>
+
+
+# ---- unit 8 ----
+# ---- bodies.http ----
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated
+
+
+# ---- crlf.http ----
+POST /x HTTP/1.1
+Host: a
+X-Folded: one
+ two
+
+{"a": 1}
+
+
+# ---- dialect.http ----
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
+
+
+# ---- exchange.http ----
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
+
+
+# ---- headers_only.http ----
+Content-Type: application/json
+Cache-Control: no-cache, no-store
+X-Request-Id:{{$guid}}
+X-Empty:
+
+
+# ---- jetbrains.http ----
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json
+
+
+# ---- pseudo_headers.http ----
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9
+
+
+# ---- request.http ----
+POST /api/v2/users?filter=active&sort=-created_at HTTP/1.1
+Host: api.example.com:8443
+User-Agent: curl/8.4.0 (x86_64; (nested \) paren))
+Accept: application/json;q=0.9, */*;q=0.1
+Content-Type: application/json; charset="utf-8"
+If-None-Match: W/"67ab43", "54ed21"
+X-Folded: first part
+  continued "part"
+Content-Length: 32
+
+{"name": "Ada", "tags": ["ops"]}
+
+
+# ---- request_lines.http ----
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5
+
+
+# ---- response.http ----
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
+
+
+# ---- rest_client.http ----
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+
+# ---- unit 9 ----
+# Acme Orders API - manual smoke tests
+# Run against a local stack with `make dev`, or switch @host for staging.
+
+@host = https://api.acme.dev
+@apiVersion = v2
+@baseUrl = {{host}}/{{apiVersion}}
+@contentType = application/json
+@tenant = acme-labs
+@clientId = acme-cli-local
+@clientSecret = test-secret-not-real-0000
+
+### Fetch an access token (client credentials)
+# @name login
+POST {{host}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+grant_type=client_credentials
+&client_id={{clientId}}
+&client_secret={{clientSecret}}
+&scope=orders:read%20orders:write%20customers:read
+
+> {%
+  client.test("token issued", function () {
+    client.assert(response.status === 200, "expected 200, got " + response.status);
+    client.assert(response.body.token_type === "Bearer", "unexpected token type");
+  });
+  client.global.set("accessToken", response.body.access_token);
+  client.global.set("tokenExpiresAt", Date.now() + response.body.expires_in * 1000);
+%}
+
+### Health check (no auth)
+GET {{host}}/healthz
+Accept: text/plain
+
+### List customers, newest first
+# @name listCustomers
+GET {{baseUrl}}/customers?limit=25&sort=-created_at&status=active&include=addresses
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customers page", function () {
+    client.assert(response.status === 200, "status " + response.status);
+    client.assert(Array.isArray(response.body.data), "data should be an array");
+  });
+  if (response.body.data.length > 0) {
+    client.global.set("customerId", response.body.data[0].id);
+  }
+  client.global.set("nextCursor", response.body.meta.next_cursor || "");
+%}
+
+### Next page of customers
+GET {{baseUrl}}/customers
+    ?limit=25
+    &cursor={{nextCursor}}
+    &fields=id,email,display_name,created_at
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Create a customer
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: {{$uuid}}
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan Rivers",
+  "locale": "en-GB",
+  "marketing_opt_in": false,
+  "addresses": [
+    {
+      "kind": "shipping",
+      "line1": "42 Harbour Lane",
+      "line2": null,
+      "city": "Portsmouth",
+      "postcode": "PO1 3AX",
+      "country": "GB",
+      "default": true
+    }
+  ],
+  "metadata": {
+    "source": "rest-client",
+    "created_by": "{{clientId}}",
+    "created_at": "{{$timestamp}}"
+  }
+}
+
+> {%
+  client.test("customer created", function () {
+    client.assert(response.status === 201, "expected 201");
+    client.assert(response.headers.valueOf("Location") !== null, "missing Location header");
+  });
+  client.global.set("customerId", response.body.id);
+%}
+
+### Read the customer back
+GET {{baseUrl}}/customers/{{customerId}}?include=addresses,orders
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+If-None-Match: W/"c-1f0a9"
+
+### Replace the customer profile
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+If-Match: W/"c-1f0a9"
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan R.",
+  "locale": "en-GB",
+  "marketing_opt_in": true,
+  "tags": ["wholesale", "priority"]
+}
+
+### Patch a single field (JSON merge patch)
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "display_name": "Jordan Rivers",
+  "tags": null
+}
+
+### Create an order for the customer
+# @name createOrder
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: order-{{$randomInt}}
+
+{
+  "customer_id": "{{customerId}}",
+  "currency": "GBP",
+  "lines": [
+    { "sku": "WIDGET-RED-S", "quantity": 3, "unit_price": 1299 },
+    { "sku": "WIDGET-BLU-L", "quantity": 1, "unit_price": 1599 },
+    { "sku": "GIFT-WRAP", "quantity": 1, "unit_price": 250 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address_ref": "default"
+  },
+  "discounts": [{ "code": "AUTUMN10", "kind": "percent", "value": 10 }],
+  "notes": "Leave with the neighbour at number 40 if nobody is home."
+}
+
+> {%
+  client.test("order accepted", function () {
+    client.assert(response.status === 201 || response.status === 202, "status " + response.status);
+    client.assert(response.body.total > 0, "order total should be positive");
+  });
+  client.global.set("orderId", response.body.id);
+  client.log("order " + response.body.id + " total " + response.body.total);
+%}
+
+### Search orders by status and date range
+GET {{baseUrl}}/orders?customer_id={{customerId}}&status=pending,paid&created_after=2026-09-01T00:00:00Z&created_before=2026-10-01T00:00:00Z&page_size=50
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+
+### Advance order status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "fulfilled",
+  "tracking": {
+    "carrier": "acme-post",
+    "number": "AP123456789GB"
+  },
+  "notify_customer": true
+}
+
+### Upload an invoice attachment
+POST {{baseUrl}}/orders/{{orderId}}/attachments
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=AcmeBoundary7MA4YWxk
+
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="kind"
+
+invoice
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="invoice.txt"
+Content-Type: text/plain
+
+Invoice 2026-0412 for order {{orderId}}
+--AcmeBoundary7MA4YWxk--
+
+### Register a webhook endpoint
+POST {{baseUrl}}/webhooks
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "url": "https://hooks.example.com/acme/orders",
+  "events": ["order.created", "order.fulfilled", "order.refunded"],
+  "secret": "whsec_test_00000000000000000000",
+  "active": true
+}
+
+### Refund part of the order
+POST {{baseUrl}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Request-Id: {{$uuid}}
+
+{
+  "amount": 1299,
+  "reason": "damaged_in_transit",
+  "lines": [{ "sku": "WIDGET-RED-S", "quantity": 1 }]
+}
+
+### Cancel the order
+DELETE {{baseUrl}}/orders/{{orderId}}?reason=customer_request
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Delete the test customer (cleanup)
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customer removed", function () {
+    client.assert(response.status === 204, "expected 204, got " + response.status);
+  });
+  client.global.clear("customerId");
+  client.global.clear("orderId");
+%}
+
+### Old token should be rejected after revoke
+POST {{host}}/oauth/revoke
+Content-Type: application/x-www-form-urlencoded
+
+token={{accessToken}}&token_type_hint=access_token
+
+
+# ---- unit 10 ----
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>
+
+
+# ---- unit 11 ----
+# ---- bodies.http ----
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated
+
+
+# ---- crlf.http ----
+POST /x HTTP/1.1
+Host: a
+X-Folded: one
+ two
+
+{"a": 1}
+
+
+# ---- dialect.http ----
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
+
+
+# ---- exchange.http ----
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
+
+
+# ---- headers_only.http ----
+Content-Type: application/json
+Cache-Control: no-cache, no-store
+X-Request-Id:{{$guid}}
+X-Empty:
+
+
+# ---- jetbrains.http ----
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json
+
+
+# ---- pseudo_headers.http ----
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9
+
+
+# ---- request.http ----
+POST /api/v2/users?filter=active&sort=-created_at HTTP/1.1
+Host: api.example.com:8443
+User-Agent: curl/8.4.0 (x86_64; (nested \) paren))
+Accept: application/json;q=0.9, */*;q=0.1
+Content-Type: application/json; charset="utf-8"
+If-None-Match: W/"67ab43", "54ed21"
+X-Folded: first part
+  continued "part"
+Content-Length: 32
+
+{"name": "Ada", "tags": ["ops"]}
+
+
+# ---- request_lines.http ----
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5
+
+
+# ---- response.http ----
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
+
+
+# ---- rest_client.http ----
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+
+# ---- unit 12 ----
+# Acme Orders API - manual smoke tests
+# Run against a local stack with `make dev`, or switch @host for staging.
+
+@host = https://api.acme.dev
+@apiVersion = v2
+@baseUrl = {{host}}/{{apiVersion}}
+@contentType = application/json
+@tenant = acme-labs
+@clientId = acme-cli-local
+@clientSecret = test-secret-not-real-0000
+
+### Fetch an access token (client credentials)
+# @name login
+POST {{host}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+grant_type=client_credentials
+&client_id={{clientId}}
+&client_secret={{clientSecret}}
+&scope=orders:read%20orders:write%20customers:read
+
+> {%
+  client.test("token issued", function () {
+    client.assert(response.status === 200, "expected 200, got " + response.status);
+    client.assert(response.body.token_type === "Bearer", "unexpected token type");
+  });
+  client.global.set("accessToken", response.body.access_token);
+  client.global.set("tokenExpiresAt", Date.now() + response.body.expires_in * 1000);
+%}
+
+### Health check (no auth)
+GET {{host}}/healthz
+Accept: text/plain
+
+### List customers, newest first
+# @name listCustomers
+GET {{baseUrl}}/customers?limit=25&sort=-created_at&status=active&include=addresses
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customers page", function () {
+    client.assert(response.status === 200, "status " + response.status);
+    client.assert(Array.isArray(response.body.data), "data should be an array");
+  });
+  if (response.body.data.length > 0) {
+    client.global.set("customerId", response.body.data[0].id);
+  }
+  client.global.set("nextCursor", response.body.meta.next_cursor || "");
+%}
+
+### Next page of customers
+GET {{baseUrl}}/customers
+    ?limit=25
+    &cursor={{nextCursor}}
+    &fields=id,email,display_name,created_at
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Create a customer
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: {{$uuid}}
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan Rivers",
+  "locale": "en-GB",
+  "marketing_opt_in": false,
+  "addresses": [
+    {
+      "kind": "shipping",
+      "line1": "42 Harbour Lane",
+      "line2": null,
+      "city": "Portsmouth",
+      "postcode": "PO1 3AX",
+      "country": "GB",
+      "default": true
+    }
+  ],
+  "metadata": {
+    "source": "rest-client",
+    "created_by": "{{clientId}}",
+    "created_at": "{{$timestamp}}"
+  }
+}
+
+> {%
+  client.test("customer created", function () {
+    client.assert(response.status === 201, "expected 201");
+    client.assert(response.headers.valueOf("Location") !== null, "missing Location header");
+  });
+  client.global.set("customerId", response.body.id);
+%}
+
+### Read the customer back
+GET {{baseUrl}}/customers/{{customerId}}?include=addresses,orders
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+If-None-Match: W/"c-1f0a9"
+
+### Replace the customer profile
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+If-Match: W/"c-1f0a9"
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan R.",
+  "locale": "en-GB",
+  "marketing_opt_in": true,
+  "tags": ["wholesale", "priority"]
+}
+
+### Patch a single field (JSON merge patch)
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "display_name": "Jordan Rivers",
+  "tags": null
+}
+
+### Create an order for the customer
+# @name createOrder
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: order-{{$randomInt}}
+
+{
+  "customer_id": "{{customerId}}",
+  "currency": "GBP",
+  "lines": [
+    { "sku": "WIDGET-RED-S", "quantity": 3, "unit_price": 1299 },
+    { "sku": "WIDGET-BLU-L", "quantity": 1, "unit_price": 1599 },
+    { "sku": "GIFT-WRAP", "quantity": 1, "unit_price": 250 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address_ref": "default"
+  },
+  "discounts": [{ "code": "AUTUMN10", "kind": "percent", "value": 10 }],
+  "notes": "Leave with the neighbour at number 40 if nobody is home."
+}
+
+> {%
+  client.test("order accepted", function () {
+    client.assert(response.status === 201 || response.status === 202, "status " + response.status);
+    client.assert(response.body.total > 0, "order total should be positive");
+  });
+  client.global.set("orderId", response.body.id);
+  client.log("order " + response.body.id + " total " + response.body.total);
+%}
+
+### Search orders by status and date range
+GET {{baseUrl}}/orders?customer_id={{customerId}}&status=pending,paid&created_after=2026-09-01T00:00:00Z&created_before=2026-10-01T00:00:00Z&page_size=50
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+
+### Advance order status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "fulfilled",
+  "tracking": {
+    "carrier": "acme-post",
+    "number": "AP123456789GB"
+  },
+  "notify_customer": true
+}
+
+### Upload an invoice attachment
+POST {{baseUrl}}/orders/{{orderId}}/attachments
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=AcmeBoundary7MA4YWxk
+
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="kind"
+
+invoice
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="invoice.txt"
+Content-Type: text/plain
+
+Invoice 2026-0412 for order {{orderId}}
+--AcmeBoundary7MA4YWxk--
+
+### Register a webhook endpoint
+POST {{baseUrl}}/webhooks
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "url": "https://hooks.example.com/acme/orders",
+  "events": ["order.created", "order.fulfilled", "order.refunded"],
+  "secret": "whsec_test_00000000000000000000",
+  "active": true
+}
+
+### Refund part of the order
+POST {{baseUrl}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Request-Id: {{$uuid}}
+
+{
+  "amount": 1299,
+  "reason": "damaged_in_transit",
+  "lines": [{ "sku": "WIDGET-RED-S", "quantity": 1 }]
+}
+
+### Cancel the order
+DELETE {{baseUrl}}/orders/{{orderId}}?reason=customer_request
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Delete the test customer (cleanup)
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customer removed", function () {
+    client.assert(response.status === 204, "expected 204, got " + response.status);
+  });
+  client.global.clear("customerId");
+  client.global.clear("orderId");
+%}
+
+### Old token should be rejected after revoke
+POST {{host}}/oauth/revoke
+Content-Type: application/x-www-form-urlencoded
+
+token={{accessToken}}&token_type_hint=access_token
+
+
+# ---- unit 13 ----
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>
+
+
+# ---- unit 14 ----
+# ---- bodies.http ----
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated
+
+
+# ---- crlf.http ----
+POST /x HTTP/1.1
+Host: a
+X-Folded: one
+ two
+
+{"a": 1}
+
+
+# ---- dialect.http ----
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
+
+
+# ---- exchange.http ----
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
+
+
+# ---- headers_only.http ----
+Content-Type: application/json
+Cache-Control: no-cache, no-store
+X-Request-Id:{{$guid}}
+X-Empty:
+
+
+# ---- jetbrains.http ----
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json
+
+
+# ---- pseudo_headers.http ----
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9
+
+
+# ---- request.http ----
+POST /api/v2/users?filter=active&sort=-created_at HTTP/1.1
+Host: api.example.com:8443
+User-Agent: curl/8.4.0 (x86_64; (nested \) paren))
+Accept: application/json;q=0.9, */*;q=0.1
+Content-Type: application/json; charset="utf-8"
+If-None-Match: W/"67ab43", "54ed21"
+X-Folded: first part
+  continued "part"
+Content-Length: 32
+
+{"name": "Ada", "tags": ["ops"]}
+
+
+# ---- request_lines.http ----
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5
+
+
+# ---- response.http ----
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
+
+
+# ---- rest_client.http ----
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+
+# ---- unit 15 ----
+# Acme Orders API - manual smoke tests
+# Run against a local stack with `make dev`, or switch @host for staging.
+
+@host = https://api.acme.dev
+@apiVersion = v2
+@baseUrl = {{host}}/{{apiVersion}}
+@contentType = application/json
+@tenant = acme-labs
+@clientId = acme-cli-local
+@clientSecret = test-secret-not-real-0000
+
+### Fetch an access token (client credentials)
+# @name login
+POST {{host}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+grant_type=client_credentials
+&client_id={{clientId}}
+&client_secret={{clientSecret}}
+&scope=orders:read%20orders:write%20customers:read
+
+> {%
+  client.test("token issued", function () {
+    client.assert(response.status === 200, "expected 200, got " + response.status);
+    client.assert(response.body.token_type === "Bearer", "unexpected token type");
+  });
+  client.global.set("accessToken", response.body.access_token);
+  client.global.set("tokenExpiresAt", Date.now() + response.body.expires_in * 1000);
+%}
+
+### Health check (no auth)
+GET {{host}}/healthz
+Accept: text/plain
+
+### List customers, newest first
+# @name listCustomers
+GET {{baseUrl}}/customers?limit=25&sort=-created_at&status=active&include=addresses
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customers page", function () {
+    client.assert(response.status === 200, "status " + response.status);
+    client.assert(Array.isArray(response.body.data), "data should be an array");
+  });
+  if (response.body.data.length > 0) {
+    client.global.set("customerId", response.body.data[0].id);
+  }
+  client.global.set("nextCursor", response.body.meta.next_cursor || "");
+%}
+
+### Next page of customers
+GET {{baseUrl}}/customers
+    ?limit=25
+    &cursor={{nextCursor}}
+    &fields=id,email,display_name,created_at
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Create a customer
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: {{$uuid}}
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan Rivers",
+  "locale": "en-GB",
+  "marketing_opt_in": false,
+  "addresses": [
+    {
+      "kind": "shipping",
+      "line1": "42 Harbour Lane",
+      "line2": null,
+      "city": "Portsmouth",
+      "postcode": "PO1 3AX",
+      "country": "GB",
+      "default": true
+    }
+  ],
+  "metadata": {
+    "source": "rest-client",
+    "created_by": "{{clientId}}",
+    "created_at": "{{$timestamp}}"
+  }
+}
+
+> {%
+  client.test("customer created", function () {
+    client.assert(response.status === 201, "expected 201");
+    client.assert(response.headers.valueOf("Location") !== null, "missing Location header");
+  });
+  client.global.set("customerId", response.body.id);
+%}
+
+### Read the customer back
+GET {{baseUrl}}/customers/{{customerId}}?include=addresses,orders
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+If-None-Match: W/"c-1f0a9"
+
+### Replace the customer profile
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+If-Match: W/"c-1f0a9"
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan R.",
+  "locale": "en-GB",
+  "marketing_opt_in": true,
+  "tags": ["wholesale", "priority"]
+}
+
+### Patch a single field (JSON merge patch)
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "display_name": "Jordan Rivers",
+  "tags": null
+}
+
+### Create an order for the customer
+# @name createOrder
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: order-{{$randomInt}}
+
+{
+  "customer_id": "{{customerId}}",
+  "currency": "GBP",
+  "lines": [
+    { "sku": "WIDGET-RED-S", "quantity": 3, "unit_price": 1299 },
+    { "sku": "WIDGET-BLU-L", "quantity": 1, "unit_price": 1599 },
+    { "sku": "GIFT-WRAP", "quantity": 1, "unit_price": 250 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address_ref": "default"
+  },
+  "discounts": [{ "code": "AUTUMN10", "kind": "percent", "value": 10 }],
+  "notes": "Leave with the neighbour at number 40 if nobody is home."
+}
+
+> {%
+  client.test("order accepted", function () {
+    client.assert(response.status === 201 || response.status === 202, "status " + response.status);
+    client.assert(response.body.total > 0, "order total should be positive");
+  });
+  client.global.set("orderId", response.body.id);
+  client.log("order " + response.body.id + " total " + response.body.total);
+%}
+
+### Search orders by status and date range
+GET {{baseUrl}}/orders?customer_id={{customerId}}&status=pending,paid&created_after=2026-09-01T00:00:00Z&created_before=2026-10-01T00:00:00Z&page_size=50
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+
+### Advance order status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "fulfilled",
+  "tracking": {
+    "carrier": "acme-post",
+    "number": "AP123456789GB"
+  },
+  "notify_customer": true
+}
+
+### Upload an invoice attachment
+POST {{baseUrl}}/orders/{{orderId}}/attachments
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=AcmeBoundary7MA4YWxk
+
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="kind"
+
+invoice
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="invoice.txt"
+Content-Type: text/plain
+
+Invoice 2026-0412 for order {{orderId}}
+--AcmeBoundary7MA4YWxk--
+
+### Register a webhook endpoint
+POST {{baseUrl}}/webhooks
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "url": "https://hooks.example.com/acme/orders",
+  "events": ["order.created", "order.fulfilled", "order.refunded"],
+  "secret": "whsec_test_00000000000000000000",
+  "active": true
+}
+
+### Refund part of the order
+POST {{baseUrl}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Request-Id: {{$uuid}}
+
+{
+  "amount": 1299,
+  "reason": "damaged_in_transit",
+  "lines": [{ "sku": "WIDGET-RED-S", "quantity": 1 }]
+}
+
+### Cancel the order
+DELETE {{baseUrl}}/orders/{{orderId}}?reason=customer_request
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Delete the test customer (cleanup)
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customer removed", function () {
+    client.assert(response.status === 204, "expected 204, got " + response.status);
+  });
+  client.global.clear("customerId");
+  client.global.clear("orderId");
+%}
+
+### Old token should be rejected after revoke
+POST {{host}}/oauth/revoke
+Content-Type: application/x-www-form-urlencoded
+
+token={{accessToken}}&token_type_hint=access_token
+
+
+# ---- unit 16 ----
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>
+
+
+# ---- unit 17 ----
+# ---- bodies.http ----
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated
+
+
+# ---- crlf.http ----
+POST /x HTTP/1.1
+Host: a
+X-Folded: one
+ two
+
+{"a": 1}
+
+
+# ---- dialect.http ----
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
+
+
+# ---- exchange.http ----
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
+
+
+# ---- headers_only.http ----
+Content-Type: application/json
+Cache-Control: no-cache, no-store
+X-Request-Id:{{$guid}}
+X-Empty:
+
+
+# ---- jetbrains.http ----
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json
+
+
+# ---- pseudo_headers.http ----
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9
+
+
+# ---- request.http ----
+POST /api/v2/users?filter=active&sort=-created_at HTTP/1.1
+Host: api.example.com:8443
+User-Agent: curl/8.4.0 (x86_64; (nested \) paren))
+Accept: application/json;q=0.9, */*;q=0.1
+Content-Type: application/json; charset="utf-8"
+If-None-Match: W/"67ab43", "54ed21"
+X-Folded: first part
+  continued "part"
+Content-Length: 32
+
+{"name": "Ada", "tags": ["ops"]}
+
+
+# ---- request_lines.http ----
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5
+
+
+# ---- response.http ----
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
+
+
+# ---- rest_client.http ----
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+
+# ---- unit 18 ----
+# Acme Orders API - manual smoke tests
+# Run against a local stack with `make dev`, or switch @host for staging.
+
+@host = https://api.acme.dev
+@apiVersion = v2
+@baseUrl = {{host}}/{{apiVersion}}
+@contentType = application/json
+@tenant = acme-labs
+@clientId = acme-cli-local
+@clientSecret = test-secret-not-real-0000
+
+### Fetch an access token (client credentials)
+# @name login
+POST {{host}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+grant_type=client_credentials
+&client_id={{clientId}}
+&client_secret={{clientSecret}}
+&scope=orders:read%20orders:write%20customers:read
+
+> {%
+  client.test("token issued", function () {
+    client.assert(response.status === 200, "expected 200, got " + response.status);
+    client.assert(response.body.token_type === "Bearer", "unexpected token type");
+  });
+  client.global.set("accessToken", response.body.access_token);
+  client.global.set("tokenExpiresAt", Date.now() + response.body.expires_in * 1000);
+%}
+
+### Health check (no auth)
+GET {{host}}/healthz
+Accept: text/plain
+
+### List customers, newest first
+# @name listCustomers
+GET {{baseUrl}}/customers?limit=25&sort=-created_at&status=active&include=addresses
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customers page", function () {
+    client.assert(response.status === 200, "status " + response.status);
+    client.assert(Array.isArray(response.body.data), "data should be an array");
+  });
+  if (response.body.data.length > 0) {
+    client.global.set("customerId", response.body.data[0].id);
+  }
+  client.global.set("nextCursor", response.body.meta.next_cursor || "");
+%}
+
+### Next page of customers
+GET {{baseUrl}}/customers
+    ?limit=25
+    &cursor={{nextCursor}}
+    &fields=id,email,display_name,created_at
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Create a customer
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: {{$uuid}}
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan Rivers",
+  "locale": "en-GB",
+  "marketing_opt_in": false,
+  "addresses": [
+    {
+      "kind": "shipping",
+      "line1": "42 Harbour Lane",
+      "line2": null,
+      "city": "Portsmouth",
+      "postcode": "PO1 3AX",
+      "country": "GB",
+      "default": true
+    }
+  ],
+  "metadata": {
+    "source": "rest-client",
+    "created_by": "{{clientId}}",
+    "created_at": "{{$timestamp}}"
+  }
+}
+
+> {%
+  client.test("customer created", function () {
+    client.assert(response.status === 201, "expected 201");
+    client.assert(response.headers.valueOf("Location") !== null, "missing Location header");
+  });
+  client.global.set("customerId", response.body.id);
+%}
+
+### Read the customer back
+GET {{baseUrl}}/customers/{{customerId}}?include=addresses,orders
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+If-None-Match: W/"c-1f0a9"
+
+### Replace the customer profile
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+If-Match: W/"c-1f0a9"
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan R.",
+  "locale": "en-GB",
+  "marketing_opt_in": true,
+  "tags": ["wholesale", "priority"]
+}
+
+### Patch a single field (JSON merge patch)
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "display_name": "Jordan Rivers",
+  "tags": null
+}
+
+### Create an order for the customer
+# @name createOrder
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: order-{{$randomInt}}
+
+{
+  "customer_id": "{{customerId}}",
+  "currency": "GBP",
+  "lines": [
+    { "sku": "WIDGET-RED-S", "quantity": 3, "unit_price": 1299 },
+    { "sku": "WIDGET-BLU-L", "quantity": 1, "unit_price": 1599 },
+    { "sku": "GIFT-WRAP", "quantity": 1, "unit_price": 250 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address_ref": "default"
+  },
+  "discounts": [{ "code": "AUTUMN10", "kind": "percent", "value": 10 }],
+  "notes": "Leave with the neighbour at number 40 if nobody is home."
+}
+
+> {%
+  client.test("order accepted", function () {
+    client.assert(response.status === 201 || response.status === 202, "status " + response.status);
+    client.assert(response.body.total > 0, "order total should be positive");
+  });
+  client.global.set("orderId", response.body.id);
+  client.log("order " + response.body.id + " total " + response.body.total);
+%}
+
+### Search orders by status and date range
+GET {{baseUrl}}/orders?customer_id={{customerId}}&status=pending,paid&created_after=2026-09-01T00:00:00Z&created_before=2026-10-01T00:00:00Z&page_size=50
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+
+### Advance order status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "fulfilled",
+  "tracking": {
+    "carrier": "acme-post",
+    "number": "AP123456789GB"
+  },
+  "notify_customer": true
+}
+
+### Upload an invoice attachment
+POST {{baseUrl}}/orders/{{orderId}}/attachments
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=AcmeBoundary7MA4YWxk
+
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="kind"
+
+invoice
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="invoice.txt"
+Content-Type: text/plain
+
+Invoice 2026-0412 for order {{orderId}}
+--AcmeBoundary7MA4YWxk--
+
+### Register a webhook endpoint
+POST {{baseUrl}}/webhooks
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "url": "https://hooks.example.com/acme/orders",
+  "events": ["order.created", "order.fulfilled", "order.refunded"],
+  "secret": "whsec_test_00000000000000000000",
+  "active": true
+}
+
+### Refund part of the order
+POST {{baseUrl}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Request-Id: {{$uuid}}
+
+{
+  "amount": 1299,
+  "reason": "damaged_in_transit",
+  "lines": [{ "sku": "WIDGET-RED-S", "quantity": 1 }]
+}
+
+### Cancel the order
+DELETE {{baseUrl}}/orders/{{orderId}}?reason=customer_request
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Delete the test customer (cleanup)
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customer removed", function () {
+    client.assert(response.status === 204, "expected 204, got " + response.status);
+  });
+  client.global.clear("customerId");
+  client.global.clear("orderId");
+%}
+
+### Old token should be rejected after revoke
+POST {{host}}/oauth/revoke
+Content-Type: application/x-www-form-urlencoded
+
+token={{accessToken}}&token_type_hint=access_token
+
+
+# ---- unit 19 ----
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>
+
+
+# ---- unit 20 ----
+# ---- bodies.http ----
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated
+
+
+# ---- crlf.http ----
+POST /x HTTP/1.1
+Host: a
+X-Folded: one
+ two
+
+{"a": 1}
+
+
+# ---- dialect.http ----
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
+
+
+# ---- exchange.http ----
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
+
+
+# ---- headers_only.http ----
+Content-Type: application/json
+Cache-Control: no-cache, no-store
+X-Request-Id:{{$guid}}
+X-Empty:
+
+
+# ---- jetbrains.http ----
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json
+
+
+# ---- pseudo_headers.http ----
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9
+
+
+# ---- request.http ----
+POST /api/v2/users?filter=active&sort=-created_at HTTP/1.1
+Host: api.example.com:8443
+User-Agent: curl/8.4.0 (x86_64; (nested \) paren))
+Accept: application/json;q=0.9, */*;q=0.1
+Content-Type: application/json; charset="utf-8"
+If-None-Match: W/"67ab43", "54ed21"
+X-Folded: first part
+  continued "part"
+Content-Length: 32
+
+{"name": "Ada", "tags": ["ops"]}
+
+
+# ---- request_lines.http ----
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5
+
+
+# ---- response.http ----
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
+
+
+# ---- rest_client.http ----
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+
+# ---- unit 21 ----
+# Acme Orders API - manual smoke tests
+# Run against a local stack with `make dev`, or switch @host for staging.
+
+@host = https://api.acme.dev
+@apiVersion = v2
+@baseUrl = {{host}}/{{apiVersion}}
+@contentType = application/json
+@tenant = acme-labs
+@clientId = acme-cli-local
+@clientSecret = test-secret-not-real-0000
+
+### Fetch an access token (client credentials)
+# @name login
+POST {{host}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+grant_type=client_credentials
+&client_id={{clientId}}
+&client_secret={{clientSecret}}
+&scope=orders:read%20orders:write%20customers:read
+
+> {%
+  client.test("token issued", function () {
+    client.assert(response.status === 200, "expected 200, got " + response.status);
+    client.assert(response.body.token_type === "Bearer", "unexpected token type");
+  });
+  client.global.set("accessToken", response.body.access_token);
+  client.global.set("tokenExpiresAt", Date.now() + response.body.expires_in * 1000);
+%}
+
+### Health check (no auth)
+GET {{host}}/healthz
+Accept: text/plain
+
+### List customers, newest first
+# @name listCustomers
+GET {{baseUrl}}/customers?limit=25&sort=-created_at&status=active&include=addresses
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customers page", function () {
+    client.assert(response.status === 200, "status " + response.status);
+    client.assert(Array.isArray(response.body.data), "data should be an array");
+  });
+  if (response.body.data.length > 0) {
+    client.global.set("customerId", response.body.data[0].id);
+  }
+  client.global.set("nextCursor", response.body.meta.next_cursor || "");
+%}
+
+### Next page of customers
+GET {{baseUrl}}/customers
+    ?limit=25
+    &cursor={{nextCursor}}
+    &fields=id,email,display_name,created_at
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Create a customer
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: {{$uuid}}
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan Rivers",
+  "locale": "en-GB",
+  "marketing_opt_in": false,
+  "addresses": [
+    {
+      "kind": "shipping",
+      "line1": "42 Harbour Lane",
+      "line2": null,
+      "city": "Portsmouth",
+      "postcode": "PO1 3AX",
+      "country": "GB",
+      "default": true
+    }
+  ],
+  "metadata": {
+    "source": "rest-client",
+    "created_by": "{{clientId}}",
+    "created_at": "{{$timestamp}}"
+  }
+}
+
+> {%
+  client.test("customer created", function () {
+    client.assert(response.status === 201, "expected 201");
+    client.assert(response.headers.valueOf("Location") !== null, "missing Location header");
+  });
+  client.global.set("customerId", response.body.id);
+%}
+
+### Read the customer back
+GET {{baseUrl}}/customers/{{customerId}}?include=addresses,orders
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+If-None-Match: W/"c-1f0a9"
+
+### Replace the customer profile
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+If-Match: W/"c-1f0a9"
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan R.",
+  "locale": "en-GB",
+  "marketing_opt_in": true,
+  "tags": ["wholesale", "priority"]
+}
+
+### Patch a single field (JSON merge patch)
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "display_name": "Jordan Rivers",
+  "tags": null
+}
+
+### Create an order for the customer
+# @name createOrder
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: order-{{$randomInt}}
+
+{
+  "customer_id": "{{customerId}}",
+  "currency": "GBP",
+  "lines": [
+    { "sku": "WIDGET-RED-S", "quantity": 3, "unit_price": 1299 },
+    { "sku": "WIDGET-BLU-L", "quantity": 1, "unit_price": 1599 },
+    { "sku": "GIFT-WRAP", "quantity": 1, "unit_price": 250 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address_ref": "default"
+  },
+  "discounts": [{ "code": "AUTUMN10", "kind": "percent", "value": 10 }],
+  "notes": "Leave with the neighbour at number 40 if nobody is home."
+}
+
+> {%
+  client.test("order accepted", function () {
+    client.assert(response.status === 201 || response.status === 202, "status " + response.status);
+    client.assert(response.body.total > 0, "order total should be positive");
+  });
+  client.global.set("orderId", response.body.id);
+  client.log("order " + response.body.id + " total " + response.body.total);
+%}
+
+### Search orders by status and date range
+GET {{baseUrl}}/orders?customer_id={{customerId}}&status=pending,paid&created_after=2026-09-01T00:00:00Z&created_before=2026-10-01T00:00:00Z&page_size=50
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+
+### Advance order status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "fulfilled",
+  "tracking": {
+    "carrier": "acme-post",
+    "number": "AP123456789GB"
+  },
+  "notify_customer": true
+}
+
+### Upload an invoice attachment
+POST {{baseUrl}}/orders/{{orderId}}/attachments
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=AcmeBoundary7MA4YWxk
+
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="kind"
+
+invoice
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="invoice.txt"
+Content-Type: text/plain
+
+Invoice 2026-0412 for order {{orderId}}
+--AcmeBoundary7MA4YWxk--
+
+### Register a webhook endpoint
+POST {{baseUrl}}/webhooks
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "url": "https://hooks.example.com/acme/orders",
+  "events": ["order.created", "order.fulfilled", "order.refunded"],
+  "secret": "whsec_test_00000000000000000000",
+  "active": true
+}
+
+### Refund part of the order
+POST {{baseUrl}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Request-Id: {{$uuid}}
+
+{
+  "amount": 1299,
+  "reason": "damaged_in_transit",
+  "lines": [{ "sku": "WIDGET-RED-S", "quantity": 1 }]
+}
+
+### Cancel the order
+DELETE {{baseUrl}}/orders/{{orderId}}?reason=customer_request
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Delete the test customer (cleanup)
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customer removed", function () {
+    client.assert(response.status === 204, "expected 204, got " + response.status);
+  });
+  client.global.clear("customerId");
+  client.global.clear("orderId");
+%}
+
+### Old token should be rejected after revoke
+POST {{host}}/oauth/revoke
+Content-Type: application/x-www-form-urlencoded
+
+token={{accessToken}}&token_type_hint=access_token
+
+
+# ---- unit 22 ----
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>
+
+
+# ---- unit 23 ----
+# ---- bodies.http ----
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated
+
+
+# ---- crlf.http ----
+POST /x HTTP/1.1
+Host: a
+X-Folded: one
+ two
+
+{"a": 1}
+
+
+# ---- dialect.http ----
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
+
+
+# ---- exchange.http ----
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
+
+
+# ---- headers_only.http ----
+Content-Type: application/json
+Cache-Control: no-cache, no-store
+X-Request-Id:{{$guid}}
+X-Empty:
+
+
+# ---- jetbrains.http ----
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json
+
+
+# ---- pseudo_headers.http ----
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9
+
+
+# ---- request.http ----
+POST /api/v2/users?filter=active&sort=-created_at HTTP/1.1
+Host: api.example.com:8443
+User-Agent: curl/8.4.0 (x86_64; (nested \) paren))
+Accept: application/json;q=0.9, */*;q=0.1
+Content-Type: application/json; charset="utf-8"
+If-None-Match: W/"67ab43", "54ed21"
+X-Folded: first part
+  continued "part"
+Content-Length: 32
+
+{"name": "Ada", "tags": ["ops"]}
+
+
+# ---- request_lines.http ----
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5
+
+
+# ---- response.http ----
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
+
+
+# ---- rest_client.http ----
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+
+# ---- unit 24 ----
+# Acme Orders API - manual smoke tests
+# Run against a local stack with `make dev`, or switch @host for staging.
+
+@host = https://api.acme.dev
+@apiVersion = v2
+@baseUrl = {{host}}/{{apiVersion}}
+@contentType = application/json
+@tenant = acme-labs
+@clientId = acme-cli-local
+@clientSecret = test-secret-not-real-0000
+
+### Fetch an access token (client credentials)
+# @name login
+POST {{host}}/oauth/token
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+grant_type=client_credentials
+&client_id={{clientId}}
+&client_secret={{clientSecret}}
+&scope=orders:read%20orders:write%20customers:read
+
+> {%
+  client.test("token issued", function () {
+    client.assert(response.status === 200, "expected 200, got " + response.status);
+    client.assert(response.body.token_type === "Bearer", "unexpected token type");
+  });
+  client.global.set("accessToken", response.body.access_token);
+  client.global.set("tokenExpiresAt", Date.now() + response.body.expires_in * 1000);
+%}
+
+### Health check (no auth)
+GET {{host}}/healthz
+Accept: text/plain
+
+### List customers, newest first
+# @name listCustomers
+GET {{baseUrl}}/customers?limit=25&sort=-created_at&status=active&include=addresses
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customers page", function () {
+    client.assert(response.status === 200, "status " + response.status);
+    client.assert(Array.isArray(response.body.data), "data should be an array");
+  });
+  if (response.body.data.length > 0) {
+    client.global.set("customerId", response.body.data[0].id);
+  }
+  client.global.set("nextCursor", response.body.meta.next_cursor || "");
+%}
+
+### Next page of customers
+GET {{baseUrl}}/customers
+    ?limit=25
+    &cursor={{nextCursor}}
+    &fields=id,email,display_name,created_at
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Create a customer
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: {{$uuid}}
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan Rivers",
+  "locale": "en-GB",
+  "marketing_opt_in": false,
+  "addresses": [
+    {
+      "kind": "shipping",
+      "line1": "42 Harbour Lane",
+      "line2": null,
+      "city": "Portsmouth",
+      "postcode": "PO1 3AX",
+      "country": "GB",
+      "default": true
+    }
+  ],
+  "metadata": {
+    "source": "rest-client",
+    "created_by": "{{clientId}}",
+    "created_at": "{{$timestamp}}"
+  }
+}
+
+> {%
+  client.test("customer created", function () {
+    client.assert(response.status === 201, "expected 201");
+    client.assert(response.headers.valueOf("Location") !== null, "missing Location header");
+  });
+  client.global.set("customerId", response.body.id);
+%}
+
+### Read the customer back
+GET {{baseUrl}}/customers/{{customerId}}?include=addresses,orders
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+If-None-Match: W/"c-1f0a9"
+
+### Replace the customer profile
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+If-Match: W/"c-1f0a9"
+
+{
+  "email": "jordan.rivers@example.com",
+  "display_name": "Jordan R.",
+  "locale": "en-GB",
+  "marketing_opt_in": true,
+  "tags": ["wholesale", "priority"]
+}
+
+### Patch a single field (JSON merge patch)
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "display_name": "Jordan Rivers",
+  "tags": null
+}
+
+### Create an order for the customer
+# @name createOrder
+POST {{baseUrl}}/orders
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Acme-Tenant: {{tenant}}
+Idempotency-Key: order-{{$randomInt}}
+
+{
+  "customer_id": "{{customerId}}",
+  "currency": "GBP",
+  "lines": [
+    { "sku": "WIDGET-RED-S", "quantity": 3, "unit_price": 1299 },
+    { "sku": "WIDGET-BLU-L", "quantity": 1, "unit_price": 1599 },
+    { "sku": "GIFT-WRAP", "quantity": 1, "unit_price": 250 }
+  ],
+  "shipping": {
+    "method": "standard",
+    "address_ref": "default"
+  },
+  "discounts": [{ "code": "AUTUMN10", "kind": "percent", "value": 10 }],
+  "notes": "Leave with the neighbour at number 40 if nobody is home."
+}
+
+> {%
+  client.test("order accepted", function () {
+    client.assert(response.status === 201 || response.status === 202, "status " + response.status);
+    client.assert(response.body.total > 0, "order total should be positive");
+  });
+  client.global.set("orderId", response.body.id);
+  client.log("order " + response.body.id + " total " + response.body.total);
+%}
+
+### Search orders by status and date range
+GET {{baseUrl}}/orders?customer_id={{customerId}}&status=pending,paid&created_after=2026-09-01T00:00:00Z&created_before=2026-10-01T00:00:00Z&page_size=50
+Authorization: Bearer {{accessToken}}
+Accept: {{contentType}}
+
+### Advance order status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "status": "fulfilled",
+  "tracking": {
+    "carrier": "acme-post",
+    "number": "AP123456789GB"
+  },
+  "notify_customer": true
+}
+
+### Upload an invoice attachment
+POST {{baseUrl}}/orders/{{orderId}}/attachments
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=AcmeBoundary7MA4YWxk
+
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="kind"
+
+invoice
+--AcmeBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="invoice.txt"
+Content-Type: text/plain
+
+Invoice 2026-0412 for order {{orderId}}
+--AcmeBoundary7MA4YWxk--
+
+### Register a webhook endpoint
+POST {{baseUrl}}/webhooks
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+{
+  "url": "https://hooks.example.com/acme/orders",
+  "events": ["order.created", "order.fulfilled", "order.refunded"],
+  "secret": "whsec_test_00000000000000000000",
+  "active": true
+}
+
+### Refund part of the order
+POST {{baseUrl}}/orders/{{orderId}}/refunds
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+X-Request-Id: {{$uuid}}
+
+{
+  "amount": 1299,
+  "reason": "damaged_in_transit",
+  "lines": [{ "sku": "WIDGET-RED-S", "quantity": 1 }]
+}
+
+### Cancel the order
+DELETE {{baseUrl}}/orders/{{orderId}}?reason=customer_request
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+### Delete the test customer (cleanup)
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+X-Acme-Tenant: {{tenant}}
+
+> {%
+  client.test("customer removed", function () {
+    client.assert(response.status === 204, "expected 204, got " + response.status);
+  });
+  client.global.clear("customerId");
+  client.global.clear("orderId");
+%}
+
+### Old token should be rejected after revoke
+POST {{host}}/oauth/revoke
+Content-Type: application/x-www-form-urlencoded
+
+token={{accessToken}}&token_type_hint=access_token
+
+
+# ---- unit 25 ----
+@host = api.example.com
+@token = {{login.response.body.$.access_token}}
+
+### create a comment
+# @name createComment
+POST https://{{host}}/v1/comments?draft=false HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: {{$guid}}
+
+{
+  "body": "first!",
+  "created_at": "{{$datetime iso8601}}",
+  // dropped before sending
+  "tags": ["intro", 42, true, null]
+}
+
+> {% client.global.set("id", response.body.id); %}
+
+###
+HTTP/1.1 201 Created
+Location: /v1/comments/8217
+Set-Cookie: sid=31d4; Path=/; HttpOnly
+
+<comment id="8217">first!</comment>
+
+
+# ---- unit 26 ----
+# ---- bodies.http ----
+POST /json
+Content-Type: application/json
+
+[
+  {"id": {{id}}, "tags": ["a", "{{tag}}"]},
+  // comment line
+  # hash comment
+  {"id": 2, "ok": true, "none": null}
+]
+
+###
+POST /xml
+
+<?xml version="1.0"?>
+<item id="{{id}}">
+  <name>{{name}}</name>
+</item>
+
+###
+POST /text
+
+-- not a boundary
+plain text {{value}} here
+HTTP/ 1 is text
+
+###
+GET /unterminated/{{var
+X-Test: {{$random.integer(1, 100)}} {{$datetime "DD MM" -1 y}}
+
+> {% unterminated
+
+
+# ---- crlf.http ----
+POST /x HTTP/1.1
+Host: a
+X-Folded: one
+ two
+
+{"a": 1}
+
+
+# ---- dialect.http ----
+# file-level comment
+// another
+@host = api.example.com
+@token={{$processEnv %TOKEN_KEY}}
+@ not = a variable
+
+### named separator
+# @name createUser
+# @no-redirect
+// @timeout 600
+POST https://{{host}}/users?source={{$randomInt 1 10}} HTTP/1.1
+Authorization: Bearer {{token}}
+{{dynamicHeader}}: value
+# header comment
+
+<@latin1 ./payload.json
+
+###
+GET https://{{host}}/users
+    ?page=2
+    &size={{ size }}
+  # indented comment
+Accept: application/json
+
+<> previous-response.200.json
+>> ./out.json
+
+###
+curl -X DELETE https://api.example.com/users/1 \
+  -H "Authorization: Bearer token"
+
+###
+WEBSOCKET ws://localhost:8080/ws
+
+hello
+=== wait-for-server
+{"type": "ping"}
+===
+
+###
+POST /form
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="text"
+
+title with -- dashes
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+epilogue
+
+
+# ---- exchange.http ----
+GET /home.html HTTP/1.1
+Host: developer.mozilla.org
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+X-Tag: #not-a-comment
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 29
+
+<!DOCTYPE html>
+<p class="{{cls}}">Hi & bye</p>
+# comment at column zero
+  #id { color: red }
+HTTP/2 204
+x-cache: HIT
+
+
+# ---- headers_only.http ----
+Content-Type: application/json
+Cache-Control: no-cache, no-store
+X-Request-Id:{{$guid}}
+X-Empty:
+
+
+# ---- jetbrains.http ----
+### Upload
+< {%
+  request.variables.set("ts", $timestamp)
+%}
+POST http://localhost:8080
+    /api
+    /upload?tag={{ts}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"k": "v"}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="a.txt"
+
+< ./a.txt
+--WebAppBoundary--
+
+>>! {{$historyFolder}}/upload.json
+
+
+# ---- pseudo_headers.http ----
+:method: GET
+:authority: example.com
+:scheme: https
+:path: /index.html?q=1
+accept-language: en-GB,en;q=0.9
+
+
+# ---- request.http ----
+POST /api/v2/users?filter=active&sort=-created_at HTTP/1.1
+Host: api.example.com:8443
+User-Agent: curl/8.4.0 (x86_64; (nested \) paren))
+Accept: application/json;q=0.9, */*;q=0.1
+Content-Type: application/json; charset="utf-8"
+If-None-Match: W/"67ab43", "54ed21"
+X-Folded: first part
+  continued "part"
+Content-Length: 32
+
+{"name": "Ada", "tags": ["ops"]}
+
+
+# ---- request_lines.http ----
+https://example.com/comments/1
+###
+localhost:8080/health
+###
+OPTIONS * HTTP/1.1
+###
+CONNECT example.com:443 HTTP/1.1
+###
+get http://[::1]:8080/a%20b#frag HTTP/2
+###
+BASELINE-CONTROL /x HTTP/1.1
+###
+HTTP://EXAMPLE.COM/x
+###
+example.com/path?q=a b HTTP/1.1
+###
+/just/a/path
+###
+{{host}}/x
+###
+GET https://x/search?q={{$datetime 'YYYY MM'}} HTTP/1.1
+###
+PRI * HTTP/2.0
+###
+QUERY /contacts HTTP/1.1
+###
+:authority: example.com
+###
+content-type:text/plain
+###
+x-count:5
+
+
+# ---- response.http ----
+HTTP/1.1 401 Unauthorized
+Date: Mon, 21 Sep 2026 14:28:00 GMT
+WWW-Authenticate: Basic realm="simple", Newauth realm="apps",
+                 type=1, title="Login to \"apps\""
+Set-Cookie: sid=31d4; Path=/; Expires=Wed, 09 Jun 2027 10:18:14 GMT; HttpOnly
+Cache-Status: OriginCache; hit; ttl=1100, "CDN Co"; fwd=uri-miss
+Content-Type: text/html; charset=utf-8
+
+<h1>401 &mdash; nope</h1>
+
+
+# ---- rest_client.http ----
+@baseUrl = https://api.example.com/v1
+@token = {{login.response.body.$.access_token}}
+
+### Log in
+# @name login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=foo
+&password={{$dotenv PASSWORD}}
+
+###
+// @prompt otp Your one-time password
+GET {{baseUrl}}/comments
+    ?page=2
+    &pageSize={{$randomInt 5 20}}
+Authorization: Bearer {{token}}
+
+###
+PATCH https://example.com/items/42
+Content-Type: application/json
+
+{
+  "when": "{{$datetime 'YYYY-MM-DD' 1 d}}",
+  "note": "# not a comment",
+  // dropped by the client
+  "list": [1, 2.5e3, -7]
+}
+
+> {% client.global.set("id", response.body.id); %}

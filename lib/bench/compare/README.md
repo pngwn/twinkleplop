@@ -35,7 +35,8 @@ The benchmark records inputs and output counts so readers can assess the compari
   and generates inline styles, which requires additional string processing.
 - **Language support.** sugar-high has a JavaScript tokenizer without a language
   argument, so it is included only in JS-family charts. speed-highlight has no
-  TSX or Svelte grammar.
+  TSX, Svelte, C++, JSONC, GraphQL, PowerShell, dotenv or shell-session grammar,
+  and Prism has no dotenv grammar.
 - **Async APIs.** speed-highlight's public functions are async because they load
   grammars on demand. The adapter preloads every grammar and calls its synchronous
   `tokenizeWith`, so the measurement covers highlighting and excludes promise
