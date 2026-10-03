@@ -1,4 +1,4 @@
-import type { OverlayItem, OverlayResult } from "./types";
+import type { OverlayItem, OverlayResult, TokenizeResult } from "./types";
 import { build_line_starts, compute_elided_lines, line_of } from "./annotation";
 
 const LINE_MODE = 1;
@@ -92,6 +92,19 @@ export function overlays(
   }
 
   return finalize(source, line_starts, collected, hidden, existing);
+}
+
+// visible_text resolves through this too so both take the same render path
+export function resolve_overlays(
+  source: string,
+  result: TokenizeResult,
+  items: OverlayItem[] | undefined,
+): OverlayResult | undefined {
+  if (items !== undefined && items.length !== 0) {
+    const merged = overlays(source, items, result.overlays);
+    if (merged.ranges.length !== 0 || merged.skip_ranges.length !== 0) return merged;
+  }
+  return result.overlays;
 }
 
 type Shape = "range" | "line" | "lines" | "hide";

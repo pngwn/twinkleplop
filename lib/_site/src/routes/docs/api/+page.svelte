@@ -72,6 +72,18 @@ const result = overlays(source, [
   { line: 3, class: "diff-add" },
 ]);`;
 
+	const visible_text_example = twoslash`declare const code: string;
+// ---cut---
+import { to_html, visible_text } from "@twinkleplop/core";
+import { hl } from "@twinkleplop/annotation";
+import { tokenize } from "@twinkleplop/typescript";
+
+const result = tokenize({ annotation: { plugins: [hl] } })(code);
+const options = { line_numbers: true };
+const html = to_html(code, result, options);
+// what the reader sees, ready for a copy button
+const copy = visible_text(code, result, options);`;
+
 	const language_options_rows = [
 		[
 			{ kind: "name" as const, value: "fidelity" },
@@ -286,6 +298,22 @@ const result = overlays(source, [
 			<CodeBlock fname="overlays.ts" html={overlays_example} />
 		</SubSection>
 
+		<SubSection id="visible_text" title="visible_text()">
+			<p>
+				Returns the text a render shows, without line numbers. Marker bytes are removed with the
+				whitespace before them, lines left empty by markers are dropped, and hidden ranges inside
+				a line become spaces. Pass the same render options you pass to <code>to_html</code>,
+				because option overlays and the whitespace options change the result.
+			</p>
+			<CodeBlock fname="copy.ts" html={visible_text_example} />
+			<p>
+				<code>visible_text_map()</code> also returns <code>segments</code>, a
+				<code>Uint32Array</code> of <code>[source_start, source_end, text_start]</code> triples, one
+				for each run copied unchanged from the source. Use it to find where a source range lands in
+				the visible text. Spaces that replace hidden bytes are not part of any segment.
+			</p>
+		</SubSection>
+
 		<SubSection id="subpaths" title="subpath exports">
 			<ParamTable
 				headers={["subpath", "exports"]}
@@ -294,7 +322,7 @@ const result = overlays(source, [
 						{ kind: "name", value: "@twinkleplop/core" },
 						{
 							kind: "desc",
-							value: `<code>tokenize</code>, <code>to_html</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, the DSL, the reclassifier helpers, and all types.`,
+							value: `<code>tokenize</code>, <code>to_html</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, <code>visible_text</code>, the DSL, the reclassifier helpers, and all types.`,
 						},
 					],
 					[

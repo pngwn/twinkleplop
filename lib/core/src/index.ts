@@ -57,3 +57,4 @@ export * from "./types";
 export * from "./dsl";
 export { build_annotation_extractor } from "./annotation";
 export { overlays } from "./overlays";
+export { visible_text, visible_text_map } from "./visible_text";

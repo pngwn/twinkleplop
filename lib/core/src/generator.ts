@@ -1,5 +1,5 @@
 import { HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
-import { overlays as build_overlays } from "./overlays";
+import { resolve_overlays } from "./overlays";
 
 const ESCAPE_TABLE = new Array(128);
 for (let i = 0; i < 128; i++) {
@@ -62,16 +62,8 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   // option items merge into a fresh result so the caller's tokenize result
   // is left untouched. items that resolve to nothing fall through so they
   // stay invisible instead of adding a has- class.
-  const items = options.overlays;
-  if (items !== undefined && items.length !== 0) {
-    const merged = build_overlays(input, items, token_result.overlays);
-    if (merged.ranges.length !== 0 || merged.skip_ranges.length !== 0) {
-      return to_html_overlay(input, token_result, merged, options);
-    }
-  }
-  if (token_result.overlays !== undefined) {
-    return to_html_overlay(input, token_result, token_result.overlays, options);
-  }
+  const resolved = resolve_overlays(input, token_result, options.overlays);
+  if (resolved !== undefined) return to_html_overlay(input, token_result, resolved, options);
   const { tokens, token_types } = token_result;
   const { class_name = "twinkleplop" } = options;
   const line_numbers = !!options.line_numbers;
@@ -354,7 +346,7 @@ const WS_LEADING = 1;
 const WS_TRAILING = 2;
 const WS_INNER = 4;
 
-function whitespace_mode(whitespace: RenderOptions["whitespace"]): number {
+export function whitespace_mode(whitespace: RenderOptions["whitespace"]): number {
   switch (whitespace) {
     case undefined:
       return 0;
@@ -372,7 +364,7 @@ function whitespace_mode(whitespace: RenderOptions["whitespace"]): number {
   );
 }
 
-function indent_guide_size(indent_guides: RenderOptions["indent_guides"]): number {
+export function indent_guide_size(indent_guides: RenderOptions["indent_guides"]): number {
   if (indent_guides === undefined || indent_guides === false) return 0;
   if (indent_guides === true) return 2;
   const size = indent_guides.size;

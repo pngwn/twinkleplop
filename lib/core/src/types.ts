@@ -770,6 +770,13 @@ export interface OverlayResult {
   elided_lines: Uint8Array;
 }
 
+// segments hold source_start, source_end, text_start triples for runs copied
+// unchanged, spaces standing in for hidden bytes belong to none
+export interface VisibleText {
+  text: string;
+  segments: Uint32Array;
+}
+
 // a compiled language: call the factory with options to get the tokenize
 // function for that configuration. `language()` (no args) is the default,
 // full-fidelity pipeline.
