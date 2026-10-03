@@ -167,6 +167,8 @@ output as it is, so only mark text you would write into the page yourself.
 
 - `type` sets the token class. Without it, the span takes the type of the
   token it sits inside, or no type when it crosses tokens.
+- Whitespace at the end of a line is trimmed from the range, as it is from
+  the rest of the line, unless the `whitespace` option renders it.
 - A token-mode overlay over exactly the same range adds its class to the
   span. One that covers more wraps the span as usual. One that reaches into
   it is split at its edge and adds its class to the span.

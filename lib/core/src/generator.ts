@@ -1062,6 +1062,9 @@ function to_html_overlay(
   // no wrapper starts or ends inside the range, one matching it exactly folds into the span
   function emit_verbatim(v: Verbatim) {
     if (line_no <= elided_lines.length && elided_lines[line_no - 1] === 1) return;
+    const max_end = last_emit_byte_in_line(line_no);
+    const end = v.end < max_end ? v.end : max_end;
+    if (end <= v.start) return;
     close_span();
     if (wrapper_open !== null && v.start >= wrapper_open.end) close_wrapper();
     let cls = v.type.length === 0 ? "tok" : "tok " + v.type;
@@ -1083,13 +1086,13 @@ function to_html_overlay(
     }
     let attrs = "";
     if (token_hook !== undefined) {
-      const deco = hook_output(token_hook(v.type, v.start, v.end), "token");
+      const deco = hook_output(token_hook(v.type, v.start, end), "token");
       if (deco !== null) {
         cls += deco.cls;
         attrs = deco.attrs;
       }
     }
-    out.push(`<span class="${cls}"${attrs}>`, input.substring(v.start, v.end), "</span>");
+    out.push(`<span class="${cls}"${attrs}>`, input.substring(v.start, end), "</span>");
   }
 
   const emit = verbatim.length === 0 ? emit_range_overlay : emit_piece;

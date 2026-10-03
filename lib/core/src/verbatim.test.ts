@@ -197,6 +197,25 @@ describe("rendering", () => {
     expect(html).toContain('<span class="tok">{ b }</span>');
   });
 
+  test("trailing whitespace in the range is trimmed like the rest of the line", () => {
+    const html = render("foo {x}   \r\nbar", { overlays: [{ start: 4, end: 11, verbatim: true }] });
+    expect(html).toContain('<span class="tok">{x}</span></span>\n');
+  });
+
+  test("trailing whitespace in the range is kept when whitespace renders", () => {
+    const html = render("foo {x}  \nbar", {
+      whitespace: "trailing",
+      overlays: [{ start: 4, end: 9, verbatim: true }],
+    });
+    expect(html).toContain('<span class="tok">{x}  </span></span>\n');
+  });
+
+  test("a range of only trailing whitespace renders nothing", () => {
+    const html = render("foo   \nbar", { overlays: [{ start: 3, end: 6, verbatim: true }] });
+    expect(html).not.toContain('class="tok"');
+    expect(html).toContain('<span class="tok identifier">foo</span></span>\n');
+  });
+
   test("the token hook sees the span's type and range", () => {
     const seen: [string, number, number][] = [];
     const html = render('"{b}" {c}', {
