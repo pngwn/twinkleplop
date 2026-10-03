@@ -3,7 +3,7 @@
 export { tokenize } from "./tokenizer";
 export { compile } from "./compiler";
 export { verify, type VerifyIssue } from "./verify";
-export { to_html } from "./generator";
+export { to_html, escape_html } from "./generator";
 export {
   create_language,
   disassemble_rules,
