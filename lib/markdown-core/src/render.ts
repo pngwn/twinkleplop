@@ -93,12 +93,9 @@ export function create_renderer(options: MarkdownOptions): Renderer {
     collect_lines(parsed, source, items, line_ids, fail);
     collect_words(parsed, source, items, word_ids);
 
-    // the fence name comes from the document and the renderer emits
-    // class_name verbatim, so it is escaped here. `data-language` rides
-    // `attributes`, which the renderer escapes itself.
     const render: RenderOptions = {
       ...base,
-      class_name: join(base.class_name ?? "twinkleplop", "language-" + escape_html(name, escape)),
+      class_name: join(base.class_name ?? "twinkleplop", "language-" + name),
       attributes: { ...base.attributes, "data-language": name },
       line_numbers: resolve_line_numbers(parsed, site_line_numbers, base.line_numbers),
     };

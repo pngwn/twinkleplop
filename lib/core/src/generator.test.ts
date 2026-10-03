@@ -1510,6 +1510,14 @@ describe("escape", () => {
     }
   });
 
+  test("class_name is escaped with the map", () => {
+    for (const plugins of [[], [hl]]) {
+      const html = render_escaped("a // [!hl]", { class_name: 'x"{y}', escape: BRACES }, plugins);
+      expect(html.startsWith('<pre class="x&quot;&#123;y&#125;')).toBe(true);
+    }
+    expect(render_escaped("a", { class_name: "a<b" })).toContain('<pre class="a&lt;b">');
+  });
+
   test("escape_html takes the same map", () => {
     expect(escape_html("<{a}>")).toBe("&lt;{a}&gt;");
     expect(escape_html("<{a}>", BRACES)).toBe("&lt;&#123;a&#125;&gt;");

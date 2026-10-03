@@ -172,7 +172,9 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   const char_open = esc.char_open;
   const char_swap = esc.char_swap;
 
-  let out = inline ? "" : open_pre(class_name, options.attributes, esc);
+  let out = inline
+    ? ""
+    : open_pre(escape_range(class_name, 0, class_name.length, esc), options.attributes, esc);
 
   // seeded with the start value so the per-line path pays nothing for it.
   const first_line = inline ? 1 : first_line_number(options.line_numbers);
@@ -862,7 +864,8 @@ function to_html_overlay(
   if (!inline) {
     const has_classes =
       options.has_classes === false ? "" : has_class_list(ranges, classifications);
-    out.push(open_pre(join_classes(class_name, has_classes), options.attributes, esc));
+    const cls = join_classes(escape_range(class_name, 0, class_name.length, esc), has_classes);
+    out.push(open_pre(cls, options.attributes, esc));
   }
 
   let line_no = 1;

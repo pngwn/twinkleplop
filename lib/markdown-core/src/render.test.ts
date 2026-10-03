@@ -312,6 +312,14 @@ describe("escape", () => {
     expect(html).toContain('class="twinkleplop language-&#123;r&#125;"');
   });
 
+  test("a map set by parse_meta covers the whole fence", () => {
+    const md = renderer({
+      on_unknown_language: "plain",
+      parse_meta: (_raw, parsed) => ({ ...parsed, ...render }),
+    });
+    expect(md.fence("{r}", 'title="{t}"', "{1}\n")).not.toMatch(/[{}]/);
+  });
+
   test("inline code takes the map", () => {
     const html = renderer({ render, inline: "tailing-curly-colon" }).inline_code("f({}){:ts}")!;
     expect(html).not.toMatch(/[{}]/);
