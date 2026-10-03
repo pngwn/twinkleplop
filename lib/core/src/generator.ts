@@ -760,6 +760,20 @@ function to_html_overlay(
   const ws_active = ws_mode !== 0 || indent_size !== 0;
   const { ranges, classifications, skip_ranges, elided_lines } = overlays;
 
+  // built on first use, a render with no ranges and no skip ranges never needs it
+  let line_starts: Int32Array | null = null;
+  function get_line_starts(): Int32Array {
+    if (line_starts !== null) return line_starts;
+    let count = 1;
+    for (let i = 0; i < input.length; i++) if (input.charCodeAt(i) === 10) count++;
+    line_starts = new Int32Array(count);
+    let li = 1;
+    for (let i = 0; i < input.length; i++) {
+      if (input.charCodeAt(i) === 10) line_starts[li++] = i + 1;
+    }
+    return line_starts;
+  }
+
   // split overlays by mode once, up front. line-mode overlays bin onto the
   // <span class="l"> open. token-mode overlays become per-line WRAPPER
   // segments: a wrapper opens at the first non-whitespace byte of the
@@ -798,8 +812,9 @@ function to_html_overlay(
       // still yields a one-byte range) but a programmatic consumer
       // describing an empty line naturally does, and `oend - 1` would land
       // that on the previous line.
-      const start_line = line_of_offset(input, ostart);
-      const end_line = oend > ostart ? line_of_offset(input, oend - 1) : start_line;
+      const ls = get_line_starts();
+      const start_line = line_of(ls, ostart);
+      const end_line = oend > ostart ? line_of(ls, oend - 1) : start_line;
       if ((flags & OVERLAY_LINE_MODE) !== 0) {
         for (let l = start_line; l <= end_line; l++) {
           const ids = line_class_map.get(l);
@@ -818,21 +833,6 @@ function to_html_overlay(
         }
       }
     }
-  }
-
-  // build the line-start index lazily — only needed when a token-mode
-  // overlay actually fires or when a line has skip ranges to trim past.
-  let line_starts: Int32Array | null = null;
-  function get_line_starts(): Int32Array {
-    if (line_starts !== null) return line_starts;
-    let count = 1;
-    for (let i = 0; i < input.length; i++) if (input.charCodeAt(i) === 10) count++;
-    line_starts = new Int32Array(count);
-    let li = 1;
-    for (let i = 0; i < input.length; i++) {
-      if (input.charCodeAt(i) === 10) line_starts[li++] = i + 1;
-    }
-    return line_starts;
   }
 
   // skip-range cursor: advances monotonically with byte position.
@@ -1476,18 +1476,6 @@ function SPACE_RUN(n: number): string {
     return s;
   }
   return " ".repeat(n);
-}
-
-// linear-scan helper used during the line-mode overlay split (called once
-// per line-mode overlay endpoint, so the cost is bounded by overlay count
-// not input size).
-function line_of_offset(input: string, byte_offset: number): number {
-  let line = 1;
-  const limit = Math.min(byte_offset, input.length);
-  for (let i = 0; i < limit; i++) {
-    if (input.charCodeAt(i) === 10) line++;
-  }
-  return line;
 }
 
 function open_line_with_extra(n: number, line_numbers: boolean, cls: string, attrs: string) {
