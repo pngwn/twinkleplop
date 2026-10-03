@@ -103,8 +103,7 @@ const PUBLIC = 35;
 const PRIVATE = 36;
 const PROTECTED = 37;
 
-// punctuation is at most three ascii chars, keyed by length and char codes
-const PUNCT = new Map<number, number>();
+const PUNCT = new Uint8Array(128);
 for (const [text, code] of [
   ["(", LPAREN],
   [")", RPAREN],
@@ -114,23 +113,15 @@ for (const [text, code] of [
   ["}", RBRACE],
   ["<", LT],
   [">", GT],
-  [">>", SHR],
   [";", SEMI],
   ["=", EQ],
-  ["&&", AND],
-  ["||", OR],
   [",", COMMA],
   ["*", STAR],
   ["&", AMP],
-  ["...", ELLIPSIS],
-  ["::", SCOPE],
   [".", DOT],
-  ["->", ARROW],
   [":", COLON],
 ] as const) {
-  let key = text.length;
-  for (let i = 0; i < text.length; i++) key |= text.charCodeAt(i) << (2 + 7 * i);
-  PUNCT.set(key, code);
+  PUNCT[text.charCodeAt(0)] = code;
 }
 const WORDS = new Map<string, number>([
   ["namespace", NAMESPACE],
@@ -165,14 +156,21 @@ function word_start(c: number): boolean {
 
 function punct_code(input: string, start: number, end: number): number {
   const length = end - start;
-  if (length < 1 || length > 3) return 0;
-  let key = length;
-  for (let i = 0; i < length; i++) {
-    const c = input.charCodeAt(start + i);
-    if (c >= 128) return 0;
-    key |= c << (2 + 7 * i);
+  const c = input.charCodeAt(start);
+  if (length === 1) return c < 128 ? PUNCT[c] : 0;
+  if (length === 2) {
+    const d = input.charCodeAt(start + 1);
+    if (c === 62) return d === 62 ? SHR : 0;
+    if (c === 38) return d === 38 ? AND : 0;
+    if (c === 124) return d === 124 ? OR : 0;
+    if (c === 58) return d === 58 ? SCOPE : 0;
+    if (c === 45) return d === 62 ? ARROW : 0;
+    return 0;
   }
-  return PUNCT.get(key) ?? 0;
+  if (length === 3 && c === 46) {
+    return input.charCodeAt(start + 1) === 46 && input.charCodeAt(start + 2) === 46 ? ELLIPSIS : 0;
+  }
+  return 0;
 }
 
 function tag_word(code: number): boolean {
