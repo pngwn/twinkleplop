@@ -6,7 +6,7 @@
 
 import { describe, expect, test } from "vitest";
 import { compile } from "./compiler";
-import { to_html } from "./generator";
+import { escape_html, to_html, to_parts } from "./generator";
 import { build_annotation_extractor } from "./annotation";
 import { tokenize } from "./tokenizer";
 import type {
@@ -1374,5 +1374,75 @@ describe("whitespace and indent guides", () => {
         ).toBe(plain);
       }
     }
+  });
+});
+
+describe("to_parts", () => {
+  function tokenized(input: string, plugins: AnnotationPlugin[] = []): TokenizeResult {
+    const result = tokenize(input, grammar);
+    if (plugins.length > 0) {
+      const extractor = build_annotation_extractor({ plugins }, result.token_types);
+      const overlays = extractor(input, result);
+      if (overlays !== undefined) result.overlays = overlays;
+    }
+    return result;
+  }
+
+  function attrs(attributes: Record<string, string | number | boolean>): string {
+    let out = "";
+    for (const [name, value] of Object.entries(attributes)) {
+      out += value === true ? " " + name : ` ${name}="${escape_html(String(value))}"`;
+    }
+    return out;
+  }
+
+  test("joined back together the parts are what to_html renders", () => {
+    const input = "a <b> // [!em]\n  c & d\n// [!hl]\ne\n";
+    const cases: RenderOptions[] = [
+      {},
+      { line_numbers: { start: 3 } },
+      { class_name: "" },
+      { has_classes: false },
+      { attributes: { "data-title": 'x"<y>', tabindex: 0, hidden: true, draggable: false } },
+      { overlays: [{ line: 2, class: "focus" }] },
+      { whitespace: "all", indent_guides: true, line: (n) => ({ attrs: { "data-n": n } }) },
+    ];
+    for (const plugins of [[], [em, hl]]) {
+      for (const options of cases) {
+        const result = tokenized(input, plugins);
+        const { attributes, body } = to_parts(input, result, options);
+        expect(`<pre${attrs(attributes)}>${body}</pre>`).toBe(to_html(input, result, options));
+      }
+    }
+  });
+
+  test("attributes hold class first, then the option in order, unescaped", () => {
+    const { attributes } = to_parts("a // [!em]", tokenized("a // [!em]", [em]), {
+      attributes: { "data-title": 'a"b', tabindex: 0, hidden: true, draggable: false },
+    });
+    expect(attributes).toEqual({
+      class: "twinkleplop has-emphasis",
+      "data-title": 'a"b',
+      tabindex: 0,
+      hidden: true,
+    });
+    expect(Object.keys(attributes)).toEqual(["class", "data-title", "tabindex", "hidden"]);
+  });
+
+  test("body is the code element", () => {
+    const { body } = to_parts("a\nb", tokenized("a\nb"));
+    expect(body.startsWith('<code><span class="l">')).toBe(true);
+    expect(body.endsWith("</span></code>")).toBe(true);
+  });
+
+  test("attributes are checked as to_html checks them", () => {
+    const result = tokenized("a");
+    expect(() => to_parts("a", result, { attributes: { class: "x" } })).toThrow(/class/);
+    expect(() => to_parts("a", result, { attributes: { "a b": "x" } })).toThrow(TypeError);
+    expect(() => to_parts("a", result, { attributes: { x: null as never } })).toThrow(TypeError);
+  });
+
+  test("inline structure throws", () => {
+    expect(() => to_parts("a", tokenized("a"), { structure: "inline" })).toThrow(/inline/);
   });
 });

@@ -1,4 +1,4 @@
-import { HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
+import { BlockParts, HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
 import { overlays as build_overlays } from "./overlays";
 
 const ESCAPE_TABLE = new Array(128);
@@ -59,21 +59,61 @@ const CHAR_OPEN: string[] = new Array(CHAR_TYPES << 7).fill("");
 const CHAR_SWAP: string[] = new Array(CHAR_TYPES << 7).fill("");
 
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
-  // option items merge into a fresh result so the caller's tokenize result
-  // is left untouched. items that resolve to nothing fall through so they
-  // stay invisible instead of adding a has- class.
-  const items = options.overlays;
+  const overlays = resolve_overlays(input, token_result, options.overlays);
+  if (options.structure === "inline") return render(input, token_result, overlays, options, "", "");
+  const pre_class = block_class(options, overlays);
+  const open = open_pre(pre_class, options.attributes) + "<code>";
+  return render(input, token_result, overlays, options, open, "</code></pre>");
+}
+
+// for hosts that pass the pre attributes as props and the code element as children
+export function to_parts(
+  input: string,
+  token_result: TokenizeResult,
+  options: RenderOptions = {},
+): BlockParts {
+  if (options.structure === "inline") {
+    throw new TypeError('to_parts renders a block, structure "inline" has no <pre> to split');
+  }
+  const overlays = resolve_overlays(input, token_result, options.overlays);
+  const attributes = pre_attributes(block_class(options, overlays), options.attributes);
+  const body = render(input, token_result, overlays, options, "<code>", "</code>");
+  return { attributes, body };
+}
+
+// option items merge into a fresh result so the caller's tokenize result
+// is left untouched. items that resolve to nothing fall through so they
+// stay invisible instead of adding a has- class.
+function resolve_overlays(
+  input: string,
+  token_result: TokenizeResult,
+  items: RenderOptions["overlays"],
+): OverlayResult | undefined {
   if (items !== undefined && items.length !== 0) {
     const merged = build_overlays(input, items, token_result.overlays);
-    if (merged.ranges.length !== 0 || merged.skip_ranges.length !== 0) {
-      return to_html_overlay(input, token_result, merged, options);
-    }
+    if (merged.ranges.length !== 0 || merged.skip_ranges.length !== 0) return merged;
   }
-  if (token_result.overlays !== undefined) {
-    return to_html_overlay(input, token_result, token_result.overlays, options);
+  return token_result.overlays;
+}
+
+function block_class(options: RenderOptions, overlays: OverlayResult | undefined): string {
+  const { class_name = "twinkleplop" } = options;
+  if (overlays === undefined || options.has_classes === false) return class_name;
+  return join_classes(class_name, has_class_list(overlays.ranges, overlays.classifications));
+}
+
+function render(
+  input: string,
+  token_result: TokenizeResult,
+  overlays: OverlayResult | undefined,
+  options: RenderOptions,
+  open: string,
+  close: string,
+): string {
+  if (overlays !== undefined) {
+    return to_html_overlay(input, token_result, overlays, options, open, close);
   }
   const { tokens, token_types } = token_result;
-  const { class_name = "twinkleplop" } = options;
   const line_numbers = !!options.line_numbers;
   const inline = options.structure === "inline";
   const line_hook = inline ? undefined : options.line;
@@ -87,7 +127,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   const indent_size = indent_guide_size(options.indent_guides);
   const ws_active = ws_mode !== 0 || indent_size !== 0;
 
-  let out = inline ? "" : open_pre(class_name, options.attributes);
+  let out = open;
 
   // seeded with the start value so the per-line path pays nothing for it.
   const first_line = inline ? 1 : first_line_number(options.line_numbers);
@@ -330,7 +370,7 @@ export function to_html(input: string, token_result: TokenizeResult, options: Re
   }
 
   close_span();
-  if (!inline) out += "</span></code></pre>";
+  if (!inline) out += "</span>" + close;
 
   return out;
 }
@@ -439,8 +479,20 @@ function whitespace_run(input: string, start: number, end: number, wrap: boolean
 }
 
 function open_pre(class_attr: string, attributes: RenderOptions["attributes"]): string {
-  if (attributes === undefined) return `<pre class="${class_attr}"><code>`;
-  return `<pre class="${class_attr}"${render_attributes(attributes)}><code>`;
+  if (attributes === undefined) return `<pre class="${class_attr}">`;
+  return `<pre class="${class_attr}"${render_attributes(attributes)}>`;
+}
+
+// values stay unescaped since a component escapes its own props
+function pre_attributes(class_attr: string, attributes: RenderOptions["attributes"]) {
+  const out: BlockParts["attributes"] = { class: class_attr };
+  if (attributes === undefined) return out;
+  for (const name of Object.keys(attributes)) {
+    const value = attributes[name];
+    check_attribute(name, value, "attributes");
+    if (value !== false) out[name] = value;
+  }
+  return out;
 }
 
 function join_classes(class_name: string, extra: string): string {
@@ -457,25 +509,27 @@ function render_attributes(
 ): string {
   let out = "";
   for (const name of Object.keys(attributes)) {
-    if (name === "class" || name === "style") {
-      throw new TypeError(`${owner}.${name} is reserved`);
-    }
-    if (!is_attribute_name(name)) {
-      throw new TypeError(`"${name}" is not a valid attribute name`);
-    }
     const value = attributes[name];
+    check_attribute(name, value, owner);
     if (value === false) continue;
-    if (value === true) {
-      out += " " + name;
-    } else if (typeof value === "string") {
-      out += ` ${name}="${escape_html(value)}"`;
-    } else if (typeof value === "number") {
-      out += ` ${name}="${value}"`;
-    } else {
-      throw new TypeError(`${owner}.${name} must be a string, number or boolean`);
-    }
+    if (value === true) out += " " + name;
+    else if (typeof value === "string") out += ` ${name}="${escape_html(value)}"`;
+    else out += ` ${name}="${value}"`;
   }
   return out;
+}
+
+function check_attribute(name: string, value: unknown, owner: string): void {
+  if (name === "class" || name === "style") {
+    throw new TypeError(`${owner}.${name} is reserved`);
+  }
+  if (!is_attribute_name(name)) {
+    throw new TypeError(`"${name}" is not a valid attribute name`);
+  }
+  const kind = typeof value;
+  if (kind !== "string" && kind !== "number" && kind !== "boolean") {
+    throw new TypeError(`${owner}.${name} must be a string, number or boolean`);
+  }
 }
 
 // a leading digit is rejected so integer-like keys, which javascript moves
@@ -586,7 +640,7 @@ function escape_substring_optimized(input: string, start: number, end: number) {
 // annotation overlay rendering
 // ---------------------------------------------------------------------------
 //
-// mirrors the structure of to_html above, with three additions:
+// mirrors the structure of render above, with three additions:
 //   - line-mode overlay classes append to <span class="l"> opens.
 //   - token-mode overlays append to <span class="tok ..."> classes when
 //     their byte range intersects the token chunk.
@@ -594,16 +648,17 @@ function escape_substring_optimized(input: string, start: number, end: number) {
 //     all-whitespace post-substitution are elided entirely.
 //
 // the no-overlay caller path never reaches here (see top-of-function dispatch
-// in to_html); benchmarks of unconfigured language calls are unaffected.
+// in render); benchmarks of unconfigured language calls are unaffected.
 
 function to_html_overlay(
   input: string,
   token_result: TokenizeResult,
   overlays: OverlayResult,
   options: RenderOptions,
+  open: string,
+  close: string,
 ): string {
   const { tokens, token_types } = token_result;
-  const { class_name = "twinkleplop" } = options;
   const line_numbers = !!options.line_numbers;
   const inline = options.structure === "inline";
   const line_hook = inline ? undefined : options.line;
@@ -767,12 +822,7 @@ function to_html_overlay(
     return result;
   }
 
-  const out: string[] = [];
-  if (!inline) {
-    const has_classes =
-      options.has_classes === false ? "" : has_class_list(ranges, classifications);
-    out.push(open_pre(join_classes(class_name, has_classes), options.attributes));
-  }
+  const out: string[] = [open];
 
   let line_no = 1;
   const first_line = inline ? 1 : first_line_number(options.line_numbers);
@@ -1034,7 +1084,7 @@ function to_html_overlay(
   close_wrapper();
   if (!inline) {
     if (line_open) out.push("</span>");
-    out.push("</code></pre>");
+    out.push(close);
   }
   return out.join("");
 }

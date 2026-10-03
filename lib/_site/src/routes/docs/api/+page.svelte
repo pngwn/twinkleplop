@@ -18,6 +18,12 @@
   <span class="param">options</span><span class="punct">?:</span> <span class="type">RenderOptions</span>
 <span class="punct">)</span><span class="punct">:</span> <span class="type">string</span>`;
 
+	const to_parts_sig = `<span class="kw">function</span> <span class="name">to_parts</span><span class="punct">(</span>
+  <span class="param">input</span><span class="punct">:</span> <span class="type">string</span><span class="punct">,</span>
+  <span class="param">result</span><span class="punct">:</span> <span class="type">TokenizeResult</span><span class="punct">,</span>
+  <span class="param">options</span><span class="punct">?:</span> <span class="type">RenderOptions</span>
+<span class="punct">)</span><span class="punct">:</span> <span class="type">BlockParts</span>`;
+
 	const create_language_sig = `<span class="kw">function</span> <span class="name">create_language</span><span class="punct">(</span>
   <span class="param">grammar</span><span class="punct">:</span> <span class="type">CompiledGrammar</span><span class="punct">,</span>
   <span class="param">pipeline</span><span class="punct">?:</span> <span class="type">LanguagePipeline</span>
@@ -48,6 +54,15 @@ import { tokenize } from "@twinkleplop/typescript";
 const code = "const x = 1;";
 const result = tokenize()(code);
 const html = to_html(code, result, { line_numbers: true });`;
+
+	const to_parts_example = twoslash`import { to_parts } from "@twinkleplop/core";
+import { tokenize } from "@twinkleplop/typescript";
+
+const code = "const x = 1;";
+const { attributes, body } = to_parts(code, tokenize()(code), { line_numbers: true });
+
+attributes; // { class: "twinkleplop" }, then the attributes option in order
+body;       // "<code>...</code>"`;
 
 	const create_language_example = twoslash`import type { Reclassifier } from "@twinkleplop/core";
 declare const my_pass: Reclassifier;
@@ -241,6 +256,19 @@ const result = overlays(source, [
 		</p>
 		<Signature html={to_html_sig} />
 		<CodeBlock fname="to-html.ts" html={to_html_example} />
+
+		<SubSection id="to_parts" title="to_parts()">
+			<p>
+				Renders the same block as <code>to_html</code>, split for a component that takes the
+				<code>&lt;pre&gt;</code> attributes as props and the <code>&lt;code&gt;</code> element as
+				children. <code>attributes</code> holds <code>class</code> first, then the
+				<code>attributes</code> option in order with <code>false</code> values dropped. Values are
+				not escaped. <code>structure: "inline"</code> has no <code>&lt;pre&gt;</code> and throws a
+				<code>TypeError</code>.
+			</p>
+			<Signature html={to_parts_sig} />
+			<CodeBlock fname="to-parts.ts" html={to_parts_example} />
+		</SubSection>
 	</Section>
 
 	<Section id="language_options" title="LanguageOptions" num="§ 04">
@@ -294,7 +322,7 @@ const result = overlays(source, [
 						{ kind: "name", value: "@twinkleplop/core" },
 						{
 							kind: "desc",
-							value: `<code>tokenize</code>, <code>to_html</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, the DSL, the reclassifier helpers, and all types.`,
+							value: `<code>tokenize</code>, <code>to_html</code>, <code>to_parts</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, the DSL, the reclassifier helpers, and all types.`,
 						},
 					],
 					[
