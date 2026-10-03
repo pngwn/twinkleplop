@@ -186,6 +186,15 @@ unified()
 					},
 				],
 				[
+					{ kind: "name", value: "escape" },
+					{ kind: "type", value: "Record&lt;string, string&gt;" },
+					{ kind: "def", value: "—" },
+					{
+						kind: "desc",
+						value: `Extra characters to encode, as in render options. Covers the code, types, docs and tags but not <code>render_docs</code> output.`,
+					},
+				],
+				[
 					{ kind: "name", value: "twoslash" },
 					{ kind: "type", value: "TwoslashOptions" },
 					{ kind: "def", value: "—" },

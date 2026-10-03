@@ -175,6 +175,15 @@ const result = overlays(source, [
 				value: `Splits leading indentation into <code>&lt;span class="indent"&gt;</code> levels. Default size 2.`,
 			},
 		],
+		[
+			{ kind: "name" as const, value: "escape" },
+			{ kind: "type" as const, value: "Record&lt;string, string&gt;" },
+			{ kind: "def" as const, value: "—" },
+			{
+				kind: "desc" as const,
+				value: `Extra characters to encode wherever text is escaped, each mapped to the text written in its place.`,
+			},
+		],
 	];
 </script>
 
@@ -263,7 +272,8 @@ const result = overlays(source, [
 			A non-integer <code>line_numbers.start</code> or a non-positive
 			<code>indent_guides.size</code>
 			throws a
-			<code>RangeError</code>.
+			<code>RangeError</code>. An <code>escape</code> key longer than one UTF-16 code unit, or one
+			for a line break, space or tab, throws a <code>TypeError</code>.
 		</Callout>
 	</Section>
 
