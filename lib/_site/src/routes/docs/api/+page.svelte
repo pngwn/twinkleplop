@@ -341,7 +341,8 @@ const copy = visible_text(code, result, options);`;
 				<code>visible_text_map()</code> also returns <code>segments</code>, a
 				<code>Uint32Array</code> of <code>[source_start, source_end, text_start]</code> triples, one
 				for each run copied unchanged from the source. Use it to find where a source range lands in
-				the visible text. Spaces that replace hidden bytes are not part of any segment.
+				the visible text. A verbatim range always falls inside one segment, and spaces that replace
+				hidden bytes are not part of any segment.
 			</p>
 		</SubSection>
 

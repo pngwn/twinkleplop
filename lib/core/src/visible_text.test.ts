@@ -66,6 +66,7 @@ function rendered_text(input: string, result: TokenizeResult, options: RenderOpt
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
     .replace(/&amp;/g, "&");
 }
 
@@ -152,6 +153,7 @@ describe("matches the renderer", () => {
     "aa\r\n  bb // [!hl]\r\ncc  \r\n",
     "\taa <b> & 'c' // [!hl]\n\n\n",
     "aa // [!hl =aa]\n  aa bb aa  \nzz",
+    "aa {x}  // [!hl]\n{y} bb\n",
     "",
     "\n",
   ];
@@ -163,6 +165,7 @@ describe("matches the renderer", () => {
     { whitespace: "all" },
     { whitespace: "trailing" },
     { indent_guides: true },
+    { escape: { "{": "&#123;", "}": "&#125;" } },
     range_option,
     { overlays: [{ line: 1, class: "mark" }] },
   ];
@@ -199,6 +202,61 @@ describe("matches the renderer", () => {
           rendered_text(input, result, options),
         );
       }
+    }
+  });
+});
+
+describe("verbatim ranges", () => {
+  test("a verbatim range ending in whitespace is trimmed like the rest of the line", () => {
+    const input = "aa {x}  \nbb";
+    const verbatim = { overlays: [{ start: 3, end: 8, verbatim: true as const }] };
+    expect(visible_text(input, run(input), verbatim)).toBe("aa {x}\nbb");
+    expect(visible_text(input, run(input), { ...verbatim, whitespace: "all" })).toBe(input);
+  });
+
+  test("match the renderer around markers, hidden ranges and whitespace, overlaps throw in both", () => {
+    const input = "aa {x}  // [!hl]\n  {y} bb {z}\n// [!hl]\n{w}  ";
+    const braces = [...input.matchAll(/\{\w\}/g)].map((m) => m.index);
+    const extents: [number, number][] = [];
+    for (const at of braces) extents.push([at, at + 3], [at, at + 5], [at - 1, at + 3]);
+    const hides = [undefined, { start: 22, end: 24, hide: true as const }];
+    for (const [start, end] of extents) {
+      for (const hide of hides) {
+        for (const whitespace of [undefined, "all"] as const) {
+          for (const markers of [false, true]) {
+            const result = run(input, markers);
+            const overlays: RenderOptions["overlays"] = [{ start, end, verbatim: true }];
+            if (hide !== undefined) overlays.push(hide);
+            const options: RenderOptions = { whitespace, overlays };
+            let expected: string;
+            try {
+              expected = rendered_text(input, result, options);
+            } catch (error) {
+              expect(() => visible_text(input, result, options)).toThrow(error as Error);
+              continue;
+            }
+            expect(visible_text(input, result, options), JSON.stringify(options)).toBe(expected);
+          }
+        }
+      }
+    }
+  });
+
+  test("each verbatim range sits inside one segment", () => {
+    const input = "let a = {x}; // [!hl]\n// [!hl]\nlet b = {y};";
+    const ranges = [...input.matchAll(/\{\w\}/g)].map((m) => [m.index, m.index + 3]);
+    const options: RenderOptions = {
+      overlays: ranges.map(([start, end]) => ({ start, end, verbatim: true as const })),
+    };
+    const { text, segments } = visible_text_map(input, run(input, true), options);
+    expect(text).toBe("let a = {x};\nlet b = {y};");
+    for (const [start, end] of ranges) {
+      let at = -1;
+      for (let i = 0; i < segments.length; i += 3) {
+        if (segments[i] <= start && end <= segments[i + 1])
+          at = segments[i + 2] + start - segments[i];
+      }
+      expect(text.slice(at, at + end - start)).toBe(input.slice(start, end));
     }
   });
 });
