@@ -112,8 +112,8 @@ the render options to turn the classes off.
 
 The same decorations can be attached per call without writing a marker into
 the source, through the `overlays` render option. Each item is a range with
-a class, a single line with a class, a set of lines with a class, or a range
-to hide:
+a class, a single line with a class, a set of lines with a class, a range
+to hide, or a [verbatim range](#verbatim-ranges):
 
 ```ts
 ts(code, {
@@ -141,6 +141,45 @@ const result = tokenize_ts(code);
 result.overlays = overlays(code, items, result.overlays);
 const html = to_html(code, result);
 ```
+
+### Verbatim ranges
+
+A plugin or an `overlays` item can mark a range as verbatim. The renderer
+writes its exact source text as one `span.tok`, with no HTML escaping, and
+splits the tokens around it at its edges. A template language host uses this
+to leave an expression live inside otherwise escaped code. A miniature of
+mdsvex's `[!eval]`:
+
+```ts
+const live: AnnotationPlugin = {
+  verbs: ["eval"],
+  parse: "raw",
+  handle: ({ args, resolve_all }) => ({
+    overlays: resolve_all(args).map(({ start, end }) => ({ start, end, verbatim: true })),
+  }),
+};
+```
+
+With it, `console.log({ a: {some_val} }) // [!eval ="{some_val}"]` renders
+the inner `{some_val}` as `<span class="tok">{some_val}</span>`, while the
+other braces stay ordinary tokens. Everything in a verbatim range reaches the
+output as it is, so only mark text you would write into the page yourself.
+
+- `type` sets the token class. Without it, the span takes the type of the
+  token it sits inside, or no type when it crosses tokens.
+- A token-mode overlay over exactly the same range adds its class to the
+  span. One that covers more wraps the span as usual. One that reaches into
+  it is split at its edge and adds its class to the span.
+- Line-mode overlays, line numbers and inline structure work as normal. A
+  verbatim range adds no `has-*` class. The `token` hook is called once for
+  the span, with its type, or `""` when it has none.
+- A verbatim range has to stay on one line and must not overlap another
+  verbatim range or a hidden range. A plugin that breaks this gets a
+  `malformed` issue and the range is dropped. An `overlays` item throws a
+  `RangeError`.
+- In `TokenizeResult.overlays`, a verbatim range has the `OVERLAY_VERBATIM`
+  bit set in its flags, and its class id names its type (`""` for none), so
+  a custom renderer can honour it.
 
 ### Inline structure and hooks
 
@@ -261,7 +300,8 @@ Omit `annotation` to disable directive processing.
 The extractor runs after tokenization. It walks comment tokens, parses
 markers, resolves anchor and line ranges to UTF-16 offsets, and dispatches to
 plugins. Each plugin returns overlay contributions: `{ start, end,
-classification, line_mode }`. The framework collects them into a flat
+classification, line_mode }`, or `{ start, end, verbatim: true, type }`
+for a [verbatim range](#verbatim-ranges). The framework collects them into a flat
 typed-array on `TokenizeResult.overlays`; the renderer applies the classes
 during string building.
 

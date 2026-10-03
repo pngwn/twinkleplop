@@ -1,5 +1,7 @@
-import { HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
+import { OVERLAY_LINE_MODE, OVERLAY_VERBATIM } from "./types";
+import type { HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
 import { overlays as build_overlays } from "./overlays";
+import { line_of } from "./annotation";
 
 const ESCAPE_TABLE = new Array(128);
 for (let i = 0; i < 128; i++) {
@@ -533,7 +535,7 @@ function has_class_list(ranges: Uint32Array, classifications: string[]): string 
   const first_index = new Array<number>(count).fill(0);
   for (let r = 0; r < ranges.length; r += 4) {
     const id = ranges[r + 2];
-    if (id >= count) continue;
+    if (id >= count || (ranges[r + 3] & OVERLAY_VERBATIM) !== 0) continue;
     const start = ranges[r];
     if (first_start[id] === -1 || start < first_start[id]) {
       first_start[id] = start;
@@ -630,12 +632,17 @@ function to_html_overlay(
     number,
     { start: number; end: number; class_id: number }[]
   >();
+  const verbatim_ranges: number[] = [];
   if (ranges.length > 0) {
     for (let r = 0; r < ranges.length; r += 4) {
       const ostart = ranges[r];
       const oend = ranges[r + 1];
       const class_id = ranges[r + 2];
       const flags = ranges[r + 3];
+      if ((flags & OVERLAY_VERBATIM) !== 0) {
+        verbatim_ranges.push(r);
+        continue;
+      }
       // both line numbers come from the input itself, so they are already
       // bounded by its line count. `elided_lines` is NOT a bound here: a
       // hand-built OverlayResult may pass an empty array, and reads of it
@@ -649,7 +656,7 @@ function to_html_overlay(
       // that on the previous line.
       const start_line = line_of_offset(input, ostart);
       const end_line = oend > ostart ? line_of_offset(input, oend - 1) : start_line;
-      if ((flags & 1) === 1) {
+      if ((flags & OVERLAY_LINE_MODE) !== 0) {
         for (let l = start_line; l <= end_line; l++) {
           const ids = line_class_map.get(l);
           if (ids === undefined) line_class_map.set(l, [class_id]);
@@ -701,6 +708,31 @@ function to_html_overlay(
     }
     if (skip_ranges[lo * 2] <= pos && pos < skip_ranges[lo * 2 + 1]) return lo;
     return -1;
+  }
+
+  // a hand built result may break the verbatim rules, those ranges render as plain text
+  const verbatim: Verbatim[] = [];
+  const verbatim_by_line = new Map<number, Verbatim[]>();
+  if (verbatim_ranges.length !== 0) {
+    verbatim_ranges.sort((a, b) => ranges[a] - ranges[b] || ranges[a + 1] - ranges[b + 1]);
+    let reach = 0;
+    for (const r of verbatim_ranges) {
+      const vstart = ranges[r];
+      const vend = ranges[r + 1];
+      if (vstart < reach || vstart >= vend || vend > input.length) continue;
+      const newline = input.indexOf("\n", vstart);
+      if (newline !== -1 && newline < vend) continue;
+      if (crosses_skip(skip_ranges, vstart, vend)) continue;
+      reach = vend;
+      let type = classifications[ranges[r + 2]] ?? "";
+      if (type.length === 0) type = enclosing_type(token_result, vstart, vend);
+      const v: Verbatim = { start: vstart, end: vend, type };
+      verbatim.push(v);
+      const line = line_of(get_line_starts(), vstart);
+      const on_line = verbatim_by_line.get(line);
+      if (on_line === undefined) verbatim_by_line.set(line, [v]);
+      else on_line.push(v);
+    }
   }
 
   // per-line: byte position past the last byte that should be emitted —
@@ -762,6 +794,7 @@ function to_html_overlay(
       line_start,
       line_end,
       skip_ranges,
+      verbatim_by_line.get(line),
     );
     wrappers_cache.set(line, result);
     return result;
@@ -1008,28 +1041,80 @@ function to_html_overlay(
     }
   }
 
+  // a verbatim range is written whole at its first byte and the bytes it covers are skipped
+  let verbatim_idx = 0;
+  function emit_piece(start: number, end: number, base_cls: string | null) {
+    while (start < end) {
+      while (verbatim_idx < verbatim.length && verbatim[verbatim_idx].end <= start) verbatim_idx++;
+      if (verbatim_idx === verbatim.length || verbatim[verbatim_idx].start >= end) {
+        emit_range_overlay(start, end, base_cls);
+        return;
+      }
+      const v = verbatim[verbatim_idx];
+      if (v.start >= start) {
+        emit_range_overlay(start, v.start, base_cls);
+        emit_verbatim(v);
+      }
+      start = v.end < end ? v.end : end;
+    }
+  }
+
+  // no wrapper starts or ends inside the range, one matching it exactly folds into the span
+  function emit_verbatim(v: Verbatim) {
+    if (line_no <= elided_lines.length && elided_lines[line_no - 1] === 1) return;
+    close_span();
+    if (wrapper_open !== null && v.start >= wrapper_open.end) close_wrapper();
+    let cls = v.type.length === 0 ? "tok" : "tok " + v.type;
+    if (wrapper_open === null) {
+      while (wrapper_idx < line_wrappers.length && line_wrappers[wrapper_idx].end <= v.start) {
+        wrapper_idx++;
+      }
+      if (wrapper_idx < line_wrappers.length) {
+        const w = line_wrappers[wrapper_idx];
+        if (w.start === v.start && w.end === v.end) {
+          cls += " " + w.cls;
+          wrapper_idx++;
+        } else if (w.start <= v.start) {
+          out.push(`<span class="tok ${w.cls}">`);
+          wrapper_open = w;
+          wrapper_idx++;
+        }
+      }
+    }
+    let attrs = "";
+    if (token_hook !== undefined) {
+      const deco = hook_output(token_hook(v.type, v.start, v.end), "token");
+      if (deco !== null) {
+        cls += deco.cls;
+        attrs = deco.attrs;
+      }
+    }
+    out.push(`<span class="${cls}"${attrs}>`, input.substring(v.start, v.end), "</span>");
+  }
+
+  const emit = verbatim.length === 0 ? emit_range_overlay : emit_piece;
   let last_end = 0;
   for (let i = 0; i < tokens.length; i += 3) {
     const cls = token_types[tokens[i]];
     const start = tokens[i + 1];
     const end = tokens[i + 2];
-    if (start > last_end) emit_range_overlay(last_end, start, null);
+    if (start > last_end) emit(last_end, start, null);
     if (token_hook !== undefined) {
       const deco = hook_output(token_hook(cls, start, end), "token");
       if (deco !== null) {
         close_span();
         open_tag = token_tag(cls, deco);
-        emit_range_overlay(start, end, cls);
+        emit(start, end, cls);
         close_span();
         open_tag = null;
         last_end = end;
         continue;
       }
     }
-    emit_range_overlay(start, end, cls);
+    emit(start, end, cls);
     last_end = end;
   }
-  if (last_end < input.length) emit_range_overlay(last_end, input.length, null);
+  if (last_end < input.length) emit(last_end, input.length, null);
 
   close_wrapper();
   if (!inline) {
@@ -1040,6 +1125,45 @@ function to_html_overlay(
 }
 
 const EMPTY_WRAPPERS: { start: number; end: number; cls: string }[] = [];
+
+// an empty type means no type class
+interface Verbatim {
+  start: number;
+  end: number;
+  type: string;
+}
+
+function crosses_skip(skip_ranges: Uint32Array, start: number, end: number): boolean {
+  for (let i = 0; i < skip_ranges.length; i += 2) {
+    if (skip_ranges[i] < end && skip_ranges[i + 1] > start) return true;
+  }
+  return false;
+}
+
+// adjacent tokens of one type render as one span, so they count as one token
+function enclosing_type(token_result: TokenizeResult, start: number, end: number): string {
+  const { tokens, token_types } = token_result;
+  let lo = 0;
+  let hi = tokens.length / 3 - 1;
+  let k = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    if (tokens[mid * 3 + 1] <= start) {
+      k = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  if (k === -1) return "";
+  const type = tokens[k * 3];
+  let reach = tokens[k * 3 + 2];
+  if (reach <= start) return "";
+  while (reach < end) {
+    k++;
+    if (k * 3 >= tokens.length || tokens[k * 3] !== type || tokens[k * 3 + 1] !== reach) return "";
+    reach = tokens[k * 3 + 2];
+  }
+  return token_types[type] ?? "";
+}
 
 // Build the per-line wrapper list from the overlays touching this line.
 // Algorithm: sweep over (open, close) events in source order, maintain an
@@ -1056,6 +1180,7 @@ function compute_line_wrappers(
   line_start: number,
   line_end: number,
   skip_ranges: Uint32Array,
+  verbatim: Verbatim[] | undefined,
 ): { start: number; end: number; cls: string }[] {
   type Event = { pos: number; delta: number; class_id: number };
   const events: Event[] = [];
@@ -1099,7 +1224,53 @@ function compute_line_wrappers(
     }
     cursor = evt.pos;
   }
-  return result;
+  if (verbatim === undefined) return result;
+  return fit_wrappers(result, verbatim, input, skip_ranges);
+}
+
+// a verbatim range is one span, so the wrapper parts inside it merge into one wrapper over the range
+function fit_wrappers(
+  wrappers: { start: number; end: number; cls: string }[],
+  verbatim: Verbatim[],
+  input: string,
+  skip_ranges: Uint32Array,
+): { start: number; end: number; cls: string }[] {
+  let current = wrappers;
+  for (const v of verbatim) {
+    const next: { start: number; end: number; cls: string }[] = [];
+    let inside: string[] | null = null;
+    let inside_at = -1;
+    for (const w of current) {
+      if (w.end <= v.start || w.start >= v.end || (w.start <= v.start && w.end >= v.end)) {
+        next.push(w);
+        continue;
+      }
+      if (w.start < v.start) push_trimmed(next, w.start, v.start, w.cls, input, skip_ranges);
+      if (inside === null) {
+        inside = [];
+        inside_at = next.length;
+        next.push(w);
+      }
+      for (const c of w.cls.split(" ")) if (!inside.includes(c)) inside.push(c);
+      if (w.end > v.end) push_trimmed(next, v.end, w.end, w.cls, input, skip_ranges);
+    }
+    if (inside !== null) next[inside_at] = { start: v.start, end: v.end, cls: inside.join(" ") };
+    current = next;
+  }
+  return current;
+}
+
+function push_trimmed(
+  out: { start: number; end: number; cls: string }[],
+  start: number,
+  end: number,
+  cls: string,
+  input: string,
+  skip_ranges: Uint32Array,
+): void {
+  while (start < end && renders_blank(input, start, skip_ranges)) start++;
+  while (end > start && renders_blank(input, end - 1, skip_ranges)) end--;
+  if (start < end) out.push({ start, end, cls });
 }
 
 function renders_blank(input: string, pos: number, skip_ranges: Uint32Array): boolean {

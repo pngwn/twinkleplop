@@ -46,6 +46,8 @@ ts(code, {
     { start: { line: 2, character: 4 }, end: { line: 2, character: 9 }, class: "error" },
     // hide a range: it renders as spaces of equal width
     { start: 40, end: 60, hide: true },
+    // write a range exactly as it is in the source, unescaped, as one token
+    { start: 72, end: 80, verbatim: true },
   ],
 });`;
 
@@ -169,6 +171,13 @@ ts(code, {
 			overlays wrap the non-whitespace characters on each line. When overlays overlap, each region
 			gets all the classes that apply to it. A hidden range renders as spaces of equal width, and a
 			line that becomes whitespace-only is dropped. Visible line numbering continues without a gap.
+		</p>
+		<p>
+			A verbatim range is written exactly as it is in the source, with no escaping, as one
+			<code>span.tok</code>. Template languages use it to keep an expression live inside escaped
+			code. <code>type</code> sets its token class. Without it, the span takes the type of the token
+			it sits inside, or none when it crosses tokens. It must stay on one line and must not overlap a
+			hidden range or another verbatim range.
 		</p>
 		<p>
 			Every classification present also adds a <code>has-</code> class to the
