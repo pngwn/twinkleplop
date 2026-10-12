@@ -1004,6 +1004,63 @@ describe("TypeScript type positions outside the top level", () => {
   });
 });
 
+describe("TypeScript comparisons that look like type arguments", () => {
+  it("a logical operator between the angles", () => {
+    const tokens = enrich("if (a < b && c > (d + 1)) { go(); }");
+    expect(type_of(tokens, "a")).toBe("identifier");
+    expect(type_of(tokens, "b")).toBe("identifier");
+    expect(type_of(tokens, "c")).toBe("identifier");
+    expect(type_of(tokens, "<")).toBe("operator");
+    expect(type_of(tokens, ">")).toBe("operator");
+    expect(type_of(tokens, "go")).toBe("function");
+  });
+
+  it("other value-only operators between the angles", () => {
+    for (const op of ["||", "??", "*", "/", "%", "===", "!==", "<=", ">=", "&&!", "*-"]) {
+      const tokens = enrich(`x = a < b ${op} c > (d);`);
+      expect([op, type_of(tokens, "a")]).toEqual([op, "identifier"]);
+      expect([op, type_of(tokens, "b")]).toEqual([op, "identifier"]);
+      expect([op, type_of(tokens, "<")]).toEqual([op, "operator"]);
+      expect([op, type_of(tokens, ">")]).toEqual([op, "operator"]);
+    }
+  });
+
+  it("a chain of comparisons", () => {
+    const tokens = enrich("ok = lo < x && x < hi && y > (z);");
+    expect(tokens.filter((t) => t.type === "function" || t.type === "type")).toEqual([]);
+    expect(tokens.filter((t) => t.value === "<" || t.value === ">").map((t) => t.type)).toEqual([
+      "operator",
+      "operator",
+      "operator",
+    ]);
+  });
+
+  it("type arguments keep their reading", () => {
+    const call = enrich("const r = pick<A | B, C & D>(x);");
+    expect(type_of(call, "pick")).toBe("function");
+    expect(type_of(call, "A")).toBe("type");
+    expect(type_of(call, "D")).toBe("type");
+    expect(type_of(call, "<")).toBe("punctuation");
+    expect(type_of(call, ">")).toBe("punctuation");
+
+    const mapped = enrich("const y = id<{ -readonly [K in keyof T]: T[K] }>(z);");
+    expect(type_of(mapped, "id")).toBe("function");
+    expect(type_of(mapped, "<")).toBe("punctuation");
+
+    const literal = enrich("const n = at<Foo, -1>(xs);");
+    expect(type_of(literal, "at")).toBe("function");
+    expect(type_of(literal, "Foo")).toBe("type");
+
+    const fn = enrich("const h = wrap<(a: A) => B>(f);");
+    expect(type_of(fn, "wrap")).toBe("function");
+    expect(type_of(fn, "B")).toBe("type");
+
+    const nested = enrich("const m = new Map<string, Array<Foo>>();");
+    expect(type_of(nested, "Foo")).toBe("type");
+    expect(type_of(nested, ">>")).toBe("punctuation");
+  });
+});
+
 describe("TypeScript import / export renames", () => {
   it("the local name of a specifier rename is not a type", () => {
     expect(type_of(enrich('import { a as b } from "m";'), "b")).toBe("identifier");

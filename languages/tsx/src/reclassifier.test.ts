@@ -123,3 +123,28 @@ describe("TSX `<` after whitespace in a would-be tag", () => {
     expect(type_of("const el = <Foo\n  bar={1}\n/>;", "bar")).toBe("attr_name");
   });
 });
+
+describe("TSX comparisons that look like type arguments", () => {
+  it("a logical operator between the angles makes them comparisons", () => {
+    const src = "if (a < b && c > (d + 1)) { go(); }";
+    expect(type_of(src, "a")).toBe("identifier");
+    expect(type_of(src, "b")).toBe("identifier");
+    expect(type_of(src, "c")).toBe("identifier");
+    expect(type_of(src, "<")).toBe("operator");
+    expect(type_of(src, ">")).toBe("operator");
+  });
+
+  it("holds inside a jsx expression container", () => {
+    const src = "const el = <p>{a < b && c > (d) ? x : y}</p>;";
+    expect(type_of(src, "a")).toBe("identifier");
+    expect(type_of(src, "b")).toBe("identifier");
+    expect(type_of(src, "c")).toBe("identifier");
+  });
+
+  it("type arguments keep their reading", () => {
+    const src = "const r = pick<A | B>(x);";
+    expect(type_of(src, "pick")).toBe("function");
+    expect(type_of(src, "A")).toBe("type");
+    expect(type_of(src, "<")).toBe("punctuation");
+  });
+});

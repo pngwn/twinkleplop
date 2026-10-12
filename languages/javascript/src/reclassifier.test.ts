@@ -1046,6 +1046,18 @@ describe("JavaScript reclassifier — export * as namespace", () => {
   });
 });
 
+describe("JavaScript comparisons", () => {
+  it("angles around a logical operator are comparisons", () => {
+    const tokens = enrich("if (a < b && c > (d + 1)) { go(); }");
+    expect(type_of(tokens, "a")).toBe("identifier");
+    expect(type_of(tokens, "b")).toBe("identifier");
+    expect(type_of(tokens, "c")).toBe("identifier");
+    expect(type_of(tokens, "<")).toBe("operator");
+    expect(type_of(tokens, ">")).toBe("operator");
+    expect(type_of(tokens, "go")).toBe("function");
+  });
+});
+
 describe("may_embed_groups", () => {
   it("is true when a tag and its template are split by dropped characters", () => {
     expect(may_embed_groups("x = html`<b></b>`")).toBe(true);
