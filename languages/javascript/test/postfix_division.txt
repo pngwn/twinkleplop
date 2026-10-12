@@ -1,0 +1,10 @@
+let r = a++ / 2 / b;
+let s = a-- / 2 / b;
+x = arr[i]++ / n / m;
+x = (a)-- / n / m;
+x = a ++ / n / m;
+f(i++ / 2 / k);
+a = b + ++c / 2 / d;
+a = b - --c / 2 / d;
+const re = x++ + /re/g.lastIndex;
+const after = { ok: true };

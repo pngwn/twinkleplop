@@ -86,6 +86,8 @@ export {
   OP_1CHAR,
   OP_ALL,
   OP_ALL_OUTSIDE_MEMBER,
+  OP_AFTER_VALUE,
+  POSTFIX_OPERATORS,
   PROBE_OPERATORS,
   IDENTIFIER_TERMINATORS,
   SINGLE_LINE_COMMENT,
@@ -108,5 +110,6 @@ export {
   js_tmpl_common,
   js_paren_common,
   operators,
+  operators_after_value,
   keywordsLiterals,
 } from "./grammar.js";

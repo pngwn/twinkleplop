@@ -51,6 +51,7 @@ import {
   function_body_state,
   js_common,
   member_access_entry,
+  operators_after_value,
   paren_group_state,
   raw_grammar as js_grammar,
   js_tmpl_common,
@@ -193,7 +194,7 @@ export default define_grammar({
       rules: [
         ...js_common,
         non_null_assertion(null),
-        ts_operators("regex_allow"),
+        ...operators_after_value("regex_allow", null),
         ...ts_keywords_literals("regex_allow", null),
 
         // decorator: `@` sigil enters a dedicated state that extends the
@@ -253,7 +254,7 @@ export default define_grammar({
       rules: [
         ...js_tmpl_common,
         non_null_assertion(null),
-        ts_operators("tmpl_regex_allow"),
+        ...operators_after_value("tmpl_regex_allow", null),
         ...ts_keywords_literals("tmpl_regex_allow", null),
 
         // decorator: `@` sigil enters a dedicated state that extends the

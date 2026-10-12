@@ -150,6 +150,10 @@ export const OP_ALL = [...OP_4CHAR, ...OP_3CHAR, OP_SPREAD, ...OP_2CHAR, ...OP_1
 // it explicit. States that use this MUST also carry a member-access entry.
 export const OP_ALL_OUTSIDE_MEMBER = OP_ALL.filter((op) => op !== "?.");
 
+// postfix after a value so a slash after them divides, they need their own rule as ?. does
+export const POSTFIX_OPERATORS = ["++", "--"];
+export const OP_AFTER_VALUE = OP_ALL_OUTSIDE_MEMBER.filter((op) => !POSTFIX_OPERATORS.includes(op));
+
 // Operator subset used by identifier_probe's "not a function call" rule.
 export const PROBE_OPERATORS = [
   "===",
@@ -390,6 +394,12 @@ export const js_paren_common = [
 export const operators = (after: null | "regex_allow" | "tmpl_regex_allow") =>
   match(OP_ALL_OUTSIDE_MEMBER, TOKENS.operator, to(after));
 
+// a postfix operator goes to div or stays on null, every other operator goes to after
+export const operators_after_value = (after: string, div: string | null) => [
+  match(POSTFIX_OPERATORS, TOKENS.operator, to(div)),
+  match(OP_AFTER_VALUE, TOKENS.operator, to(after)),
+];
+
 // Keyword + literal branching.
 //   regexDest → where REGEX_PRECEDING_KEYWORDS go after matching
 //   divDest   → where DIVISION_KEYWORDS / literals go after matching
@@ -558,8 +568,10 @@ export default define_grammar({
         match([",", ";", ":"], TOKENS.punctuation, goto("regex_allow")),
         // Dot accessor — the name after it is never a keyword.
         ...member_access_entry("member_access"),
-        // All operators including `/` and `/=` — sideways to regex_allow
-        match([...OP_ALL_OUTSIDE_MEMBER, "/"], TOKENS.operator, goto("regex_allow")),
+        // a postfix operator leaves the value standing
+        match(POSTFIX_OPERATORS, TOKENS.operator, goto("division")),
+        // every other operator goes sideways to regex_allow, / and /= included
+        match([...OP_AFTER_VALUE, "/"], TOKENS.operator, goto("regex_allow")),
         // Whitespace after identifier → switch to division context
         on([" ", "\t", "\n", "\r"], goto("division")),
       ],
@@ -571,7 +583,7 @@ export default define_grammar({
     division: {
       rules: [
         ...js_common,
-        operators("regex_allow"),
+        ...operators_after_value("regex_allow", null),
         ...keywordsLiterals("regex_allow", null),
 
         // Opening brackets — after these, `/` is regex
@@ -783,7 +795,7 @@ export default define_grammar({
     tmpl_division: {
       rules: [
         ...js_tmpl_common,
-        operators("tmpl_regex_allow"),
+        ...operators_after_value("tmpl_regex_allow", null),
         ...keywordsLiterals("tmpl_regex_allow", null),
 
         match("}", TOKENS.punctuation, leave()),
@@ -880,7 +892,8 @@ export default define_grammar({
         match([")", "]"], TOKENS.punctuation, goto("tmpl_division")),
         match([",", ";", ":"], TOKENS.punctuation, goto("tmpl_regex_allow")),
         ...member_access_entry("member_access_tmpl"),
-        match([...OP_ALL_OUTSIDE_MEMBER, "/"], TOKENS.operator, goto("tmpl_regex_allow")),
+        match(POSTFIX_OPERATORS, TOKENS.operator, goto("tmpl_division")),
+        match([...OP_AFTER_VALUE, "/"], TOKENS.operator, goto("tmpl_regex_allow")),
         on([" ", "\t", "\n", "\r"], goto("tmpl_division")),
       ],
     },
