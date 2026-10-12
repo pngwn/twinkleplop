@@ -1,5 +1,5 @@
 // JavaScript grammar — regex/division disambiguation via state machine.
-// Built with the @twinkleplop/core DSL helpers (match/on/keyword/within/fallback
+// Built with the @twinkleplop/core DSL helpers (match/on/keyword/fallback
 // + enter/goto/leave/to), so rules are plain JS composition rather than a
 // declarative JSON blob.
 
@@ -17,7 +17,6 @@ import {
   on,
   range,
   to,
-  within,
 } from "@twinkleplop/core";
 
 import { define_grammar } from "@twinkleplop/core/compile";
@@ -205,8 +204,13 @@ export const IDENTIFIER_TERMINATORS = [
 // Common rule constants
 // ---------------------------------------------------------------------------
 
-export const SINGLE_LINE_COMMENT = within("//", "\n", "comment");
-export const MULTI_LINE_COMMENT = within("/*", "*/", "comment");
+// not within, which compiles a private body state for every state that carries the rule
+export const SINGLE_LINE_COMMENT = match("//", TOKENS.comment, enter("line_comment"));
+export const MULTI_LINE_COMMENT = match("/*", TOKENS.comment, enter("block_comment"));
+export const comment_body_state = (end: string) => ({
+  rules: [match(end, TOKENS.comment, leave()), match(range([[0, 0xffff]]), TOKENS.comment)],
+});
+
 // strings use explicit body states (string_double / string_single) so that
 // escape sequences (\n, \t, \xNN, \uNNNN, \u{...}) can be emitted as distinct
 // `string_escape` tokens. the body states themselves are defined on the
@@ -450,6 +454,9 @@ export default define_grammar({
         on(["_", "$", LETTER], goto("identifier_probe")),
       ],
     },
+
+    line_comment: comment_body_state("\n"),
+    block_comment: comment_body_state("*/"),
 
     member_access: member_access("division", "identifier_probe"),
     member_access_tmpl: member_access("tmpl_division", "identifier_probe_tmpl"),
