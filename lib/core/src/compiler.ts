@@ -66,6 +66,19 @@ function add_non_ascii(
   list.push(start, end, rule_idx);
 }
 
+// stable and longest first, buckets are tiny and mostly ordered so this beats a comparator sort
+function sort_by_length_desc(bucket: PatternInfo[]): void {
+  for (let i = 1; i < bucket.length; i++) {
+    const item = bucket[i];
+    let j = i - 1;
+    while (j >= 0 && bucket[j].length < item.length) {
+      bucket[j + 1] = bucket[j];
+      j--;
+    }
+    bucket[j + 1] = item;
+  }
+}
+
 // preprocess grammar to expand match_within rules into states
 function preprocess_grammar(grammar: Grammar): Grammar {
   const processed_grammar: Grammar = {
@@ -563,8 +576,9 @@ export function compile(grammar: Grammar): CompiledGrammar {
     // sort each bucket by descending length to enable first fit longest match
     let has_any = false;
     for (let i = 0; i < 128; i++) {
-      if (state_buckets[i] && state_buckets[i]!.length > 0) {
-        state_buckets[i]!.sort((a, b) => b.length - a.length);
+      const bucket = state_buckets[i];
+      if (bucket !== null) {
+        if (bucket.length > 1) sort_by_length_desc(bucket);
         has_any = true;
       }
     }
