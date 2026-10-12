@@ -103,6 +103,9 @@ export const REGEX_PRECEDING_KEYWORDS = [
 // Keywords after which `/` is division (value-producing keywords).
 export const DIVISION_KEYWORDS = KEYWORDS.filter((k) => !REGEX_PRECEDING_KEYWORDS.includes(k));
 
+// a statement follows the closing paren of their head, so a slash there opens a regex
+export const CONTROL_HEAD_KEYWORDS = ["if", "while", "for", "with"];
+
 // ---------------------------------------------------------------------------
 // Operator sets
 // ---------------------------------------------------------------------------
@@ -404,21 +407,135 @@ export const operators_after_value = (after: string, div: string | null) => [
   match(OP_AFTER_VALUE, TOKENS.operator, to(after)),
 ];
 
+// with headDest the control head keywords go there through a rule of their own,
+// two rules must not match the same word
+export const division_keywords = (words: string[], divDest: string | null, headDest?: string) =>
+  headDest === undefined
+    ? [keyword(words, to(divDest))]
+    : [
+        keyword(CONTROL_HEAD_KEYWORDS, goto(headDest)),
+        keyword(
+          words.filter((k) => !CONTROL_HEAD_KEYWORDS.includes(k)),
+          to(divDest),
+        ),
+      ];
+
 // Keyword + literal branching.
 //   regexDest → where REGEX_PRECEDING_KEYWORDS go after matching
 //   divDest   → where DIVISION_KEYWORDS / literals go after matching
 // null → stay in current state.
 export const keywordsLiterals = (
-  regexDest: null | "regex_allow" | "tmpl_regex_allow",
-  divDest: null | "division" | "tmpl_division",
+  regexDest: string | null,
+  divDest: string | null,
+  headDest?: string,
 ) => [
   keyword(REGEX_PRECEDING_KEYWORDS, to(regexDest)),
-  keyword(DIVISION_KEYWORDS, to(divDest)),
+  ...division_keywords(DIVISION_KEYWORDS, divDest, headDest),
   keyword(SPECIAL_VALUES, to(divDest)),
   // grammar-native booleans — emits `boolean` directly so no reclassifier
   // pass is needed. fidelity downgrade to `identifier` happens at render.
   keyword(BOOLEAN_LITERALS, to(divDest), "boolean"),
 ];
+
+// ---------------------------------------------------------------------------
+// control statement heads
+// ---------------------------------------------------------------------------
+//
+// the top level states do not count parens, so the head_ states read a head
+// every open paren pushes and every closing paren pops without consuming,
+// the state that pushed then knows what the paren closed
+// no head_ state may go sideways to a top level state, that strands the pushed frames
+// a head keyword inside an interpolation or inside another head is not tracked
+
+// dest is the state a statement starts in
+export const control_head_state = (dest: string) => ({
+  rules: [
+    ...js_comments,
+    ...js_whitespace,
+    // for await
+    keyword(["await"]),
+    match("(", TOKENS.punctuation, enter("head_regex_allow")),
+    // the closing paren of the head, handed back by the pop
+    match(")", TOKENS.punctuation, goto(dest)),
+    // no paren so not a head
+    fallback(goto("division")),
+  ],
+});
+
+// head_division reads these so the pop lands after a value and a slash divides,
+// the dot starts a number like .5
+export const HEAD_OPERAND_START = [".", DIGIT, '"', "'", "`"];
+
+// operator_rules must not match ?. which goes to member access here
+export const head_regex_allow_state = (keywords: object[], operator_rules: object[]) => ({
+  rules: [
+    on(HEAD_OPERAND_START, goto("head_division")),
+    on("(", goto("head_paren")),
+    ...js_comments,
+    ...js_whitespace,
+    ...operator_rules,
+    ...keywords,
+
+    match("/", TOKENS.regex, enter("head_regex_pattern")),
+
+    on(")", leave()),
+    match(["{", "["], TOKENS.punctuation),
+    match(["}", "]"], TOKENS.punctuation, goto("head_division")),
+    match("?.", TOKENS.operator, goto("head_member_access")),
+    match([";", ",", ":"], TOKENS.punctuation),
+
+    on(["_", "$", LETTER], goto("head_identifier_probe")),
+  ],
+});
+
+// lead rules precede the operator set to win a tie with it
+export const head_division_state = (keywords: object[], lead: object[] = []) => ({
+  rules: [
+    ...js_comments,
+    ...js_strings,
+    ...js_numbers_arg,
+    js_dot_number_arg,
+    ...js_whitespace,
+    ...lead,
+    ...operators_after_value("head_regex_allow", null),
+    ...keywords,
+
+    on("(", goto("head_paren")),
+    on(")", leave()),
+    match(["{", "["], TOKENS.punctuation, goto("head_regex_allow")),
+    match("/", TOKENS.operator, goto("head_regex_allow")),
+    match(["}", "]"], TOKENS.punctuation),
+    match([";", ",", ":"], TOKENS.punctuation, goto("head_regex_allow")),
+    ...member_access_entry("head_member_access"),
+
+    on(["_", "$", LETTER], goto("head_identifier_probe")),
+  ],
+});
+
+// reached on an open paren without consuming it, the pop lands back here on its closing paren
+export const head_paren_state = {
+  rules: [
+    match("(", TOKENS.punctuation, enter("head_regex_allow")),
+    match(")", TOKENS.punctuation, goto("head_division")),
+    fallback(goto("head_division")),
+  ],
+};
+
+export const head_identifier_state = {
+  rules: [
+    match(["_", "$", ALNUM], TOKENS.identifier),
+    TEMPLATE_LITERAL,
+    on("(", goto("head_paren")),
+    match(["[", "{"], TOKENS.punctuation, goto("head_regex_allow")),
+    on(")", leave()),
+    match(["]", "}"], TOKENS.punctuation, goto("head_division")),
+    match([",", ";", ":"], TOKENS.punctuation, goto("head_regex_allow")),
+    ...member_access_entry("head_member_access"),
+    match(POSTFIX_OPERATORS, TOKENS.operator, goto("head_division")),
+    match([...OP_AFTER_VALUE, "/"], TOKENS.operator, goto("head_regex_allow")),
+    on([" ", "\t", "\n", "\r"], goto("head_division")),
+  ],
+};
 
 // ---------------------------------------------------------------------------
 // Grammar
@@ -438,7 +555,7 @@ export default define_grammar({
       rules: [
         ...js_common,
         operators(null),
-        ...keywordsLiterals(null, "division"),
+        ...keywordsLiterals(null, "division", "control_head"),
 
         // Here, `/` is a regex!
         match("/", TOKENS.regex, enter("regex_pattern")),
@@ -497,6 +614,46 @@ export default define_grammar({
     call_operand_tmpl: call_operand_state("tmpl_division"),
 
     member_access_paren,
+
+    // -------------------------------------------------------------------------
+    // control statement heads
+    // -------------------------------------------------------------------------
+    control_head: control_head_state("regex_allow"),
+    head_regex_allow: head_regex_allow_state(keywordsLiterals(null, "head_division"), [
+      operators(null),
+    ]),
+    head_division: head_division_state(keywordsLiterals("head_regex_allow", null)),
+    head_paren: head_paren_state,
+    head_member_access: member_access("head_division", "head_identifier_probe"),
+    head_identifier_probe: {
+      mode: "probe",
+      fallback: "head_identifier",
+      rules: [
+        on("(", goto("head_function_name")),
+        on([...IDENTIFIER_TERMINATORS, ...PROBE_OPERATORS], goto("head_identifier")),
+      ],
+    },
+    // pushes for its own call, the probe saw the open paren first so a closing paren
+    // seen here is the one the pop hands back
+    head_function_name: {
+      rules: [
+        match(["_", "$", ALNUM], TOKENS.function),
+        match("(", TOKENS.punctuation, enter("head_regex_allow")),
+        match(")", TOKENS.punctuation, goto("head_division")),
+        on([" ", "\t"]),
+      ],
+    },
+    head_identifier: head_identifier_state,
+    // regex_pattern except that an unterminated pattern pops back into the head
+    head_regex_pattern: {
+      rules: [
+        match("/", TOKENS.regex, goto("regex_flags")),
+        match("\\", TOKENS.regex, enter("regex_escape")),
+        match("[", TOKENS.regex, enter("regex_class")),
+        on(["\n", ";"], leave()),
+        fallback({ token: TOKENS.regex }),
+      ],
+    },
 
     // -------------------------------------------------------------------------
     // Number states — argument/group context (pop back on exit)
@@ -591,7 +748,7 @@ export default define_grammar({
       rules: [
         ...js_common,
         ...operators_after_value("regex_allow", null),
-        ...keywordsLiterals("regex_allow", null),
+        ...keywordsLiterals("regex_allow", null, "control_head"),
 
         // Opening brackets — after these, `/` is regex
         match(["(", "{", "["], TOKENS.punctuation, goto("regex_allow")),

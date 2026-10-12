@@ -1004,6 +1004,37 @@ describe("TypeScript type positions outside the top level", () => {
   });
 });
 
+describe("TypeScript regex after a control-statement head", () => {
+  const regexes = (src) =>
+    enrich(src)
+      .filter((t) => t.type === "regex")
+      .map((t) => t.value);
+
+  it("a slash after the head of if, while, for and with opens a regex", () => {
+    const tokens = enrich("if (x) /foo/.test(y);");
+    expect(type_of(tokens, "/foo/")).toBe("regex");
+    expect(type_of(tokens, "test")).toBe("function");
+    expect(regexes("while (i--) /a/g.exec(s);")).toEqual(["/a/g"]);
+    expect(regexes("for (const k of ks) /^_/.test(k);")).toEqual(["/^_/"]);
+  });
+
+  it("the head reads casts, non-null assertions and type arguments", () => {
+    const cast = enrich("if (x as Foo) /re/.test(y);");
+    expect(type_of(cast, "Foo")).toBe("type");
+    expect(type_of(cast, "/re/")).toBe("regex");
+    expect(regexes("while (a! / b > c) /re/.test(y);")).toEqual(["/re/"]);
+    const call = enrich("if (m.get<Foo>(k)) /re/.test(y);");
+    expect(type_of(call, "get")).toBe("function");
+    expect(type_of(call, "Foo")).toBe("type");
+    expect(type_of(call, "/re/")).toBe("regex");
+  });
+
+  it("a slash after a call or a group still divides", () => {
+    expect(regexes("x = f(a) / 2 / b;")).toEqual([]);
+    expect(regexes("if (a) (b) / 2 / c;")).toEqual([]);
+  });
+});
+
 describe("TypeScript comparisons that look like type arguments", () => {
   it("a logical operator between the angles", () => {
     const tokens = enrich("if (a < b && c > (d + 1)) { go(); }");

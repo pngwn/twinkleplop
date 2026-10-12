@@ -72,6 +72,8 @@ import {
   REGEX_PRECEDING_KEYWORDS,
   SINGLE_LINE_COMMENT,
   SPECIAL_VALUES,
+  division_keywords,
+  head_regex_allow_state,
   js_common,
   js_tmpl_common,
 } from "@twinkleplop/javascript";
@@ -132,9 +134,14 @@ const tsx_operators = (after: string | null) => match(OP_ALL_NO_LT, TOKENS.opera
 
 const tsx_compound_lt = match(OP_LT_COMPOUND, TOKENS.operator);
 
-const tsx_keywords_literals = (regex_dest: string | null, div_dest: string | null) => [
+// head_dest takes the keywords that open a control statement head, left out they go to div_dest
+const tsx_keywords_literals = (
+  regex_dest: string | null,
+  div_dest: string | null,
+  head_dest?: string,
+) => [
   keyword(REGEX_PRECEDING_KEYWORDS, to(regex_dest)),
-  keyword(ALL_DIVISION_KEYWORDS, to(div_dest)),
+  ...division_keywords(ALL_DIVISION_KEYWORDS, div_dest, head_dest),
   keyword(BOOLEAN_LITERALS, to(div_dest), TOKENS.boolean),
   keyword(SPECIAL_VALUES, to(div_dest)),
 ];
@@ -207,7 +214,7 @@ export default define_grammar({
 
         // remaining operators (bare `<` + compound-<s already removed).
         tsx_operators(null),
-        ...tsx_keywords_literals(null, "division"),
+        ...tsx_keywords_literals(null, "division", "control_head"),
 
         match("@", TOKENS.decorator, enter("decorator")),
         match("/", TOKENS.regex, enter("regex_pattern")),
@@ -237,6 +244,17 @@ export default define_grammar({
         ...ts_grammar.states.function_body_tmpl.rules,
       ],
     },
+
+    // a head reads call arguments here too so the jsx intercept applies,
+    // ?. is left to the member access rule the state carries
+    head_regex_allow: head_regex_allow_state(tsx_keywords_literals(null, "head_division"), [
+      tsx_compound_lt,
+      on("<", enter("jsx_or_lt_probe")),
+      match(
+        OP_ALL_NO_LT.filter((o) => o !== "?."),
+        TOKENS.operator,
+      ),
+    ]),
 
     // -------------------------------------------------------------------
     // tmpl_regex_allow — inside `${...}` interpolations AND jsx `{...}`

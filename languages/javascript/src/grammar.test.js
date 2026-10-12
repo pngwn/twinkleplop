@@ -87,4 +87,28 @@ describe("stack balance", () => {
       ["punctuation", ";"],
     ]);
   });
+  it("tokenizes the tail after 300 control-statement heads", () => {
+    const unit =
+      "if (f(a, (b), g(c))) /re/.test(d);\n" +
+      "while ((m = re.exec(s)) !== null) n++;\n" +
+      "for (let i = 0; i < n; i++) { if (a[i]) b(); }\n" +
+      "if (x = /abc\n) y;\n" +
+      "if (`${a ? (b) : c}` === d) e;\n";
+    const input = `${unit.repeat(300)}if (x) /re/.test(y);`;
+    const tail = get_tokens(input)
+      .slice(-10)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["keyword", "if"],
+      ["punctuation", "("],
+      ["identifier", "x"],
+      ["punctuation", ")"],
+      ["regex", "/re/"],
+      ["punctuation", "."],
+      ["function", "test"],
+      ["punctuation", "("],
+      ["identifier", "y"],
+      ["punctuation", ");"],
+    ]);
+  });
 });

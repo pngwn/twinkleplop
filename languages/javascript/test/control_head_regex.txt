@@ -1,0 +1,19 @@
+if (x) /foo/.test(y);
+if (f(a) / 2 > (b + c) / 3) /re/g.exec(s);
+while (i--) /a/.test(s) && n++;
+for (const k of ks) /^_/.test(k) && skip(k);
+for (let i = 0; i < n; i++) /x/.test(a[i]);
+for await (const c of cs) /y/.test(c);
+with (o) /re/.test(p);
+if (a) (b) / 2 / c;
+if (/[)]/.test(a) && b !== ")") /re/.test(c);
+if (`${a ? (b) : c}` / 2 > d) /re/.test(e);
+if (xs.some((x) => x / 2 > 1)) /re/.test(g);
+if (x) // note
+  /re/.test(y);
+if (a) {
+} else if ((b) / 2 > c) d = e / 2 / f;
+if (/a;b/.test(h)) /re/.test(i);
+const o = { if: 1, for: 2 };
+const q = o.if / 2 / r;
+const after = { ok: true };

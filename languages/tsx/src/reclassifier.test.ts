@@ -148,3 +148,22 @@ describe("TSX comparisons that look like type arguments", () => {
     expect(type_of(src, "<")).toBe("punctuation");
   });
 });
+
+describe("TSX regex after a control-statement head", () => {
+  it("a slash after the head opens a regex", () => {
+    expect(type_of("if (x) /foo/.test(y);", "/foo/")).toBe("regex");
+    expect(type_of("while (a < b) /re/.test(y);", "/re/")).toBe("regex");
+  });
+
+  it("jsx in a call inside the head still reads as jsx", () => {
+    const src = "if (seen.has(<Foo a={1} />)) /re/.test(x);";
+    expect(type_of(src, "Foo")).toBe("tag_name");
+    expect(type_of(src, "a")).toBe("attr_name");
+    expect(type_of(src, "/re/")).toBe("regex");
+  });
+
+  it("a slash after a call or a group still divides", () => {
+    expect(type_of("x = f(a) / 2 / b;", "/")).toBe("operator");
+    expect(type_of("if (a) (b) / 2 / c;", "/")).toBe("operator");
+  });
+});
