@@ -1,5 +1,11 @@
 # @twinkleplop/theme-github
 
+## 0.2.5
+### Patch Changes
+
+- Updated dependencies [[`a09ba1a`](https://github.com/pngwn/twinkleplop/commit/a09ba1a35cc5c979bf967215b7c28c1b9b59b7b7), [`ff0e7f2`](https://github.com/pngwn/twinkleplop/commit/ff0e7f24eb4d5cefde60ae6d4806b218afd30f18)]:
+  - @twinkleplop/core@0.3.2
+
 ## 0.2.4
 ### Patch Changes
 

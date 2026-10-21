@@ -1,5 +1,15 @@
 # @twinkleplop/dockerfile
 
+## 0.2.2
+### Patch Changes
+
+
+
+- [#167](https://github.com/pngwn/twinkleplop/pull/167) [`c973638`](https://github.com/pngwn/twinkleplop/commit/c9736388d48ec7d27357294028146b0ea78985a4) Thanks [@pngwn](https://github.com/pngwn)! - A parser directive value, such as `docker/dockerfile:1.7` in `# syntax=docker/dockerfile:1.7`, ends at its line break. A comment or another directive on the next line is its own token instead of being merged into the value.
+
+- Updated dependencies [[`a09ba1a`](https://github.com/pngwn/twinkleplop/commit/a09ba1a35cc5c979bf967215b7c28c1b9b59b7b7), [`ff0e7f2`](https://github.com/pngwn/twinkleplop/commit/ff0e7f24eb4d5cefde60ae6d4806b218afd30f18)]:
+  - @twinkleplop/core@0.3.2
+
 ## 0.2.1
 ### Patch Changes
 
