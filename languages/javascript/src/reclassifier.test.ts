@@ -1046,6 +1046,46 @@ describe("JavaScript reclassifier — export * as namespace", () => {
   });
 });
 
+describe("JavaScript regex after a control-statement head", () => {
+  const regexes = (src) =>
+    enrich(src)
+      .filter((t) => t.type === "regex")
+      .map((t) => t.value);
+
+  it("a slash after the head of if, while, for and with opens a regex", () => {
+    const tokens = enrich("if (x) /foo/.test(y);");
+    expect(type_of(tokens, "/foo/")).toBe("regex");
+    expect(type_of(tokens, "test")).toBe("function");
+    expect(regexes("while (i--) /a/g.exec(s);")).toEqual(["/a/g"]);
+    expect(regexes("for (const k of ks) /^_/.test(k);")).toEqual(["/^_/"]);
+    expect(regexes("with (o) /re/.test(p);")).toEqual(["/re/"]);
+  });
+
+  it("the head is matched through calls and groups", () => {
+    expect(regexes("if (f(a, (b)) / 2 > (c + d) / 3) /re/.test(e);")).toEqual(["/re/"]);
+    expect(regexes("if (/[)]/.test(a)) /re/.test(b);")).toEqual(["/[)]/", "/re/"]);
+  });
+
+  it("a slash after a call or a group still divides", () => {
+    expect(regexes("x = f(a) / 2 / b;")).toEqual([]);
+    expect(regexes("x = (a) / 2 / b;")).toEqual([]);
+    expect(regexes("if (a) (b) / 2 / c;")).toEqual([]);
+    expect(regexes("if (a) b = (c) / 2 / d;")).toEqual([]);
+  });
+});
+
+describe("JavaScript comparisons", () => {
+  it("angles around a logical operator are comparisons", () => {
+    const tokens = enrich("if (a < b && c > (d + 1)) { go(); }");
+    expect(type_of(tokens, "a")).toBe("identifier");
+    expect(type_of(tokens, "b")).toBe("identifier");
+    expect(type_of(tokens, "c")).toBe("identifier");
+    expect(type_of(tokens, "<")).toBe("operator");
+    expect(type_of(tokens, ">")).toBe("operator");
+    expect(type_of(tokens, "go")).toBe("function");
+  });
+});
+
 describe("may_embed_groups", () => {
   it("is true when a tag and its template are split by dropped characters", () => {
     expect(may_embed_groups("x = html`<b></b>`")).toBe(true);

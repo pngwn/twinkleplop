@@ -26,6 +26,7 @@ export {
   not,
   params,
   type_span,
+  is_value_only_operator,
   GRAMMAR_EXTENSION_DOWNGRADES,
   GRAMMAR_EXTENSION_CATEGORIES,
 } from "./reclassifier";

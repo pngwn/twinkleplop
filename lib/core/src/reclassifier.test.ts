@@ -9,6 +9,7 @@ import {
   create_language,
   embed_grammars,
   embed_interleaved,
+  is_value_only_operator,
   not,
   optional,
   params,
@@ -2322,7 +2323,7 @@ describe("reclassifier — type_span construct", () => {
           },
           { range: [["0", "9"]], token: "number" },
           { match: ["=>", "?:"], token: "operator" },
-          { match: ["=", "?", "<", ">", "+", "|"], token: "operator" },
+          { match: ["=", "?", "<", ">", "+", "|", "&", "*", "-", "!"], token: "operator" },
           { match: ["(", ")", "{", "}", "[", "]", ",", ";", ":", "."], token: "punctuation" },
           { match: [" ", "\t", "\n"] },
         ],
@@ -2483,5 +2484,59 @@ describe("reclassifier — type_span construct", () => {
     ];
     expect(srun("f < a , b > ( )", rules)).toEqual(["a", "b"]);
     expect(srun("x < y ; z > w ;", rules)).toEqual([]);
+  });
+
+  test("verify_generic_args rejects a value-only operator between the angles", () => {
+    const rules: RewriteRule[] = [
+      {
+        anchor: { type_name: "operator", value: "<" },
+        before: type("identifier"),
+        when: type_span({
+          into: "types",
+          enter_angle: true,
+          exit_on_comma: false,
+          verify_generic_args: true,
+        }),
+        rewrite: { types: "type" },
+      },
+    ];
+    expect(srun("a < b && c > ( d )", rules)).toEqual([]);
+    expect(srun("a < b || c > ( d )", rules)).toEqual([]);
+    expect(srun("a < b * c > ( d )", rules)).toEqual([]);
+    expect(srun("a < b &&! c > ( d )", rules)).toEqual([]);
+    expect(srun("f < a | b , c & d > ( )", rules)).toEqual(["a", "b", "c", "d"]);
+    expect(srun("f < a , - 1 > ( )", rules)).toEqual(["a"]);
+  });
+});
+
+describe("is_value_only_operator", () => {
+  const check = (op: string): boolean => is_value_only_operator(op, 0, op.length);
+
+  test("operators only a value expression can hold", () => {
+    const ops = [
+      ["*", "/", "%", "**", "^", "~", "!"],
+      ["==", "!=", "===", "!==", "<=", ">="],
+      ["&&", "||", "??", "?.", "++", "--"],
+      ["+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "**="],
+      ["&&=", "||=", "??=", "<<=", ">>=", ">>>="],
+    ].flat();
+    for (const op of ops) expect([op, check(op)]).toEqual([op, true]);
+  });
+
+  test("operators a type argument list can hold", () => {
+    const ops = ["<", ">", ">>", ">>>", "<<", "|", "&", "?", "=", "=>", "...", "+", "-"];
+    for (const op of ops) expect([op, check(op)]).toEqual([op, false]);
+  });
+
+  test("reads the prefix of a coalesced run", () => {
+    expect(check("&&!")).toBe(true);
+    expect(check("*-")).toBe(true);
+    expect(check("===-")).toBe(true);
+    expect(check("|-")).toBe(false);
+  });
+
+  test("reads the span, not the whole input", () => {
+    expect(is_value_only_operator("a && b", 2, 4)).toBe(true);
+    expect(is_value_only_operator("a | b && c", 2, 3)).toBe(false);
   });
 });

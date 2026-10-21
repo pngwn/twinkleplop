@@ -48,9 +48,13 @@ import {
   OP_ALL_OUTSIDE_MEMBER,
   REGEX_PRECEDING_KEYWORDS,
   SPECIAL_VALUES,
+  division_keywords,
   function_body_state,
+  head_division_state,
+  head_regex_allow_state,
   js_common,
   member_access_entry,
+  operators_after_value,
   paren_group_state,
   raw_grammar as js_grammar,
   js_tmpl_common,
@@ -109,9 +113,14 @@ const ts_operators = (after: string | null) =>
 // it must precede the operator set to win the tie on !
 const non_null_assertion = (div_dest: string | null) => match("!", TOKENS.operator, to(div_dest));
 
-const ts_keywords_literals = (regex_dest: string | null, div_dest: string | null) => [
+// head_dest takes the keywords that open a control statement head, left out they go to div_dest
+const ts_keywords_literals = (
+  regex_dest: string | null,
+  div_dest: string | null,
+  head_dest?: string,
+) => [
   keyword(REGEX_PRECEDING_KEYWORDS, to(regex_dest)),
-  keyword(ALL_DIVISION_KEYWORDS, to(div_dest)),
+  ...division_keywords(ALL_DIVISION_KEYWORDS, div_dest, head_dest),
   keyword(SPECIAL_VALUES, to(div_dest)),
   // grammar-native booleans (matches JS).
   keyword(BOOLEAN_LITERALS, to(div_dest), "boolean"),
@@ -156,6 +165,20 @@ export default define_grammar({
     paren_group: paren_group_state(ts_keywords_literals(null, null)),
 
     // ---------------------------------------------------------------------
+    // control statement heads, rebuilt with the typescript keywords and the
+    // non null ! so casts and assertions read correctly inside a head
+    // ---------------------------------------------------------------------
+    head_regex_allow: head_regex_allow_state(ts_keywords_literals(null, "head_division"), [
+      ts_operators(null),
+    ]),
+    head_division: head_division_state(ts_keywords_literals("head_regex_allow", null), [
+      non_null_assertion(null),
+    ]),
+    head_identifier: {
+      rules: [non_null_assertion("head_division"), ...js_grammar.states.head_identifier.rules],
+    },
+
+    // ---------------------------------------------------------------------
     // regex_allow — initial state; `/` starts a regex here
     // override: TS keywords + built-in types + decorator
     // ---------------------------------------------------------------------
@@ -163,7 +186,7 @@ export default define_grammar({
       rules: [
         ...js_common,
         ts_operators(null),
-        ...ts_keywords_literals(null, "division"),
+        ...ts_keywords_literals(null, "division", "control_head"),
 
         // decorator: `@` sigil enters a dedicated state that extends the
         // decorator span across the identifier chain (`@foo`, `@foo.bar`,
@@ -193,8 +216,8 @@ export default define_grammar({
       rules: [
         ...js_common,
         non_null_assertion(null),
-        ts_operators("regex_allow"),
-        ...ts_keywords_literals("regex_allow", null),
+        ...operators_after_value("regex_allow", null),
+        ...ts_keywords_literals("regex_allow", null, "control_head"),
 
         // decorator: `@` sigil enters a dedicated state that extends the
         // decorator span across the identifier chain (`@foo`, `@foo.bar`,
@@ -253,7 +276,7 @@ export default define_grammar({
       rules: [
         ...js_tmpl_common,
         non_null_assertion(null),
-        ts_operators("tmpl_regex_allow"),
+        ...operators_after_value("tmpl_regex_allow", null),
         ...ts_keywords_literals("tmpl_regex_allow", null),
 
         // decorator: `@` sigil enters a dedicated state that extends the

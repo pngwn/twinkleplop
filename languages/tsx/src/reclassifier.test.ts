@@ -123,3 +123,47 @@ describe("TSX `<` after whitespace in a would-be tag", () => {
     expect(type_of("const el = <Foo\n  bar={1}\n/>;", "bar")).toBe("attr_name");
   });
 });
+
+describe("TSX comparisons that look like type arguments", () => {
+  it("a logical operator between the angles makes them comparisons", () => {
+    const src = "if (a < b && c > (d + 1)) { go(); }";
+    expect(type_of(src, "a")).toBe("identifier");
+    expect(type_of(src, "b")).toBe("identifier");
+    expect(type_of(src, "c")).toBe("identifier");
+    expect(type_of(src, "<")).toBe("operator");
+    expect(type_of(src, ">")).toBe("operator");
+  });
+
+  it("holds inside a jsx expression container", () => {
+    const src = "const el = <p>{a < b && c > (d) ? x : y}</p>;";
+    expect(type_of(src, "a")).toBe("identifier");
+    expect(type_of(src, "b")).toBe("identifier");
+    expect(type_of(src, "c")).toBe("identifier");
+  });
+
+  it("type arguments keep their reading", () => {
+    const src = "const r = pick<A | B>(x);";
+    expect(type_of(src, "pick")).toBe("function");
+    expect(type_of(src, "A")).toBe("type");
+    expect(type_of(src, "<")).toBe("punctuation");
+  });
+});
+
+describe("TSX regex after a control-statement head", () => {
+  it("a slash after the head opens a regex", () => {
+    expect(type_of("if (x) /foo/.test(y);", "/foo/")).toBe("regex");
+    expect(type_of("while (a < b) /re/.test(y);", "/re/")).toBe("regex");
+  });
+
+  it("jsx in a call inside the head still reads as jsx", () => {
+    const src = "if (seen.has(<Foo a={1} />)) /re/.test(x);";
+    expect(type_of(src, "Foo")).toBe("tag_name");
+    expect(type_of(src, "a")).toBe("attr_name");
+    expect(type_of(src, "/re/")).toBe("regex");
+  });
+
+  it("a slash after a call or a group still divides", () => {
+    expect(type_of("x = f(a) / 2 / b;", "/")).toBe("operator");
+    expect(type_of("if (a) (b) / 2 / c;", "/")).toBe("operator");
+  });
+});

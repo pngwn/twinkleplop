@@ -1830,6 +1830,50 @@ function angle_pops(input: string, s: number, e: number): number {
   return len;
 }
 
+const CH_STAR = 0x2a;
+const CH_SLASH = 0x2f;
+const CH_PERCENT = 0x25;
+const CH_CARET = 0x5e;
+const CH_TILDE = 0x7e;
+const CH_PLUS = 0x2b;
+const CH_MINUS = 0x2d;
+
+/**
+ * True when the operator token at `s..e` starts with an operator that only a
+ * value expression can hold. It reads a prefix because single char operators
+ * coalesce, and it skips `+` and `-`, which a type argument can carry.
+ *
+ * @example
+ * is_value_only_operator("a &&! b", 2, 5); // true
+ * is_value_only_operator("Box<-1>", 4, 5); // false
+ */
+export function is_value_only_operator(input: string, s: number, e: number): boolean {
+  const c0 = input.charCodeAt(s);
+  if (
+    c0 === CH_STAR ||
+    c0 === CH_SLASH ||
+    c0 === CH_PERCENT ||
+    c0 === CH_CARET ||
+    c0 === CH_TILDE ||
+    c0 === CH_BANG
+  ) {
+    return true;
+  }
+  if (e - s < 2) return false;
+  const c1 = input.charCodeAt(s + 1);
+  // an = in second place is a comparison or an assignment, an arrow has it first
+  if (c1 === CH_EQ) return true;
+  if (c0 === CH_QMARK) return c1 === CH_QMARK || c1 === CH_DOT;
+  if (c0 !== c1) return false;
+  // && || ++ --
+  if (c0 === CH_AMP || c0 === CH_PIPE || c0 === CH_PLUS || c0 === CH_MINUS) return true;
+  if (c0 !== CH_LT && c0 !== CH_GT) return false;
+  // a shift assignment, a bare shift is left alone
+  let k = s + 2;
+  while (k < e && input.charCodeAt(k) === c0) k++;
+  return k < e && input.charCodeAt(k) === CH_EQ;
+}
+
 // does the angle group opening at `idx` close and hand straight over to a
 // parameter list? that is a method signature's type parameters --
 // `{ make<T>(base: T): T }` -- and the name before it is not a type.
@@ -1906,14 +1950,16 @@ function type_span_verify_angle(
     if (spec.operator_id >= 0 && t === spec.operator_id) {
       if (e - s === 1 && input.charCodeAt(s) === CH_LT) {
         depth++;
-      } else if (brace_depth === 0) {
-        const pops = angle_pops(input, s, e);
+      } else {
+        const pops = brace_depth === 0 ? angle_pops(input, s, e) : 0;
         if (pops > 0) {
           depth -= pops;
           if (depth <= 0) {
             matched_close = j;
             break;
           }
+        } else if (is_value_only_operator(input, s, e)) {
+          return false;
         }
       }
     } else if (t === spec.punct_id) {

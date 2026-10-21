@@ -24,6 +24,7 @@ import {
   as_claim_producer,
   embed_interleaved,
   frame_track,
+  is_value_only_operator,
   make_token_view,
   precedence_for,
   rewrite_types,
@@ -790,7 +791,8 @@ export const claim_ts_property_scope: ClaimingReclassifier = as_claim_producer(
 );
 
 // returns the operator closing the group opened at open, or a negative index
-// when a semicolon or an unmatched closing brace at brace depth zero comes first
+// when a semicolon or an unmatched closing brace at brace depth zero comes first,
+// or when an operator only a value expression can hold sits between the angles
 function scan_angle_group(
   view: View,
   input: string,
@@ -826,6 +828,8 @@ function scan_angle_group(
         depth -= len;
         if (angles !== null) angles.push(j);
         if (depth <= 0) return j;
+      } else if (is_value_only_operator(input, s, e)) {
+        return -1;
       }
     } else if (kk === punctuation_id) {
       for (let k = s; k < e; k++) {
