@@ -85,3 +85,15 @@ records variation between rounds for each library.
 
 To add a library, implement an adapter in `libraries.mjs` following the rules
 at the top of the file.
+
+Two adapters are opt-in and not bench dependencies: `kirari` and
+`pierre-highlights`. Install the package anywhere, point the environment
+variable at the installed package directory, and name the library:
+
+```bash
+KIRARI_DIR=<dir>/node_modules/@vortexlabs/kirari node lib/bench/compare/bin/compare.mjs --libraries twinkleplop,kirari
+```
+
+```bash
+PIERRE_DIR=<dir>/node_modules/@pierre/highlights node lib/bench/compare/bin/compare.mjs --libraries twinkleplop,pierre-highlights
+```
