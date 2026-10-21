@@ -25,6 +25,8 @@ import { define_grammar } from "@twinkleplop/core/compile";
 
 const WS = [" ", "\t"];
 const EOL = ["\r\n", "\n", "\r"];
+// every pair of line breaks except \r then \n, which is one crlf break
+const BLANK_LINE = EOL.flatMap((a) => EOL.map((b) => a + b)).filter((pair) => pair !== "\r\n");
 const OPERATORS = [
   "<<-",
   "<<",
@@ -114,8 +116,13 @@ const mode = (prefix: string, escape: string): Record<string, GrammarState> => {
         fallback(goto(s("ordinary_comment"))),
       ],
     },
+    // single chars so the goto leaves the whole line break for directive_next
     [s("directive_value")]: {
-      rules: [match(EOL, TOKENS.comment, goto(s("preamble"))), fallback({ token: TOKENS.comment })],
+      rules: [on(["\n", "\r"], goto(s("directive_next"))), fallback({ token: TOKENS.comment })],
+    },
+    // a blank line ends the parser directives
+    [s("directive_next")]: {
+      rules: [on(BLANK_LINE, goto(s("line"))), on(EOL), fallback(goto(s("preamble")))],
     },
     [s("escape_equals")]: {
       rules: [
