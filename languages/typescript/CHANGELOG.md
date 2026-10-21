@@ -1,5 +1,24 @@
 # @twinkleplop/typescript
 
+## 0.1.8
+### Patch Changes
+
+
+
+- [#168](https://github.com/pngwn/twinkleplop/pull/168) [`a09ba1a`](https://github.com/pngwn/twinkleplop/commit/a09ba1a35cc5c979bf967215b7c28c1b9b59b7b7) Thanks [@pngwn](https://github.com/pngwn)! - A `<` and `>` with `&&`, `||` or another operator that only a value expression can hold between them are read as comparisons, so `if (a < b && c > (d + 1))` no longer reads `a` as a generic call and `b` as a type argument.
+
+
+
+- [#168](https://github.com/pngwn/twinkleplop/pull/168) [`be0bfa6`](https://github.com/pngwn/twinkleplop/commit/be0bfa6339abaf91cfd1edb6d68b7d81473922d2) Thanks [@pngwn](https://github.com/pngwn)! - A `/` after the closing parenthesis of an `if`, `while`, `for` or `with` head opens a regex, so the pattern in `if (x) /foo/.test(y)` is read as one. A `/` after a call or a parenthesised expression is still division.
+
+
+
+- [#168](https://github.com/pngwn/twinkleplop/pull/168) [`4fbb77e`](https://github.com/pngwn/twinkleplop/commit/4fbb77e8713ad687a2d1e1f4c60a6829c747e72c) Thanks [@pngwn](https://github.com/pngwn)! - A `/` after a postfix `++` or `--` is read as division, so `a++ / 2 / b` no longer opens a regex.
+
+- Updated dependencies [[`a09ba1a`](https://github.com/pngwn/twinkleplop/commit/a09ba1a35cc5c979bf967215b7c28c1b9b59b7b7), [`be0bfa6`](https://github.com/pngwn/twinkleplop/commit/be0bfa6339abaf91cfd1edb6d68b7d81473922d2), [`ff0e7f2`](https://github.com/pngwn/twinkleplop/commit/ff0e7f24eb4d5cefde60ae6d4806b218afd30f18), [`4fbb77e`](https://github.com/pngwn/twinkleplop/commit/4fbb77e8713ad687a2d1e1f4c60a6829c747e72c)]:
+  - @twinkleplop/core@0.3.2
+  - @twinkleplop/javascript@0.1.8
+
 ## 0.1.7
 ### Patch Changes
 
