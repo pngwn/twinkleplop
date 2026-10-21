@@ -55,12 +55,10 @@
 //     the grammar does not track word-start context. every real-world case
 //     of `#` as literal mid-word is unusual. the fix would require a
 //     word-body state, which is noisy for the few valid inputs it helps.
-//   - heredoc bodies are NOT tracked. `<<EOF` emits `<<` as a redirection
-//     operator and `EOF` as an identifier; the body text that follows is
-//     tokenized as normal bash. this means quoted-delimiter heredocs
-//     (`<<'EOF'`) will wrongly highlight `$var` inside the body. a proper
-//     implementation requires a heredoc queue keyed by delimiter, processed
-//     after each newline — possible but out of scope for this phase.
+//   - heredocs are tracked only for the words in HEREDOC_DELIMITERS, the
+//     tokenizer cannot capture a delimiter so any other word reads as before
+//   - a closer indented with tabs also closes a plain <<, a closer followed
+//     by more text still closes, and a second heredoc on one line is not tracked
 //   - the rhs of `=~` inside `[[ ]]` is tokenized as normal bash words, not
 //     as a distinct regex token. the regex coloring is lost, but the
 //     conditional is still correctly bounded by `]]`.
@@ -311,11 +309,13 @@ const BACKTICK_STRING = within("`", "`", TOKENS.string, { escape: "\\" });
 // the continuation work); nested structural expansions DO change state.
 // ---------------------------------------------------------------------------
 
-const EXPANSION_ENTRIES = [
-  // ansi-c and translated strings MUST come before $(( and $( so the
-  // longer prefixes win.
+// ansi c and translated strings precede $(( and $( so the longer prefixes win
+const DOLLAR_QUOTES = [
   match("$'", TOKENS.string, enter("ansi_string_state")),
   match('$"', TOKENS.string, enter("double_string")),
+];
+
+const EXPANSIONS = [
   match("$((", TOKENS.punctuation, enter("arith")),
   match("$(", TOKENS.punctuation, enter("cmd_sub")),
   match("${", TOKENS.punctuation, enter("param_exp")),
@@ -327,6 +327,8 @@ const EXPANSION_ENTRIES = [
   match("$", TOKENS.operator),
 ];
 
+const EXPANSION_ENTRIES = [...DOLLAR_QUOTES, ...EXPANSIONS];
+
 // string openers shared across command/word contexts.
 const STRING_OPENERS = [
   match('"', TOKENS.string, enter("double_string")),
@@ -335,13 +337,48 @@ const STRING_OPENERS = [
 ];
 
 // ---------------------------------------------------------------------------
+// heredocs
+// ---------------------------------------------------------------------------
+
+// the most common delimiters, each costs four states at compile time
+export const HEREDOC_DELIMITERS = ["EOF", "EOT", "END", "EOL", "EOM", "HEREDOC", "_EOF_", "eof"];
+
+// any quoting of the delimiter makes the body literal
+const quoted = (d: string) => [`'${d}'`, `"${d}"`, `\\${d}`];
+
+// heredoc_open reads the rest of the opening line, heredoc_line starts each
+// body line and pops on the closing word to the context that saw <<
+const heredoc_states = (d: string, raw: boolean) => {
+  const kind = raw ? "_raw" : "";
+  return {
+    [`heredoc_open_${d}${kind}`]: {
+      rules: [on("\n", goto(`heredoc_line_${d}${kind}`)), fallback(enter("heredoc_rest_probe"))],
+    },
+    [`heredoc_line_${d}${kind}`]: {
+      rules: [
+        match(["\n", "\t"], TOKENS.string),
+        keyword([d], leave()),
+        fallback(enter(`heredoc_body_probe${kind}`)),
+      ],
+    },
+  };
+};
+
+// ---------------------------------------------------------------------------
 // command-context rules (shared between main and cmd_sub)
 // ---------------------------------------------------------------------------
 
-const CMD_CONTEXT_RULES = [
-  WS,
+// rest is the tail of a heredoc opening line, it pops at the newline and
+// keeps a second << a plain redirection
+const cmd_context_rules = (rest: boolean) => [
+  ...(rest
+    ? [
+        on("\n", leave()),
+        on([" ", "\t", "\r"]),
+        match("#", TOKENS.comment, enter("heredoc_rest_comment")),
+      ]
+    : [WS, COMMENT, match(["<<", "<<-"], TOKENS.operator, enter("heredoc_delim"))]),
   LINE_CONTINUATION,
-  COMMENT,
   ...EXPANSION_ENTRIES,
   ...STRING_OPENERS,
   // (( before ( so arith command opens first.
@@ -350,9 +387,15 @@ const CMD_CONTEXT_RULES = [
   match(["<(", ">("], TOKENS.punctuation, enter("cmd_sub")),
   match("(", TOKENS.punctuation, enter("cmd_sub")),
   keyword(["[["], enter("conditional")),
-  // redirections (longest first).
-  match(REDIRECT_3, TOKENS.operator),
-  match(REDIRECT_2, TOKENS.operator),
+  // redirections, longest first, << and <<- open heredocs above
+  match(
+    REDIRECT_3.filter((op) => rest || op !== "<<-"),
+    TOKENS.operator,
+  ),
+  match(
+    REDIRECT_2.filter((op) => rest || op !== "<<"),
+    TOKENS.operator,
+  ),
   match(REDIRECT_1, TOKENS.operator),
   // control operators.
   match(CONTROL_3, TOKENS.punctuation),
@@ -381,6 +424,8 @@ const CMD_CONTEXT_RULES = [
   // more often are than aren't.
   match(["-", "/"], TOKENS.operator),
 ];
+
+const CMD_CONTEXT_RULES = cmd_context_rules(false);
 
 // ---------------------------------------------------------------------------
 // grammar
@@ -651,6 +696,61 @@ export default define_grammar({
     },
     ansi_esc_oct_d3: {
       rules: [match(range([["0", "7"]]), TOKENS.string_escape, leave()), fallback(leave())],
+    },
+
+    // ===================================================================
+    // heredocs, an unlisted delimiter pops back without consuming
+    // ===================================================================
+    heredoc_delim: {
+      rules: [
+        on([" ", "\t"]),
+        ...HEREDOC_DELIMITERS.flatMap((d) => [
+          keyword([d], goto(`heredoc_open_${d}`)),
+          match(quoted(d), TOKENS.keyword, goto(`heredoc_open_${d}_raw`)),
+        ]),
+        fallback(leave()),
+      ],
+    },
+
+    ...Object.assign(
+      {},
+      ...HEREDOC_DELIMITERS.flatMap((d) => [heredoc_states(d, false), heredoc_states(d, true)]),
+    ),
+
+    heredoc_rest: { rules: cmd_context_rules(true) },
+    heredoc_rest_comment: {
+      rules: [on("\n", leave()), fallback({ token: TOKENS.comment })],
+    },
+
+    // a probe pushes its entry state without consuming, its exit rewinds
+    heredoc_rest_probe: {
+      mode: "probe",
+      fallback: "heredoc_rest",
+      rules: [fallback(enter("heredoc_rest"))],
+    },
+    heredoc_body_probe: {
+      mode: "probe",
+      fallback: "heredoc_body",
+      rules: [fallback(enter("heredoc_body"))],
+    },
+    heredoc_body_probe_raw: {
+      mode: "probe",
+      fallback: "heredoc_body_raw",
+      rules: [fallback(enter("heredoc_body_raw"))],
+    },
+
+    // one body line, the newline pops back to the line state
+    heredoc_body: {
+      rules: [
+        on("\n", leave()),
+        match(["\\$", "\\`", "\\\\"], TOKENS.string_escape),
+        ...EXPANSIONS,
+        BACKTICK_STRING,
+        fallback({ token: TOKENS.string }),
+      ],
+    },
+    heredoc_body_raw: {
+      rules: [on("\n", leave()), fallback({ token: TOKENS.string })],
     },
 
     // ===================================================================

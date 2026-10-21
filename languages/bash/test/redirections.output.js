@@ -378,25 +378,19 @@ export const test = [
 		"match": "<<"
 	},
 	{
-		"type": "identifier",
+		"type": "keyword",
 		"start": 276,
 		"end": 279,
 		"match": "EOF"
 	},
 	{
-		"type": "identifier",
-		"start": 280,
-		"end": 287,
-		"match": "literal"
+		"type": "string",
+		"start": 279,
+		"end": 293,
+		"match": "\nliteral text\n"
 	},
 	{
-		"type": "identifier",
-		"start": 288,
-		"end": 292,
-		"match": "text"
-	},
-	{
-		"type": "identifier",
+		"type": "keyword",
 		"start": 293,
 		"end": 296,
 		"match": "EOF"
@@ -420,19 +414,19 @@ export const test = [
 		"match": "<<-"
 	},
 	{
-		"type": "identifier",
+		"type": "keyword",
 		"start": 325,
 		"end": 328,
 		"match": "END"
 	},
 	{
-		"type": "identifier",
-		"start": 330,
-		"end": 338,
-		"match": "stripped"
+		"type": "string",
+		"start": 328,
+		"end": 340,
+		"match": "\n\tstripped\n\t"
 	},
 	{
-		"type": "identifier",
+		"type": "keyword",
 		"start": 340,
 		"end": 343,
 		"match": "END"
