@@ -439,6 +439,13 @@ const generics_span = type_span({
   exit_on_eq: false,
   verify_generic_args: true,
 });
+// a < after a tsx tag name is always type arguments and jsx follows the close, so no verification
+const jsx_type_args_span = type_span({
+  ...TS_SPAN_BASE,
+  enter_angle: true,
+  exit_on_comma: false,
+  exit_on_eq: false,
+});
 
 export const type_position_rules: RewriteRule[] = [
   // return type, coalesced form: the close paren shares the colon's
@@ -587,6 +594,12 @@ export const type_position_rules: RewriteRule[] = [
       type("punctuation", ["(", ",", "[", "{", ":", ";"]),
     ),
     when: seq(generics_span, type("operator", ">"), balanced_parens("(", ")")),
+    rewrite: { types: "type" },
+  },
+  {
+    anchor: { type_name: "operator", value: "<" },
+    before: type("tag_name"),
+    when: jsx_type_args_span,
     rewrite: { types: "type" },
   },
   // alias right-hand side: `type X = ...`. the alias_head flag survives
@@ -976,10 +989,16 @@ export const retag_generic_angles: Reclassifier = (input, result) => {
   const class_name_id = token_types.indexOf("class_name");
   const function_id = token_types.indexOf("function");
   const keyword_id = token_types.indexOf("keyword");
+  const tag_name_id = token_types.indexOf("tag_name");
   const view = make_token_view(input, tokens, token_types);
 
+  // a tsx tag name only meets a < operator at its type arguments
   const is_name_kind = (k: number): boolean =>
-    k === identifier_id || k === type_id || k === class_name_id || k === function_id;
+    k === identifier_id ||
+    k === type_id ||
+    k === class_name_id ||
+    k === function_id ||
+    k === tag_name_id;
 
   const after_acceptable = (after: number): boolean => {
     if (after < 0) return true;
@@ -1035,7 +1054,7 @@ export const retag_generic_angles: Reclassifier = (input, result) => {
       continue;
     }
     const after = view.next_non_trivia(close_idx + 1);
-    if (!after_acceptable(after)) {
+    if (view.kind_of(prev) !== tag_name_id && !after_acceptable(after)) {
       i = next_lt_operator(view, input, tokens, i + 1, operator_id);
       continue;
     }

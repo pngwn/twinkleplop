@@ -98,4 +98,21 @@ describe("stack balance", () => {
       ["punctuation", ");"],
     ]);
   });
+  it("tokenizes the tail after 300 elements with type arguments", () => {
+    const unit =
+      "<Select<Item> value={x} />;\n" +
+      "<Grid<Map<K, V>>>{y}</Grid>;\n" +
+      "<Form<{ a: () => void }, T[]> on>t</Form>;\n";
+    const input = `${unit.repeat(300)}const s = "after";`;
+    const tail = get_tokens(input)
+      .slice(-5)
+      .map((t) => [t.type, input.slice(t.start, t.end)]);
+    expect(tail).toEqual([
+      ["keyword", "const"],
+      ["identifier", "s"],
+      ["operator", "="],
+      ["string", '"after"'],
+      ["punctuation", ";"],
+    ]);
+  });
 });

@@ -24,6 +24,8 @@ export function Table({ string, number = 0 }: Props) {
         <span key={String(row.any)}>{row.object ? string : number}</span>
       ))}
       <Child any={any} string="string" />
+      <Select<string> value={string} />
+      <List<Map<string, number>> items={rows}>{number}</List>
       {pick({ unknown: 1 }).unknown}
     </div>
   );
