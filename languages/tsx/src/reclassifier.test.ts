@@ -167,3 +167,80 @@ describe("TSX regex after a control-statement head", () => {
     expect(type_of("if (a) (b) / 2 / c;", "/")).toBe("operator");
   });
 });
+
+describe("TSX element type arguments", () => {
+  function tokens_of(input: string): string[] {
+    const result = language(input);
+    const out: string[] = [];
+    for (let i = 0; i < result.tokens.length / 3; i++) {
+      const type = result.token_types[result.tokens[i * 3]];
+      out.push(`${type}:${input.slice(result.tokens[i * 3 + 1], result.tokens[i * 3 + 2])}`);
+    }
+    return out;
+  }
+
+  it("reads a self-closing element's type arguments as types", () => {
+    expect(tokens_of("<Select<Item> value={selected} />\nconst after = 1;")).toEqual([
+      "punctuation:<",
+      "tag_name:Select",
+      "punctuation:<",
+      "type:Item",
+      "punctuation:>",
+      "attr_name:value",
+      "operator:=",
+      "punctuation:{",
+      "identifier:selected",
+      "punctuation:}",
+      "punctuation:/>",
+      "keyword:const",
+      "constant:after",
+      "operator:=",
+      "number:1",
+      "punctuation:;",
+    ]);
+  });
+
+  it("closes an element with children after its type arguments", () => {
+    expect(tokens_of("const a = <List<string> items={xs}>hi</List>; let b = 2")).toEqual([
+      "keyword:const",
+      "constant:a",
+      "operator:=",
+      "punctuation:<",
+      "tag_name:List",
+      "punctuation:<",
+      "type:string",
+      "punctuation:>",
+      "attr_name:items",
+      "operator:=",
+      "punctuation:{",
+      "identifier:xs",
+      "punctuation:}>",
+      "punctuation:</",
+      "tag_name:List",
+      "punctuation:>;",
+      "keyword:let",
+      "identifier:b",
+      "operator:=",
+      "number:2",
+    ]);
+  });
+
+  it("reads several and nested type arguments as types", () => {
+    const multi = "<Table<Row, Key> rows={rows} />";
+    expect(type_of(multi, "Row")).toBe("type");
+    expect(type_of(multi, "Key")).toBe("type");
+    expect(type_of(multi, "rows")).toBe("attr_name");
+    const nested = "<Grid<Map<K, V>>>{cells}</Grid>";
+    expect(type_of(nested, "Map")).toBe("type");
+    expect(type_of(nested, "V")).toBe("type");
+    expect(type_of(nested, ">>")).toBe("punctuation");
+    expect(type_of(nested, "cells")).toBe("identifier");
+  });
+
+  it("matches the type arguments of a generic call", () => {
+    const args = '<{ name: string; save: () => void }, "a" | "b", T[]>';
+    const element = tokens_of(`<Form${args} />`).slice(2, -1);
+    const call = tokens_of(`use${args}()`).slice(1, -1);
+    expect(element).toEqual(call);
+  });
+});
