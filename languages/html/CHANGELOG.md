@@ -1,5 +1,13 @@
 # @twinkleplop/html
 
+## 0.1.8
+### Patch Changes
+
+- Updated dependencies [[`a09ba1a`](https://github.com/pngwn/twinkleplop/commit/a09ba1a35cc5c979bf967215b7c28c1b9b59b7b7), [`be0bfa6`](https://github.com/pngwn/twinkleplop/commit/be0bfa6339abaf91cfd1edb6d68b7d81473922d2), [`ff0e7f2`](https://github.com/pngwn/twinkleplop/commit/ff0e7f24eb4d5cefde60ae6d4806b218afd30f18), [`4fbb77e`](https://github.com/pngwn/twinkleplop/commit/4fbb77e8713ad687a2d1e1f4c60a6829c747e72c), [`07e6f3b`](https://github.com/pngwn/twinkleplop/commit/07e6f3bd8b789169ca30fa2ff2af91c5ad71b724)]:
+  - @twinkleplop/core@0.3.2
+  - @twinkleplop/javascript@0.1.8
+  - @twinkleplop/css@0.1.8
+
 ## 0.1.7
 ### Patch Changes
 
