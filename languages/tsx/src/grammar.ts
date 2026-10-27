@@ -8,6 +8,7 @@
 //     tag names (`<Foo.Bar>`, `<svg:path>`), dashed attribute names
 //     (`data-*`, `aria-*`).
 //   - JSX fragments: `<>...</>`.
+//   - Element type arguments, `<Select<Item> />`, lexed like ts type arguments.
 //   - JSX attribute values: double/single-quoted strings with html-entity
 //     recognition, expression containers `{...}` (re-enter js mode with
 //     brace-depth tracking), spread attributes `{...expr}`, nested elements
@@ -33,6 +34,8 @@
 //   - A tag literally named `<extends …>` is misclassified as a generic
 //     because the `extends` keyword rule in the disambiguation probe
 //     matches the tag name. vanishingly rare in real code.
+//   - Element type arguments must follow the tag name directly. `<Comp <T> />`
+//     with a space before the `<` lexes the type arguments as attributes.
 //   - Html comments `<!-- ... -->` inside jsx are not recognized as
 //     comments. use `{/* ... */}` inside an expression container instead.
 //   - Jsx text `>` and `}` in children: the spec forbids these, our
@@ -74,8 +77,10 @@ import {
   SPECIAL_VALUES,
   division_keywords,
   head_regex_allow_state,
+  js_body_common,
   js_common,
   js_tmpl_common,
+  js_whitespace,
 } from "@twinkleplop/javascript";
 
 import { raw_grammar as ts_grammar } from "@twinkleplop/typescript";
@@ -335,7 +340,11 @@ export default define_grammar({
         on(",", enter("jsx_lt_emit")),
         keyword(["extends"], enter("jsx_lt_emit")),
         on([" ", "\t", "\n", "\r"], enter("jsx_after_name_probe")),
-        on([">", "/", "=", "{", ":", ".", "(", ")", "[", "]", "}", ";"], enter("jsx_tag_start")),
+        // a < after the name opens type arguments, whose commas are not a generic arrow
+        on(
+          [">", "/", "=", "{", ":", ".", "(", ")", "[", "]", "}", ";", "<"],
+          enter("jsx_tag_start"),
+        ),
         on(
           ['"', "'", "`", "!", "?", "|", "&", "*", "+", "%", "^", "~", "@", "#", "\\"],
           enter("jsx_tag_start"),
@@ -384,10 +393,34 @@ export default define_grammar({
         // `.` (member) and `:` (namespace) separators emit as punct so
         // `Foo.Bar` shows up as tag + punct + tag visually.
         match([".", ":"], TOKENS.punctuation),
+        match("<", TOKENS.operator, enter("jsx_type_args")),
         match("/>", TOKENS.punctuation, leave()),
         match(">", TOKENS.punctuation, goto("jsx_children")),
         on([" ", "\t", "\n", "\r"], goto("jsx_tag_attrs")),
       ],
+    },
+
+    // -------------------------------------------------------------------
+    // jsx type arguments after a tag name, every closer leaves so >> closes twice
+    // -------------------------------------------------------------------
+    jsx_type_args: {
+      rules: [
+        ...js_body_common,
+        ...js_whitespace,
+        match("<", TOKENS.operator, enter("jsx_type_args")),
+        match(">", TOKENS.operator, leave()),
+        match(["(", "[", "{"], TOKENS.punctuation, enter("jsx_type_args")),
+        match([")", "]", "}"], TOKENS.punctuation, leave()),
+        match([",", ";", ":", "."], TOKENS.punctuation),
+        match(["=>", "...", "?", "|", "&", "=", "-", "+", "!", "*"], TOKENS.operator),
+        keyword(BOOLEAN_LITERALS, {}, TOKENS.boolean),
+        keyword([...ALL_KEYWORDS, ...SPECIAL_VALUES]),
+        match(["_", "$", LETTER], TOKENS.identifier, enter("jsx_type_name")),
+      ],
+    },
+
+    jsx_type_name: {
+      rules: [match(["_", "$", ALNUM], TOKENS.identifier), fallback(leave())],
     },
 
     // -------------------------------------------------------------------

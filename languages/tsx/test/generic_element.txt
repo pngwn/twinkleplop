@@ -1,0 +1,14 @@
+const a = <Select<Item> value={selected} />;
+const b = <List<string> items={xs}>hi</List>;
+const c = <Table<Row, Key> rows={rows} />;
+const d = <Grid<Map<K, V>>>{cells}</Grid>;
+const e = <Form<{ name: string; save: () => void }, "a" | "b", T[]> onSubmit={go} />;
+const f = (
+  <div>
+    <Select<Item>
+      value={selected}
+      onChange={(v) => set_selected(v)}
+    />
+  </div>
+);
+const after = 1;
