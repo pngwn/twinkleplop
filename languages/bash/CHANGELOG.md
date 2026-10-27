@@ -1,5 +1,15 @@
 # @twinkleplop/bash
 
+## 0.1.8
+### Patch Changes
+
+
+
+- [#170](https://github.com/pngwn/twinkleplop/pull/170) [`d87a1db`](https://github.com/pngwn/twinkleplop/commit/d87a1db171ad6dc950df37596e52a364163df204) Thanks [@pngwn](https://github.com/pngwn)! - Heredoc bodies highlight as strings for the common delimiters (`EOF`, `END`, `EOT` and a few more). A quoted delimiter keeps the body literal, an unquoted one still highlights `$var` and `$(...)`, the rest of the opening line stays code, and `<<-` closers may be tab indented. Other delimiters read as before.
+
+- Updated dependencies [[`a09ba1a`](https://github.com/pngwn/twinkleplop/commit/a09ba1a35cc5c979bf967215b7c28c1b9b59b7b7), [`ff0e7f2`](https://github.com/pngwn/twinkleplop/commit/ff0e7f24eb4d5cefde60ae6d4806b218afd30f18), [`07e6f3b`](https://github.com/pngwn/twinkleplop/commit/07e6f3bd8b789169ca30fa2ff2af91c5ad71b724)]:
+  - @twinkleplop/core@0.3.2
+
 ## 0.1.7
 ### Patch Changes
 
