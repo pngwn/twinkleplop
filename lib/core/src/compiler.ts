@@ -86,9 +86,10 @@ function preprocess_grammar(grammar: Grammar): Grammar {
     states: { ...grammar.states },
   };
 
-  // track generated states
+  // track generated states, a content state pops back to whatever pushed it
+  // so identical match_within rules share one
   const generated_states: Record<string, GrammarState> = {};
-  let state_counter = 0;
+  const content_states = new Map<string, string>();
 
   // process each state
   for (const [state_name, state] of Object.entries(processed_grammar.states)) {
@@ -122,8 +123,11 @@ function preprocess_grammar(grammar: Grammar): Grammar {
               `Change { begin: "..." } to { start: "..." }.`,
           );
         }
-        // generate a unique state name for the content matcher
-        const content_state_name = `__match_within_${state_name}_${state_counter++}`;
+        const { start, end, escape, multiline } = rule.match_within;
+        const key = JSON.stringify([start, end, escape, multiline, rule.token]);
+        const shared = content_states.get(key);
+        const content_state_name = shared ?? `__match_within_${content_states.size}`;
+        content_states.set(key, content_state_name);
 
         // replace match_within rule with a rule that enters the generated state
         processed_rules.push({
@@ -132,6 +136,7 @@ function preprocess_grammar(grammar: Grammar): Grammar {
           state: content_state_name,
           seal: rule.seal,
         });
+        if (shared) continue;
 
         // create the content state
         const content_rules: GrammarRule[] = [];

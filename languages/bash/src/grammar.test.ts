@@ -101,3 +101,82 @@ describe("Bash fidelity — function-call promotion", () => {
     expect(pick(tokens, "log_error")).toBe("identifier");
   });
 });
+
+describe("heredocs", () => {
+  const read = (input: string) =>
+    get_tokens(input)
+      .map((t) => [t.type, input.slice(t.start, t.end)])
+      .filter(([, text]) => text.trim());
+
+  it("reads an unquoted body as a string with expansions", () => {
+    const input = "cat <<EOF\nhi $name\nEOF\necho after";
+    expect(read(input)).toEqual([
+      ["identifier", "cat"],
+      ["operator", "<<"],
+      ["keyword", "EOF"],
+      ["string", "\nhi "],
+      ["variable", "$name"],
+      ["keyword", "EOF"],
+      ["builtin", "echo"],
+      ["identifier", "after"],
+    ]);
+  });
+
+  it.each([["'EOF'"], ['"EOF"'], ["\\EOF"]])("keeps the body literal after %s", (delim) => {
+    const input = `cat <<${delim}\nhi $name\nEOF\necho after`;
+    expect(read(input)).toEqual([
+      ["identifier", "cat"],
+      ["operator", "<<"],
+      ["keyword", delim],
+      ["string", "\nhi $name\n"],
+      ["keyword", "EOF"],
+      ["builtin", "echo"],
+      ["identifier", "after"],
+    ]);
+  });
+
+  it("reads the rest of the opening line as commands", () => {
+    const input = "cat <<-END | grep x # note\n\tbody\n\tEND\necho after";
+    expect(read(input).slice(2, 7)).toEqual([
+      ["keyword", "END"],
+      ["punctuation", "|"],
+      ["identifier", "grep"],
+      ["identifier", "x"],
+      ["comment", "# note"],
+    ]);
+    expect(read(input).slice(-3)).toEqual([
+      ["keyword", "END"],
+      ["builtin", "echo"],
+      ["identifier", "after"],
+    ]);
+  });
+
+  it("does not close on the delimiter word mid-line", () => {
+    const input = "cat <<EOF\nread to EOF here\nEOF\necho after";
+    expect(read(input)[3]).toEqual(["string", "\nread to EOF here\n"]);
+  });
+
+  it("leaves unlisted delimiters and here-strings alone", () => {
+    expect(read("cat <<FOO\nbody\nFOO")).toEqual([
+      ["identifier", "cat"],
+      ["operator", "<<"],
+      ["identifier", "FOO"],
+      ["identifier", "body"],
+      ["identifier", "FOO"],
+    ]);
+    expect(read('cat <<< "$x"').slice(0, 2)).toEqual([
+      ["identifier", "cat"],
+      ["operator", "<<<"],
+    ]);
+  });
+
+  it("tokenizes the tail after 300 heredocs", () => {
+    const unit = "x=$(cat <<EOF | tr a b\n$y $(z)\nEOF\n)\ncat <<'END'\n$q\nEND\n";
+    const input = `${unit.repeat(300)}echo "after"`;
+    expect(read(input).slice(-3)).toEqual([
+      ["keyword", "END"],
+      ["builtin", "echo"],
+      ["string", '"after"'],
+    ]);
+  });
+});
