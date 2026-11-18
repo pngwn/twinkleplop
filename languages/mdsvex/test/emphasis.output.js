@@ -325,182 +325,272 @@ export const test = [
 	},
 	{
 		"type": "bold_open",
-		"start": 410,
-		"end": 411,
+		"start": 412,
+		"end": 413,
 		"match": "*"
 	},
 	{
 		"type": "bold",
-		"start": 411,
-		"end": 417,
+		"start": 413,
+		"end": 419,
 		"match": "quoted"
 	},
 	{
 		"type": "bold_close",
-		"start": 417,
-		"end": 418,
+		"start": 419,
+		"end": 420,
 		"match": "*"
 	},
 	{
 		"type": "bold_open",
-		"start": 425,
-		"end": 426,
+		"start": 427,
+		"end": 428,
 		"match": "*"
 	},
 	{
 		"type": "bold",
-		"start": 426,
-		"end": 432,
+		"start": 428,
+		"end": 434,
 		"match": "parens"
 	},
 	{
 		"type": "bold_close",
-		"start": 432,
-		"end": 433,
+		"start": 434,
+		"end": 435,
 		"match": "*"
 	},
 	{
 		"type": "bold_open",
-		"start": 436,
-		"end": 437,
+		"start": 438,
+		"end": 439,
 		"match": "*"
 	},
 	{
 		"type": "bold",
-		"start": 437,
-		"end": 440,
+		"start": 439,
+		"end": 442,
 		"match": "end"
 	},
 	{
 		"type": "bold_close",
-		"start": 440,
-		"end": 441,
+		"start": 442,
+		"end": 443,
 		"match": "*"
 	},
 	{
 		"type": "italic_open",
-		"start": 443,
-		"end": 444,
+		"start": 445,
+		"end": 446,
 		"match": "_"
 	},
 	{
 		"type": "italic",
-		"start": 444,
-		"end": 458,
+		"start": 446,
+		"end": 460,
 		"match": "emphasis with "
 	},
 	{
 		"type": "code_open",
-		"start": 458,
-		"end": 459,
+		"start": 460,
+		"end": 461,
 		"match": "`"
 	},
 	{
 		"type": "code",
-		"start": 459,
-		"end": 463,
+		"start": 461,
+		"end": 465,
 		"match": "code"
 	},
 	{
 		"type": "code_close",
-		"start": 463,
-		"end": 464,
+		"start": 465,
+		"end": 466,
 		"match": "`"
 	},
 	{
 		"type": "italic",
-		"start": 464,
-		"end": 469,
+		"start": 466,
+		"end": 471,
 		"match": " and "
 	},
 	{
 		"type": "link_text_open",
-		"start": 469,
-		"end": 470,
+		"start": 471,
+		"end": 472,
 		"match": "["
 	},
 	{
 		"type": "link_text",
-		"start": 470,
-		"end": 476,
+		"start": 472,
+		"end": 478,
 		"match": "a link"
 	},
 	{
 		"type": "link_text_close",
-		"start": 476,
-		"end": 477,
+		"start": 478,
+		"end": 479,
 		"match": "]"
 	},
 	{
 		"type": "url_link",
-		"start": 477,
-		"end": 478,
+		"start": 479,
+		"end": 480,
 		"match": "("
 	},
 	{
 		"type": "url",
-		"start": 478,
-		"end": 482,
+		"start": 480,
+		"end": 484,
 		"match": "/url"
 	},
 	{
 		"type": "url_link",
-		"start": 482,
-		"end": 483,
+		"start": 484,
+		"end": 485,
 		"match": ")"
 	},
 	{
 		"type": "italic",
-		"start": 483,
-		"end": 490,
+		"start": 485,
+		"end": 492,
 		"match": " inside"
 	},
 	{
 		"type": "italic_close",
-		"start": 490,
-		"end": 491,
+		"start": 492,
+		"end": 493,
 		"match": "_"
 	},
 	{
 		"type": "hard_break",
-		"start": 497,
-		"end": 499,
+		"start": 499,
+		"end": 501,
 		"match": "\\\n"
 	},
 	{
 		"type": "escape",
-		"start": 507,
-		"end": 509,
+		"start": 509,
+		"end": 511,
 		"match": "\\*"
 	},
 	{
 		"type": "escape",
-		"start": 516,
-		"end": 518,
+		"start": 518,
+		"end": 520,
 		"match": "\\*"
 	},
 	{
 		"type": "escape",
-		"start": 528,
-		"end": 530,
+		"start": 530,
+		"end": 532,
 		"match": "\\_"
 	},
 	{
 		"type": "escape",
-		"start": 540,
-		"end": 542,
+		"start": 542,
+		"end": 544,
 		"match": "\\_"
 	},
 	{
 		"type": "escape",
-		"start": 547,
-		"end": 549,
+		"start": 549,
+		"end": 551,
 		"match": "\\{"
 	},
 	{
 		"type": "escape",
-		"start": 554,
-		"end": 556,
+		"start": 556,
+		"end": 558,
 		"match": "\\}"
+	},
+	{
+		"type": "bold_open",
+		"start": 560,
+		"end": 561,
+		"match": "*"
+	},
+	{
+		"type": "bold",
+		"start": 561,
+		"end": 583,
+		"match": "strong over\na line end"
+	},
+	{
+		"type": "bold_close",
+		"start": 583,
+		"end": 584,
+		"match": "*"
+	},
+	{
+		"type": "italic_open",
+		"start": 589,
+		"end": 590,
+		"match": "_"
+	},
+	{
+		"type": "italic",
+		"start": 590,
+		"end": 604,
+		"match": "emphasis with "
+	},
+	{
+		"type": "bold_open",
+		"start": 604,
+		"end": 605,
+		"match": "*"
+	},
+	{
+		"type": "bold",
+		"start": 605,
+		"end": 618,
+		"match": "strong\ninside"
+	},
+	{
+		"type": "bold_close",
+		"start": 618,
+		"end": 619,
+		"match": "*"
+	},
+	{
+		"type": "italic",
+		"start": 619,
+		"end": 622,
+		"match": " it"
+	},
+	{
+		"type": "italic_close",
+		"start": 622,
+		"end": 623,
+		"match": "_"
+	},
+	{
+		"type": "strike_open",
+		"start": 628,
+		"end": 630,
+		"match": "~~"
+	},
+	{
+		"type": "strike",
+		"start": 630,
+		"end": 640,
+		"match": "struck\ntoo"
+	},
+	{
+		"type": "strike_close",
+		"start": 640,
+		"end": 642,
+		"match": "~~"
+	},
+	{
+		"type": "list_marker",
+		"start": 696,
+		"end": 698,
+		"match": "- "
+	},
+	{
+		"type": "blockquote_marker",
+		"start": 718,
+		"end": 719,
+		"match": ">"
 	}
 ];

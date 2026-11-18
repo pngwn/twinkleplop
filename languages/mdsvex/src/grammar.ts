@@ -6,7 +6,8 @@
 // so paragraphs and headings each get a copy of the probe states
 //
 // known limitations
-//   inlines other than tags, comments, expressions and code spans stop at a line end
+//   link text, subscript and superscript stop at a line end
+//   emphasis over a line end stops at a block quote marker and at an indented block start
 //   a delimiter opens after anything that is not an ascii letter or digit
 //   a delimiter other than `:` rejected inside emphasis, link text or a label has no token
 //   subscript and superscript read as italic
@@ -104,6 +105,28 @@ const HARD_BREAK = match("\\\n", TOKENS.hard_break, goto("block_start"));
 // a nested body pops without consuming so the line state emits the break
 const HARD_BREAK_UNWIND = on("\\\n", leave());
 
+// emphasis runs over a line end until the paragraph ends, at a blank line or
+// a line that starts another block. a block quote marker ends it too, since a
+// body cannot tell a quoted paragraph that goes on from a new quote
+const PARAGRAPH_ENDS = [
+  "\n\n",
+  "\n\r",
+  "\n#",
+  "\n>",
+  "\n```",
+  "\n- ",
+  "\n* ",
+  "\n+ ",
+  "\n::",
+  "\n|",
+  "\n---",
+  "\n***",
+  "\n___",
+  "\n{#",
+  "\n{:",
+  "\n{/",
+];
+
 const COMMENT = within("<!--", "-->", TOKENS.comment);
 const CLOSE_TAG = match("</", TOKENS.punctuation, enter("close_tag"));
 const EXPRESSION = match("{", TOKENS.expression, enter("brace_start"));
@@ -180,6 +203,8 @@ function colon_states(context: string, token: string | undefined): Record<string
 function line_states(context: string, token: string | undefined): Record<string, GrammarState> {
   const states: Record<string, GrammarState> = {};
   const name = (state: string) => `${context}${state}`;
+  // a heading is one line
+  const line_ends = token === undefined ? PARAGRAPH_ENDS : ["\n"];
 
   for (const [kind, char] of [
     ["under", "_"],
@@ -194,11 +219,11 @@ function line_states(context: string, token: string | undefined): Record<string,
       mode: "probe",
       fallback: name(`${kind}_literal`),
       rules: [
-        on([` ${char}`, `\t${char}`]),
+        on(line_ends, enter(name(`${kind}_literal`))),
+        on([` ${char}`, `\t${char}`, ...(token === undefined ? [`\n${char}`] : [])]),
         { ...on(char, enter(`${kind}_open`)), boundary: true },
         // the boundary check counts `_` as a word character
         ...(kind === "star" ? [on("*_", enter("star_open"))] : []),
-        on("\n", enter(name(`${kind}_literal`))),
       ],
     };
     states[name(`${kind}_literal`)] = literal(char, token);
@@ -243,7 +268,15 @@ function line_states(context: string, token: string | undefined): Record<string,
   states[name("strike_probe")] = {
     mode: "probe",
     fallback: name("strike_literal"),
-    rules: [on("~~", enter("strike_open")), on("\n", enter(name("strike_literal")))],
+    rules: [
+      on(["~", ...WS_EOL], enter(name("strike_literal"))),
+      fallback(enter(name("strike_scan"))),
+    ],
+  };
+  states[name("strike_scan")] = {
+    mode: "probe",
+    fallback: name("strike_literal"),
+    rules: [on("~~", enter("strike_open")), on(line_ends, enter(name("strike_literal")))],
   };
   states[name("strike_literal")] = literal("~~", token);
 
@@ -287,20 +320,48 @@ function line_states(context: string, token: string | undefined): Record<string,
   return states;
 }
 
+// a delimiter inside its own body opens a nested one only when two closers follow,
+// one for each body, otherwise the outer body would never close
+function nested_states(kind: string, char: string, token: string): Record<string, GrammarState> {
+  const scan = (found: string): GrammarState => ({
+    mode: "probe",
+    fallback: `${kind}_nested_literal`,
+    rules: [
+      on(PARAGRAPH_ENDS, enter(`${kind}_nested_literal`)),
+      on([` ${char}`, `\t${char}`, `\n${char}`]),
+      { ...on(char, enter(found)), boundary: true },
+      // the boundary check counts `_` as a word character, two of them close both bodies
+      ...(kind === "star" ? [on("*_", enter(found))] : [on("__", enter(`${kind}_open`))]),
+    ],
+  });
+  return {
+    [`${kind}_nested`]: scan(`${kind}_nested_second`),
+    [`${kind}_nested_second`]: scan(`${kind}_open`),
+    [`${kind}_nested_literal`]: { rules: [match(char, token, leave())] },
+  };
+}
+
 interface BodyOptions {
   own?: "_" | "*" | "~~";
   links?: boolean;
   images?: boolean;
   word: string;
   colon: string;
+  multiline?: boolean;
 }
 
 // bodies borrow the paragraph probes, so a delimiter they reject has no token there
 function body_rules(token: string, options: BodyOptions): GrammarRule[] {
   const rules: GrammarRule[] = [
     on(ALNUM, goto(options.word)),
-    on("\n", leave()),
-    HARD_BREAK_UNWIND,
+    ...(options.multiline
+      ? [
+          on([...PARAGRAPH_ENDS, "\\\n\n"], leave()),
+          match("\\\n", TOKENS.hard_break),
+          // the line end is a token so style composition does not reset at it
+          match("\n", token),
+        ]
+      : [on("\n", leave()), HARD_BREAK_UNWIND]),
     ESCAPE_RULE,
     COMMENT,
     CLOSE_TAG,
@@ -655,16 +716,16 @@ export default define_grammar({
         match("_|", TOKENS.italic_close, leave()),
         on([...before_word("_"), ...before_word("__")], enter("under_nested")),
         match("_", TOKENS.italic_close, leave()),
-        ...body_rules(TOKENS.italic, { own: "_", word: "under_word", colon: "i_" }),
+        ...body_rules(TOKENS.italic, {
+          own: "_",
+          word: "under_word",
+          colon: "i_",
+          multiline: true,
+        }),
       ],
     },
 
-    // matches at once to step back to the `_`, which opens a nested body
-    under_nested: {
-      mode: "probe",
-      fallback: "under_open",
-      rules: [fallback(enter("under_open"))],
-    },
+    ...nested_states("under", "_", TOKENS.italic),
 
     star_open: {
       rules: [match("*", TOKENS.bold_open, goto("star_body"))],
@@ -676,16 +737,11 @@ export default define_grammar({
         on("*_", enter("star_before_under")),
         on([...before_word("*"), ...before_word("**")], enter("star_nested")),
         match("*", TOKENS.bold_close, leave()),
-        ...body_rules(TOKENS.bold, { own: "*", word: "star_word", colon: "b_" }),
+        ...body_rules(TOKENS.bold, { own: "*", word: "star_word", colon: "b_", multiline: true }),
       ],
     },
 
-    // steps back to the `*` and replaces the body so the close pops past it
-    star_nested: {
-      mode: "probe",
-      fallback: "star_open",
-      rules: [fallback(enter("star_open"))],
-    },
+    ...nested_states("star", "*", TOKENS.bold),
 
     star_before_under: {
       mode: "probe",
@@ -704,7 +760,12 @@ export default define_grammar({
     strike_body: {
       rules: [
         match(["~~|", "~~"], TOKENS.strike_close, leave()),
-        ...body_rules(TOKENS.strike, { own: "~~", word: "strike_word", colon: "s_" }),
+        ...body_rules(TOKENS.strike, {
+          own: "~~",
+          word: "strike_word",
+          colon: "s_",
+          multiline: true,
+        }),
       ],
     },
 

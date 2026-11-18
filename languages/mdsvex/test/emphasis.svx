@@ -6,9 +6,23 @@ snake_case_word and 2*3*4 and a * b * c stay text
 ~~struck~~ and ~~struck _with emphasis_ inside~~
 H~2~O and x^2^ and Coming Soon ^TM^
 x^2 and y^2 are text, ~ alone and ~not closed
+
 _unclosed emphasis and *unclosed strong
+
 “*quoted*” and (*parens*), *end*.
 _emphasis with `code` and [a link](/url) inside_
 hello\
 world
 a \*literal\* star and \_underscore\_ and \{brace\}
+
+*strong over
+a line end* and _emphasis with *strong
+inside* it_ and ~~struck
+too~~
+
+*never closed
+so this stays text
+
+*a paragraph ends
+- at a list item* and
+> at a quote_

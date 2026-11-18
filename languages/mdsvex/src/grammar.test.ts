@@ -115,12 +115,30 @@ describe("emphasis", () => {
     expect(pairs("_foo bar _")).toEqual([]);
   });
 
-  it("stops at the end of a line", () => {
-    expect(pairs("*a _b\nc*")).toEqual([]);
-    expect(pairs("[a *b](u)\nc* d").slice(-2)).toEqual([
-      ["url", "u"],
-      ["url_link", ")"],
+  it("runs over a line end", () => {
+    expect(pairs("*a\nb* c")).toEqual([
+      ["bold_open", "*"],
+      ["bold", "a\nb"],
+      ["bold_close", "*"],
     ]);
+    expect(pairs("_a\\\nb_").map(([type]) => type)).toEqual([
+      "italic_open",
+      "italic",
+      "hard_break",
+      "italic",
+      "italic_close",
+    ]);
+  });
+
+  it.each(["*a\n\nb*", "*a\n- b*", "*a\n# b*", "*a\n> b*", "*a\n| b* |", "# *a\nb*", "*a *b c\nd"])(
+    "ends with the paragraph in %j",
+    (input) => {
+      expect(pairs(input).map(([type]) => type)).not.toContain("bold_open");
+    },
+  );
+
+  it("opens a nested delimiter only when both can close", () => {
+    expect(pairs("*a *b c* d").map(([type]) => type)).toEqual(["bold_open", "bold", "bold_close"]);
   });
 });
 

@@ -19,7 +19,7 @@ Some _emphasis_, *strong* and a :abbr[PFM](title="Penguin-Flavoured Markdown").
 :::
 ```
 
-It follows PFM where it differs from CommonMark. `_` is emphasis and `*` is strong, and neither opens inside a word or without a closer on its line, so `snake_case` and `2 * 3` stay text. `[text]` is a link only before `(` or `[`, a fence closes on a line of at least as many backticks as opened it, and `~sub~`, `^sup^`, footnotes, pipe tables and inline, leaf and container directives are read.
+It follows PFM where it differs from CommonMark. `_` is emphasis and `*` is strong, and neither opens inside a word or without a closer before the paragraph ends, so `snake_case` and `2 * 3` stay text. `[text]` is a link only before `(` or `[`, a fence closes on a line of at least as many backticks as opened it, and `~sub~`, `^sup^`, footnotes, pipe tables and inline, leaf and container directives are read.
 
 Front matter is highlighted as YAML and imports, `<script>`, `<style>` and expressions as JavaScript and CSS. Fences in `js`, `css`, `svelte` and `yaml` are highlighted out of the box, pass `languages` for more:
 
