@@ -75,6 +75,32 @@ describe("Svelte grammar — HTML structure", () => {
     expect(tokens.some((t) => t.type === "punctuation" && t.value === ":")).toBe(true);
   });
 
+  it("highlights both ends of a Svelte special element the same way", () => {
+    const tag = [
+      ["keyword", "svelte"],
+      ["punctuation", ":"],
+      ["tag_name", "boundary"],
+    ];
+    expect(
+      tokens_of("<svelte:boundary></svelte:boundary>").map(({ type, value }) => [type, value]),
+    ).toEqual([
+      ["punctuation", "<"],
+      ...tag,
+      ["punctuation", ">"],
+      ["punctuation", "</"],
+      ...tag,
+      ["punctuation", ">"],
+    ]);
+  });
+
+  it("leaves `</notsvelte:foo>` alone", () => {
+    const tokens = tokens_of("</notsvelte:foo>");
+    expect(tokens.filter((t) => t.type === "tag_name").map((t) => t.value)).toEqual([
+      "notsvelte:foo",
+    ]);
+    expect(tokens.some((t) => t.type === "keyword")).toBe(false);
+  });
+
   it("leaves `<notsvelte:foo>` alone", () => {
     const tokens = tokens_of("<notsvelte:foo/>");
     expect(tokens.some((t) => t.type === "tag_name" && t.value === "notsvelte:foo")).toBe(true);
