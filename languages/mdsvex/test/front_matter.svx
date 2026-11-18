@@ -1,0 +1,15 @@
+---
+title: Hello World
+count: 42
+draft: true
+---
+import Chart from './Chart.svelte'
+import { lang, clamp } from "./const";
+import {
+  a,
+  b,
+} from "./multi.js";
+
+# {metadata.title}
+
+import is a word here, not a statement.

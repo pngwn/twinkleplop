@@ -1,0 +1,14 @@
+| title | B   | C   |
+| ----- | :-: | --: |
+| text  | *b* | `c` |
+| ^     | b   | ^   |
+
+| maybe || title | title 2 |
+|-------||-------|---------|
+| hello || text | text 2 |
+
+| a \| b | {value} | <Badge /> |
+|---|---|---|
+| [link](/url) | :icon[x] | $`x`$ |
+
+a | b is not a table

@@ -1,0 +1,14 @@
+_emphasis_ and *strong emphasis*
+*_emphasis inside strong_* and _*strong inside emphasis*_
+intraword: fan|_tas_|tic and un|*believ*|able and a|~~b~~|c
+snake_case_word and 2*3*4 and a * b * c stay text
+**doubled** and __init__ and _a_b c_
+~~struck~~ and ~~struck _with emphasis_ inside~~
+H~2~O and x^2^ and Coming Soon ^TM^
+x^2 and y^2 are text, ~ alone and ~not closed
+_unclosed emphasis and *unclosed strong
+“*quoted*” and (*parens*), *end*.
+_emphasis with `code` and [a link](/url) inside_
+hello\
+world
+a \*literal\* star and \_underscore\_ and \{brace\}

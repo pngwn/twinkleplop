@@ -20,6 +20,7 @@ export const SHIKI_LANG_MAP: Record<string, string | null> = {
   json: "json",
   jsonc: "jsonc",
   markdown: "markdown",
+  mdsvex: null,
   toml: "toml",
   ini: "ini",
   powershell: "powershell",

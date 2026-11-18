@@ -1,0 +1,21 @@
+An inline :name[content] and :abbr[HTML](title="HyperText Markup Language").
+Empty text :icon[] and empty args :name[text]() and nested :outer[has [brackets] inside].
+:name[text](arg_one=val_one, arg_two='val two', flag=1)
+Emoji :tada: and std::vector and a time 10:30 and https://example.com are text.
+
+::youtube[A video](id=abc, start="12")
+::toc
+::name(k=v)
+::name[*strong* and `code`]
+
+:::note[Heads up]
+Some *text*.
+:::
+
+::::outer
+:::inner
+Content.
+:::
+::::
+
+\::word is text

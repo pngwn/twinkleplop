@@ -1,0 +1,23 @@
+- one
+- two with *strong*
+  - nested
+* star
++ plus
+1. first
+11. eleventh
+27) paren
+- [ ] to do
+- [x] done
+- [X] also done
+1. [ ] ordered task
+- [x]no space is text
+- [ ] # title stays text
+- # a heading in an item
+- > a quote in an item
+- - nested on one line
+- ---
+---
+***
+___
+1.5 is a number, not a list
+2024 was a year.

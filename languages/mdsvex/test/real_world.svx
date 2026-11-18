@@ -1,0 +1,42 @@
+---
+title: Getting started
+layout: docs
+---
+import Tabs from '$lib/Tabs.svelte'
+
+<script>
+  let { data } = $props();
+</script>
+
+# Getting started with {data.name}
+
+mdsvex lets you write _markdown_ with *Svelte* in it[^why]. Install it:
+
+```sh
+npm install -D mdsvex@next
+```
+
+:::tip[Before you start]
+You need **Svelte 5**. See the [migration guide](/docs/migrating) for `0.x` projects.
+:::
+
+## Options
+
+| option | type | default |
+| ------ | ---- | ------- |
+| `extensions` | `string[]` | `[".svx"]` |
+| `unwrap_images` | `boolean` | `false` |
+
+1. Add the preprocessor to `svelte.config.js`
+2. Create a `.svx` file
+3. Import it like a component: `import Doc from './doc.svx'`
+
+<Tabs items={["npm", "pnpm"]}>
+  {#snippet tab(name)}
+    Run `{name} install`.
+  {/snippet}
+</Tabs>
+
+> Note: `{` and `}` are expressions. Write `\{` for a brace.
+
+[^why]: Because ::youtube[demos](id=abc) are nicer than screenshots.
