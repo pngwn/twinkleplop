@@ -20,8 +20,8 @@ export const test = [
 	{
 		"type": "raw_script",
 		"start": 44,
-		"end": 79,
-		"match": "import Tabs from '$lib/Tabs.svelte'"
+		"end": 80,
+		"match": "import Tabs from '$lib/Tabs.svelte'\n"
 	},
 	{
 		"type": "punctuation",
@@ -206,20 +206,20 @@ export const test = [
 	{
 		"type": "bold_open",
 		"start": 309,
-		"end": 310,
-		"match": "*"
+		"end": 311,
+		"match": "**"
 	},
 	{
 		"type": "bold",
-		"start": 310,
+		"start": 311,
 		"end": 319,
-		"match": "*Svelte 5"
+		"match": "Svelte 5"
 	},
 	{
 		"type": "bold_close",
 		"start": 319,
-		"end": 320,
-		"match": "*"
+		"end": 321,
+		"match": "**"
 	},
 	{
 		"type": "link_text_open",

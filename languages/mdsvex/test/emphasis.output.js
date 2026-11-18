@@ -152,38 +152,38 @@ export const test = [
 	{
 		"type": "bold_open",
 		"start": 201,
-		"end": 202,
-		"match": "*"
+		"end": 203,
+		"match": "**"
 	},
 	{
 		"type": "bold",
-		"start": 202,
+		"start": 203,
 		"end": 210,
-		"match": "*doubled"
+		"match": "doubled"
 	},
 	{
 		"type": "bold_close",
 		"start": 210,
-		"end": 211,
-		"match": "*"
+		"end": 212,
+		"match": "**"
 	},
 	{
 		"type": "italic_open",
 		"start": 217,
-		"end": 218,
-		"match": "_"
+		"end": 219,
+		"match": "__"
 	},
 	{
 		"type": "italic",
-		"start": 218,
-		"end": 224,
-		"match": "_init_"
+		"start": 219,
+		"end": 223,
+		"match": "init"
 	},
 	{
 		"type": "italic_close",
-		"start": 224,
+		"start": 223,
 		"end": 225,
-		"match": "_"
+		"match": "__"
 	},
 	{
 		"type": "italic_open",

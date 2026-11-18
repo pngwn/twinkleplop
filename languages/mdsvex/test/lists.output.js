@@ -206,25 +206,7 @@ export const test = [
 	{
 		"type": "hr",
 		"start": 262,
-		"end": 266,
-		"match": "---\n"
-	},
-	{
-		"type": "hr",
-		"start": 266,
-		"end": 270,
-		"match": "---\n"
-	},
-	{
-		"type": "hr",
-		"start": 270,
-		"end": 274,
-		"match": "***\n"
-	},
-	{
-		"type": "hr",
-		"start": 274,
 		"end": 278,
-		"match": "___\n"
+		"match": "---\n---\n***\n___\n"
 	}
 ];

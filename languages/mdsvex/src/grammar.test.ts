@@ -88,6 +88,33 @@ describe("emphasis", () => {
     ]);
   });
 
+  it("nests a doubled delimiter", () => {
+    expect(pairs("**a** __b__ ***c***")).toEqual([
+      ["bold_open", "**"],
+      ["bold", "a"],
+      ["bold_close", "**"],
+      ["italic_open", "__"],
+      ["italic", "b"],
+      ["italic_close", "__"],
+      ["bold_open", "***"],
+      ["bold", "c"],
+      ["bold_close", "***"],
+    ]);
+    expect(pairs("_a _b_ c_").map(([type]) => type)).toEqual([
+      "italic_open",
+      "italic",
+      "italic_open",
+      "italic",
+      "italic_close",
+      "italic",
+      "italic_close",
+    ]);
+  });
+
+  it("does not close after whitespace", () => {
+    expect(pairs("_foo bar _")).toEqual([]);
+  });
+
   it("stops at the end of a line", () => {
     expect(pairs("*a _b\nc*")).toEqual([]);
     expect(pairs("[a *b](u)\nc* d").slice(-2)).toEqual([
@@ -130,6 +157,73 @@ describe("lookahead", () => {
       ["autolink_close", ">"],
     ]);
     expect(pairs('<a href="https://a.b">')[1]).toEqual(["tag_name", "a"]);
+  });
+});
+
+describe("code spans", () => {
+  it("runs over a line end but not a blank line", () => {
+    expect(pairs("a `b\nc` d")).toEqual([
+      ["code_open", "`"],
+      ["code", "b\nc"],
+      ["code_close", "`"],
+    ]);
+    expect(pairs("a `b\n\nc` d")).toEqual([]);
+  });
+
+  it("closes on a run of the same length", () => {
+    const tokens = pairs("` `` ` b");
+    expect(tokens.map(([type]) => type).join(" ")).toMatch(/^code_open (code )+code_close$/);
+    expect(tokens.map(([, text]) => text).join("")).toBe("` `` `");
+  });
+});
+
+describe("directives", () => {
+  it("reads a directive in a label, in link text and in emphasis", () => {
+    for (const input of [":a[x :b[y](k=v) z]", "[x :b[y](k=v) z](/u)", "_x :b[y](k=v) z_"]) {
+      expect(pairs(input)).toContainEqual(["function", "b"]);
+      expect(pairs(input)).toContainEqual(["parameter", "k"]);
+    }
+  });
+
+  it.each([
+    "::name some text",
+    "::name:",
+    ":::name [x]",
+    "::name(k=v) junk",
+    ":: name",
+    "::1name",
+    ":d[unclosed",
+    "see ::toc and :tada: at 10:30 with std::vector",
+  ])("reads %s as text", (input) => {
+    expect(pairs(input)).toEqual([]);
+  });
+
+  it("keeps a text colon in the style around it", () => {
+    expect(pairs("*a: b*")).toEqual([
+      ["bold_open", "*"],
+      ["bold", "a: b"],
+      ["bold_close", "*"],
+    ]);
+  });
+});
+
+describe("blocks", () => {
+  it("tells a thematic break from strong", () => {
+    expect(pairs("***\n")).toEqual([["hr", "***\n"]]);
+    expect(pairs("***a***\n")[0]).toEqual(["bold_open", "***"]);
+    expect(pairs("---a\n")).toEqual([]);
+  });
+
+  it("reads imports after a blank line but not after content", () => {
+    const scripts = (input: string) =>
+      pairs(input)
+        .filter(([type]) => type === "raw_script")
+        .map(([, text]) => text.trim());
+    expect(scripts("import a from 'a'\n\nimport b from 'b'\n")).toEqual([
+      "import a from 'a'",
+      "import b from 'b'",
+    ]);
+    expect(pairs("# a\n\nimport b from 'b'\n").map(([type]) => type)).not.toContain("raw_script");
   });
 });
 

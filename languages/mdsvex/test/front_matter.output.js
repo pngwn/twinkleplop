@@ -20,8 +20,20 @@ export const test = [
 	{
 		"type": "raw_script",
 		"start": 49,
-		"end": 162,
-		"match": "import Chart from './Chart.svelte'\nimport { lang, clamp } from \"./const\";\nimport {\n  a,\n  b,\n} from \"./multi.js\";"
+		"end": 84,
+		"match": "import Chart from './Chart.svelte'\n"
+	},
+	{
+		"type": "raw_script",
+		"start": 84,
+		"end": 123,
+		"match": "import { lang, clamp } from \"./const\";\n"
+	},
+	{
+		"type": "raw_script",
+		"start": 123,
+		"end": 163,
+		"match": "import {\n  a,\n  b,\n} from \"./multi.js\";\n"
 	},
 	{
 		"type": "heading_marker",
