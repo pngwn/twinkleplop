@@ -152,7 +152,7 @@ export default define_grammar({
       rules: [
         within("<!--", "-->", TOKENS.comment),
         match(["<!DOCTYPE", "<!doctype"], TOKENS.doctype, enter("doctype")),
-        match("</", TOKENS.punctuation, enter("close_tag")),
+        match("</", TOKENS.punctuation, enter("close_tag_start")),
         on("<", enter("lt_probe")),
         // `{` always emits `expression`; brace_start dispatches on
         // the sigil that follows.
@@ -283,6 +283,17 @@ export default define_grammar({
         match(">", TOKENS.punctuation, leave()),
         ...insideTagRules,
       ],
+    },
+
+    close_tag_start: {
+      rules: [
+        match("svelte", "keyword", { boundary: true, ...goto("close_tag_svelte_ns") }),
+        fallback(goto("close_tag")),
+      ],
+    },
+
+    close_tag_svelte_ns: {
+      rules: [match(":", TOKENS.punctuation, goto("close_tag")), fallback(goto("close_tag"))],
     },
 
     // -------------------------------------------------------------------
