@@ -105,9 +105,8 @@ const HARD_BREAK = match("\\\n", TOKENS.hard_break, goto("block_start"));
 // a nested body pops without consuming so the line state emits the break
 const HARD_BREAK_UNWIND = on("\\\n", leave());
 
-// emphasis runs over a line end until the paragraph ends, at a blank line or
-// a line that starts another block. a block quote marker ends it too, since a
-// body cannot tell a quoted paragraph that goes on from a new quote
+// emphasis runs over a line end until a blank line or a line that starts another block
+// a quote marker ends it too, a body cannot tell a quoted paragraph from a new quote
 const PARAGRAPH_ENDS = [
   "\n\n",
   "\n\r",
