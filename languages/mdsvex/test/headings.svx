@@ -1,0 +1,12 @@
+# Heading one
+## Heading _two_ with *strong*
+###### Heading six: with a colon & more
+####### seven hashes is a paragraph
+#no space is a paragraph
+# Trailing hashes are text ##
+# snake_case and 2*3 stay text
+# {title} and <Badge /> and `code`
+   ## indented heading
+#
+Setext is gone
+===

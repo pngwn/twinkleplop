@@ -41,6 +41,7 @@
     "@twinkleplop/json": "workspace:*",
     "@twinkleplop/jsonc": "workspace:*",
     "@twinkleplop/markdown": "workspace:*",
+    "@twinkleplop/mdsvex": "workspace:*",
     "@twinkleplop/powershell": "workspace:*",
     "@twinkleplop/python": "workspace:*",
     "@twinkleplop/rust": "workspace:*",

@@ -1,0 +1,17 @@
+[a link](https://example.com) and [with title](/url "the title") and [single](/u 'x').
+![an image](/chart.png) and [![linked image](/chart.png)](/full.png).
+[escaped](/u\)b "t \" u") and [dynamic](/docs/{slug}).
+[ref]: https://example.com "Title"
+[other ref]: </angle url>
+
+[text][ref] and [ref][] and ![alt][ref].
+[just brackets] and arr[0] and [x] are text.
+<https://example.com> and <mailto:someone@example.com> are autolinks.
+A claim[^1], and a second one[^smith].
+
+[^1]: The source, with a [link](https://example.com).
+[^smith]: Smith, 2020.
+[^block]:
+    # A heading in a footnote
+
+&amp; &#123; &#x7D; &copy; but AT&T and a & b are text.

@@ -1,0 +1,44 @@
+<script lang="ts">
+  import Chart from "./Chart.svelte";
+  let count = $state(0);
+</script>
+
+<svelte:head>
+  <title>{title}</title>
+</svelte:head>
+
+<Chart data={points} {...rest} on:click={() => count++} />
+<Legend />
+
+<Badge /> new today with <b>bold over
+two lines</b> and text
+
+From <a href="/projects"
+  >the projects page</a
+>. More text.
+
+<!-- a comment --> some text
+<!--
+  over lines
+-->
+
+{#if count > 0}
+  The count is *{count}*.
+{:else if open}
+  Nothing yet.
+{:else}
+  <p class="empty {kind}">none</p>
+{/if}
+
+{#each items as item (item.id)}
+- {item.name}
+{/each}
+
+{@html raw} and {@render children()} and {a < b ? "}" : "{"}
+
+a < b and 1 <3 and <<
+<div>one</div> two
+
+<style>
+  p { color: red; }
+</style>

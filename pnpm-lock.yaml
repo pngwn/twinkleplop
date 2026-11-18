@@ -178,6 +178,27 @@ importers:
         specifier: workspace:*
         version: link:../yaml
 
+  languages/mdsvex:
+    dependencies:
+      '@twinkleplop/core':
+        specifier: workspace:*
+        version: link:../../lib/core
+      '@twinkleplop/css':
+        specifier: workspace:*
+        version: link:../css
+      '@twinkleplop/javascript':
+        specifier: workspace:*
+        version: link:../javascript
+      '@twinkleplop/markdown':
+        specifier: workspace:*
+        version: link:../markdown
+      '@twinkleplop/svelte':
+        specifier: workspace:*
+        version: link:../svelte
+      '@twinkleplop/yaml':
+        specifier: workspace:*
+        version: link:../yaml
+
   languages/powershell:
     dependencies:
       '@twinkleplop/core':
@@ -328,6 +349,9 @@ importers:
       '@twinkleplop/markdown':
         specifier: workspace:*
         version: link:../../languages/markdown
+      '@twinkleplop/mdsvex':
+        specifier: workspace:*
+        version: link:../../languages/mdsvex
       '@twinkleplop/powershell':
         specifier: workspace:*
         version: link:../../languages/powershell

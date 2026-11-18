@@ -1,0 +1,13 @@
+> foo
+> bar
+baz
+
+> some _emphasis
+> over two lines_ and <b>an
+> element</b>
+
+> # heading in a quote
+> - list in a quote
+> > nested quote
+> | a | b |
+> | - | - |
