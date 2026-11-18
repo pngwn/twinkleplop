@@ -1,5 +1,20 @@
 # @twinkleplop/core
 
+## 0.3.2
+### Patch Changes
+
+
+
+- [#168](https://github.com/pngwn/twinkleplop/pull/168) [`a09ba1a`](https://github.com/pngwn/twinkleplop/commit/a09ba1a35cc5c979bf967215b7c28c1b9b59b7b7) Thanks [@pngwn](https://github.com/pngwn)! - A `<` and `>` with `&&`, `||` or another operator that only a value expression can hold between them are read as comparisons, so `if (a < b && c > (d + 1))` no longer reads `a` as a generic call and `b` as a type argument.
+
+
+
+- [#168](https://github.com/pngwn/twinkleplop/pull/168) [`ff0e7f2`](https://github.com/pngwn/twinkleplop/commit/ff0e7f24eb4d5cefde60ae6d4806b218afd30f18) Thanks [@pngwn](https://github.com/pngwn)! - Compiling a grammar is about 9% faster, which shortens the import of every language.
+
+
+
+- [#170](https://github.com/pngwn/twinkleplop/pull/170) [`07e6f3b`](https://github.com/pngwn/twinkleplop/commit/07e6f3bd8b789169ca30fa2ff2af91c5ad71b724) Thanks [@pngwn](https://github.com/pngwn)! - Identical `within` rules in different states now share one generated body state, so grammars that repeat a string or comment rule across states compile faster. Output is unchanged.
+
 ## 0.3.1
 ### Patch Changes
 
