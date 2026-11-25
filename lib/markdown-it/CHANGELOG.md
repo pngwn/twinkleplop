@@ -1,5 +1,11 @@
 # @twinkleplop/markdown-it
 
+## 0.1.10
+### Patch Changes
+
+- Updated dependencies []:
+  - @twinkleplop/markdown-core@0.3.1
+
 ## 0.1.9
 ### Patch Changes
 

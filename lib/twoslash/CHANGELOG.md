@@ -1,5 +1,12 @@
 # @twinkleplop/twoslash
 
+## 0.3.4
+### Patch Changes
+
+- Updated dependencies [[`cde350b`](https://github.com/pngwn/twinkleplop/commit/cde350b2de3db9e4e06a2b2cbccf779c80d9f224)]:
+  - @twinkleplop/core@0.4.1
+  - @twinkleplop/typescript@0.1.10
+
 ## 0.3.3
 ### Patch Changes
 
