@@ -606,6 +606,11 @@ export type LanguagePipeline = ReclassifierEntry[];
 export type FidelityLevel = "high" | "low";
 export type FidelitySpec = FidelityLevel | readonly string[];
 
+// open marks the input as an unfinished prefix that more text will follow
+export interface TokenizeOptions {
+  open?: boolean;
+}
+
 export interface LanguageOptions {
   fidelity?: FidelitySpec;
   // when present, the language factory installs an annotation extractor in
@@ -628,7 +633,7 @@ export interface AnnotationConfig {
   // plugins claim verbs and produce overlay contributions. order is preserved
   // for stable error reporting on collisions.
   plugins: AnnotationPlugin[];
-  // optional sink for extraction errors. when omitted the framework throws.
+  // optional sink for extraction errors, each issue goes to console.warn when omitted
   on_error?: (issue: AnnotationIssue) => void;
 }
 
@@ -843,6 +848,8 @@ export interface RenderOptions {
   // extra characters to encode wherever text is escaped, values are written
   // verbatim, keys are one utf-16 code unit and never a line break, space or tab
   escape?: Record<string, string>;
+  // the input is an unfinished prefix, overlays items past its end are clamped or dropped
+  open?: boolean;
 }
 
 // attributes holds class first, then the attributes option in order without false values, unescaped
@@ -1160,7 +1167,7 @@ export interface RewriteOptions {
 // A "language function" — the common-case entry point every language package
 // exports via `create_language`. Takes source text, returns the full enriched
 // TokenizeResult. This is what `embed_grammars` calls to sub-tokenize a span.
-export type LanguageFn = (input: string) => TokenizeResult;
+export type LanguageFn = (input: string, call?: TokenizeOptions) => TokenizeResult;
 
 // Detailed embed entry for cases that need slicing / delimiter wrapping.
 // - `trim_start`/`trim_end` skip that many chars at the respective end of the

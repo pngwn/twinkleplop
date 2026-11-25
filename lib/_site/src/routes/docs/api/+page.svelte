@@ -223,6 +223,15 @@ const copy = visible_text(code, result, options);`;
 				value: `Extra characters to encode wherever text is escaped, each mapped to the text written in its place.`,
 			},
 		],
+		[
+			{ kind: "name" as const, value: "open" },
+			{ kind: "type" as const, value: "boolean" },
+			{ kind: "def" as const, value: "false" },
+			{
+				kind: "desc" as const,
+				value: `The input is an unfinished prefix, as when a fence is still streaming in. <code>overlays</code> items past the current end are clamped or dropped instead of throwing, and directives that later text could still complete are held back without a report. See <a href="/docs/directives">directives</a>.`,
+			},
+		],
 	];
 </script>
 

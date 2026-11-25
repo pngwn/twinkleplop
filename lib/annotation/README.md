@@ -359,3 +359,26 @@ Raw plugins receive these fields:
   the part of the verb's argument space the plugin does not recognise.
 
 An overlay outside the source throws a `RangeError` identifying the verb.
+
+### Unfinished input
+
+When code arrives in pieces, pass `open: true` with each piece: as the second
+argument of a tokenize function, or as a render option of a language
+package's `language()` function.
+
+```ts
+const html = highlight(code_so_far, { open: true });
+```
+
+The input is then read as a prefix that more text will follow:
+
+- a comment that stops partway through a marker (`// [!hl :3`) is hidden
+  instead of showing as a comment and vanishing once the `]` arrives
+- a pair with no closer yet applies up to the end of the input
+- a line ref or anchor that has not arrived applies nothing and reports
+  nothing
+- a plugin overlay that runs past the end is clamped to it
+
+Mistakes more text cannot fix, such as a close with no open or arguments
+that do not parse, are reported as usual. Call once more without `open` when
+the input is complete.

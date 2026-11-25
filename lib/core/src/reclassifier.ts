@@ -48,6 +48,7 @@ import type {
   RewriteRule,
   SeqPatternSpec,
   TaggedReclassifier,
+  TokenizeOptions,
   TokenizeResult,
   TokenPatternSpec,
   TypePatternSpec,
@@ -4842,7 +4843,7 @@ export function create_language(
     const annotation_extractor = options?.annotation
       ? build_annotation_extractor(options.annotation, grammar.token_types)
       : null;
-    return (input: string) => {
+    return (input: string, call?: TokenizeOptions) => {
       const base = tokenize(input, grammar);
       if (clear !== null) {
         apply_downgrade(base.tokens, clear.remap);
@@ -4851,7 +4852,7 @@ export function create_language(
       const result = run(input, base);
       if (downgrade !== null) apply_downgrade(result.tokens, downgrade);
       if (annotation_extractor !== null) {
-        const overlays = annotation_extractor(input, result);
+        const overlays = annotation_extractor(input, result, call?.open === true);
         if (overlays !== undefined) result.overlays = overlays;
       }
       return result;

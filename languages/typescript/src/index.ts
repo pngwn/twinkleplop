@@ -29,7 +29,7 @@ export const tokenize = create_language(grammar, reclassifiers);
 export function language(options?: LanguageOptions) {
   const tokenize_fn = tokenize(options);
   return (input: string, render?: RenderOptions): string =>
-    to_html(input, tokenize_fn(input), render);
+    to_html(input, tokenize_fn(input, render), render);
 }
 
 export {

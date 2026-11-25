@@ -139,7 +139,7 @@ function escape_tables(escape: RenderOptions["escape"]): EscapeTables {
 }
 
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
-  const overlays = resolve_overlays(input, token_result, options.overlays);
+  const overlays = resolve_overlays(input, token_result, options.overlays, options.open === true);
   const esc = escape_tables(options.escape);
   if (options.structure === "inline") {
     return render(input, token_result, overlays, options, esc, "", "");
@@ -160,7 +160,7 @@ export function to_parts(
   if (options.structure === "inline") {
     throw new TypeError('to_parts renders a block, structure "inline" has no <pre> to split');
   }
-  const overlays = resolve_overlays(input, token_result, options.overlays);
+  const overlays = resolve_overlays(input, token_result, options.overlays, options.open === true);
   const esc = escape_tables(options.escape);
   const { class_name = "twinkleplop" } = options;
   const attributes = pre_attributes(block_class(class_name, options, overlays), options.attributes);

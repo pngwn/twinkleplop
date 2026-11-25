@@ -927,3 +927,117 @@ describe("scoped set form", () => {
     expect(seen).toEqual([{ kind: "set", anchor: { kind: "word", value: "Hello" } }]);
   });
 });
+
+describe("open input", () => {
+  function run(input: string, plugins: AnnotationPlugin[], open: boolean) {
+    const result = tokenize(input, grammar);
+    const issues: any[] = [];
+    const extractor = build_annotation_extractor(
+      { plugins, on_error: (i) => issues.push(i) },
+      result.token_types,
+    );
+    return { overlays: extractor(input, result, open), issues };
+  }
+
+  test("a marker cut off by the end of input is hidden, not drawn as a comment", () => {
+    const input = `a = 1\n// [!em`;
+    expect(run(input, [em_plugin()], false).overlays).toBeUndefined();
+    const { overlays, issues } = run(input, [em_plugin()], true);
+    expect(issues).toEqual([]);
+    expect(Array.from(overlays!.skip_ranges)).toEqual([6, input.length]);
+    expect(Array.from(overlays!.elided_lines)).toEqual([0, 1]);
+  });
+
+  test("every cut point inside a marker hides it", () => {
+    const marker = `// [!em#one "a]b"..c]`;
+    for (let cut = 4; cut < marker.length; cut++) {
+      const input = `x\n` + marker.slice(0, cut);
+      const { overlays, issues } = run(input, [em_plugin()], true);
+      expect(issues).toEqual([]);
+      expect(Array.from(overlays!.skip_ranges), input).toEqual([2, input.length]);
+    }
+  });
+
+  test("a comment ending in `[` may be one character short of a marker", () => {
+    const input = `a\n// [`;
+    expect(run(input, [em_plugin()], false).overlays).toBeUndefined();
+    expect(Array.from(run(input, [em_plugin()], true).overlays!.skip_ranges)).toEqual([2, 6]);
+    expect(run(`a\n// \\[`, [em_plugin()], true).overlays).toBeUndefined();
+  });
+
+  test("only the cut marker is hidden when the comment has other text", () => {
+    const input = `a // note [!em :`;
+    const { overlays } = run(input, [em_plugin()], true);
+    expect(Array.from(overlays!.skip_ranges)).toEqual([10, input.length]);
+  });
+
+  test("text that can no longer become a marker stays a comment", () => {
+    expect(run(`a // [!em:`, [em_plugin()], true).overlays).toBeUndefined();
+    expect(run(`a // [!9`, [em_plugin()], true).overlays).toBeUndefined();
+    expect(run(`/* [!em */ a`, [em_plugin()], true).overlays).toBeUndefined();
+  });
+
+  test("an unmatched open runs to the end of the input", () => {
+    const input = `foo bar // [!em foo...]\nbaz\n`;
+    expect(run(input, [em_plugin()], false).issues[0].kind).toBe("unmatched_pair");
+    const { overlays, issues } = run(input, [em_plugin()], true);
+    expect(issues).toEqual([]);
+    expect(Array.from(overlays!.ranges).slice(0, 2)).toEqual([0, input.length]);
+  });
+
+  test("a line that has not arrived yet is not an error", () => {
+    const input = `a // [!em :5]\n`;
+    expect(run(input, [em_plugin()], false).issues[0].kind).toBe("malformed");
+    const { overlays, issues } = run(input, [em_plugin()], true);
+    expect(issues).toEqual([]);
+    expect(overlays!.ranges.length).toBe(0);
+    expect(Array.from(overlays!.skip_ranges)).toEqual([2, 13]);
+  });
+
+  test("a missing anchor is only forgiven on the line still being written", () => {
+    expect(run(`fo // [!em foo..bar]`, [em_plugin()], true).issues).toEqual([]);
+    expect(run(`fo // [!em foo..bar]`, [em_plugin()], false).issues[0].kind).toBe(
+      "anchor_not_found",
+    );
+    expect(run(`fo // [!em foo..bar]\n`, [em_plugin()], true).issues[0].kind).toBe(
+      "anchor_not_found",
+    );
+  });
+
+  test("a plugin overlay past the end is clamped", () => {
+    const far: AnnotationPlugin = {
+      verbs: ["far"],
+      parse: "raw",
+      handle: () => ({ overlays: [{ start: 0, end: 9999, classification: "far" }] }),
+    };
+    const input = `a // [!far]\n`;
+    expect(() => run(input, [far], false)).toThrow(RangeError);
+    const { overlays } = run(input, [far], true);
+    expect(Array.from(overlays!.ranges).slice(0, 2)).toEqual([0, input.length]);
+  });
+
+  test("decided mistakes are still reported", () => {
+    expect(run(`a // [!em ...b]\nc`, [em_plugin()], true).issues[0].kind).toBe("unmatched_pair");
+    expect(run(`a // [!em =*]\nc`, [em_plugin()], true).issues[0].kind).toBe("malformed");
+  });
+
+  test("no prefix of a valid document reports anything", () => {
+    const doc = [
+      `// [!em]`,
+      `foo bar baz // [!em foo..baz]`,
+      `// [!hl +2]`,
+      `one`,
+      `two // [!em :9]`,
+      `alpha beta // [!hl alpha...]`,
+      `gamma // [!hl ...gamma]`,
+      `/* [!em#x :2..4] */ x // [!hl =x :*]`,
+      `last // [!em ***]`,
+      ``,
+    ].join("\n");
+    expect(run(doc, [em_plugin(), hl_plugin()], false).issues).toEqual([]);
+    for (let cut = 0; cut <= doc.length; cut++) {
+      const { issues } = run(doc.slice(0, cut), [em_plugin(), hl_plugin()], true);
+      expect(issues, JSON.stringify(doc.slice(0, cut))).toEqual([]);
+    }
+  });
+});

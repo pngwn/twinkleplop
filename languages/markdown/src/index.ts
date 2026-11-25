@@ -58,7 +58,7 @@ export function tokenize(options?: MarkdownLanguageOptions): LanguageFn {
 export function language(options?: MarkdownLanguageOptions) {
   const tokenize_fn = tokenize(options);
   return (input: string, render?: RenderOptions): string =>
-    to_html(input, tokenize_fn(input), render);
+    to_html(input, tokenize_fn(input, render), render);
 }
 
 export { raw_grammar, reclassifiers };

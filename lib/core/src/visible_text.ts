@@ -31,7 +31,7 @@ function walk(
 ): VisibleText {
   const ws_active =
     whitespace_mode(options.whitespace) !== 0 || indent_guide_size(options.indent_guides) !== 0;
-  const overlays = resolve_overlays(input, result, options.overlays);
+  const overlays = resolve_overlays(input, result, options.overlays, options.open === true);
   if (overlays === undefined) {
     const segments =
       with_segments && input.length !== 0 ? Uint32Array.of(0, input.length, 0) : NO_SEGMENTS;
