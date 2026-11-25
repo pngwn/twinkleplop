@@ -95,7 +95,7 @@ There are three anchor formats:
 - A line holding nothing but a marker comment is removed from the output, so a bare `[!verb]` has to follow code on the same line. `:N` line numbers still count removed lines.
 - Unconfigured verbs are treated as ordinary comment text.
 - A marker with arguments the parser cannot read stays in the output; one whose anchor is not found is removed and applies nothing. Both are reported to the `on_error` option of the annotation config, or with `console.warn` when it is not set.
-- With the `open` render option the input is treated as an unfinished prefix. A comment that stops partway through a marker is hidden until it is decided, a pair with no closer yet runs to the end, and a line or anchor that has not arrived is not reported.
+- With the `open` render option the input is treated as an unfinished prefix. A comment the input ends in is hidden while it has no words yet or stops partway through a marker, a pair with no closer yet runs to the end, and a line or anchor that has not arrived is not reported.
 
 Example using several directive formats:
 

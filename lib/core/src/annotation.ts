@@ -75,26 +75,22 @@ export function build_annotation_extractor(
     // walk entirely. native indexOf is far cheaper than the per-comment
     // charCodeAt loop and turns "annotation enabled but no markers" into a
     // near-free path for the common adopted-but-unused case.
-    // an open input ending in a comment bracket may be one character short of a marker
-    if (input.indexOf("[!") < 0 && !(open && ends_in_comment_bracket(input, result, comment_id))) {
+    // an open input ending in a comment with no words yet may still become a marker
+    if (input.indexOf("[!") < 0 && !(open && ends_in_bare_comment(input, result, comment_id))) {
       return undefined;
     }
     return run_extraction(input, result, verb_to_plugin, comment_id, config.on_error, open);
   };
 }
 
-function ends_in_comment_bracket(
-  input: string,
-  result: TokenizeResult,
-  comment_id: number,
-): boolean {
+function ends_in_bare_comment(input: string, result: TokenizeResult, comment_id: number): boolean {
   const tokens = result.tokens;
   const last = tokens.length - 3;
   return (
     last >= 0 &&
     tokens[last] === comment_id &&
     tokens[last + 2] === input.length &&
-    input.charCodeAt(input.length - 1) === 91 /* [ */
+    !has_alnum(input, tokens[last + 1], input.length)
   );
 }
 
@@ -609,6 +605,17 @@ function run_extraction(
     ) {
       cut_at = end - 1;
     }
+    // nothing but a delimiter so far, the next character may open a marker
+    // a line comment that already has its line break is finished
+    if (
+      at_open_end &&
+      cut_at < 0 &&
+      found.length === 0 &&
+      input.charCodeAt(end - 1) !== 10 &&
+      !has_alnum(input, start, end)
+    ) {
+      cut_at = end;
+    }
     if (found.length === 0 && cut_at < 0) continue;
 
     const spans = found_spans(found);
@@ -639,7 +646,8 @@ function run_extraction(
 
     // undecided text is hidden like the marker it may become
     if (cut_at >= 0) {
-      comment_skips.push({ start: cut_at, end, line: line_of(ensure_line_index(), cut_at) });
+      const line = line_of(ensure_line_index(), Math.min(cut_at, end - 1));
+      comment_skips.push({ start: cut_at, end, line });
     }
 
     // a comment whose non-marker bytes are entirely punctuation/whitespace

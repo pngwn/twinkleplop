@@ -962,7 +962,24 @@ describe("open input", () => {
     const input = `a\n// [`;
     expect(run(input, [em_plugin()], false).overlays).toBeUndefined();
     expect(Array.from(run(input, [em_plugin()], true).overlays!.skip_ranges)).toEqual([2, 6]);
-    expect(run(`a\n// \\[`, [em_plugin()], true).overlays).toBeUndefined();
+  });
+
+  test("a comment with no words yet is hidden until it is decided", () => {
+    for (const comment of ["//", "// ", "/*", "/* \n * ", "// \\["]) {
+      const input = "a\n" + comment;
+      expect(run(input, [em_plugin()], false).overlays, comment).toBeUndefined();
+      const { overlays, issues } = run(input, [em_plugin()], true);
+      expect(issues).toEqual([]);
+      const hidden = Array.from(overlays!.skip_ranges);
+      expect([hidden[0], hidden.at(-1)], comment).toEqual([2, input.length]);
+    }
+  });
+
+  test("the first word or the line break decides a comment is ordinary", () => {
+    expect(run("a\n// h", [em_plugin()], true).overlays).toBeUndefined();
+    expect(run("a\n//\n", [em_plugin()], true).overlays).toBeUndefined();
+    expect(run("a\n//\nb //", [em_plugin()], true).overlays!.skip_ranges.length).toBe(2);
+    expect(run("a\n/* */ b", [em_plugin()], true).overlays).toBeUndefined();
   });
 
   test("only the cut marker is hidden when the comment has other text", () => {

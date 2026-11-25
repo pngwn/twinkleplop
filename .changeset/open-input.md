@@ -37,4 +37,4 @@ Unfinished input can be highlighted as it arrives. Pass `open: true` as a render
 const html = highlight(code_so_far, { open: true });
 ```
 
-While the input is open, a comment that stops partway through a `[!verb ...]` directive is hidden instead of showing as a comment first, a pair with no closer yet applies to the end, and lines or anchors that have not arrived are not reported. `overlays` items and fence meta lines past the current end are clamped or dropped instead of throwing. Mistakes that more text cannot fix are reported as before.
+While the input is open, a comment the input ends in is hidden until it is clear whether it is a `[!verb ...]` directive, instead of showing as a comment first, a pair with no closer yet applies to the end, and lines or anchors that have not arrived are not reported. `overlays` items and fence meta lines past the current end are clamped or dropped instead of throwing. Mistakes that more text cannot fix are reported as before.
