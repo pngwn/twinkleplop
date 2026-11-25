@@ -127,6 +127,9 @@ export interface TokenizeResult {
   // reclassifiers query the table instead of reconstructing their own
   // scope stack. undefined when no frame_track stage ran.
   frames?: FrameTable;
+  // set only for an open input, always at the start of a line, text before it is never hidden later
+  // grammar tokens ending before it are final but passes that wait for a closer can still retype them
+  stable_end?: number;
 }
 
 // Frame tracker types
@@ -606,6 +609,11 @@ export type LanguagePipeline = ReclassifierEntry[];
 export type FidelityLevel = "high" | "low";
 export type FidelitySpec = FidelityLevel | readonly string[];
 
+// open marks the input as an unfinished prefix that more text will follow
+export interface TokenizeOptions {
+  open?: boolean;
+}
+
 export interface LanguageOptions {
   fidelity?: FidelitySpec;
   // when present, the language factory installs an annotation extractor in
@@ -628,7 +636,7 @@ export interface AnnotationConfig {
   // plugins claim verbs and produce overlay contributions. order is preserved
   // for stable error reporting on collisions.
   plugins: AnnotationPlugin[];
-  // optional sink for extraction errors. when omitted the framework throws.
+  // optional sink for extraction errors, each issue goes to console.warn when omitted
   on_error?: (issue: AnnotationIssue) => void;
 }
 
@@ -788,6 +796,8 @@ export interface OverlayResult {
   // sorted Uint32Array pairs [start, end] of marker bytes the renderer
   // substitutes with whitespace (or omits, depending on phase 1 choice).
   skip_ranges: Uint32Array;
+  // start of the comment an open input ends in when its markers are not settled
+  undecided?: number;
   // 1-indexed line numbers (sparse) the renderer should drop entirely:
   // lines that contained only marker bytes plus whitespace. stored as a
   // dense Uint8Array indexed by line number; bit 0 of byte n marks line n.
@@ -843,6 +853,13 @@ export interface RenderOptions {
   // extra characters to encode wherever text is escaped, values are written
   // verbatim, keys are one utf-16 code unit and never a line break, space or tab
   escape?: Record<string, string>;
+  // the input is an unfinished prefix, overlays items past its end are clamped or dropped
+  open?: boolean;
+  // the text after stable_end of an open result is drawn without tokens or left out
+  held_tail?: "plain" | "hide";
+  // draws only the lines that start in [from, to), both offsets are line starts
+  // line numbers, hooks and overlays read as they do for the whole input
+  range?: { from?: number; to?: number };
 }
 
 // attributes holds class first, then the attributes option in order without false values, unescaped
@@ -1160,7 +1177,7 @@ export interface RewriteOptions {
 // A "language function" — the common-case entry point every language package
 // exports via `create_language`. Takes source text, returns the full enriched
 // TokenizeResult. This is what `embed_grammars` calls to sub-tokenize a span.
-export type LanguageFn = (input: string) => TokenizeResult;
+export type LanguageFn = (input: string, call?: TokenizeOptions) => TokenizeResult;
 
 // Detailed embed entry for cases that need slicing / delimiter wrapping.
 // - `trim_start`/`trim_end` skip that many chars at the respective end of the

@@ -8,6 +8,7 @@ export { parse_meta, split_info } from "./meta";
 export type { Fail, LineGroup, ParsedMeta, WordGroup } from "./meta";
 export { resolve_registry } from "./registry";
 export type {
+  FenceOptions,
   HighlightFn,
   MarkdownOptions,
   RegistryEntry,

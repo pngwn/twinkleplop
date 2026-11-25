@@ -151,3 +151,13 @@ two title conventions (`ts` fence at docs/guide.md:41)
 ```
 
 A line reference beyond the end of a fence throws an error. A `/word/` pattern with no matches renders normally.
+
+### Open fences
+
+A fence that is still being written can be rendered as it grows. Pass `{ open: true }` as the last argument of the renderer's `fence()`:
+
+```ts
+const html = renderer.fence(lang, meta, code_so_far, location, { open: true });
+```
+
+Meta lines beyond the current end are left out instead of throwing, and the highlighter receives `open: true` in its render options. Render once more without it when the fence closes.

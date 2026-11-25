@@ -467,3 +467,47 @@ describe("absent option", () => {
     );
   });
 });
+
+describe("open source", () => {
+  const source = "one\ntwo\nthr";
+  const ranges = (items: OverlayItem[]) =>
+    Array.from(overlays(source, items, undefined, true).ranges);
+
+  test("a line that has not arrived is dropped", () => {
+    expect(() => overlays(source, [{ line: 4, class: "a" }])).toThrow(RangeError);
+    expect(ranges([{ line: 4, class: "a" }])).toEqual([]);
+    expect(ranges([{ lines: [1, 5, [2, 9], [6, 7]], class: "a" }]).length).toBe(3 * 4);
+  });
+
+  test("a range past the end is clamped", () => {
+    expect(() => overlays(source, [{ start: 4, end: 99, class: "a" }])).toThrow(RangeError);
+    expect(ranges([{ start: 4, end: 99, class: "a" }]).slice(0, 2)).toEqual([4, source.length]);
+    expect(ranges([{ start: 50, end: 99, class: "a" }])).toEqual([]);
+    expect(
+      ranges([
+        { start: { line: 3, character: 1 }, end: { line: 3, character: 20 }, class: "a" },
+      ]).slice(0, 2),
+    ).toEqual([9, source.length]);
+    expect(
+      ranges([
+        { start: { line: 2, character: 0 }, end: { line: 7, character: 0 }, class: "a" },
+      ]).slice(0, 2),
+    ).toEqual([4, source.length]);
+  });
+
+  test("mistakes more text cannot fix still throw", () => {
+    expect(() => ranges([{ line: 0, class: "a" }])).toThrow(RangeError);
+    expect(() => ranges([{ start: -1, end: 2, class: "a" }])).toThrow(RangeError);
+    expect(() => ranges([{ lines: [[9, 8]], class: "a" }])).toThrow(RangeError);
+    expect(() =>
+      ranges([{ start: { line: 1, character: 9 }, end: { line: 2, character: 0 }, class: "a" }]),
+    ).toThrow(RangeError);
+  });
+
+  test("the render option reaches the overlay check", () => {
+    const tokens = tokenize(source, grammar);
+    const options: RenderOptions = { overlays: [{ lines: [2, 8], class: "mark" }] };
+    expect(() => to_html(source, tokens, options)).toThrow(RangeError);
+    expect(to_html(source, tokens, { ...options, open: true })).toContain('class="l mark"');
+  });
+});

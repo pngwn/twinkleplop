@@ -223,6 +223,33 @@ const copy = visible_text(code, result, options);`;
 				value: `Extra characters to encode wherever text is escaped, each mapped to the text written in its place.`,
 			},
 		],
+		[
+			{ kind: "name" as const, value: "range" },
+			{ kind: "type" as const, value: "&#123; from?: number; to?: number &#125;" },
+			{ kind: "def" as const, value: "all lines" },
+			{
+				kind: "desc" as const,
+				value: `Draws only the lines that start between two offsets, each the start of a line. Line numbers, hooks and overlays read as they do for the whole input, so the lines of consecutive ranges add up to the whole. <code>to_lines</code> returns them without the <code>&lt;pre&gt;</code> and <code>&lt;code&gt;</code> elements.`,
+			},
+		],
+		[
+			{ kind: "name" as const, value: "held_tail" },
+			{ kind: "type" as const, value: `"plain" | "hide"` },
+			{ kind: "def" as const, value: "drawn" },
+			{
+				kind: "desc" as const,
+				value: `What to do with the text after <code>stable_end</code> of an open input, which may still change. <code>"plain"</code> draws it without tokens, <code>"hide"</code> leaves it out. By default it is drawn like the rest.`,
+			},
+		],
+		[
+			{ kind: "name" as const, value: "open" },
+			{ kind: "type" as const, value: "boolean" },
+			{ kind: "def" as const, value: "false" },
+			{
+				kind: "desc" as const,
+				value: `The input is an unfinished prefix, as when a fence is still streaming in. <code>overlays</code> items past the current end are clamped or dropped instead of throwing, and directives that later text could still complete are held back without a report. See <a href="/docs/directives">directives</a>.`,
+			},
+		],
 	];
 </script>
 
@@ -276,6 +303,16 @@ const copy = visible_text(code, result, options);`;
 						{ kind: "type", value: "FrameTable" },
 						{ kind: "def", value: "optional" },
 						{ kind: "desc", value: "Present only when a frame_track stage ran." },
+					],
+					[
+						{ kind: "name", value: "stable_end" },
+						{ kind: "type", value: "number" },
+						{ kind: "def", value: "optional" },
+						{
+							kind: "desc",
+							value:
+								"Present only for an open input. The start of the first line that can still change: text before it will not be hidden later and the grammar's tokens ending before it are final. Passes that wait for a closer, such as an embedded template body, can still retype tokens before it.",
+						},
 					],
 				]}
 			/>
@@ -383,7 +420,7 @@ const copy = visible_text(code, result, options);`;
 						{ kind: "name", value: "@twinkleplop/core" },
 						{
 							kind: "desc",
-							value: `<code>tokenize</code>, <code>to_html</code>, <code>to_parts</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, <code>visible_text</code>, the DSL, the reclassifier helpers, and all types.`,
+							value: `<code>tokenize</code>, <code>to_html</code>, <code>to_parts</code>, <code>to_lines</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, <code>visible_text</code>, the DSL, the reclassifier helpers, and all types.`,
 						},
 					],
 					[

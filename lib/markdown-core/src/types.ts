@@ -36,6 +36,11 @@ export interface MarkdownOptions {
   render?: RenderOptions;
 }
 
+export interface FenceOptions {
+  // the fence has not closed and code is what has arrived so far
+  open?: boolean;
+}
+
 export interface Renderer {
   // true when inline code should be looked at, so a toolchain can leave its
   // own renderer in place otherwise.
@@ -47,6 +52,7 @@ export interface Renderer {
     meta: string | undefined,
     code: string,
     location?: SourceLocation,
+    options?: FenceOptions,
   ): string | null;
   // null when the code carries no `{:lang}` suffix.
   inline_code(text: string, location?: SourceLocation): string | null;

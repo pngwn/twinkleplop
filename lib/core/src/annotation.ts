@@ -55,6 +55,7 @@ import type {
 export type AnnotationExtractor = (
   input: string,
   result: TokenizeResult,
+  open?: boolean,
 ) => OverlayResult | undefined;
 
 export function build_annotation_extractor(
@@ -67,16 +68,30 @@ export function build_annotation_extractor(
   // call returns undefined immediately. this is the only no-op the extractor
   // ever takes when annotation IS configured; we still hit the closure but
   // the body short-circuits on the first comment-token lookup.
-  return (input, result) => {
+  return (input, result, open = false) => {
     if (comment_id < 0) return undefined;
     // whole-input short-circuit: if `[!` doesn't appear anywhere in the
     // source, no comment can contain a marker, so we skip the per-comment
     // walk entirely. native indexOf is far cheaper than the per-comment
     // charCodeAt loop and turns "annotation enabled but no markers" into a
     // near-free path for the common adopted-but-unused case.
-    if (input.indexOf("[!") < 0) return undefined;
-    return run_extraction(input, result, verb_to_plugin, comment_id, config.on_error);
+    // an open input ending in a comment with no words yet may still become a marker
+    if (input.indexOf("[!") < 0 && !(open && ends_in_bare_comment(input, result, comment_id))) {
+      return undefined;
+    }
+    return run_extraction(input, result, verb_to_plugin, comment_id, config.on_error, open);
   };
+}
+
+function ends_in_bare_comment(input: string, result: TokenizeResult, comment_id: number): boolean {
+  const tokens = result.tokens;
+  const last = tokens.length - 3;
+  return (
+    last >= 0 &&
+    tokens[last] === comment_id &&
+    tokens[last + 2] === input.length &&
+    !has_alnum(input, tokens[last + 1], input.length)
+  );
 }
 
 function build_verb_map(plugins: AnnotationPlugin[]): Map<string, AnnotationPlugin> {
@@ -142,9 +157,12 @@ interface FoundMarker {
 // exactly as the same fragment would in a shared marker.
 class ResolveError extends Error {
   kind: AnnotationIssueKind;
-  constructor(kind: AnnotationIssueKind, message: string) {
+  // more input could make the fragment resolve
+  pending: boolean;
+  constructor(kind: AnnotationIssueKind, message: string, pending = false) {
     super(message);
     this.kind = kind;
+    this.pending = pending;
   }
 }
 
@@ -154,11 +172,13 @@ function run_extraction(
   verb_to_plugin: Map<string, AnnotationPlugin>,
   comment_id: number,
   on_error: ((issue: AnnotationIssue) => void) | undefined,
+  open: boolean,
 ): OverlayResult | undefined {
   const tokens = result.tokens;
   const n = tokens.length / 3;
 
   const overlays: CollectedOverlay[] = [];
+  let undecided = -1;
   const verbatim: PendingVerbatim[] = [];
   const skip_ranges: SkipRange[] = [];
   const class_to_id = new Map<string, number>();
@@ -236,6 +256,9 @@ function run_extraction(
     };
   };
 
+  const on_last_line = (marker: SourcePosition): boolean =>
+    marker.line === ensure_line_index().length;
+
   // shared by shared markers and by fragments raw plugins pass to `resolve`,
   // so both see identical ranges for identical text.
   const resolve_parsed = (args: ParsedArgs, marker: SourcePosition): SourceRange[] => {
@@ -246,7 +269,7 @@ function run_extraction(
       case "set": {
         const span = resolve_set_scope(args.scope, marker, lines, input.length);
         if (span === null) {
-          throw new ResolveError("malformed", `set scope names a line that does not exist`);
+          throw new ResolveError("malformed", `set scope names a line that does not exist`, true);
         }
         const matches = resolve_anchor_all(
           input,
@@ -256,7 +279,11 @@ function run_extraction(
           ensure_comment_ranges(),
         );
         if (matches.length === 0) {
-          throw new ResolveError("anchor_not_found", `set anchor matched zero occurrences`);
+          throw new ResolveError(
+            "anchor_not_found",
+            `set anchor matched zero occurrences`,
+            span.end >= input.length,
+          );
         }
         const out: SourceRange[] = [];
         for (const m of matches) {
@@ -284,12 +311,16 @@ function run_extraction(
           lines,
           ensure_comment_ranges(),
         );
-        if (range === null) throw new ResolveError("anchor_not_found", `anchor not found`);
+        if (range === null) {
+          throw new ResolveError("anchor_not_found", `anchor not found`, on_last_line(marker));
+        }
         return [range];
       }
       default: {
         const range = resolve_line_mode(args, marker, lines, input.length);
-        if (range === null) throw new ResolveError("malformed", `unable to resolve marker range`);
+        if (range === null) {
+          throw new ResolveError("malformed", `unable to resolve marker range`, true);
+        }
         return [range];
       }
     }
@@ -325,7 +356,7 @@ function run_extraction(
       });
     } catch (err) {
       if (err instanceof ResolveError) {
-        report(err.kind, err.message, marker);
+        if (!(open && err.pending)) report(err.kind, err.message, marker);
       } else {
         const message = err instanceof Error ? err.message : String(err);
         report("malformed", `plugin "${verb}" threw: ${message}`, marker);
@@ -335,6 +366,11 @@ function run_extraction(
     if (!output) return true;
     if (output.overlays) {
       for (const overlay of output.overlays) {
+        if (open && overlay.start >= 0 && overlay.end > input.length) {
+          // the plugin aimed at text that has not arrived
+          overlay.end = input.length;
+          if (overlay.start >= overlay.end) continue;
+        }
         if (overlay.start < 0 || overlay.end > input.length) {
           throw new RangeError(
             `annotation: plugin "${verb}" emitted an overlay outside the source (${overlay.start}..${overlay.end}, source length ${input.length})`,
@@ -416,7 +452,7 @@ function run_extraction(
         ensure_comment_ranges(),
       );
       if (range === null) {
-        report("anchor_not_found", `anchor not found`, marker);
+        if (!(open && on_last_line(marker))) report("anchor_not_found", `anchor not found`, marker);
         return true;
       }
       // synthesise the fully-resolved args so the plugin sees both
@@ -446,7 +482,7 @@ function run_extraction(
       ranges = resolve_parsed(args, marker);
     } catch (err) {
       if (err instanceof ResolveError) {
-        report(err.kind, err.message, marker);
+        if (!(open && err.pending)) report(err.kind, err.message, marker);
         return true;
       }
       throw err;
@@ -458,6 +494,43 @@ function run_extraction(
       }
     }
     return consumed;
+  };
+
+  const dispatch_to_end = (pending: PendingPair): void => {
+    const plugin = verb_to_plugin.get(pending.verb);
+    if (plugin === undefined) return;
+    const lines = ensure_line_index();
+    const last: SourcePosition = { start: input.length, end: input.length, line: lines.length };
+    const to: Anchor = { kind: "wildcard" };
+    const range =
+      pending.from.kind === "wildcard"
+        ? {
+            start: line_start_of(lines, pending.marker.line),
+            end: input.length,
+            start_line: pending.marker.line,
+            end_line: lines.length,
+          }
+        : resolve_anchor_range(
+            pending.from,
+            to,
+            pending.inclusive_start,
+            true,
+            pending.marker,
+            last,
+            input,
+            lines,
+            ensure_comment_ranges(),
+          );
+    // a missing opener anchor is reported when the closer arrives
+    if (range === null) return;
+    const args: ParsedArgs = {
+      kind: "range",
+      from: pending.from,
+      to,
+      inclusive_start: pending.inclusive_start,
+      inclusive_end: true,
+    };
+    dispatch(plugin, pending.verb, pending.id, args, range, pending.marker, pending.standalone);
   };
 
   for (let i = 0; i < n; i++) {
@@ -476,6 +549,9 @@ function run_extraction(
     // dispatch waits until the whole comment is scanned because `standalone`
     // depends on whether the comment holds anything besides markers.
     const found: FoundMarker[] = [];
+    // where an open input stops partway through a possible marker
+    let cut_at = -1;
+    const at_open_end = open && end === input.length;
     let pos = start;
     while (pos < end) {
       const at = find_marker_start(input, pos, end);
@@ -486,7 +562,11 @@ function run_extraction(
         continue;
       }
 
-      const parsed = parse_marker(input, at, end, ensure_line_index());
+      const parsed = parse_marker(input, at, end, ensure_line_index(), at_open_end);
+      if (parsed === CUT_MARKER) {
+        cut_at = at;
+        break;
+      }
       if (parsed === null) {
         // not a valid marker shape (`[!` without closing `]` on the same line,
         // empty verb, etc). skip past the `[!` and keep scanning.
@@ -517,9 +597,31 @@ function run_extraction(
       found.push({ parsed, plugin });
       pos = parsed.marker.end;
     }
-    if (found.length === 0) continue;
+    if (
+      at_open_end &&
+      cut_at < 0 &&
+      end - 1 >= pos &&
+      input.charCodeAt(end - 1) === 91 /* [ */ &&
+      (end - 1 === start || input.charCodeAt(end - 2) !== 92) /* \ */
+    ) {
+      cut_at = end - 1;
+    }
+    // nothing but a delimiter so far, the next character may open a marker
+    // a line comment that already has its line break is finished
+    if (
+      at_open_end &&
+      cut_at < 0 &&
+      found.length === 0 &&
+      input.charCodeAt(end - 1) !== 10 &&
+      !has_alnum(input, start, end)
+    ) {
+      cut_at = end;
+    }
+    if (found.length === 0 && cut_at < 0) continue;
 
-    const markers_only = is_marker_only_comment(input, start, end, found_spans(found));
+    const spans = found_spans(found);
+    if (cut_at >= 0) spans.push({ start: cut_at, end });
+    const markers_only = is_marker_only_comment(input, start, end, spans);
     const comment_skips: SkipRange[] = [];
     for (const { parsed, plugin } of found) {
       const marker = parsed.marker;
@@ -543,6 +645,12 @@ function run_extraction(
       }
     }
 
+    // undecided text is hidden like the marker it may become
+    if (cut_at >= 0) {
+      const line = line_of(ensure_line_index(), Math.min(cut_at, end - 1));
+      comment_skips.push({ start: cut_at, end, line });
+    }
+
     // a comment whose non-marker bytes are entirely punctuation/whitespace
     // is structurally a "marker-only" comment. extend the skip range to
     // cover the whole comment so the elide-line rule can fire on standalone
@@ -551,6 +659,7 @@ function run_extraction(
     // alphanumeric outside the markers (e.g. `// [!em] note`), we only skip
     // the marker bytes and the surrounding text renders as-is.
     if (comment_skips.length > 0) {
+      if (at_open_end) undecided = start;
       if (is_marker_only_comment(input, start, end, comment_skips)) {
         push_line_skips(skip_ranges, input, start, end, ensure_line_index());
       } else {
@@ -562,6 +671,11 @@ function run_extraction(
   // any leftover half-open opens are unmatched — surface each one.
   for (const stack of pair_stack.values()) {
     for (const pending of stack) {
+      if (open) {
+        // the closer may still arrive so the pair runs to the end
+        dispatch_to_end(pending);
+        continue;
+      }
       report(
         "unmatched_pair",
         `unmatched open for "[!${pending.verb}${pending.id ? "#" + pending.id : ""}]"`,
@@ -594,7 +708,9 @@ function run_extraction(
 
   if (overlays.length === 0 && skip_ranges.length === 0) return undefined;
 
-  return finalize(overlays, classifications, skip_ranges, input, ensure_line_index);
+  const out = finalize(overlays, classifications, skip_ranges, input, ensure_line_index);
+  if (undecided >= 0) out.undecided = undecided;
+  return out;
 }
 
 function overlaps_skip(skip_ranges: SkipRange[], start: number, end: number): boolean {
@@ -690,19 +806,24 @@ function find_marker_start(input: string, from: number, end_exclusive: number): 
 // at all (so the caller skips past `[!` and keeps scanning); returns a
 // ParsedMarker with `error` set when the syntax is recognisable as a marker
 // but malformed/unsupported.
+//
+// at_open_end marks the comment an open input ends in, running out of input there returns CUT_MARKER
 function parse_marker(
   input: string,
   open_pos: number,
   comment_end: number,
   line_starts: Int32Array,
+  at_open_end = false,
 ): ParsedMarker | null {
   const len = input.length;
   let pos = open_pos + 2; // past `[!`
   const verb_start = pos;
   // verb: [a-zA-Z][a-zA-Z0-9_-]*
-  if (pos >= len || !is_alpha(input.charCodeAt(pos))) return null;
+  if (pos >= len) return at_open_end ? CUT_MARKER : null;
+  if (!is_alpha(input.charCodeAt(pos))) return null;
   pos++;
   while (pos < len && is_verb_cont(input.charCodeAt(pos))) pos++;
+  if (pos >= len && at_open_end) return CUT_MARKER;
   const verb = input.slice(verb_start, pos);
 
   // optional `#id`
@@ -710,6 +831,7 @@ function parse_marker(
   if (pos < len && input.charCodeAt(pos) === 35 /* # */) {
     pos++;
     const id_start = pos;
+    if (pos >= len && at_open_end) return CUT_MARKER;
     if (pos >= len || !is_alpha(input.charCodeAt(pos))) {
       return make_marker_error(input, open_pos, pos, line_starts, verb, undefined, {
         kind: "malformed",
@@ -718,6 +840,7 @@ function parse_marker(
     }
     pos++;
     while (pos < len && is_verb_cont(input.charCodeAt(pos))) pos++;
+    if (pos >= len && at_open_end) return CUT_MARKER;
     id = input.slice(id_start, pos);
   }
 
@@ -785,6 +908,7 @@ function parse_marker(
         message: "marker not closed before newline",
       });
     }
+    if (pos >= len && at_open_end) return CUT_MARKER;
     return null;
   }
   pos++; // past `]`
@@ -797,6 +921,17 @@ function parse_marker(
 
   return { verb, id, args_start, args_end, raw_start, marker, spans_newline: false, error: null };
 }
+
+// compared by identity and never read
+const CUT_MARKER: ParsedMarker = {
+  verb: "",
+  args_start: 0,
+  args_end: 0,
+  raw_start: 0,
+  marker: { start: 0, end: 0, line: 0 },
+  spans_newline: false,
+  error: null,
+};
 
 function make_marker_error(
   input: string,

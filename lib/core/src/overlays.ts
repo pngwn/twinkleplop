@@ -35,6 +35,8 @@ export function overlays(
   source: string,
   items: OverlayItem[],
   existing?: OverlayResult,
+  // an open source clamps or drops items past its current end
+  open = false,
 ): OverlayResult {
   if (!Array.isArray(items)) throw new TypeError("overlays must be an array");
   const line_starts = build_line_starts(source);
@@ -61,17 +63,19 @@ export function overlays(
     const item = items[i] as Loose;
     switch (item_shape(item, i)) {
       case "range": {
-        const { start, end } = resolve_bounds(item, i, source, line_starts);
+        const { start, end } = resolve_bounds(item, i, source, line_starts, open);
         const cls = valid_class(item.class, i);
         if (start < end) collected.push({ start, end, cls, flags: 0, index: i });
         break;
       }
       case "line": {
-        const line = valid_line(item.line, i, "line", line_starts.length);
+        const line = valid_line(item.line, i, "line", line_starts.length, open);
+        const cls = valid_class(item.class, i);
+        if (line === PAST_END) break;
         collected.push({
           start: line_starts[line - 1],
           end: line_end(line_starts, line, source.length),
-          cls: valid_class(item.class, i),
+          cls,
           flags: OVERLAY_LINE_MODE,
           index: i,
         });
@@ -79,7 +83,7 @@ export function overlays(
       }
       case "lines": {
         const cls = valid_class(item.class, i);
-        for (const line of expand_lines(item.lines, i, line_starts.length)) {
+        for (const line of expand_lines(item.lines, i, line_starts.length, open)) {
           collected.push({
             start: line_starts[line - 1],
             end: line_end(line_starts, line, source.length),
@@ -91,12 +95,12 @@ export function overlays(
         break;
       }
       case "hide": {
-        const { start, end } = resolve_bounds(item, i, source, line_starts);
+        const { start, end } = resolve_bounds(item, i, source, line_starts, open);
         push_hidden(hidden, source, line_starts, start, end, i);
         break;
       }
       case "verbatim": {
-        const { start, end } = resolve_bounds(item, i, source, line_starts);
+        const { start, end } = resolve_bounds(item, i, source, line_starts, open);
         const cls = item.type === undefined ? "" : valid_class(item.type, i, "type");
         const newline = source.indexOf("\n", start);
         if (newline !== -1 && newline < end) {
@@ -117,9 +121,10 @@ export function resolve_overlays(
   source: string,
   result: TokenizeResult,
   items: OverlayItem[] | undefined,
+  open = false,
 ): OverlayResult | undefined {
   if (items !== undefined && items.length !== 0) {
-    const merged = overlays(source, items, result.overlays);
+    const merged = overlays(source, items, result.overlays, open);
     if (merged.ranges.length !== 0 || merged.skip_ranges.length !== 0) return merged;
   }
   return result.overlays;
@@ -211,9 +216,10 @@ function resolve_bounds(
   index: number,
   source: string,
   line_starts: Int32Array,
+  open: boolean,
 ): { start: number; end: number } {
-  const start = resolve_position(item.start, index, "start", source, line_starts);
-  const end = resolve_position(item.end, index, "end", source, line_starts);
+  const start = resolve_position(item.start, index, "start", source, line_starts, open);
+  const end = resolve_position(item.end, index, "end", source, line_starts, open);
   if (end < start) {
     throw new RangeError(`overlays[${index}].end (${end}) is before its start (${start})`);
   }
@@ -226,11 +232,13 @@ function resolve_position(
   field: string,
   source: string,
   line_starts: Int32Array,
+  open: boolean,
 ): number {
   if (typeof position === "number") {
     if (!Number.isInteger(position)) {
       throw new RangeError(`overlays[${index}].${field} must be an integer offset`);
     }
+    if (open && position > source.length) return source.length;
     if (position < 0 || position > source.length) {
       throw new RangeError(
         `overlays[${index}].${field} offset ${position} is outside 0..${source.length}`,
@@ -242,13 +250,16 @@ function resolve_position(
     throw new TypeError(`overlays[${index}].${field} must be an offset or { line, character }`);
   }
   const at = position as { line?: unknown; character?: unknown };
-  const line = valid_line(at.line, index, `${field}.line`, line_starts.length);
+  const line = valid_line(at.line, index, `${field}.line`, line_starts.length, open);
+  if (line === PAST_END) return source.length;
   const character = at.character;
   const length = line_end(line_starts, line, source.length) - line_starts[line - 1];
   const visible = line < line_starts.length ? length - 1 : length;
   if (typeof character !== "number" || !Number.isInteger(character)) {
     throw new RangeError(`overlays[${index}].${field}.character must be an integer`);
   }
+  // only the last line of an open source can still grow
+  if (open && line === line_starts.length && character > visible) return source.length;
   if (character < 0 || character > visible) {
     throw new RangeError(
       `overlays[${index}].${field}.character ${character} is outside 0..${visible} on line ${line}`,
@@ -257,17 +268,27 @@ function resolve_position(
   return line_starts[line - 1] + character;
 }
 
-function valid_line(line: unknown, index: number, field: string, count: number): number {
+// valid_line result for a line an open source has not reached
+const PAST_END = -1;
+
+function valid_line(
+  line: unknown,
+  index: number,
+  field: string,
+  count: number,
+  open: boolean,
+): number {
   if (typeof line !== "number" || !Number.isInteger(line)) {
     throw new RangeError(`overlays[${index}].${field} must be an integer line number`);
   }
+  if (open && line > count) return PAST_END;
   if (line < 1 || line > count) {
     throw new RangeError(`overlays[${index}].${field} ${line} is outside 1..${count}`);
   }
   return line;
 }
 
-function expand_lines(lines: unknown, index: number, count: number): number[] {
+function expand_lines(lines: unknown, index: number, count: number, open: boolean): number[] {
   if (!Array.isArray(lines)) {
     throw new TypeError(`overlays[${index}].lines must be an array`);
   }
@@ -283,15 +304,21 @@ function expand_lines(lines: unknown, index: number, count: number): number[] {
       if (entry.length !== 2) {
         throw new TypeError(`overlays[${index}].lines pairs must be [from, to]`);
       }
-      const from = valid_line(entry[0], index, "lines[from]", count);
-      const to = valid_line(entry[1], index, "lines[to]", count);
-      if (to < from) {
-        throw new RangeError(`overlays[${index}].lines pair [${from}, ${to}] runs backwards`);
+      const from = valid_line(entry[0], index, "lines[from]", count, open);
+      const to = valid_line(entry[1], index, "lines[to]", count, open);
+      // compared as written since an open source can turn either end into PAST_END
+      if (entry[1] < entry[0]) {
+        throw new RangeError(
+          `overlays[${index}].lines pair [${entry[0]}, ${entry[1]}] runs backwards`,
+        );
       }
-      for (let line = from; line <= to; line++) add(line);
+      if (from === PAST_END) continue;
+      const last = to === PAST_END ? count : to;
+      for (let line = from; line <= last; line++) add(line);
       continue;
     }
-    add(valid_line(entry, index, "lines", count));
+    const line = valid_line(entry, index, "lines", count, open);
+    if (line !== PAST_END) add(line);
   }
   return out;
 }

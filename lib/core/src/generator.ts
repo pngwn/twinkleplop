@@ -1,5 +1,6 @@
 import { OVERLAY_LINE_MODE, OVERLAY_VERBATIM } from "./types";
 import type { BlockParts, HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
+import { hold_tail, render_range } from "./held_tail";
 import { resolve_overlays } from "./overlays";
 import { line_of } from "./annotation";
 
@@ -138,16 +139,62 @@ function escape_tables(escape: RenderOptions["escape"]): EscapeTables {
   return tables;
 }
 
+// a result tokenized open says so itself, whatever the render options say
+function is_open(result: TokenizeResult, options: RenderOptions): boolean {
+  return options.open === true || result.stable_end !== undefined;
+}
+
+interface Prepared {
+  input: string;
+  result: TokenizeResult;
+  overlays: OverlayResult | undefined;
+  options: RenderOptions;
+  // the block class reads the overlays of the whole input even when a range is drawn
+  block_overlays: OverlayResult | undefined;
+  empty: boolean;
+}
+
+function prepare(input: string, result: TokenizeResult, options: RenderOptions): Prepared {
+  if (options.held_tail !== undefined && result.stable_end !== undefined) {
+    ({ input, result } = hold_tail(input, result, options.held_tail));
+  }
+  const overlays = resolve_overlays(input, result, options.overlays, is_open(result, options));
+  if (options.range === undefined) {
+    return { input, result, overlays, options, block_overlays: overlays, empty: false };
+  }
+  return { ...render_range(input, result, overlays, options), block_overlays: overlays };
+}
+
+// the common render takes neither option and skips the extra object
+function is_windowed(options: RenderOptions): boolean {
+  return options.range !== undefined || options.held_tail !== undefined;
+}
+
+const WHOLE: Prepared = {
+  input: "",
+  result: { tokens: new Uint32Array(0), token_types: [] },
+  overlays: undefined,
+  options: {},
+  block_overlays: undefined,
+  empty: false,
+};
+
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
-  const overlays = resolve_overlays(input, token_result, options.overlays);
+  const prepared = is_windowed(options) ? prepare(input, token_result, options) : WHOLE;
+  const overlays =
+    prepared === WHOLE
+      ? resolve_overlays(input, token_result, options.overlays, is_open(token_result, options))
+      : prepared.block_overlays;
   const esc = escape_tables(options.escape);
   if (options.structure === "inline") {
+    if (prepared !== WHOLE) return draw(prepared, esc, "", "");
     return render(input, token_result, overlays, options, esc, "", "");
   }
   const { class_name = "twinkleplop" } = options;
   const class_attr = escape_range(class_name, 0, class_name.length, esc);
   const pre_class = block_class(class_attr, options, overlays);
   const open = open_pre(pre_class, options.attributes, esc) + "<code>";
+  if (prepared !== WHOLE) return draw(prepared, esc, open, "</code></pre>");
   return render(input, token_result, overlays, options, esc, open, "</code></pre>");
 }
 
@@ -160,12 +207,44 @@ export function to_parts(
   if (options.structure === "inline") {
     throw new TypeError('to_parts renders a block, structure "inline" has no <pre> to split');
   }
-  const overlays = resolve_overlays(input, token_result, options.overlays);
+  const prepared = is_windowed(options) ? prepare(input, token_result, options) : WHOLE;
+  const overlays =
+    prepared === WHOLE
+      ? resolve_overlays(input, token_result, options.overlays, is_open(token_result, options))
+      : prepared.block_overlays;
   const esc = escape_tables(options.escape);
   const { class_name = "twinkleplop" } = options;
   const attributes = pre_attributes(block_class(class_name, options, overlays), options.attributes);
-  const body = render(input, token_result, overlays, options, esc, "<code>", "</code>");
+  const body =
+    prepared === WHOLE
+      ? render(input, token_result, overlays, options, esc, "<code>", "</code>")
+      : draw(prepared, esc, "<code>", "</code>");
   return { attributes, body };
+}
+
+/**
+ * The line elements alone, with no `<pre>` or `<code>` around them. With the
+ * `range` option the non-empty results of consecutive ranges, joined by a
+ * line break, are the lines of the whole input.
+ */
+export function to_lines(
+  input: string,
+  token_result: TokenizeResult,
+  options: RenderOptions = {},
+): string {
+  if (options.structure === "inline") {
+    throw new TypeError('to_lines renders line elements, structure "inline" has none');
+  }
+  return draw(prepare(input, token_result, options), escape_tables(options.escape), "", "");
+}
+
+function draw(prepared: Prepared, esc: EscapeTables, open: string, close: string): string {
+  if (prepared.empty) return open + close;
+  const { input, result, overlays, options } = prepared;
+  let lines = render(input, result, overlays, options, esc, "", "");
+  // a range that ends in a line removed by a directive would end in its line break
+  if (lines.charCodeAt(lines.length - 1) === 10) lines = lines.slice(0, -1);
+  return open + lines + close;
 }
 
 function block_class(

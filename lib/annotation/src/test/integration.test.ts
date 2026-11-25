@@ -207,3 +207,20 @@ describe("cross-line word highlight", () => {
     );
   });
 });
+
+describe("open input through a language package", () => {
+  test("the render option reaches the extractor", async () => {
+    const { language } = await import("@twinkleplop/javascript");
+    const issues: unknown[] = [];
+    const js = language({
+      annotation: { plugins: [hl], on_error: (issue) => issues.push(issue) },
+    });
+    const code = "const a = 1;\n// [!hl :4";
+    expect(js(code)).toContain("[!hl");
+    expect(js(code, { open: true })).not.toContain("[!hl");
+    js("const a = 1; // [!hl :4]\n", { open: true });
+    expect(issues).toEqual([]);
+    js("const a = 1; // [!hl :4]\n");
+    expect(issues).toHaveLength(1);
+  });
+});

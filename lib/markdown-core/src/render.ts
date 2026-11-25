@@ -4,6 +4,7 @@ import { parse_meta, split_info } from "./meta";
 import type { Fail, ParsedMeta } from "./meta";
 import { resolve_registry } from "./registry";
 import type {
+  FenceOptions,
   HighlightFn,
   MarkdownOptions,
   RegistryEntry,
@@ -44,7 +45,9 @@ export function create_renderer(options: MarkdownOptions): Renderer {
     meta: string | undefined,
     code: string,
     location?: SourceLocation,
+    fence_options?: FenceOptions,
   ): string | null {
+    const open = fence_options?.open === true;
     const name = (lang ?? "").trim() || default_language;
     if (name === undefined || name === "") return null;
 
@@ -58,7 +61,7 @@ export function create_renderer(options: MarkdownOptions): Renderer {
       throw new Error(`unknown fence language "${name}"${at(location)}`);
     }
 
-    let render = build_render(name, parsed, source, fail);
+    let render = build_render(name, parsed, source, fail, open);
     if (parse_meta_hook !== undefined) render = parse_meta_hook(raw_meta, render) ?? render;
 
     const highlight = pick_highlight(name, entry, parsed, fail);
@@ -85,12 +88,13 @@ export function create_renderer(options: MarkdownOptions): Renderer {
     parsed: ParsedMeta,
     source: string,
     fail: Fail,
+    open: boolean,
   ): RenderOptions {
     const items: OverlayItem[] = base.overlays === undefined ? [] : [...base.overlays];
     const line_ids = new Map<number, string>();
     const word_ids: WordId[] = [];
 
-    collect_lines(parsed, source, items, line_ids, fail);
+    collect_lines(parsed, source, items, line_ids, fail, open);
     collect_words(parsed, source, items, word_ids);
 
     const render: RenderOptions = {
@@ -99,6 +103,7 @@ export function create_renderer(options: MarkdownOptions): Renderer {
       attributes: { ...base.attributes, "data-language": name },
       line_numbers: resolve_line_numbers(parsed, site_line_numbers, base.line_numbers),
     };
+    if (open) render.open = true;
     if (items.length > 0) render.overlays = items;
     if (line_ids.size > 0) render.line = line_id_hook(line_ids, base.line);
     if (word_ids.length > 0) render.token = word_id_hook(word_ids, base.token);
@@ -176,6 +181,7 @@ function collect_lines(
   items: OverlayItem[],
   line_ids: Map<number, string>,
   fail: Fail,
+  open: boolean,
 ): void {
   if (parsed.line_groups.length === 0) return;
   const line_count = count_lines(source);
@@ -183,13 +189,13 @@ function collect_lines(
   for (const group of parsed.line_groups) {
     for (const entry of group.lines) {
       if (typeof entry === "number") {
-        check_line(entry, line_count, fail);
+        check_line(entry, line_count, fail, open);
         if (group.id !== undefined) line_ids.set(entry, group.id);
         continue;
       }
       const [from, to] = entry;
-      check_line(from, line_count, fail);
-      check_line(to, line_count, fail);
+      check_line(from, line_count, fail, open);
+      check_line(to, line_count, fail, open);
       if (to < from) fail(`line range ${from}-${to} runs backwards`);
       if (group.id !== undefined) {
         for (let line = from; line <= to; line++) line_ids.set(line, group.id);
@@ -235,8 +241,10 @@ function occurrences(source: string, text: string): number[] {
 // shiki's transformers ignore a line past the end of the snippet. failing
 // here turns a stale range in docs into a build error instead of a fence that
 // quietly highlights nothing.
-function check_line(line: number, line_count: number, fail: Fail): void {
-  if (line < 1 || line > line_count) {
+//
+// a line past the end of an open fence may still arrive
+function check_line(line: number, line_count: number, fail: Fail, open: boolean): void {
+  if (line < 1 || (line > line_count && !open)) {
     fail(`line ${line} is beyond the fence's ${line_count} line${line_count === 1 ? "" : "s"}`);
   }
 }

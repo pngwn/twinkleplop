@@ -359,3 +359,49 @@ Raw plugins receive these fields:
   the part of the verb's argument space the plugin does not recognise.
 
 An overlay outside the source throws a `RangeError` identifying the verb.
+
+### Unfinished input
+
+When code arrives in pieces, pass `open: true` with each piece: as the second
+argument of a tokenize function, or as a render option of a language
+package's `language()` function.
+
+```ts
+const html = highlight(code_so_far, { open: true });
+```
+
+The input is then read as a prefix that more text will follow:
+
+- a comment the input ends in is hidden while it has no words yet (`//`)
+  or stops partway through a marker (`// [!hl :3`), instead of showing as a
+  comment and vanishing once the `]` arrives
+- a pair with no closer yet applies up to the end of the input
+- a line ref or anchor that has not arrived applies nothing and reports
+  nothing
+- a plugin overlay that runs past the end is clamped to it
+
+Mistakes more text cannot fix, such as a close with no open or arguments
+that do not parse, are reported as usual. Call once more without `open` when
+the input is complete.
+
+The result of an open tokenize call carries `stable_end`, the start of the
+first line that can still change. The `held_tail` render option draws the
+text after it without tokens (`"plain"`) or leaves it out (`"hide"`), so the
+last line does not flicker while it is being written.
+
+To keep what is already on the page, draw each settled line once and redraw
+only the tail. `to_lines` returns line elements with nothing around them and
+the `range` option picks the lines between two line starts:
+
+```ts
+const result = tokenize(code_so_far, { open: true });
+if (result.stable_end > drawn_to) {
+  const range = { from: drawn_to, to: result.stable_end };
+  settled.insertAdjacentHTML("beforeend", to_lines(code_so_far, result, { range }));
+  drawn_to = result.stable_end;
+}
+tail.innerHTML = to_lines(code_so_far, result, { range: { from: drawn_to } });
+```
+
+A directive that names earlier lines, such as `[!hl :1..3]` on line 50, does
+not reach lines that were already drawn; the closed render at the end does.

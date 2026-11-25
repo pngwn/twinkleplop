@@ -80,6 +80,34 @@ describe("line highlights", () => {
     expect(html).toContain("has-highlight");
   });
 
+  test("an open fence leaves out lines that have not arrived", () => {
+    const md = renderer();
+    const html = md.fence("ts", "{1,3-9}", "const a = 1;\nconst b", undefined, { open: true });
+    expect(html!.match(/class="l highlight"/g)).toHaveLength(1);
+    expect(() => md.fence("ts", "{0}", "const a = 1;\n", undefined, { open: true })).toThrow(
+      "line 0 is beyond",
+    );
+    expect(() => md.fence("ts", "{3-2}", "const a = 1;\n", undefined, { open: true })).toThrow(
+      "runs backwards",
+    );
+  });
+
+  test("an open fence tells the highlighter", () => {
+    let seen: boolean | undefined;
+    const md = renderer({
+      languages: {
+        ts: (code, render) => {
+          seen = render?.open;
+          return ts(code, render);
+        },
+      },
+    });
+    md.fence("ts", "", "const a");
+    expect(seen).toBeUndefined();
+    md.fence("ts", "", "const a", undefined, { open: true });
+    expect(seen).toBe(true);
+  });
+
   test("a line beyond the fence names the fence", () => {
     expect(() =>
       renderer().fence("ts", "{3}", "const a = 1;\nconst b = 2;\n", {
