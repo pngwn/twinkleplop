@@ -1,5 +1,11 @@
 # @twinkleplop/rehype
 
+## 0.2.3
+### Patch Changes
+
+- Updated dependencies [[`f43d548`](https://github.com/pngwn/twinkleplop/commit/f43d5481742507c15983fac4f251b4e43bfd51fa)]:
+  - @twinkleplop/markdown-core@0.3.0
+
 ## 0.2.2
 ### Patch Changes
 

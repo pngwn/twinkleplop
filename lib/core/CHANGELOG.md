@@ -1,5 +1,36 @@
 # @twinkleplop/core
 
+## 0.4.0
+### Minor Changes
+
+
+
+- [#182](https://github.com/pngwn/twinkleplop/pull/182) [`f43d548`](https://github.com/pngwn/twinkleplop/commit/f43d5481742507c15983fac4f251b4e43bfd51fa) Thanks [@pngwn](https://github.com/pngwn)! - Unfinished input can be highlighted as it arrives. Pass `open: true` as a render option of a language package's function, as the second argument of a tokenize function, or as `{ open: true }` in the last argument of markdown-core's `fence()`.
+  
+  ```ts
+  const html = highlight(code_so_far, { open: true });
+  ```
+  
+  While the input is open, a comment the input ends in is hidden until it is clear whether it is a `[!verb ...]` directive, instead of showing as a comment first, a pair with no closer yet applies to the end, and lines or anchors that have not arrived are not reported. `overlays` items and fence meta lines past the current end are clamped or dropped instead of throwing. Mistakes that more text cannot fix are reported as before.
+
+
+- [#182](https://github.com/pngwn/twinkleplop/pull/182) [`956212d`](https://github.com/pngwn/twinkleplop/commit/956212db7cef26d5d2c5e567f9b9ad5b0c147e99) Thanks [@pngwn](https://github.com/pngwn)! - Part of an input can be rendered on its own. The `range` render option draws only the lines between two line starts, with line numbers, hooks and overlays reading as they do for the whole input, and `to_lines` returns line elements with no `<pre>` or `<code>` around them.
+  
+  ```ts
+  const lines = to_lines(code, result, { range: { from: drawn_to, to: result.stable_end } });
+  ```
+  
+  The lines of consecutive ranges add up to the lines of the whole input, so a page showing code as it streams in can append each settled line once and redraw only the tail. For a 30,000 character file arriving 16 characters at a time that is 0.5 MB of markup handed to the page instead of 156 MB.
+
+
+- [#182](https://github.com/pngwn/twinkleplop/pull/182) [`34a3add`](https://github.com/pngwn/twinkleplop/commit/34a3addafcd11e6471b07ed45bdf84d29a8f6e11) Thanks [@pngwn](https://github.com/pngwn)! - Open input reports how much of it is settled. The result of a tokenize call with `open: true` has `stable_end`, the start of the first line that can still change, and the `held_tail` render option draws the text after it without tokens or leaves it out.
+  
+  ```ts
+  const html = highlight(code_so_far, { open: true, held_tail: "plain" });
+  ```
+  
+  Text before `stable_end` is never hidden later and the grammar's tokens before it are final, so a half-typed keyword or an unclosed string on the last line no longer flickers. Passes that wait for a closer, such as an embedded template body, can still recolour earlier tokens when it arrives.
+
 ## 0.3.2
 ### Patch Changes
 

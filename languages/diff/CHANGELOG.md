@@ -1,5 +1,20 @@
 # @twinkleplop/diff
 
+## 0.1.9
+### Patch Changes
+
+
+
+- [#182](https://github.com/pngwn/twinkleplop/pull/182) [`f43d548`](https://github.com/pngwn/twinkleplop/commit/f43d5481742507c15983fac4f251b4e43bfd51fa) Thanks [@pngwn](https://github.com/pngwn)! - Unfinished input can be highlighted as it arrives. Pass `open: true` as a render option of a language package's function, as the second argument of a tokenize function, or as `{ open: true }` in the last argument of markdown-core's `fence()`.
+  
+  ```ts
+  const html = highlight(code_so_far, { open: true });
+  ```
+  
+  While the input is open, a comment the input ends in is hidden until it is clear whether it is a `[!verb ...]` directive, instead of showing as a comment first, a pair with no closer yet applies to the end, and lines or anchors that have not arrived are not reported. `overlays` items and fence meta lines past the current end are clamped or dropped instead of throwing. Mistakes that more text cannot fix are reported as before.
+- Updated dependencies [[`f43d548`](https://github.com/pngwn/twinkleplop/commit/f43d5481742507c15983fac4f251b4e43bfd51fa), [`956212d`](https://github.com/pngwn/twinkleplop/commit/956212db7cef26d5d2c5e567f9b9ad5b0c147e99), [`34a3add`](https://github.com/pngwn/twinkleplop/commit/34a3addafcd11e6471b07ed45bdf84d29a8f6e11)]:
+  - @twinkleplop/core@0.4.0
+
 ## 0.1.8
 ### Patch Changes
 

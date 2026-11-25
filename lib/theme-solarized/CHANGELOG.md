@@ -1,5 +1,11 @@
 # @twinkleplop/theme-solarized
 
+## 0.1.6
+### Patch Changes
+
+- Updated dependencies [[`f43d548`](https://github.com/pngwn/twinkleplop/commit/f43d5481742507c15983fac4f251b4e43bfd51fa), [`956212d`](https://github.com/pngwn/twinkleplop/commit/956212db7cef26d5d2c5e567f9b9ad5b0c147e99), [`34a3add`](https://github.com/pngwn/twinkleplop/commit/34a3addafcd11e6471b07ed45bdf84d29a8f6e11)]:
+  - @twinkleplop/core@0.4.0
+
 ## 0.1.5
 ### Patch Changes
 
