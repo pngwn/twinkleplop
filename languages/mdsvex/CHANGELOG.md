@@ -1,5 +1,16 @@
 # @twinkleplop/mdsvex
 
+## 0.1.3
+### Patch Changes
+
+- Updated dependencies [[`cde350b`](https://github.com/pngwn/twinkleplop/commit/cde350b2de3db9e4e06a2b2cbccf779c80d9f224)]:
+  - @twinkleplop/core@0.4.1
+  - @twinkleplop/css@0.1.10
+  - @twinkleplop/javascript@0.1.10
+  - @twinkleplop/markdown@0.2.4
+  - @twinkleplop/svelte@0.1.10
+  - @twinkleplop/yaml@0.1.10
+
 ## 0.1.2
 ### Patch Changes
 

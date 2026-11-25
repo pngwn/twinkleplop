@@ -1,5 +1,12 @@
 # @twinkleplop/core
 
+## 0.4.1
+### Patch Changes
+
+
+
+- [#187](https://github.com/pngwn/twinkleplop/pull/187) [`cde350b`](https://github.com/pngwn/twinkleplop/commit/cde350b2de3db9e4e06a2b2cbccf779c80d9f224) Thanks [@pngwn](https://github.com/pngwn)! - Open input that ends partway through a comment opener hides those characters until the next one decides what they are. A `/` that may become `//` or `/*`, a `-` that may become `--`, and `<`, `<!` or `<!-` that may become `<!--` no longer show for one step before a directive comment hides them. This applies when annotation is configured, and the openers are read from each grammar, so a `/` inside a string or JSX text is left alone. Code embedded in another language, such as a `<script>` body, is not covered.
+
 ## 0.4.0
 ### Minor Changes
 
