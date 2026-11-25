@@ -388,3 +388,20 @@ The result of an open tokenize call carries `stable_end`, the start of the
 first line that can still change. The `held_tail` render option draws the
 text after it without tokens (`"plain"`) or leaves it out (`"hide"`), so the
 last line does not flicker while it is being written.
+
+To keep what is already on the page, draw each settled line once and redraw
+only the tail. `to_lines` returns line elements with nothing around them and
+the `range` option picks the lines between two line starts:
+
+```ts
+const result = tokenize(code_so_far, { open: true });
+if (result.stable_end > drawn_to) {
+  const range = { from: drawn_to, to: result.stable_end };
+  settled.insertAdjacentHTML("beforeend", to_lines(code_so_far, result, { range }));
+  drawn_to = result.stable_end;
+}
+tail.innerHTML = to_lines(code_so_far, result, { range: { from: drawn_to } });
+```
+
+A directive that names earlier lines, such as `[!hl :1..3]` on line 50, does
+not reach lines that were already drawn; the closed render at the end does.

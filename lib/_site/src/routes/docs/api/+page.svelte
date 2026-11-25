@@ -224,6 +224,15 @@ const copy = visible_text(code, result, options);`;
 			},
 		],
 		[
+			{ kind: "name" as const, value: "range" },
+			{ kind: "type" as const, value: "&#123; from?: number; to?: number &#125;" },
+			{ kind: "def" as const, value: "all lines" },
+			{
+				kind: "desc" as const,
+				value: `Draws only the lines that start between two offsets, each the start of a line. Line numbers, hooks and overlays read as they do for the whole input, so the lines of consecutive ranges add up to the whole. <code>to_lines</code> returns them without the <code>&lt;pre&gt;</code> and <code>&lt;code&gt;</code> elements.`,
+			},
+		],
+		[
 			{ kind: "name" as const, value: "held_tail" },
 			{ kind: "type" as const, value: `"plain" | "hide"` },
 			{ kind: "def" as const, value: "drawn" },
@@ -411,7 +420,7 @@ const copy = visible_text(code, result, options);`;
 						{ kind: "name", value: "@twinkleplop/core" },
 						{
 							kind: "desc",
-							value: `<code>tokenize</code>, <code>to_html</code>, <code>to_parts</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, <code>visible_text</code>, the DSL, the reclassifier helpers, and all types.`,
+							value: `<code>tokenize</code>, <code>to_html</code>, <code>to_parts</code>, <code>to_lines</code>, <code>create_language</code>, <code>reclassify</code>, <code>overlays</code>, <code>visible_text</code>, the DSL, the reclassifier helpers, and all types.`,
 						},
 					],
 					[

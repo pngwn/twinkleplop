@@ -857,6 +857,9 @@ export interface RenderOptions {
   open?: boolean;
   // the text after stable_end of an open result is drawn without tokens or left out
   held_tail?: "plain" | "hide";
+  // draws only the lines that start in [from, to), both offsets are line starts
+  // line numbers, hooks and overlays read as they do for the whole input
+  range?: { from?: number; to?: number };
 }
 
 // attributes holds class first, then the attributes option in order without false values, unescaped
