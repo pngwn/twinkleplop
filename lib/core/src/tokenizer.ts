@@ -145,6 +145,9 @@ export function tokenize(
   // earliest probe decided close enough to the end of an open input to decide otherwise later
   const late_from = open ? len - reach_of(compiled_grammar) : len;
   let late_probe_pos = len;
+  // where an open input stops partway through a pattern that would emit a comment
+  const open_comment_id = open ? token_types.indexOf("comment") : -1;
+  let comment_cut = open_comment_id < 0 ? 0 : len;
 
   // INTROSPECTION_START
   if (INTROSPECTION && introspector) {
@@ -250,7 +253,18 @@ export function tokenize(
           for (let b = 0; b < bucket_length; b++) {
             const pat = bucket[b];
             const p_len = pat.length;
-            if (pos + p_len > len) continue;
+            if (pos + p_len > len) {
+              // only reached in the last characters of the input
+              if (
+                pos < comment_cut &&
+                transitions[trans_base3 + pat.rule_idx * 3 + 1] === open_comment_id
+              ) {
+                let i = 1;
+                while (pos + i < len && input.charCodeAt(pos + i) === pat.codes[i]) i++;
+                if (pos + i === len) comment_cut = pos;
+              }
+              continue;
+            }
             // we know first char matches; unroll first iteration
             const codes = pat.codes;
             let matched = true;
@@ -1309,6 +1323,12 @@ export function tokenize(
     while (t >= 0 && tokens[t + 1] >= stable) t -= 3;
     if (t >= 0 && tokens[t + 2] >= stable) stable = tokens[t + 1];
     result.stable_end = stable === 0 ? 0 : input.lastIndexOf("\n", stable - 1) + 1;
+    if (open_comment_id >= 0 && comment_cut < len) {
+      // inside a comment the cut pattern is its closer
+      let c = used - 3;
+      while (c >= 0 && tokens[c + 2] > comment_cut && tokens[c] !== open_comment_id) c -= 3;
+      if (c < 0 || tokens[c + 2] <= comment_cut) result.comment_cut = comment_cut;
+    }
   }
   return result;
 }

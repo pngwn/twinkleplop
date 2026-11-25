@@ -56,6 +56,8 @@ export type AnnotationExtractor = (
   input: string,
   result: TokenizeResult,
   open?: boolean,
+  // where an open input stops partway through a comment opener
+  comment_cut?: number,
 ) => OverlayResult | undefined;
 
 export function build_annotation_extractor(
@@ -68,7 +70,7 @@ export function build_annotation_extractor(
   // call returns undefined immediately. this is the only no-op the extractor
   // ever takes when annotation IS configured; we still hit the closure but
   // the body short-circuits on the first comment-token lookup.
-  return (input, result, open = false) => {
+  return (input, result, open = false, comment_cut = -1) => {
     if (comment_id < 0) return undefined;
     // whole-input short-circuit: if `[!` doesn't appear anywhere in the
     // source, no comment can contain a marker, so we skip the per-comment
@@ -76,10 +78,21 @@ export function build_annotation_extractor(
     // charCodeAt loop and turns "annotation enabled but no markers" into a
     // near-free path for the common adopted-but-unused case.
     // an open input ending in a comment with no words yet may still become a marker
-    if (input.indexOf("[!") < 0 && !(open && ends_in_bare_comment(input, result, comment_id))) {
+    if (
+      input.indexOf("[!") < 0 &&
+      !(open && (comment_cut >= 0 || ends_in_bare_comment(input, result, comment_id)))
+    ) {
       return undefined;
     }
-    return run_extraction(input, result, verb_to_plugin, comment_id, config.on_error, open);
+    return run_extraction(
+      input,
+      result,
+      verb_to_plugin,
+      comment_id,
+      config.on_error,
+      open,
+      open ? comment_cut : -1,
+    );
   };
 }
 
@@ -173,6 +186,7 @@ function run_extraction(
   comment_id: number,
   on_error: ((issue: AnnotationIssue) => void) | undefined,
   open: boolean,
+  comment_cut: number,
 ): OverlayResult | undefined {
   const tokens = result.tokens;
   const n = tokens.length / 3;
@@ -666,6 +680,12 @@ function run_extraction(
         for (const s of comment_skips) skip_ranges.push(s);
       }
     }
+  }
+
+  if (comment_cut >= 0 && comment_cut < input.length) {
+    const line = line_of(ensure_line_index(), comment_cut);
+    skip_ranges.push({ start: comment_cut, end: input.length, line });
+    undecided = comment_cut;
   }
 
   // any leftover half-open opens are unmatched — surface each one.
