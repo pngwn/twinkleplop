@@ -4848,6 +4848,7 @@ export function create_language(
       const base = tokenize(input, grammar, null, open);
       // passes that splice tokens return a result without it
       let stable_end = base.stable_end;
+      const comment_cut = base.comment_cut;
       if (clear !== null) {
         apply_downgrade(base.tokens, clear.remap);
         base.token_types = clear.token_types;
@@ -4855,7 +4856,7 @@ export function create_language(
       const result = run(input, base);
       if (downgrade !== null) apply_downgrade(result.tokens, downgrade);
       if (annotation_extractor !== null) {
-        const overlays = annotation_extractor(input, result, open);
+        const overlays = annotation_extractor(input, result, open, comment_cut);
         if (overlays !== undefined) {
           result.overlays = overlays;
           const undecided = overlays.undecided;

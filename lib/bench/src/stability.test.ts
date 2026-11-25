@@ -1,8 +1,13 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { tokenize as raw_tokenize } from "@twinkleplop/core";
-import type { CompiledGrammar, LanguageFactory, TokenizeResult } from "@twinkleplop/core";
+import { tokenize as raw_tokenize, visible_text } from "@twinkleplop/core";
+import type {
+  AnnotationPlugin,
+  CompiledGrammar,
+  LanguageFactory,
+  TokenizeResult,
+} from "@twinkleplop/core";
 
 interface LanguageModule {
   grammar?: CompiledGrammar;
@@ -90,6 +95,50 @@ describe("stable_end holds through the always-on pipeline", () => {
         expect(settled(open, end), `${name} cut at ${cut}, stable_end ${end}`).toEqual(
           settled(full, end),
         );
+      }
+    });
+  }
+});
+
+// multi-character comment openers outside embedded code
+const COMMENT_OPENERS: Record<string, string[]> = {
+  c: ["//", "/*"],
+  cpp: ["//", "/*"],
+  css: ["/*"],
+  go: ["//", "/*"],
+  html: ["<!--"],
+  javascript: ["//", "/*"],
+  jsonc: ["//", "/*"],
+  mdsvex: ["<!--"],
+  powershell: ["<#"],
+  rust: ["//", "/*"],
+  sql: ["--", "/*"],
+  svelte: ["<!--"],
+  tsx: ["//", "/*"],
+  typescript: ["//", "/*"],
+};
+
+const noop: AnnotationPlugin = { verbs: ["noop"], handle: () => ({}) };
+
+describe("a comment opener is undecided from its first character", () => {
+  for (const { name, module } of languages) {
+    const openers = COMMENT_OPENERS[name];
+    if (openers === undefined || module.tokenize === undefined) continue;
+    const language = module.tokenize({ annotation: { plugins: [noop] } });
+
+    test(name, () => {
+      for (const opener of openers) {
+        const whole = "a\n" + opener;
+        const hidden = visible_text(whole, language(whole, { open: true }));
+        expect(hidden, opener).not.toContain(opener);
+        for (let length = 1; length < opener.length; length++) {
+          const input = "a\n" + opener.slice(0, length);
+          const open = language(input, { open: true });
+          expect(open.overlays?.undecided, input).toBe(2);
+          expect(open.stable_end, input).toBeLessThanOrEqual(2);
+          expect(visible_text(input, open), input).toBe(hidden);
+          expect(language(input).overlays, input).toBeUndefined();
+        }
       }
     });
   }

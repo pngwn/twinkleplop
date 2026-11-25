@@ -95,6 +95,40 @@ describe("stable_end", () => {
   });
 });
 
+describe("a partial comment opener", () => {
+  const language = create_language(grammar)({ annotation: { plugins: [hl] } });
+  const shown = (input: string) => visible_text(input, language(input, { open: true }));
+
+  test("is undecided while the input ends in it", () => {
+    const input = "alpha\nbeta /";
+    const result = language(input, { open: true });
+    expect(result.overlays!.undecided).toBe(11);
+    expect(Array.from(result.overlays!.skip_ranges)).toEqual([11, 12]);
+    expect(result.stable_end).toBeLessThanOrEqual(6);
+    expect(language(input).overlays).toBeUndefined();
+  });
+
+  test("is hidden like the comment it may become", () => {
+    expect(shown("alpha\nbeta /")).toBe(shown("alpha\nbeta //"));
+    expect(shown("alpha\n/")).toBe(shown("alpha\n/*"));
+    expect(shown("alpha\n/")).not.toContain("/");
+  });
+
+  test("the next character decides it", () => {
+    expect(language("alpha / ", { open: true }).overlays).toBeUndefined();
+    expect(language("alpha /\n", { open: true }).overlays).toBeUndefined();
+    expect(language("alpha /=", { open: true }).overlays).toBeUndefined();
+  });
+
+  test("text inside a comment or a string is not an opener", () => {
+    expect(tokenize("alpha /", grammar, null, true).comment_cut).toBe(6);
+    for (const input of ["/* alpha *", "/* alpha /", "// alpha /", '"alpha /']) {
+      expect(tokenize(input, grammar, null, true).comment_cut, input).toBeUndefined();
+    }
+    expect(tokenize("alpha /", grammar).comment_cut).toBeUndefined();
+  });
+});
+
 describe("held_tail", () => {
   const language = create_language(grammar)();
   const input = 'alpha = 1\nlet beta\ngamma = "x y z';

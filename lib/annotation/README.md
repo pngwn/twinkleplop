@@ -375,6 +375,8 @@ The input is then read as a prefix that more text will follow:
 - a comment the input ends in is hidden while it has no words yet (`//`)
   or stops partway through a marker (`// [!hl :3`), instead of showing as a
   comment and vanishing once the `]` arrives
+- so are the first characters of a comment opener the input ends in, such
+  as `/`, `-` or `<!-`, until the next character decides what they are
 - a pair with no closer yet applies up to the end of the input
 - a line ref or anchor that has not arrived applies nothing and reports
   nothing

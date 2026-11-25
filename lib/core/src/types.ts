@@ -130,6 +130,8 @@ export interface TokenizeResult {
   // set only for an open input, always at the start of a line, text before it is never hidden later
   // grammar tokens ending before it are final but passes that wait for a closer can still retype them
   stable_end?: number;
+  // set only for an open input that ends partway through a comment opener, where that opener starts
+  comment_cut?: number;
 }
 
 // Frame tracker types
@@ -796,7 +798,7 @@ export interface OverlayResult {
   // sorted Uint32Array pairs [start, end] of marker bytes the renderer
   // substitutes with whitespace (or omits, depending on phase 1 choice).
   skip_ranges: Uint32Array;
-  // start of the comment an open input ends in when its markers are not settled
+  // start of the comment or partial comment opener an open input ends in when its markers are not settled
   undecided?: number;
   // 1-indexed line numbers (sparse) the renderer should drop entirely:
   // lines that contained only marker bytes plus whitespace. stored as a
