@@ -4844,7 +4844,10 @@ export function create_language(
       ? build_annotation_extractor(options.annotation, grammar.token_types)
       : null;
     return (input: string, call?: TokenizeOptions) => {
-      const base = tokenize(input, grammar);
+      const open = call?.open === true;
+      const base = tokenize(input, grammar, null, open);
+      // passes that splice tokens return a result without it
+      let stable_end = base.stable_end;
       if (clear !== null) {
         apply_downgrade(base.tokens, clear.remap);
         base.token_types = clear.token_types;
@@ -4852,9 +4855,16 @@ export function create_language(
       const result = run(input, base);
       if (downgrade !== null) apply_downgrade(result.tokens, downgrade);
       if (annotation_extractor !== null) {
-        const overlays = annotation_extractor(input, result, call?.open === true);
-        if (overlays !== undefined) result.overlays = overlays;
+        const overlays = annotation_extractor(input, result, open);
+        if (overlays !== undefined) {
+          result.overlays = overlays;
+          const undecided = overlays.undecided;
+          if (undecided !== undefined && stable_end !== undefined && undecided < stable_end) {
+            stable_end = undecided === 0 ? 0 : input.lastIndexOf("\n", undecided - 1) + 1;
+          }
+        }
       }
+      if (stable_end !== undefined) result.stable_end = stable_end;
       return result;
     };
   };

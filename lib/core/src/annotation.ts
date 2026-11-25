@@ -178,6 +178,7 @@ function run_extraction(
   const n = tokens.length / 3;
 
   const overlays: CollectedOverlay[] = [];
+  let undecided = -1;
   const verbatim: PendingVerbatim[] = [];
   const skip_ranges: SkipRange[] = [];
   const class_to_id = new Map<string, number>();
@@ -658,6 +659,7 @@ function run_extraction(
     // alphanumeric outside the markers (e.g. `// [!em] note`), we only skip
     // the marker bytes and the surrounding text renders as-is.
     if (comment_skips.length > 0) {
+      if (at_open_end) undecided = start;
       if (is_marker_only_comment(input, start, end, comment_skips)) {
         push_line_skips(skip_ranges, input, start, end, ensure_line_index());
       } else {
@@ -706,7 +708,9 @@ function run_extraction(
 
   if (overlays.length === 0 && skip_ranges.length === 0) return undefined;
 
-  return finalize(overlays, classifications, skip_ranges, input, ensure_line_index);
+  const out = finalize(overlays, classifications, skip_ranges, input, ensure_line_index);
+  if (undecided >= 0) out.undecided = undecided;
+  return out;
 }
 
 function overlaps_skip(skip_ranges: SkipRange[], start: number, end: number): boolean {

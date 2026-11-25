@@ -224,6 +224,15 @@ const copy = visible_text(code, result, options);`;
 			},
 		],
 		[
+			{ kind: "name" as const, value: "held_tail" },
+			{ kind: "type" as const, value: `"plain" | "hide"` },
+			{ kind: "def" as const, value: "drawn" },
+			{
+				kind: "desc" as const,
+				value: `What to do with the text after <code>stable_end</code> of an open input, which may still change. <code>"plain"</code> draws it without tokens, <code>"hide"</code> leaves it out. By default it is drawn like the rest.`,
+			},
+		],
+		[
 			{ kind: "name" as const, value: "open" },
 			{ kind: "type" as const, value: "boolean" },
 			{ kind: "def" as const, value: "false" },
@@ -285,6 +294,16 @@ const copy = visible_text(code, result, options);`;
 						{ kind: "type", value: "FrameTable" },
 						{ kind: "def", value: "optional" },
 						{ kind: "desc", value: "Present only when a frame_track stage ran." },
+					],
+					[
+						{ kind: "name", value: "stable_end" },
+						{ kind: "type", value: "number" },
+						{ kind: "def", value: "optional" },
+						{
+							kind: "desc",
+							value:
+								"Present only for an open input. The start of the first line that can still change: text before it will not be hidden later and the grammar's tokens ending before it are final. Passes that wait for a closer, such as an embedded template body, can still retype tokens before it.",
+						},
 					],
 				]}
 			/>

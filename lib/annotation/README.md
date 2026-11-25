@@ -383,3 +383,8 @@ The input is then read as a prefix that more text will follow:
 Mistakes more text cannot fix, such as a close with no open or arguments
 that do not parse, are reported as usual. Call once more without `open` when
 the input is complete.
+
+The result of an open tokenize call carries `stable_end`, the start of the
+first line that can still change. The `held_tail` render option draws the
+text after it without tokens (`"plain"`) or leaves it out (`"hide"`), so the
+last line does not flicker while it is being written.

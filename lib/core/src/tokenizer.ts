@@ -71,10 +71,30 @@ function scratch_token_buffer(slots: number): Uint32Array {
   return scratch_tokens;
 }
 
+// how far before the end of an open input a rule can still match differently
+const open_reach = new WeakMap<CompiledGrammar, number>();
+
+function reach_of(grammar: CompiledGrammar): number {
+  let reach = open_reach.get(grammar);
+  if (reach !== undefined) return reach;
+  let longest = 1;
+  for (const buckets of grammar.patterns_by_state) {
+    if (buckets === undefined) continue;
+    for (const bucket of buckets) {
+      if (bucket === null) continue;
+      for (const pattern of bucket) if (pattern.length > longest) longest = pattern.length;
+    }
+  }
+  reach = longest + 1;
+  open_reach.set(grammar, reach);
+  return reach;
+}
+
 export function tokenize(
   input: string,
   compiled_grammar: CompiledGrammar,
   introspector: TokenizerIntrospector | null = null,
+  open = false,
 ): TokenizeResult {
   const {
     transitions,
@@ -122,6 +142,10 @@ export function tokenize(
   let failed_probes: Set<number> | null = null;
   let has_failed_probes = false;
 
+  // earliest probe decided close enough to the end of an open input to decide otherwise later
+  const late_from = open ? len - reach_of(compiled_grammar) : len;
+  let late_probe_pos = len;
+
   // INTROSPECTION_START
   if (INTROSPECTION && introspector) {
     introspector.init({
@@ -138,6 +162,7 @@ export function tokenize(
   for (;;) {
     if (pos >= len) {
       if (probe_entry === null || !probe_states || !probe_states.has(current_state)) break;
+      if (probe_entry.pos < late_probe_pos) late_probe_pos = probe_entry.pos;
       const fallback_state = probe_fallbacks?.get(current_state);
       if (fallback_state !== undefined) {
         pos = probe_entry.pos;
@@ -646,6 +671,9 @@ export function tokenize(
             }
           }
           // INTROSPECTION_END
+          if (probe_entry.resolved_pos >= late_from && probe_entry.pos < late_probe_pos) {
+            late_probe_pos = probe_entry.pos;
+          }
           probe_entry = null; // clear probe entry
           // refresh caches again in case state changed
           state_buckets = patterns_by_state[current_state];
@@ -958,6 +986,9 @@ export function tokenize(
             }
           }
           // INTROSPECTION_END
+          if (probe_entry.resolved_pos >= late_from && probe_entry.pos < late_probe_pos) {
+            late_probe_pos = probe_entry.pos;
+          }
           probe_entry = null;
         }
       } else if (fallback_transitions) {
@@ -1210,6 +1241,9 @@ export function tokenize(
             }
           }
           // INTROSPECTION_END
+          if (probe_entry.resolved_pos >= late_from && probe_entry.pos < late_probe_pos) {
+            late_probe_pos = probe_entry.pos;
+          }
           probe_entry = null;
         }
       } else {
@@ -1264,8 +1298,17 @@ export function tokenize(
   //
   // always copy out since the next call reuses the scratch buffer
   const used = token_count * 3;
-  return {
+  const result: TokenizeResult = {
     tokens: tokens.slice(0, used),
     token_types,
   };
+  if (open) {
+    let stable = Math.max(0, Math.min(late_from, late_probe_pos));
+    // the one token that reaches the unsettled tail can still grow or split
+    let t = used - 3;
+    while (t >= 0 && tokens[t + 1] >= stable) t -= 3;
+    if (t >= 0 && tokens[t + 2] >= stable) stable = tokens[t + 1];
+    result.stable_end = stable === 0 ? 0 : input.lastIndexOf("\n", stable - 1) + 1;
+  }
+  return result;
 }

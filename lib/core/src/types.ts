@@ -127,6 +127,9 @@ export interface TokenizeResult {
   // reclassifiers query the table instead of reconstructing their own
   // scope stack. undefined when no frame_track stage ran.
   frames?: FrameTable;
+  // set only for an open input, always at the start of a line, text before it is never hidden later
+  // grammar tokens ending before it are final but passes that wait for a closer can still retype them
+  stable_end?: number;
 }
 
 // Frame tracker types
@@ -793,6 +796,8 @@ export interface OverlayResult {
   // sorted Uint32Array pairs [start, end] of marker bytes the renderer
   // substitutes with whitespace (or omits, depending on phase 1 choice).
   skip_ranges: Uint32Array;
+  // start of the comment an open input ends in when its markers are not settled
+  undecided?: number;
   // 1-indexed line numbers (sparse) the renderer should drop entirely:
   // lines that contained only marker bytes plus whitespace. stored as a
   // dense Uint8Array indexed by line number; bit 0 of byte n marks line n.
@@ -850,6 +855,8 @@ export interface RenderOptions {
   escape?: Record<string, string>;
   // the input is an unfinished prefix, overlays items past its end are clamped or dropped
   open?: boolean;
+  // the text after stable_end of an open result is drawn without tokens or left out
+  held_tail?: "plain" | "hide";
 }
 
 // attributes holds class first, then the attributes option in order without false values, unescaped

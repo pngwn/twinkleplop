@@ -1,6 +1,7 @@
 import type { RenderOptions, TokenizeResult, VisibleText } from "./types";
 import { build_line_starts } from "./annotation";
 import { indent_guide_size, whitespace_mode } from "./generator";
+import { hold_tail } from "./held_tail";
 import { resolve_overlays } from "./overlays";
 
 // takes the same options as to_html, option overlays and whitespace change what is visible
@@ -31,7 +32,15 @@ function walk(
 ): VisibleText {
   const ws_active =
     whitespace_mode(options.whitespace) !== 0 || indent_guide_size(options.indent_guides) !== 0;
-  const overlays = resolve_overlays(input, result, options.overlays, options.open === true);
+  if (options.held_tail !== undefined && result.stable_end !== undefined) {
+    ({ input, result } = hold_tail(input, result, options.held_tail));
+  }
+  const overlays = resolve_overlays(
+    input,
+    result,
+    options.overlays,
+    options.open === true || result.stable_end !== undefined,
+  );
   if (overlays === undefined) {
     const segments =
       with_segments && input.length !== 0 ? Uint32Array.of(0, input.length, 0) : NO_SEGMENTS;

@@ -1,5 +1,6 @@
 import { OVERLAY_LINE_MODE, OVERLAY_VERBATIM } from "./types";
 import type { BlockParts, HookResult, OverlayResult, RenderOptions, TokenizeResult } from "./types";
+import { hold_tail } from "./held_tail";
 import { resolve_overlays } from "./overlays";
 import { line_of } from "./annotation";
 
@@ -138,8 +139,21 @@ function escape_tables(escape: RenderOptions["escape"]): EscapeTables {
   return tables;
 }
 
+// a result tokenized open says so itself, whatever the render options say
+function is_open(result: TokenizeResult, options: RenderOptions): boolean {
+  return options.open === true || result.stable_end !== undefined;
+}
+
 export function to_html(input: string, token_result: TokenizeResult, options: RenderOptions = {}) {
-  const overlays = resolve_overlays(input, token_result, options.overlays, options.open === true);
+  if (options.held_tail !== undefined && token_result.stable_end !== undefined) {
+    ({ input, result: token_result } = hold_tail(input, token_result, options.held_tail));
+  }
+  const overlays = resolve_overlays(
+    input,
+    token_result,
+    options.overlays,
+    is_open(token_result, options),
+  );
   const esc = escape_tables(options.escape);
   if (options.structure === "inline") {
     return render(input, token_result, overlays, options, esc, "", "");
@@ -160,7 +174,15 @@ export function to_parts(
   if (options.structure === "inline") {
     throw new TypeError('to_parts renders a block, structure "inline" has no <pre> to split');
   }
-  const overlays = resolve_overlays(input, token_result, options.overlays, options.open === true);
+  if (options.held_tail !== undefined && token_result.stable_end !== undefined) {
+    ({ input, result: token_result } = hold_tail(input, token_result, options.held_tail));
+  }
+  const overlays = resolve_overlays(
+    input,
+    token_result,
+    options.overlays,
+    is_open(token_result, options),
+  );
   const esc = escape_tables(options.escape);
   const { class_name = "twinkleplop" } = options;
   const attributes = pre_attributes(block_class(class_name, options, overlays), options.attributes);
